@@ -22,6 +22,30 @@
       "revId": "19f596a8539867f7a79ba167b8ca61c1cabba654",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c077491c_e65a97db",
+        "filename": "libunwind/Android.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1043845
+      },
+      "writtenOn": "2020-03-03T06:26:17Z",
+      "side": 1,
+      "message": "Yeah, direct copy from external/libunwind_llvm.",
+      "parentUuid": "8e1f6a21_3c78144c",
+      "range": {
+        "startLine": 2,
+        "startChar": 16,
+        "endLine": 2,
+        "endChar": 20
+      },
+      "revId": "19f596a8539867f7a79ba167b8ca61c1cabba654",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889",
+      "unresolved": false
     }
   ]
 }
