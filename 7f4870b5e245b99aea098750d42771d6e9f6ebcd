@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2542c77_569386d2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2020-11-19T02:17:19Z",
+      "side": 1,
+      "message": "This is a cherry-pick (and version bump) for fixing https://github.com/android/ndk/issues/1303.",
+      "revId": "7f4870b5e245b99aea098750d42771d6e9f6ebcd",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
