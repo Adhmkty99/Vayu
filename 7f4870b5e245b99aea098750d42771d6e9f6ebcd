@@ -16,6 +16,23 @@
       "message": "This is a cherry-pick (and version bump) for fixing https://github.com/android/ndk/issues/1303.",
       "revId": "7f4870b5e245b99aea098750d42771d6e9f6ebcd",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a2b6ee41_bf06c7e4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1805806
+      },
+      "writtenOn": "2020-11-25T06:14:57Z",
+      "side": 1,
+      "message": "quick",
+      "revId": "7f4870b5e245b99aea098750d42771d6e9f6ebcd",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
   ]
 }
