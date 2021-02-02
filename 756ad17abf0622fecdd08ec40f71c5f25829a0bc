@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6d309841_b994ebf5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1052399
+      },
+      "writtenOn": "2021-02-02T23:25:43Z",
+      "side": 1,
+      "message": "Propose to bypass aosp-master-plus-llvm test due to b/179158989.\n",
+      "revId": "756ad17abf0622fecdd08ec40f71c5f25829a0bc",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
