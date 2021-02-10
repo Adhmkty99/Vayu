@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "fbae2f6d_27bef77c",
+        "filename": "compiler-rt/CMakeLists.txt",
+        "patchSetId": 1
+      },
+      "lineNbr": 453,
+      "author": {
+        "id": 1229339
+      },
+      "writtenOn": "2021-02-10T06:32:57Z",
+      "side": 1,
+      "message": "Instead of adding libunwind here, CompilerRTBuilder in llvm_android/builders.py adds -lunwind to SANITIZER_COMMON_LINK_LIBS:\n\n    # Currently, -rtlib\u003dcompiler-rt (even with -unwindlib\u003dlibunwind) does\n    # not automatically link libunwind.a on Android.\n    libs +\u003d [\u0027-lunwind\u0027]\n    defines[\u0027SANITIZER_COMMON_LINK_LIBS\u0027] \u003d \u0027 \u0027.join(libs)\n\nAFAIK we should pass -Wl,-z,defs to catch mistakes. Maybe I can add that to CompilerRTBuilder too.",
+      "revId": "a23d7b137d6288b2a0be32bdbc7f245b909561a3",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c8d042e5_32e365e7",
+        "filename": "compiler-rt/cmake/base-config-ix.cmake",
+        "patchSetId": 1
+      },
+      "lineNbr": 169,
+      "author": {
+        "id": 1229339
+      },
+      "writtenOn": "2021-02-10T06:32:57Z",
+      "side": 1,
+      "message": "I ended up using this CMake option in llvm_android/builders.py (BuiltinsBuilder), which made detect_target_arch work:\n\n    defines[\u0027CMAKE_TRY_COMPILE_TARGET_TYPE\u0027] \u003d \u0027STATIC_LIBRARY\u0027",
+      "revId": "a23d7b137d6288b2a0be32bdbc7f245b909561a3",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
