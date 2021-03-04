@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a255db33_a7f7b978",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1229339
+      },
+      "writtenOn": "2021-03-04T06:47:38Z",
+      "side": 1,
+      "message": "The NDK recently switched to clang-r412851, which has own prebuilt libunwind.a libraries in subdirectories of the resource directory that are on the linker search path. Previously, the NDK built its own libunwind.a for arm32 only and copied them into two places:\n\n - toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/libunwind.a\n - sources/cxx-stl/llvm-libc++/libs/armeabi-v7a/libunwind.a\n\nThe first path is also on the linker search path. It\u0027s confusing to have two slightly-different versions of libunwind.a on the search path simultaneously, so just ship the Clang prebuilt.\n\nI\u0027m not sure we really want to keep libunwind/Android.mk. I might see if I can remove that and move the libunwind.a prebuilt into libcxxabi/Android.mk.\n",
+      "revId": "6b2cd07d131760f9d69723ac73b4fe9f6e6f2b07",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
