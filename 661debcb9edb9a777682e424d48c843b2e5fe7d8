@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "0812d1d5_a9039af4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1268141
+      },
+      "writtenOn": "2021-03-10T15:46:55Z",
+      "side": 1,
+      "message": "Add necessary flags to libcxxabi too.\nThis change is gated on https://android-review.googlesource.com/c/toolchain/llvm-project/+/1566721\nso it is not to be merged just now.\n",
+      "revId": "661debcb9edb9a777682e424d48c843b2e5fe7d8",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
