@@ -16,6 +16,23 @@
       "message": "I think this is the only place this is still needed for the toolchain respin. Tamas already did this for the CRT objects, and libandroid_support isn\u0027t used on LP64.\n\nWe may need one more sysroot update here (just the S DP2 sysroot merged out) to get the system static libraries as well, but those are an edge case for the NDK anyway.\n\nTamas, we\u0027re going to use a canary built from this to respin the toolchain to cover the sanitizers/builtins/etc, at which point I think this is done. If you know anything still todo lmk 😊",
       "revId": "ff19f1fd611321c7a17a7ff73894ba46bf006f05",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2eeb6318_bae667d5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1043845
+      },
+      "writtenOn": "2021-03-18T22:29:00Z",
+      "side": 1,
+      "message": "Tests passing on arm64 devices this time 😊",
+      "revId": "ff19f1fd611321c7a17a7ff73894ba46bf006f05",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
   ]
 }
