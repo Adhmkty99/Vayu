@@ -33,6 +33,23 @@
       "message": "Tests passing on arm64 devices this time 😊",
       "revId": "ff19f1fd611321c7a17a7ff73894ba46bf006f05",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e6ed2e56_0d30d452",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1043845
+      },
+      "writtenOn": "2021-03-18T23:19:42Z",
+      "side": 1,
+      "message": "\u003e Patch Set 1:\n\u003e \n\u003e I think we also have to update the NDK prebuilts in the platform, to switch away from the libgcc unwinder to one that\u0027s part of the NDK prebuilt subset.\n\nProbably true. It\u0027ll only affect sdk variants of things using libc++, which should be minimal, but we should do that just in case.",
+      "revId": "ff19f1fd611321c7a17a7ff73894ba46bf006f05",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
   ]
 }
