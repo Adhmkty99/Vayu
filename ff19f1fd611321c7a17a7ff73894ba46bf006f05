@@ -50,6 +50,24 @@
       "message": "\u003e Patch Set 1:\n\u003e \n\u003e I think we also have to update the NDK prebuilts in the platform, to switch away from the libgcc unwinder to one that\u0027s part of the NDK prebuilt subset.\n\nProbably true. It\u0027ll only affect sdk variants of things using libc++, which should be minimal, but we should do that just in case.",
       "revId": "ff19f1fd611321c7a17a7ff73894ba46bf006f05",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "3ca8e69c_31880ad0",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2021-03-19T17:05:31Z",
+      "side": 1,
+      "message": "https://ci.android.com/builds/submitted/7220075/linux/latest is built with the canary NDK r23, so all runtimes in there should be built with PAC/BTI.  Tamas, you can test/verify if everything looks good.",
+      "parentUuid": "22586ee6_b30f627c",
+      "revId": "ff19f1fd611321c7a17a7ff73894ba46bf006f05",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
   ]
 }
