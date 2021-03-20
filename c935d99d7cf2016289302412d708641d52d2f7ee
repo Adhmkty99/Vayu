@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b8889b6c_6b1c57e2",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2021-03-20T02:34:43Z",
+      "side": 1,
+      "message": "Typo: this is actually `r416183 (8456c3a789285079ad35d146e487436b5a27b027)`. I just wanted to clarify this in case anyone does some deep dive here in the future wondering why these numbers don\u0027t line up.",
+      "range": {
+        "startLine": 8,
+        "startChar": 66,
+        "endLine": 8,
+        "endChar": 72
+      },
+      "revId": "c935d99d7cf2016289302412d708641d52d2f7ee",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
