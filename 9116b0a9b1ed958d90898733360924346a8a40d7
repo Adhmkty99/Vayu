@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2d8580c7_464f8ed2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1229339
+      },
+      "writtenOn": "2021-03-30T04:13:56Z",
+      "side": 1,
+      "message": "Cherry-picked from:\nhttps://github.com/llvm/llvm-project/commit/aa0b991dcf0510793a42a5b01aaf06a6c0892bcf\n\nI haven\u0027t run the NDK tests on it yet.\n",
+      "revId": "9116b0a9b1ed958d90898733360924346a8a40d7",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
