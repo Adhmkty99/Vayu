@@ -62,7 +62,7 @@ def main():
         # Make sure we close the file before we encode it, because accessing
         # the temporary file while still open doesn't work on Windows.
         tmpTar.close()
-        encodedTarball = subprocess.check_output(['base64', '-i', tmpTar.name]).strip()
+        encodedTarball = subprocess.check_output(['base64', '-i', tmpTar.name], text=True).strip()
     finally:
         # Make sure we close the file in case an exception happens before
         # we've closed it above -- otherwise close() is idempotent.
