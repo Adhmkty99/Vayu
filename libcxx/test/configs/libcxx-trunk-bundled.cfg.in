@@ -40,7 +40,7 @@ config.substitutions.append(('%{link_flags}',
         os.path.join(INSTALL_ROOT, 'lib', 'libc++abi.a'))
 ))
 config.substitutions.append(('%{exec}',
-    '{} {} --execdir %T --bundle %t.bundle -- '.format(
+    '{} {} --bundle %t.bundle -- '.format(
         pipes.quote(sys.executable),
         pipes.quote(bundlePy))
 ))
