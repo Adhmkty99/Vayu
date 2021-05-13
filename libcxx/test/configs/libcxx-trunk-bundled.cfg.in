@@ -19,7 +19,7 @@ import libcxx.test.params
 # Configure basic properties of the test suite
 config.name = 'libcxx-trunk-bundled'
 config.test_source_root = os.path.join(LIBCXX_ROOT, 'test')
-config.test_format = libcxx.test.format.CxxStandardLibraryTest()
+config.test_format = libcxx.test.format.CxxStandardLibraryTest(xfail_deferred=True)
 config.recursiveExpansionLimit = 10
 config.test_exec_root = EXEC_ROOT
 
@@ -40,7 +40,7 @@ config.substitutions.append(('%{link_flags}',
         os.path.join(INSTALL_ROOT, 'lib', 'libc++abi.a'))
 ))
 config.substitutions.append(('%{exec}',
-    '{} {} --bundle %t.bundle -- '.format(
+    '{} {} %{{exec_args}} --bundle %t.bundle -- '.format(
         pipes.quote(sys.executable),
         pipes.quote(bundlePy))
 ))

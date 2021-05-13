@@ -80,6 +80,7 @@ class SelfExtractingTarballBundler(Bundler):
         lines = [
             "#!/bin/sh",
             "set -e",
+            "STATUS=0",
             f'{self.bundle_var_name}="$(mktemp -d /tmp/libcxx.XXXXXXXXXX)"',
         ]
 
@@ -109,11 +110,18 @@ class SelfExtractingTarballBundler(Bundler):
         if self.env:
             lines.append(f"export {' '.join(self.env)}")
 
+        lines.append("set +e")
+
         lines.append(
             " ".join(
                 str(self.bundle_path(x)) if self.is_test_exe(x) else x for x in command
             )
         )
+
+        comparison = "-eq" if self.xfail else "-ne"
+        lines.append(f"if [ $? {comparison} 0 ]; then STATUS=1; fi")
+
+        lines.append("set -e")
 
         # Make sure the temporary directory is removed when we're done.
         lines.append(f'rm -r "{self.bundle_var}"')
@@ -122,7 +130,7 @@ class SelfExtractingTarballBundler(Bundler):
         # sufficient to copy the script to get all dependencies. It's simpler than
         # having to carry around a separate tarball.
         lines += [
-            "exit 0",  # Make sure the script never executes the embedded tarball
+            "exit $STATUS",
             "BEGIN_TARBALL",
             self.create_base64_tar(command).decode("utf-8"),
         ]
