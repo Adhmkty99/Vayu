@@ -6,6 +6,7 @@
 #
 #===----------------------------------------------------------------------===##
 
+# UNSUPPORTED: run-deferred
 # XFAIL: LIBCXX-WINDOWS-FIXME
 
 # Note: We prepend arguments with 'x' to avoid thinking there are too few

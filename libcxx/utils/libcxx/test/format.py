@@ -204,9 +204,6 @@ class CxxStandardLibraryTest(lit.formats.TestFormat):
             in conjunction with the %{build} substitution.
     """
 
-    def __init__(self, xfail_deferred: bool = False) -> None:
-        self.xfail_deferred = xfail_deferred
-
     def getTestsInDirectory(self, testSuite, pathInSuite, litConfig, localConfig):
         SUPPORTED_SUFFIXES = ['[.]pass[.]cpp$', '[.]pass[.]mm$',
                               '[.]compile[.]pass[.]cpp$', '[.]compile[.]fail[.]cpp$',
@@ -284,7 +281,7 @@ class CxxStandardLibraryTest(lit.formats.TestFormat):
                 "%dbg(COMPILED WITH) %{cxx} %s %{flags} %{compile_flags} %{link_flags} -o %t.exe",
                 "%dbg(EXECUTED AS) %{exec} %t.exe"
             ]
-            return self._executeShTest(test, litConfig, steps, self.xfail_deferred)
+            return self._executeShTest(test, litConfig, steps, run_deferrable=True)
         # This is like a .verify.cpp test when clang-verify is supported,
         # otherwise it's like a .compile.fail.cpp test. This is only provided
         # for backwards compatibility with the test suite.
@@ -306,7 +303,7 @@ class CxxStandardLibraryTest(lit.formats.TestFormat):
         string = ' '.join(flags)
         config.substitutions = [(s, x + ' ' + string) if s == '%{compile_flags}' else (s, x) for (s, x) in config.substitutions]
 
-    def _executeShTest(self, test, litConfig, steps, xfail_deferred: bool = False):
+    def _executeShTest(self, test, litConfig, steps, run_deferrable: bool = False):
         if test.config.unsupported:
             return lit.Test.Result(lit.Test.UNSUPPORTED, 'Test is unsupported')
 
@@ -321,6 +318,6 @@ class CxxStandardLibraryTest(lit.formats.TestFormat):
         result = lit.TestRunner._runShTest(
             test, litConfig, useExternalSh=False, script=script, tmpBase=tmpBase
         )
-        if xfail_deferred:
+        if run_deferrable and "run-deferred" in test.config.available_features:
             test.xfails = test.build_xfails
         return result
