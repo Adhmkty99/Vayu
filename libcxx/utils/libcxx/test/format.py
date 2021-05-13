@@ -72,19 +72,26 @@ def parseScript(test, preamble):
     # Parse the test file, including custom directives
     additionalCompileFlags = []
     fileDependencies = []
+    test.build_xfails = []
     parsers = [
         lit.TestRunner.IntegratedTestKeywordParser('FILE_DEPENDENCIES:',
                                                    lit.TestRunner.ParserKind.LIST,
                                                    initial_value=fileDependencies),
         lit.TestRunner.IntegratedTestKeywordParser('ADDITIONAL_COMPILE_FLAGS:',
                                                    lit.TestRunner.ParserKind.LIST,
-                                                   initial_value=additionalCompileFlags)
+                                                   initial_value=additionalCompileFlags),
+        lit.TestRunner.IntegratedTestKeywordParser('XFAIL-BUILD:',
+                                                   lit.TestRunner.ParserKind.LIST,
+                                                   initial_value=test.build_xfails),
     ]
 
     scriptInTest = lit.TestRunner.parseIntegratedTestScript(test, additional_parsers=parsers,
                                                             require_script=not preamble)
     if isinstance(scriptInTest, lit.Test.Result):
         return scriptInTest
+
+    # Copy any XFAIL-BUILD commands into the regular XFAIL set for the non-deferred case.
+    test.xfails.extend(test.build_xfails)
 
     script = []
 
@@ -315,5 +322,5 @@ class CxxStandardLibraryTest(lit.formats.TestFormat):
             test, litConfig, useExternalSh=False, script=script, tmpBase=tmpBase
         )
         if xfail_deferred:
-            test.xfails = []
+            test.xfails = test.build_xfails
         return result

@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: *
+// XFAIL-BUILD: *
 
 // Make sure that even a simple unused variable warning is treated as an
 // error in the test suite. This is to make sure the test suite always runs

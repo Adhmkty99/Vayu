@@ -24,7 +24,7 @@
 // TODO(EricWF) This test fails because "std::quoted" fails to compile
 // for char16_t and char32_t types. Combine with path.io.pass.cpp when this
 // passes.
-// XFAIL: *
+// XFAIL-BUILD: *
 
 #include "filesystem_include.h"
 #include <type_traits>

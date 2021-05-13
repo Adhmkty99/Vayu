@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: *
+// XFAIL-BUILD: *
 
 // Make sure the test DOES NOT pass if it fails at link-time
 
