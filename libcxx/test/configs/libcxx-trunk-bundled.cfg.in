@@ -18,6 +18,7 @@ import libcxx.test.params
 
 # Configure basic properties of the test suite
 config.name = 'libcxx-trunk-bundled'
+config.target_triple = "@TARGET_TRIPLE@"
 config.test_source_root = os.path.join(LIBCXX_ROOT, 'test')
 config.test_format = libcxx.test.format.CxxStandardLibraryTest()
 config.recursiveExpansionLimit = 10

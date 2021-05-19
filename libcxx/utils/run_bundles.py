@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 import subprocess
 import sys
-from typing import Iterator
 
 
 @dataclass(frozen=True)
@@ -28,9 +27,13 @@ class TestResult:
 
 def run_bundle(path: Path) -> TestResult:
     result = subprocess.run(
-        [str(path)], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        [str(path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT
     )
-    return TestResult(path, result.returncode == 0, result.stdout)
+    try:
+        output = result.stdout.decode("utf-8")
+    except UnicodeDecodeError:
+        output = repr(result.stdout)
+    return TestResult(path, result.returncode == 0, output)
 
 
 class BundleRunner:
@@ -67,7 +70,7 @@ def main() -> None:
     else:
         level = logging.WARNING
     logging.basicConfig(level=level)
-    if not BundleRunner(args.test_dir).run_all():
+    if BundleRunner(args.test_dir).run_all():
         sys.exit("Tests failed")
 
 

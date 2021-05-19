@@ -6,6 +6,7 @@
 #
 #===----------------------------------------------------------------------===##
 
+from pathlib import Path
 import lit
 import lit.formats
 import os
@@ -72,11 +73,15 @@ def parseScript(test, preamble):
     # Parse the test file, including custom directives
     additionalCompileFlags = []
     fileDependencies = []
+    builtDependencies = ["%t.exe"]
     test.build_xfails = []
     parsers = [
         lit.TestRunner.IntegratedTestKeywordParser('FILE_DEPENDENCIES:',
                                                    lit.TestRunner.ParserKind.LIST,
                                                    initial_value=fileDependencies),
+        lit.TestRunner.IntegratedTestKeywordParser('BUILT_DEPENDENCIES:',
+                                                   lit.TestRunner.ParserKind.LIST,
+                                                   initial_value=builtDependencies),
         lit.TestRunner.IntegratedTestKeywordParser('ADDITIONAL_COMPILE_FLAGS:',
                                                    lit.TestRunner.ParserKind.LIST,
                                                    initial_value=additionalCompileFlags),
@@ -95,21 +100,30 @@ def parseScript(test, preamble):
 
     script = []
 
+    exec_args = []
+    if test.isExpectedToFail():
+        exec_args.append("--xfail")
+
+    # TODO: Add --test-exe flag to clean up bundler implementation.
+    exec_args.extend(lit.TestRunner.applySubstitutions(
+        (f"--dependency={d}" for d in builtDependencies),
+        substitutions,
+        recursion_limit=test.config.recursiveExpansionLimit,
+    ))
+
     # For each file dependency in FILE_DEPENDENCIES, inject a command to copy
     # that file to the execution directory. Execute the copy from %S to allow
     # relative paths from the test directory.
+    test_dir = Path(test.getSourcePath()).parent
     for dep in fileDependencies:
         script += ['%dbg(SETUP) cd %S && cp {} %T'.format(dep)]
+        exec_args.append(f"--dependency={test_dir / dep}")
     script += preamble
     script += scriptInTest
 
     # Add compile flags specified with ADDITIONAL_COMPILE_FLAGS.
     substitutions = [(s, x + ' ' + ' '.join(additionalCompileFlags)) if s == '%{compile_flags}'
                             else (s, x) for (s, x) in substitutions]
-
-    exec_args = []
-    if test.isExpectedToFail():
-        exec_args.append("--xfail")
 
     substitutions.append(("%{exec_args}", " ".join(exec_args)))
 

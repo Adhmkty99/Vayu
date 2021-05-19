@@ -24,10 +24,12 @@ class Bundler:
     def __init__(
         self,
         xfail: bool,
+        dependencies: list[Path],
         env: list[str],
         codesign_identity: Optional[str],
     ) -> None:
         self.xfail = xfail
+        self.dependencies = dependencies
         self.env = env
         self.codesign_identity = codesign_identity
 
@@ -40,33 +42,33 @@ class Bundler:
         # to be no such executable, for example in the case of a .sh.cpp test.
         return arg.endswith(".tmp.exe") and Path(arg).exists()
 
-    def sign_if_needed(self, arg: str) -> None:
+    def sign_if_needed(self, path: Path) -> None:
         assert self.codesign_identity is not None
-        if self.is_test_exe(arg):
+        if self.is_test_exe(str(path)):
             subprocess.run(
-                ["xcrun", "codesign", "-f", "-s", self.codesign_identity, arg],
+                ["xcrun", "codesign", "-f", "-s", self.codesign_identity, str(path)],
                 check=True,
                 env={},
             )
 
-    def sign_inputs(self, inputs: list[str]) -> None:
+    def sign_binaries(self) -> None:
         if self.codesign_identity is None:
             return
-        for arg in inputs:
-            self.sign_if_needed(arg)
+        for dep in self.dependencies:
+            self.sign_if_needed(dep)
 
-    def create_bundle(self, output: Path, inputs: list[str]) -> None:
+    def create_bundle(self, output: Path, command: list[str]) -> None:
         raise NotImplementedError
 
 
 class SelfExtractingTarballBundler(Bundler):
-    def create_bundle(self, output: Path, inputs: list[str]) -> None:
-        self.sign_inputs(inputs)
-        output.write_text("\n".join(self.create_script_lines(inputs)))
+    def create_bundle(self, output: Path, command: list[str]) -> None:
+        self.sign_binaries()
+        output.write_text("\n".join(self.create_script_lines(command)))
         subprocess.run(["chmod", "+x", str(output)], check=True)
 
-    def bundle_path(self, arg: str) -> Path:
-        return self.bundle_var / Path(arg).name
+    def bundle_path(self, path: Path) -> Path:
+        return self.bundle_var / path.name
 
     @property
     def bundle_var_name(self) -> str:
@@ -75,6 +77,14 @@ class SelfExtractingTarballBundler(Bundler):
     @property
     def bundle_var(self) -> Path:
         return Path(f"${{{self.bundle_var_name}}}")
+
+    def substitute_file_paths(self, arg: str) -> str:
+        for dep in self.dependencies:
+            if not dep.is_absolute:
+                continue
+            if str(dep) in arg:
+                arg = arg.replace(str(dep), str(self.bundle_path(dep)))
+        return f'"{arg}"'
 
     def create_script_lines(self, command: list[str]) -> None:
         lines = [
@@ -98,7 +108,7 @@ class SelfExtractingTarballBundler(Bundler):
         # Make sure all test-executables in the bundle have 'execute' permissions on the
         # host where the bundle is run. The host that compiled the test-executable might
         # not have a notion of 'executable' permissions.
-        for exe in (p for p in command if self.is_test_exe(p)):
+        for exe in (d for d in self.dependencies if self.is_test_exe(str(d))):
             lines.append(f"chmod +x {self.bundle_path(exe)}")
 
         # Execute the command in the temporary directory, with the correct environment.
@@ -112,11 +122,7 @@ class SelfExtractingTarballBundler(Bundler):
 
         lines.append("set +e")
 
-        lines.append(
-            " ".join(
-                str(self.bundle_path(x)) if self.is_test_exe(x) else x for x in command
-            )
-        )
+        lines.append(" ".join(self.substitute_file_paths(x) for x in command))
 
         comparison = "-eq" if self.xfail else "-ne"
         lines.append(f"if [ $? {comparison} 0 ]; then STATUS=1; fi")
@@ -132,19 +138,18 @@ class SelfExtractingTarballBundler(Bundler):
         lines += [
             "exit $STATUS",
             "BEGIN_TARBALL",
-            self.create_base64_tar(command).decode("utf-8"),
+            self.create_base64_tar().decode("utf-8"),
         ]
 
         return lines
 
-    def create_base64_tar(self, inputs: list[str]) -> bytes:
+    def create_base64_tar(self) -> bytes:
         f = BytesIO()
         with tarfile.open(fileobj=f, mode="w") as tarball:
-            # TODO: Add --dependency to %{exec_args} so we can make these explicit.
-            for arg in inputs:
-                path = Path(arg)
-                if path.exists():
-                    tarball.add(path, arcname=path.name)
+            for dep in self.dependencies:
+                if not dep.exists():
+                    raise RuntimeError(f"Missing test dependency: {dep}")
+                tarball.add(dep, arcname=dep.name)
         f.seek(0, SEEK_SET)
         return base64.b64encode(f.read())
 
@@ -154,12 +159,15 @@ def main() -> None:
     parser.add_argument("--bundle", type=Path, required=True)
     parser.add_argument("--codesign_identity")
     parser.add_argument("--env", nargs="*", default=[])
+    parser.add_argument(
+        "--dependency", dest="dependencies", action="append", type=Path, default=[]
+    )
     parser.add_argument("--xfail", action="store_true")
     parser.add_argument("command", nargs="+")
     args = parser.parse_args()
 
     SelfExtractingTarballBundler(
-        args.xfail, args.env, args.codesign_identity
+        args.xfail, args.dependencies, args.env, args.codesign_identity
     ).create_bundle(args.bundle, args.command)
 
 
