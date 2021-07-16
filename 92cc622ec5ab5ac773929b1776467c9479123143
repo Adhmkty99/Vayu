@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "29791636_21ab7787",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2021-07-16T18:17:51Z",
+      "side": 1,
+      "message": "Can you upload this to upstream LLVM instead (https://llvm.org/docs/Contributing.html#how-to-submit-a-patch)?  We can then cherry-pick it to AOSP toolchain.",
+      "revId": "92cc622ec5ab5ac773929b1776467c9479123143",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
