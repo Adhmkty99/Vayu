@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6507e544_52d824b4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 4
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2021-08-10T19:49:04Z",
+      "side": 1,
+      "message": "Unsetting all of the Attention Set here, as this patch needs to go to upstream LLVM before we can use it. Shuxiao, please take a look at Pirama\u0027s advice.",
+      "revId": "d9d24ffc24af22692e3ec72fa3fff02d655e7c49",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
