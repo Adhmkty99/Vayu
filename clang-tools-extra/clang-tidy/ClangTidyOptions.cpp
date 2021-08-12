@@ -89,6 +89,9 @@ template <> struct MappingTraits<ClangTidyOptions> {
     IO.mapOptional("Checks", Options.Checks);
     IO.mapOptional("WarningsAsErrors", Options.WarningsAsErrors);
     IO.mapOptional("HeaderFilterRegex", Options.HeaderFilterRegex);
+    // SystemHeaders not mapped?
+    // ShowAllWarnings is hidden debug only option.
+    IO.mapOptional("SkipHeaders", Options.SkipHeaders);
     IO.mapOptional("AnalyzeTemporaryDtors", Ignored); // legacy compatibility
     IO.mapOptional("FormatStyle", Options.FormatStyle);
     IO.mapOptional("User", Options.User);
@@ -111,6 +114,8 @@ ClangTidyOptions ClangTidyOptions::getDefaults() {
   Options.Checks = "";
   Options.WarningsAsErrors = "";
   Options.HeaderFilterRegex = "";
+  Options.ShowAllWarnings = false;
+  Options.SkipHeaders = false;
   Options.SystemHeaders = false;
   Options.FormatStyle = "none";
   Options.User = llvm::None;
@@ -147,6 +152,8 @@ ClangTidyOptions &ClangTidyOptions::mergeWith(const ClangTidyOptions &Other,
   mergeCommaSeparatedLists(Checks, Other.Checks);
   mergeCommaSeparatedLists(WarningsAsErrors, Other.WarningsAsErrors);
   overrideValue(HeaderFilterRegex, Other.HeaderFilterRegex);
+  overrideValue(ShowAllWarnings, Other.ShowAllWarnings);
+  overrideValue(SkipHeaders, Other.SkipHeaders);
   overrideValue(SystemHeaders, Other.SystemHeaders);
   overrideValue(FormatStyle, Other.FormatStyle);
   overrideValue(User, Other.User);

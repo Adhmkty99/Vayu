@@ -95,10 +95,23 @@ option in .clang-tidy file, if any.
                                          cl::init(""),
                                          cl::cat(ClangTidyCategory));
 
+static cl::opt<bool> ShowAllWarnings("show-all-warnings",
+                                     cl::desc("Display all warning messages."),
+                                     cl::init(false), cl::Hidden,
+                                     cl::cat(ClangTidyCategory));
+
+static cl::opt<bool> SkipHeaders("skip-headers", cl::desc(R"(
+Do not check included header files, but
+files matching the --header-filter pattern are still checked.
+System headers are still checked if --system-headers is true.
+)"),
+                                 cl::init(false), cl::cat(ClangTidyCategory));
+
 static cl::opt<bool>
     SystemHeaders("system-headers",
                   cl::desc("Display the errors from system headers."),
                   cl::init(false), cl::cat(ClangTidyCategory));
+
 static cl::opt<std::string> LineFilter("line-filter", cl::desc(R"(
 List of files with line ranges to filter the
 warnings. Can be used together with
@@ -300,6 +313,8 @@ static std::unique_ptr<ClangTidyOptionsProvider> createOptionsProvider(
   DefaultOptions.Checks = DefaultChecks;
   DefaultOptions.WarningsAsErrors = "";
   DefaultOptions.HeaderFilterRegex = HeaderFilter;
+  DefaultOptions.ShowAllWarnings = ShowAllWarnings;
+  DefaultOptions.SkipHeaders = SkipHeaders;
   DefaultOptions.SystemHeaders = SystemHeaders;
   DefaultOptions.FormatStyle = FormatStyle;
   DefaultOptions.User = llvm::sys::Process::GetEnv("USER");
@@ -314,6 +329,10 @@ static std::unique_ptr<ClangTidyOptionsProvider> createOptionsProvider(
     OverrideOptions.WarningsAsErrors = WarningsAsErrors;
   if (HeaderFilter.getNumOccurrences() > 0)
     OverrideOptions.HeaderFilterRegex = HeaderFilter;
+  if (ShowAllWarnings.getNumOccurrences() > 0)
+    OverrideOptions.ShowAllWarnings = ShowAllWarnings;
+  if (SkipHeaders.getNumOccurrences() > 0)
+    OverrideOptions.SkipHeaders = SkipHeaders;
   if (SystemHeaders.getNumOccurrences() > 0)
     OverrideOptions.SystemHeaders = SystemHeaders;
   if (FormatStyle.getNumOccurrences() > 0)

@@ -580,7 +580,7 @@ void ClangTidyDiagnosticConsumer::forwardDiagnostic(const Diagnostic &Info) {
 void ClangTidyDiagnosticConsumer::checkFilters(SourceLocation Location,
                                                const SourceManager &Sources) {
   // Invalid location may mean a diagnostic in a command line, don't skip these.
-  if (!Location.isValid()) {
+  if (!Location.isValid() || *Context.getOptions().ShowAllWarnings) {
     LastErrorRelatesToUserCode = true;
     LastErrorPassesLineFilter = true;
     return;

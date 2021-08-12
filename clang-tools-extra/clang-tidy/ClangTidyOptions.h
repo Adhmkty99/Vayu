@@ -79,6 +79,15 @@ struct ClangTidyOptions {
   /// Output warnings from system headers matching \c HeaderFilterRegex.
   llvm::Optional<bool> SystemHeaders;
 
+  /// Show all warnings, including warnings from all header files.
+  /// This overrides HeaderFilterRegex and SystemHeaders.
+  /// This is an option intended for testing/debugging clang-tidy.
+  llvm::Optional<bool> ShowAllWarnings;
+
+  /// Do not check included files, except files matching the --header-filter
+  /// and system files when --system-headers is used.
+  llvm::Optional<bool> SkipHeaders;
+
   /// Format code around applied fixes with clang-format using this
   /// style.
   ///
