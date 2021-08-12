@@ -33,7 +33,8 @@ public:
   /// Registers check \p Factory with name \p Name.
   ///
   /// For all checks that have default constructors, use \c registerCheck.
-  void registerCheckFactory(llvm::StringRef Name, CheckFactory Factory);
+  void registerCheckFactory(llvm::StringRef Name, CheckFactory Factory,
+                            bool IsAllFileCheck = false);
 
   /// Registers the \c CheckType with the name \p Name.
   ///
@@ -53,19 +54,28 @@ public:
   /// class MyModule : public ClangTidyModule {
   ///   void addCheckFactories(ClangTidyCheckFactories &Factories) override {
   ///     Factories.registerCheck<MyTidyCheck>("myproject-my-check");
+  ///     // or Factories.registerCheck<MyTidyCheck>("my-check", true);
+  ///     // for a check that needs to match all Decls in header files.
   ///   }
   /// };
   /// \endcode
-  template <typename CheckType> void registerCheck(llvm::StringRef CheckName) {
-    registerCheckFactory(CheckName,
-                         [](llvm::StringRef Name, ClangTidyContext *Context) {
-                           return std::make_unique<CheckType>(Name, Context);
-                         });
+  template <typename CheckType>
+  void registerCheck(llvm::StringRef CheckName, bool IsAllFileCheck = false) {
+    registerCheckFactory(
+        CheckName,
+        [](llvm::StringRef Name, ClangTidyContext *Context) {
+          return std::make_unique<CheckType>(Name, Context);
+        },
+        IsAllFileCheck);
   }
 
   /// Create instances of checks that are enabled.
   std::vector<std::unique_ptr<ClangTidyCheck>>
   createChecks(ClangTidyContext *Context);
+
+  /// Create instances of all-file checks that are enabled.
+  std::vector<std::unique_ptr<ClangTidyCheck>>
+  createAllFileChecks(ClangTidyContext *Context);
 
   typedef llvm::StringMap<CheckFactory> FactoryMap;
   FactoryMap::const_iterator begin() const { return Factories.begin(); }
@@ -73,7 +83,8 @@ public:
   bool empty() const { return Factories.empty(); }
 
 private:
-  FactoryMap Factories;
+  FactoryMap Factories; // has both normal checks and all-file checks
+  llvm::StringMap<bool> IsAllFileChecks; // check name -> is all-file check
 };
 
 /// A clang-tidy module groups a number of \c ClangTidyChecks and gives

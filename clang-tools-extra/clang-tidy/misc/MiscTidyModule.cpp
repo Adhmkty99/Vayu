@@ -55,7 +55,7 @@ public:
     CheckFactories.registerCheck<UnusedParametersCheck>(
         "misc-unused-parameters");
     CheckFactories.registerCheck<UnusedUsingDeclsCheck>(
-        "misc-unused-using-decls");
+        "misc-unused-using-decls", true);
   }
 };
 

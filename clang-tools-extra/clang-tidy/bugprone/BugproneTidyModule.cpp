@@ -100,7 +100,7 @@ public:
     CheckFactories.registerCheck<FoldInitTypeCheck>(
         "bugprone-fold-init-type");
     CheckFactories.registerCheck<ForwardDeclarationNamespaceCheck>(
-        "bugprone-forward-declaration-namespace");
+        "bugprone-forward-declaration-namespace", true);
     CheckFactories.registerCheck<ForwardingReferenceOverloadCheck>(
         "bugprone-forwarding-reference-overload");
     CheckFactories.registerCheck<ImplicitWideningOfMultiplicationResultCheck>(

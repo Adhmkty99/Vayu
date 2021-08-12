@@ -17,18 +17,32 @@ namespace clang {
 namespace tidy {
 
 void ClangTidyCheckFactories::registerCheckFactory(StringRef Name,
-                                                   CheckFactory Factory) {
+                                                   CheckFactory Factory,
+                                                   bool IsAllFileCheck) {
   Factories.insert_or_assign(Name, std::move(Factory));
+  IsAllFileChecks.insert_or_assign(Name, IsAllFileCheck);
 }
 
 std::vector<std::unique_ptr<ClangTidyCheck>>
 ClangTidyCheckFactories::createChecks(ClangTidyContext *Context) {
   std::vector<std::unique_ptr<ClangTidyCheck>> Checks;
   for (const auto &Factory : Factories) {
-    if (Context->isCheckEnabled(Factory.getKey()))
+    if (Context->isCheckEnabled(Factory.getKey()) &&
+        !IsAllFileChecks[Factory.getKey()])
       Checks.emplace_back(Factory.getValue()(Factory.getKey(), Context));
   }
   return Checks;
+}
+
+std::vector<std::unique_ptr<ClangTidyCheck>>
+ClangTidyCheckFactories::createAllFileChecks(ClangTidyContext *Context) {
+  std::vector<std::unique_ptr<ClangTidyCheck>> AllFileChecks;
+  for (const auto &Factory : Factories) {
+    if (Context->isCheckEnabled(Factory.getKey()) &&
+        IsAllFileChecks[Factory.getKey()])
+      AllFileChecks.emplace_back(Factory.getValue()(Factory.getKey(), Context));
+  }
+  return AllFileChecks;
 }
 
 ClangTidyOptions ClangTidyModule::getModuleOptions() {

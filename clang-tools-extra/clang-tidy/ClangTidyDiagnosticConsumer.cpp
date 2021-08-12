@@ -68,8 +68,6 @@ private:
 } // end namespace tidy
 } // end namespace clang
 
-ClangTidyLocationFilter::~ClangTidyLocationFilter() = default;
-
 ClangTidyLocationFilterImpl::~ClangTidyLocationFilterImpl() = default;
 
 ClangTidyLocationFilterImpl::ClangTidyLocationFilterImpl(

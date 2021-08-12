@@ -130,6 +130,9 @@ void ForwardDeclarationNamespaceCheck::onEndOfTranslationUnit() {
           CurDecl->getLocation().isInvalid()) {
         continue;
       }
+      if (skipLocation(CurDecl->getLocation())) {
+        continue; // Skip if --skip-headers and CurDecl's file is skipped.
+      }
       // Compare with all other declarations with the same name.
       for (const auto *Decl : Declarations) {
         if (Decl == CurDecl) {

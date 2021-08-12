@@ -11,6 +11,7 @@
 
 #include "ClangTidyOptions.h"
 #include "ClangTidyProfiling.h"
+#include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/SourceManager.h"
 #include "clang/Tooling/Core/Diagnostic.h"
@@ -21,9 +22,6 @@ namespace clang {
 
 class ASTContext;
 class CompilerInstance;
-namespace ast_matchers {
-class MatchFinder;
-}
 namespace tooling {
 class CompilationDatabase;
 }
@@ -217,13 +215,8 @@ private:
   bool AllowEnablingAnalyzerAlphaCheckers;
 };
 
-/// For checkers to skip locations that warnings will be suppressed.
-class ClangTidyLocationFilter {
-public:
-  virtual ~ClangTidyLocationFilter();
-  /// Returns true if warnings at the Location will be suppressed.
-  virtual bool skipLocation(SourceLocation Location) const = 0;
-};
+typedef ast_matchers::MatchFinder::MatchFinderOptions::LocFilter
+    ClangTidyLocationFilter;
 
 class ClangTidyLocationFilterImpl;
 

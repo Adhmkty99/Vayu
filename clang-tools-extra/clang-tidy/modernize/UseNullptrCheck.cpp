@@ -217,6 +217,12 @@ public:
       return true;
     }
 
+    // When Stmt S does not have a "valid" location,
+    // skipLocation won't skip it.
+    // So we need to check here if C should be skipped.
+    if (Check.skipLocation(C->getBeginLoc()))
+      return true;
+
     auto* CastSubExpr = C->getSubExpr()->IgnoreParens();
     // Ignore cast expressions which cast nullptr literal.
     if (isa<CXXNullPtrLiteralExpr>(CastSubExpr)) {

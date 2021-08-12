@@ -179,7 +179,8 @@ void UnusedUsingDeclsCheck::removeFromFoundDecls(const Decl *D) {
 
 void UnusedUsingDeclsCheck::onEndOfTranslationUnit() {
   for (const auto &Context : Contexts) {
-    if (!Context.IsUsed) {
+    if (!Context.IsUsed &&
+        !skipLocation(Context.FoundUsingDecl->getLocation())) {
       diag(Context.FoundUsingDecl->getLocation(), "using decl %0 is unused")
           << Context.FoundUsingDecl;
       // Emit a fix and a fix description of the check;

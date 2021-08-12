@@ -133,11 +133,18 @@ public:
       /// Per bucket timing information.
       llvm::StringMap<llvm::TimeRecord> &Records;
     };
+    struct LocFilter {
+      virtual bool skipLocation(SourceLocation) const = 0;
+      virtual ~LocFilter();
+    };
 
     /// Enables per-check timers.
     ///
     /// It prints a report after match.
     llvm::Optional<Profiling> CheckProfiling;
+
+    /// Check if MatchASTVisitor should skip node at a location.
+    std::unique_ptr<LocFilter> Filter;
   };
 
   MatchFinder(MatchFinderOptions Options = MatchFinderOptions());

@@ -307,20 +307,26 @@ private:
 
 class ClangTidyASTConsumer : public MultiplexConsumer {
 public:
-  ClangTidyASTConsumer(std::vector<std::unique_ptr<ASTConsumer>> Consumers,
-                       std::unique_ptr<ClangTidyProfiling> Profiling,
-                       std::unique_ptr<ast_matchers::MatchFinder> Finder,
-                       std::vector<std::unique_ptr<ClangTidyCheck>> Checks)
+  ClangTidyASTConsumer(
+      std::vector<std::unique_ptr<ASTConsumer>> Consumers,
+      std::unique_ptr<ClangTidyProfiling> Profiling,
+      std::unique_ptr<ast_matchers::MatchFinder> Finder,
+      std::unique_ptr<ast_matchers::MatchFinder> AllFileFinder,
+      std::vector<std::unique_ptr<ClangTidyCheck>> Checks,
+      std::vector<std::unique_ptr<ClangTidyCheck>> AllFileChecks)
       : MultiplexConsumer(std::move(Consumers)),
         Profiling(std::move(Profiling)), Finder(std::move(Finder)),
-        Checks(std::move(Checks)) {}
+        AllFileFinder(std::move(AllFileFinder)), Checks(std::move(Checks)),
+        AllFileChecks(std::move(AllFileChecks)) {}
 
 private:
   // Destructor order matters! Profiling must be destructed last.
   // Or at least after Finder.
   std::unique_ptr<ClangTidyProfiling> Profiling;
   std::unique_ptr<ast_matchers::MatchFinder> Finder;
+  std::unique_ptr<ast_matchers::MatchFinder> AllFileFinder;
   std::vector<std::unique_ptr<ClangTidyCheck>> Checks;
+  std::vector<std::unique_ptr<ClangTidyCheck>> AllFileChecks;
 };
 
 } // namespace
@@ -403,22 +409,38 @@ ClangTidyASTConsumerFactory::CreateASTConsumer(
 
   std::vector<std::unique_ptr<ClangTidyCheck>> Checks =
       CheckFactories->createChecks(&Context);
+  std::vector<std::unique_ptr<ClangTidyCheck>> AllFileChecks =
+      CheckFactories->createAllFileChecks(&Context);
 
-  llvm::erase_if(Checks, [&](std::unique_ptr<ClangTidyCheck> &Check) {
+  auto EraseFilter = [&](std::unique_ptr<ClangTidyCheck> &Check) {
     return !Check->isLanguageVersionSupported(Context.getLangOpts());
-  });
+  };
+  llvm::erase_if(Checks, EraseFilter);
+  llvm::erase_if(AllFileChecks, EraseFilter);
 
   ast_matchers::MatchFinder::MatchFinderOptions FinderOptions;
+  ast_matchers::MatchFinder::MatchFinderOptions AllFileFinderOptions;
 
   std::unique_ptr<ClangTidyProfiling> Profiling;
   if (Context.getEnableProfiling()) {
     Profiling = std::make_unique<ClangTidyProfiling>(
         Context.getProfileStorageParams());
+    // Two Finders share the same Profiling->Records.
     FinderOptions.CheckProfiling.emplace(Profiling->Records);
+    AllFileFinderOptions.CheckProfiling.emplace(Profiling->Records);
+  }
+
+  // LocationFilter is not for AllFileFinder.
+  if (*Context.getOptions().SkipHeaders) {
+    std::unique_ptr<ClangTidyLocationFilter> LocationFilter(
+        ClangTidyDiagnosticConsumer::newLocationFilter(&Context));
+    FinderOptions.Filter = std::move(LocationFilter);
   }
 
   std::unique_ptr<ast_matchers::MatchFinder> Finder(
       new ast_matchers::MatchFinder(std::move(FinderOptions)));
+  std::unique_ptr<ast_matchers::MatchFinder> AllFileFinder(
+      new ast_matchers::MatchFinder(std::move(AllFileFinderOptions)));
 
   Preprocessor *PP = &Compiler.getPreprocessor();
   Preprocessor *ModuleExpanderPP = PP;
@@ -434,10 +456,16 @@ ClangTidyASTConsumerFactory::CreateASTConsumer(
     Check->registerMatchers(&*Finder);
     Check->registerPPCallbacks(*SM, PP, ModuleExpanderPP);
   }
+  for (auto &Check : AllFileChecks) {
+    Check->registerMatchers(&*AllFileFinder);
+    Check->registerPPCallbacks(*SM, PP, ModuleExpanderPP);
+  }
 
   std::vector<std::unique_ptr<ASTConsumer>> Consumers;
   if (!Checks.empty())
     Consumers.push_back(Finder->newASTConsumer());
+  if (!AllFileChecks.empty())
+    Consumers.push_back(AllFileFinder->newASTConsumer());
 
 #if CLANG_TIDY_ENABLE_STATIC_ANALYZER
   AnalyzerOptionsRef AnalyzerOptions = Compiler.getAnalyzerOpts();
@@ -458,7 +486,7 @@ ClangTidyASTConsumerFactory::CreateASTConsumer(
 #endif // CLANG_TIDY_ENABLE_STATIC_ANALYZER
   return std::make_unique<ClangTidyASTConsumer>(
       std::move(Consumers), std::move(Profiling), std::move(Finder),
-      std::move(Checks));
+      std::move(AllFileFinder), std::move(Checks), std::move(AllFileChecks));
 }
 
 std::vector<std::string> ClangTidyASTConsumerFactory::getCheckNames() {
@@ -483,6 +511,10 @@ ClangTidyOptions::OptionMap ClangTidyASTConsumerFactory::getCheckOptions() {
   std::vector<std::unique_ptr<ClangTidyCheck>> Checks =
       CheckFactories->createChecks(&Context);
   for (const auto &Check : Checks)
+    Check->storeOptions(Options);
+  std::vector<std::unique_ptr<ClangTidyCheck>> AllFileChecks =
+      CheckFactories->createAllFileChecks(&Context);
+  for (const auto &Check : AllFileChecks)
     Check->storeOptions(Options);
   return Options;
 }
