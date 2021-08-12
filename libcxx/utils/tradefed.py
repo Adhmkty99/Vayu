@@ -12,30 +12,20 @@ for running an individual test at a later time.
 """
 
 import argparse
-from lxml.etree import Element, tostring
-from lxml.builder import ElementMaker
+from dataclasses import dataclass
+from functools import cached_property
 from pathlib import Path
+import pickle
+from typing import Any
 
 
-class TradefedBundler:
-    def __init__(
-        self, host: bool, xfail: bool, dependencies: list[Path], env: list[str]
-    ) -> None:
-        self.host = host
-        self.xfail = xfail
-        self.dependencies = dependencies
-        self.env = env
-        self.builder = ElementMaker()
-
-    def create_bundle(self, output: Path, command: list[str]) -> None:
-        output.write_bytes(
-            tostring(
-                self.create_config(str(output), command),
-                pretty_print=True,
-                xml_declaration=True,
-                encoding="utf-8",
-            )
-        )
+@dataclass(frozen=True)
+class TestDef:
+    name: str
+    raw_command: list[str]
+    xfail: bool
+    dependencies: list[Path]
+    env: list[str]
 
     def test_path(self, path: Path) -> Path:
         return path
@@ -57,34 +47,17 @@ class TradefedBundler:
                 arg = arg.replace(str(dep), str(self.test_path(dep)))
         return arg
 
-    def create_config(self, test_name: str, command: list[str]) -> None:
-        children = []
-        if not self.host:
-            children.append(self.create_preparer())
-        children.append(self.create_test(command))
+    @cached_property
+    def command(self) -> str:
+        return " ".join(self.substitute_file_paths(x) for x in self.raw_command)
 
-        return self.builder.configuration(*children, description=test_name)
 
-    def create_preparer(self) -> None:
-        return self.builder.target_preparer()
-
-    def create_test(self, command: list[str]) -> Element:
-        return self.builder.test(
-            self.build_command_line(command),
-            **{"class": "com.android.tradefed.testtype.binary.ExecutableHostTest"},
-        )
-
-    def build_command_line(self, command: list[str]) -> Element:
-        return self.builder.option(
-            name="test-command-line",
-            key="test",
-            value=" ".join(self.substitute_file_paths(x) for x in command),
-        )
+def make_test_name(output_path: Path) -> str:
+    return str(output_path).replace("/", ".").removesuffix(".test.p")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--host", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--env", nargs="*", default=[])
     parser.add_argument(
@@ -94,9 +67,15 @@ def main() -> None:
     parser.add_argument("command", nargs="+")
     args = parser.parse_args()
 
-    TradefedBundler(args.host, args.xfail, args.dependencies, args.env).create_bundle(
-        args.output, args.command
+    test = TestDef(
+        make_test_name(args.output),
+        args.command,
+        args.xfail,
+        args.dependencies,
+        args.env,
     )
+    with args.output.open("wb") as output:
+        pickle.dump(test, output)
 
 
 if __name__ == "__main__":

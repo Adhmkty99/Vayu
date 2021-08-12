@@ -41,7 +41,7 @@ config.substitutions.append(('%{link_flags}',
         os.path.join(INSTALL_ROOT, 'lib', 'libc++.so'))
 ))
 config.substitutions.append(('%{exec}',
-    '{} {} %{{exec_args}} --host --output %t.xml -- '.format(
+    '{} {} %{{exec_args}} --output %t.test.p -- '.format(
         pipes.quote(sys.executable),
         pipes.quote(bundler))
 ))
