@@ -1,4 +1,5 @@
-// RUN: %check_clang_tidy %s google-objc-function-naming %t -- -- -isystem %S/Inputs/Headers
+// RUN: %check_clang_tidy %s google-objc-function-naming %t -- --skip-headers=0 -- -isystem %S/Inputs/Headers
+// RUN: %check_clang_tidy %s google-objc-function-naming %t -- --skip-headers -- -isystem %S/Inputs/Headers
 
 #include <stdio.h>
 

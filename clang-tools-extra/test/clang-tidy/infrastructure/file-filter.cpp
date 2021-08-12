@@ -1,14 +1,14 @@
-// RUN: clang-tidy -checks='-*,google-explicit-constructor' -header-filter='' %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck %s
-// RUN: clang-tidy -checks='-*,google-explicit-constructor' -header-filter='' -quiet %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK-QUIET %s
-// RUN: clang-tidy -checks='-*,google-explicit-constructor' -header-filter='.*' %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK2 %s
-// RUN: clang-tidy -checks='-*,google-explicit-constructor' -header-filter='.*' -quiet %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK2-QUIET %s
-// RUN: clang-tidy -checks='-*,google-explicit-constructor' -header-filter='header2\.h' %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK3 %s
-// RUN: clang-tidy -checks='-*,google-explicit-constructor' -header-filter='header2\.h' -quiet %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK3-QUIET %s
+// RUN: clang-tidy --skip-headers=0 -checks='-*,google-explicit-constructor' -header-filter='' %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck %s
+// RUN: clang-tidy --skip-headers=0 -checks='-*,google-explicit-constructor' -header-filter='' -quiet %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK-QUIET %s
+// RUN: clang-tidy --skip-headers=0 -checks='-*,google-explicit-constructor' -header-filter='.*' %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK2 %s
+// RUN: clang-tidy --skip-headers=0 -checks='-*,google-explicit-constructor' -header-filter='.*' -quiet %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK2-QUIET %s
+// RUN: clang-tidy --skip-headers=0 -checks='-*,google-explicit-constructor' -header-filter='header2\.h' %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK3 %s
+// RUN: clang-tidy --skip-headers=0 -checks='-*,google-explicit-constructor' -header-filter='header2\.h' -quiet %s -- -I %S/Inputs/file-filter -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK3-QUIET %s
 // FIXME: "-I %S/Inputs/file-filter/system/.." must be redundant.
 //       On Win32, file-filter/system\system-header1.h precedes
 //       file-filter\header*.h due to code order between '/' and '\\'.
-// RUN: clang-tidy -checks='-*,google-explicit-constructor' -header-filter='.*' -system-headers %s -- -I %S/Inputs/file-filter/system/.. -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK4 %s
-// RUN: clang-tidy -checks='-*,google-explicit-constructor' -header-filter='.*' -system-headers -quiet %s -- -I %S/Inputs/file-filter/system/.. -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK4-QUIET %s
+// RUN: clang-tidy --skip-headers=0 -checks='-*,google-explicit-constructor' -header-filter='.*' -system-headers %s -- -I %S/Inputs/file-filter/system/.. -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK4 %s
+// RUN: clang-tidy --skip-headers=0 -checks='-*,google-explicit-constructor' -header-filter='.*' -system-headers -quiet %s -- -I %S/Inputs/file-filter/system/.. -isystem %S/Inputs/file-filter/system 2>&1 | FileCheck --check-prefix=CHECK4-QUIET %s
 
 #include "header1.h"
 // CHECK-NOT: warning:

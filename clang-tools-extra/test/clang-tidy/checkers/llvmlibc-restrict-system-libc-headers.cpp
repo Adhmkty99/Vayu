@@ -1,5 +1,9 @@
 // RUN: %check_clang_tidy %s llvmlibc-restrict-system-libc-headers %t \
-// RUN:   -- -- -isystem %S/Inputs/llvmlibc/system \
+// RUN:   -- --skip-headers=0 -- -isystem %S/Inputs/llvmlibc/system \
+// RUN:   -resource-dir %S/Inputs/llvmlibc/resource
+//
+// RUN: %check_clang_tidy %s llvmlibc-restrict-system-libc-headers %t \
+// RUN:   -- --skip-headers -- -isystem %S/Inputs/llvmlibc/system \
 // RUN:   -resource-dir %S/Inputs/llvmlibc/resource
 
 #include <stdio.h>

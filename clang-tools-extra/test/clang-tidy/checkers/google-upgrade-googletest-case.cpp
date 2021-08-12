@@ -1,5 +1,7 @@
-// RUN: %check_clang_tidy %s google-upgrade-googletest-case %t -- -- -I%S/Inputs
-// RUN: %check_clang_tidy -check-suffix=NOSUITE %s google-upgrade-googletest-case %t -- -- -DNOSUITE -I%S/Inputs/gtest/nosuite
+// RUN: %check_clang_tidy %s google-upgrade-googletest-case %t -- --skip-headers=0 -- -I%S/Inputs
+// RUN: %check_clang_tidy -check-suffix=NOSUITE %s google-upgrade-googletest-case %t -- --skip-headers=0 -- -DNOSUITE -I%S/Inputs/gtest/nosuite
+// RUN: %check_clang_tidy %s google-upgrade-googletest-case %t -- --skip-headers -- -I%S/Inputs
+// RUN: %check_clang_tidy -check-suffix=NOSUITE %s google-upgrade-googletest-case %t -- --skip-headers -- -DNOSUITE -I%S/Inputs/gtest/nosuite
 
 #include "gtest/gtest.h"
 

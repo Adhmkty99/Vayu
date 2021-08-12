@@ -1,4 +1,5 @@
-// RUN: %check_clang_tidy %s cppcoreguidelines-interfaces-global-init %t
+// RUN: %check_clang_tidy %s cppcoreguidelines-interfaces-global-init %t -- --skip-headers=0
+// RUN: %check_clang_tidy %s cppcoreguidelines-interfaces-global-init %t -- --skip-headers
 
 constexpr int makesInt() { return 3; }
 constexpr int takesInt(int i) { return i + 1; }

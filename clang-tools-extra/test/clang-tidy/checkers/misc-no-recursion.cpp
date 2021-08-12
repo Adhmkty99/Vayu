@@ -1,4 +1,5 @@
-// RUN: %check_clang_tidy %s misc-no-recursion %t
+// RUN: %check_clang_tidy %s misc-no-recursion %t -- --skip-headers=0
+// RUN: %check_clang_tidy %s misc-no-recursion %t -- --skip-headers
 
 // We don't have the definition of this function,
 // so we can't tell anything about it..

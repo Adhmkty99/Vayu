@@ -1,5 +1,5 @@
-// RUN: %check_clang_tidy %s abseil-no-internal-dependencies %t,  -- -- -I %S/Inputs
-// RUN: clang-tidy -checks='-*, abseil-no-internal-dependencies' -header-filter='.*' %s -- -I %S/Inputs 2>&1 | FileCheck %s
+// RUN: %check_clang_tidy %s abseil-no-internal-dependencies %t,  -- --skip-headers=0 -- -I %S/Inputs
+// RUN: clang-tidy --skip-headers=0 -checks='-*, abseil-no-internal-dependencies' -header-filter='.*' %s -- -I %S/Inputs 2>&1 | FileCheck %s
 
 #include "absl/strings/internal-file.h"
 #include "absl/flags/internal-file.h"

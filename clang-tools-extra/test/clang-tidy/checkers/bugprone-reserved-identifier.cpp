@@ -1,4 +1,7 @@
-// RUN: %check_clang_tidy %s bugprone-reserved-identifier %t -- -- \
+// RUN: %check_clang_tidy %s bugprone-reserved-identifier %t -- --skip-headers=0 -- \
+// RUN:   -I%S/Inputs/bugprone-reserved-identifier \
+// RUN:   -isystem %S/Inputs/bugprone-reserved-identifier/system
+// RUN: %check_clang_tidy %s bugprone-reserved-identifier %t -- --skip-headers -- \
 // RUN:   -I%S/Inputs/bugprone-reserved-identifier \
 // RUN:   -isystem %S/Inputs/bugprone-reserved-identifier/system
 

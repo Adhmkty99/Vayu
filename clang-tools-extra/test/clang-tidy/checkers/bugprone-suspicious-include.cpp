@@ -1,4 +1,5 @@
-// RUN: %check_clang_tidy %s bugprone-suspicious-include %t -- -- -isystem %S/Inputs/Headers -fmodules
+// RUN: %check_clang_tidy %s bugprone-suspicious-include %t -- --skip-headers=0 -- -isystem %S/Inputs/Headers -fmodules
+// RUN: %check_clang_tidy %s bugprone-suspicious-include %t -- --skip-headers -- -isystem %S/Inputs/Headers -fmodules
 
 // clang-format off
 

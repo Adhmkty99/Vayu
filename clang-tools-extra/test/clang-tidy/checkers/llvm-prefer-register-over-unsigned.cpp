@@ -1,4 +1,5 @@
-// RUN: %check_clang_tidy %s llvm-prefer-register-over-unsigned %t
+// RUN: %check_clang_tidy %s llvm-prefer-register-over-unsigned %t -- --skip-headers=0
+// RUN: %check_clang_tidy %s llvm-prefer-register-over-unsigned %t -- --skip-headers
 
 namespace llvm {
 class Register {

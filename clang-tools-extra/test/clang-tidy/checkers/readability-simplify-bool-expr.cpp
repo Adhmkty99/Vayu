@@ -1,4 +1,5 @@
-// RUN: %check_clang_tidy %s readability-simplify-boolean-expr %t
+// RUN: %check_clang_tidy %s readability-simplify-boolean-expr %t -- --skip-headers=0
+// RUN: %check_clang_tidy %s readability-simplify-boolean-expr %t -- --skip-headers
 
 bool a1 = false;
 

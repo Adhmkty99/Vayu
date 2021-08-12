@@ -1,4 +1,5 @@
-// RUN: %check_clang_tidy %s bugprone-forward-declaration-namespace %t
+// RUN: %check_clang_tidy %s bugprone-forward-declaration-namespace %t -- --skip-headers=0
+// RUN: %check_clang_tidy %s bugprone-forward-declaration-namespace %t -- --skip-headers
 
 namespace {
 // This is a declaration in a wrong namespace.

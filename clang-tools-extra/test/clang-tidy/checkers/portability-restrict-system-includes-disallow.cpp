@@ -1,5 +1,9 @@
 // RUN: %check_clang_tidy %s portability-restrict-system-includes %t \
-// RUN:     -- -config="{CheckOptions: [{key: portability-restrict-system-includes.Includes, value: '-*,stddef.h'}]}" \
+// RUN:     -- -config="{CheckOptions: [{key: portability-restrict-system-includes.Includes, value: '-*,stddef.h'}]}" --skip-headers=0 \
+// RUN:     -- -isystem %S/Inputs/portability-restrict-system-includes/system
+//
+// RUN: %check_clang_tidy %s portability-restrict-system-includes %t \
+// RUN:     -- -config="{CheckOptions: [{key: portability-restrict-system-includes.Includes, value: '-*,stddef.h'}]}" --skip-headers \
 // RUN:     -- -isystem %S/Inputs/portability-restrict-system-includes/system
 
 // Test allow-list functionality: disallow all but stddef.h.

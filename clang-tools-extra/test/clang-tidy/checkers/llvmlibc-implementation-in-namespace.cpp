@@ -1,4 +1,5 @@
-// RUN: %check_clang_tidy %s llvmlibc-implementation-in-namespace %t
+// RUN: %check_clang_tidy %s llvmlibc-implementation-in-namespace %t -- --skip-headers=0
+// RUN: %check_clang_tidy %s llvmlibc-implementation-in-namespace %t -- --skip-headers
 
 #define MACRO_A "defining macros outside namespace is valid"
 
