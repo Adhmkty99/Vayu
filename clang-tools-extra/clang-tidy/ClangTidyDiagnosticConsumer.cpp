@@ -38,6 +38,93 @@
 using namespace clang;
 using namespace tidy;
 
+namespace clang {
+namespace tidy {
+
+class ClangTidyLocationFilterImpl : ClangTidyLocationFilter {
+public:
+  ClangTidyLocationFilterImpl(ClangTidyContext *Context);
+  ~ClangTidyLocationFilterImpl();
+  virtual bool skipLocation(SourceLocation Location) const override;
+
+private:
+  friend class ClangTidyDiagnosticConsumer;
+  /// Returns true if the Location with FileID is in a skipped system header.
+  bool isSkippedSystemHeader(SourceLocation Location, FileID FileID,
+                             const FileEntry *File,
+                             const SourceManager &Sources) const;
+
+  /// Returns true if the Location with FileID is in user code.
+  bool isUserCode(SourceLocation Location, FileID FileID, const FileEntry *File,
+                  const SourceManager &Sources) const;
+
+  ClangTidyContext *Context;
+  mutable FileID LastSkippedSystemFileID;
+  mutable FileID LastSkippedFileID;
+  mutable FileID LastAcceptedFileID;
+  std::unique_ptr<llvm::Regex> HeaderFilterRegex;
+};
+
+} // end namespace tidy
+} // end namespace clang
+
+ClangTidyLocationFilter::~ClangTidyLocationFilter() = default;
+
+ClangTidyLocationFilterImpl::~ClangTidyLocationFilterImpl() = default;
+
+ClangTidyLocationFilterImpl::ClangTidyLocationFilterImpl(
+    ClangTidyContext *Context)
+    : Context(Context), LastSkippedSystemFileID(FileID::getSentinel()),
+      LastSkippedFileID(FileID::getSentinel()),
+      LastAcceptedFileID(FileID::getSentinel()),
+      HeaderFilterRegex(std::make_unique<llvm::Regex>(
+          *Context->getOptions().HeaderFilterRegex)) {}
+
+bool ClangTidyLocationFilterImpl::skipLocation(SourceLocation Location) const {
+  if (!Location.isValid())
+    return false;
+  SourceManager &Sources = Context->getSourceManager();
+  FileID FID = Sources.getDecomposedExpansionLoc(Location).first;
+  // Do not skip built-in and command line yet.
+  const FileEntry *File = Sources.getFileEntryForID(FID);
+  if (!File)
+    return false;
+  return isSkippedSystemHeader(Location, FID, File, Sources) ||
+         !isUserCode(Location, FID, File, Sources);
+}
+
+bool ClangTidyLocationFilterImpl::isSkippedSystemHeader(
+    SourceLocation Location, FileID FID, const FileEntry *File,
+    const SourceManager &Sources) const {
+  if (!File)
+    return false;
+  if (FID == LastSkippedSystemFileID)
+    return true;
+  if (!*Context->getOptions().SystemHeaders &&
+      Sources.isInSystemHeader(Location)) {
+    LastSkippedSystemFileID = FID;
+    return true;
+  }
+  return false;
+}
+
+bool ClangTidyLocationFilterImpl::isUserCode(
+    SourceLocation Location, FileID FID, const FileEntry *File,
+    const SourceManager &Sources) const {
+  assert(File);
+  if (FID == LastSkippedFileID)
+    return false;
+  if (FID == LastAcceptedFileID)
+    return true;
+  bool IsUserCode = Sources.isInMainFile(Location) ||
+                    HeaderFilterRegex->match(File->getName());
+  if (IsUserCode)
+    LastAcceptedFileID = FID;
+  else
+    LastSkippedFileID = FID;
+  return IsUserCode;
+}
+
 namespace {
 class ClangTidyDiagnosticRenderer : public DiagnosticRenderer {
 public:
@@ -276,13 +363,35 @@ std::string ClangTidyContext::getCheckName(unsigned DiagnosticID) const {
   return "";
 }
 
+// Global LocationFilter is non-null if --skip-header is enabled.
+std::unique_ptr<ClangTidyLocationFilter>
+    ClangTidyDiagnosticConsumer::LocationFilter;
+
 ClangTidyDiagnosticConsumer::ClangTidyDiagnosticConsumer(
     ClangTidyContext &Ctx, DiagnosticsEngine *ExternalDiagEngine,
     bool RemoveIncompatibleErrors, bool GetFixesFromNotes)
     : Context(Ctx), ExternalDiagEngine(ExternalDiagEngine),
       RemoveIncompatibleErrors(RemoveIncompatibleErrors),
-      GetFixesFromNotes(GetFixesFromNotes), LastErrorRelatesToUserCode(false),
-      LastErrorPassesLineFilter(false), LastErrorWasIgnored(false) {}
+      GetFixesFromNotes(GetFixesFromNotes),
+      LocationFilterImpl(newLocationFilterImpl(&Ctx)),
+      LastErrorRelatesToUserCode(false), LastErrorPassesLineFilter(false),
+      LastErrorWasIgnored(false) {
+  if (*Ctx.getOptions().SkipHeaders)
+    LocationFilter =
+        std::unique_ptr<ClangTidyLocationFilter>(newLocationFilter(&Ctx));
+}
+
+ClangTidyLocationFilterImpl *
+ClangTidyDiagnosticConsumer::newLocationFilterImpl(ClangTidyContext *Context) {
+  return new ClangTidyLocationFilterImpl(Context);
+}
+
+ClangTidyLocationFilter *
+ClangTidyDiagnosticConsumer::newLocationFilter(ClangTidyContext *Context) {
+  return new ClangTidyLocationFilterImpl(Context);
+}
+
+ClangTidyDiagnosticConsumer::~ClangTidyDiagnosticConsumer() = default;
 
 void ClangTidyDiagnosticConsumer::finalizeLastError() {
   if (!Errors.empty()) {
@@ -586,15 +695,13 @@ void ClangTidyDiagnosticConsumer::checkFilters(SourceLocation Location,
     return;
   }
 
-  if (!*Context.getOptions().SystemHeaders &&
-      Sources.isInSystemHeader(Location))
-    return;
-
   // FIXME: We start with a conservative approach here, but the actual type of
   // location needed depends on the check (in particular, where this check wants
   // to apply fixes).
   FileID FID = Sources.getDecomposedExpansionLoc(Location).first;
   const FileEntry *File = Sources.getFileEntryForID(FID);
+  if (LocationFilterImpl->isSkippedSystemHeader(Location, FID, File, Sources))
+    return;
 
   // -DMACRO definitions on the command line have locations in a virtual buffer
   // that doesn't have a FileEntry. Don't skip these as well.
@@ -605,20 +712,13 @@ void ClangTidyDiagnosticConsumer::checkFilters(SourceLocation Location,
   }
 
   StringRef FileName(File->getName());
-  LastErrorRelatesToUserCode = LastErrorRelatesToUserCode ||
-                               Sources.isInMainFile(Location) ||
-                               getHeaderFilter()->match(FileName);
+  LastErrorRelatesToUserCode =
+      LastErrorRelatesToUserCode ||
+      LocationFilterImpl->isUserCode(Location, FID, File, Sources);
 
   unsigned LineNumber = Sources.getExpansionLineNumber(Location);
   LastErrorPassesLineFilter =
       LastErrorPassesLineFilter || passesLineFilter(FileName, LineNumber);
-}
-
-llvm::Regex *ClangTidyDiagnosticConsumer::getHeaderFilter() {
-  if (!HeaderFilter)
-    HeaderFilter =
-        std::make_unique<llvm::Regex>(*Context.getOptions().HeaderFilterRegex);
-  return HeaderFilter.get();
 }
 
 void ClangTidyDiagnosticConsumer::removeIncompatibleErrors() {

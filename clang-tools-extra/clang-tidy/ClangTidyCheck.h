@@ -132,6 +132,11 @@ public:
   /// whether it has the default value or it has been overridden.
   virtual void storeOptions(ClangTidyOptions::OptionMap &Options) {}
 
+  /// Returns true if the Location should have warnings suppressed.
+  static bool skipLocation(SourceLocation Location) {
+    return ClangTidyDiagnosticConsumer::skipLocation(Location);
+  }
+
   /// Provides access to the ``ClangTidyCheck`` options via check-local
   /// names.
   ///

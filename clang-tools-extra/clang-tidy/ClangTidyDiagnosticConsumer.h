@@ -12,6 +12,7 @@
 #include "ClangTidyOptions.h"
 #include "ClangTidyProfiling.h"
 #include "clang/Basic/Diagnostic.h"
+#include "clang/Basic/SourceManager.h"
 #include "clang/Tooling/Core/Diagnostic.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/Support/Regex.h"
@@ -20,7 +21,6 @@ namespace clang {
 
 class ASTContext;
 class CompilerInstance;
-class SourceManager;
 namespace ast_matchers {
 class MatchFinder;
 }
@@ -103,6 +103,11 @@ public:
   DiagnosticBuilder
   configurationDiag(StringRef Message,
                     DiagnosticIDs::Level Level = DiagnosticIDs::Warning);
+
+  /// Returns the \c SourceManager of the used \c DiagnosticsEngine.
+  SourceManager &getSourceManager() const {
+    return DiagEngine->getSourceManager();
+  }
 
   /// Sets the \c SourceManager of the used \c DiagnosticsEngine.
   ///
@@ -212,6 +217,16 @@ private:
   bool AllowEnablingAnalyzerAlphaCheckers;
 };
 
+/// For checkers to skip locations that warnings will be suppressed.
+class ClangTidyLocationFilter {
+public:
+  virtual ~ClangTidyLocationFilter();
+  /// Returns true if warnings at the Location will be suppressed.
+  virtual bool skipLocation(SourceLocation Location) const = 0;
+};
+
+class ClangTidyLocationFilterImpl;
+
 /// Check whether a given diagnostic should be suppressed due to the presence
 /// of a "NOLINT" suppression comment.
 /// This is exposed so that other tools that present clang-tidy diagnostics
@@ -244,6 +259,7 @@ public:
                               DiagnosticsEngine *ExternalDiagEngine = nullptr,
                               bool RemoveIncompatibleErrors = true,
                               bool GetFixesFromNotes = false);
+  ~ClangTidyDiagnosticConsumer();
 
   // FIXME: The concept of converting between FixItHints and Replacements is
   // more generic and should be pulled out into a more useful Diagnostics
@@ -254,14 +270,20 @@ public:
   // Retrieve the diagnostics that were captured.
   std::vector<ClangTidyError> take();
 
+  /// Returns true if the Location should have warnings suppressed.
+  static bool skipLocation(SourceLocation Location) {
+    return LocationFilter && LocationFilter->skipLocation(Location);
+  }
+
+  static ClangTidyLocationFilter *newLocationFilter(ClangTidyContext *Context);
+
+  static ClangTidyLocationFilterImpl *
+  newLocationFilterImpl(ClangTidyContext *Context);
+
 private:
   void finalizeLastError();
   void removeIncompatibleErrors();
   void removeDuplicatedDiagnosticsOfAliasCheckers();
-
-  /// Returns the \c HeaderFilter constructed for the options set in the
-  /// context.
-  llvm::Regex *getHeaderFilter();
 
   /// Updates \c LastErrorRelatesToUserCode and LastErrorPassesLineFilter
   /// according to the diagnostic \p Location.
@@ -275,10 +297,12 @@ private:
   bool RemoveIncompatibleErrors;
   bool GetFixesFromNotes;
   std::vector<ClangTidyError> Errors;
-  std::unique_ptr<llvm::Regex> HeaderFilter;
+  std::unique_ptr<ClangTidyLocationFilterImpl> LocationFilterImpl;
   bool LastErrorRelatesToUserCode;
   bool LastErrorPassesLineFilter;
   bool LastErrorWasIgnored;
+
+  static std::unique_ptr<ClangTidyLocationFilter> LocationFilter;
 };
 
 } // end namespace tidy
