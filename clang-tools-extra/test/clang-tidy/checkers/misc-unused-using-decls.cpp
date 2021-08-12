@@ -1,4 +1,13 @@
-// RUN: %check_clang_tidy %s misc-unused-using-decls %t -- --fix-notes -- -fno-delayed-template-parsing -isystem %S/Inputs/
+// Setup header directory
+// RUN: rm -rf %theaders
+// RUN: mkdir %theaders
+// RUN: cp -R %S/Inputs/unused-using-decls.h %theaders
+
+// RUN: %check_clang_tidy %s misc-unused-using-decls %t -- --skip-headers=0 \
+// RUN:   --fix-notes -- -fno-delayed-template-parsing -I%theaders
+//
+// RUN: %check_clang_tidy %s misc-unused-using-decls %t -- --skip-headers \
+// RUN:   --fix-notes -- -fno-delayed-template-parsing -I%theaders
 
 // ----- Definitions -----
 template <typename T> class vector {};
@@ -66,7 +75,24 @@ enum Color4 { Blue };
 
 }  // namespace n
 
+namespace Q1 {
+class QC1;
+}
+using Q1::QC1;
+// Do not give warning about unused QC1!  It is used in .h file.
+// CHECK-MESSAGES-NOT: warning: using decl 'QC1' is unused
+
 #include "unused-using-decls.h"
+// FIXME: here we should have a warning on unused using decl 'QC2'
+
+namespace Q3 {
+class QC3;
+}
+using Q3::QC3; // QC3 should be removed
+// CHECK-MESSAGES: warning: using decl 'QC3' is unused
+// CHECK-MESSAGES: note: remove the using
+// CHECK-FIXES: {{^}}// QC3 should be removed
+
 namespace ns {
 template <typename T>
 class AA {

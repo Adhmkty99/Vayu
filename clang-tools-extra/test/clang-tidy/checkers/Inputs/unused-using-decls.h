@@ -9,3 +9,11 @@ public:
     S();
   }
 };
+
+QC1 *foo();
+
+namespace Q2 {
+class QC2 {};
+} // namespace Q2
+using Q2::QC2;
+// not used QC2 should have warning only when .h file is selected with --header-filter
