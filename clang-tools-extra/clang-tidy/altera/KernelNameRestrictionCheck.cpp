@@ -64,6 +64,8 @@ void KernelNameRestrictionPPCallbacks::InclusionDirective(
     SourceLocation HashLoc, const Token &, StringRef FileName, bool,
     CharSourceRange, const FileEntry *, StringRef, StringRef, const Module *,
     SrcMgr::CharacteristicKind) {
+  if (Check.skipLocation(HashLoc))
+    return;
   IncludeDirective ID = {HashLoc, FileName};
   IncludeDirectives.push_back(std::move(ID));
 }

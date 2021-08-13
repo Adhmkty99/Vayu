@@ -41,6 +41,8 @@ void MacroRepeatedPPCallbacks::MacroExpands(const Token &MacroNameTok,
                                             const MacroDefinition &MD,
                                             SourceRange Range,
                                             const MacroArgs *Args) {
+  if (Check.skipLocation(MacroNameTok.getLocation()))
+    return;
   // Ignore macro argument expansions.
   if (!Range.getBegin().isFileID())
     return;

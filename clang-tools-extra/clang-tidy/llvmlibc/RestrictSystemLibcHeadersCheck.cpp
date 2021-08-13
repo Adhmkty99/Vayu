@@ -49,6 +49,8 @@ void RestrictedIncludesPPCallbacks::InclusionDirective(
     bool IsAngled, CharSourceRange FilenameRange, const FileEntry *File,
     StringRef SearchPath, StringRef RelativePath, const Module *Imported,
     SrcMgr::CharacteristicKind FileType) {
+  if (Check.skipLocation(HashLoc))
+    return;
   // Compiler provided headers are allowed (e.g stddef.h).
   if (SrcMgr::isSystem(FileType) && SearchPath == CompilerIncudeDir)
     return;

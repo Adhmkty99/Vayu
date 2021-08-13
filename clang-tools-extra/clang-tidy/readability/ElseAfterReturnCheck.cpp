@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../ClangTidyDiagnosticConsumer.h"
 #include "ElseAfterReturnCheck.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
@@ -29,6 +30,8 @@ public:
       const SourceManager &SM)
       : Collections(Collections), SM(SM) {}
   void Endif(SourceLocation Loc, SourceLocation IfLoc) override {
+    if (ClangTidyDiagnosticConsumer::skipLocation(Loc))
+      return;
     if (!SM.isWrittenInSameFile(Loc, IfLoc))
       return;
     SmallVectorImpl<SourceRange> &Collection = Collections[SM.getFileID(Loc)];

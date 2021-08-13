@@ -43,6 +43,8 @@ public:
   void MacroExpands(const Token &MacroNameToken,
                     const MacroDefinition &MacroDefinition, SourceRange Range,
                     const MacroArgs *Args) override {
+    if (Check->skipLocation(MacroNameToken.getLocation()))
+      return;
     IdentifierInfo *NameIdentifierInfo = MacroNameToken.getIdentifierInfo();
     if (!NameIdentifierInfo)
       return;

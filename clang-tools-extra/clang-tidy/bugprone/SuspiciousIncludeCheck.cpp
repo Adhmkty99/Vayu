@@ -77,6 +77,8 @@ void SuspiciousIncludePPCallbacks::InclusionDirective(
     SrcMgr::CharacteristicKind FileType) {
   if (IncludeTok.getIdentifierInfo()->getPPKeywordID() == tok::pp_import)
     return;
+  if (Check.skipLocation(HashLoc))
+    return;
 
   SourceLocation DiagLoc = FilenameRange.getBegin().getLocWithOffset(1);
 

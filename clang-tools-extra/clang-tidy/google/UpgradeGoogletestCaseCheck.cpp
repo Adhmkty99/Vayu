@@ -94,6 +94,8 @@ private:
                  SourceLocation Loc, CheckAction Action) {
     if (!ReplacementFound)
       return;
+    if (Check->skipLocation(Loc))
+      return;
 
     std::string Name = PP->getSpelling(MacroNameTok);
 

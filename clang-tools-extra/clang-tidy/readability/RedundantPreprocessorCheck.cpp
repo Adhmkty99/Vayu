@@ -37,6 +37,8 @@ public:
 
   void If(SourceLocation Loc, SourceRange ConditionRange,
           ConditionValueKind ConditionValue) override {
+    if (Check.skipLocation(Loc))
+      return;
     StringRef Condition =
         Lexer::getSourceText(CharSourceRange::getTokenRange(ConditionRange),
                              PP.getSourceManager(), PP.getLangOpts());
@@ -45,6 +47,8 @@ public:
 
   void Ifdef(SourceLocation Loc, const Token &MacroNameTok,
              const MacroDefinition &MacroDefinition) override {
+    if (Check.skipLocation(Loc))
+      return;
     std::string MacroName = PP.getSpelling(MacroNameTok);
     checkMacroRedundancy(Loc, MacroName, IfdefStack, DK_Ifdef, DK_Ifdef, true);
     checkMacroRedundancy(Loc, MacroName, IfndefStack, DK_Ifdef, DK_Ifndef,
@@ -53,6 +57,8 @@ public:
 
   void Ifndef(SourceLocation Loc, const Token &MacroNameTok,
               const MacroDefinition &MacroDefinition) override {
+    if (Check.skipLocation(Loc))
+      return;
     std::string MacroName = PP.getSpelling(MacroNameTok);
     checkMacroRedundancy(Loc, MacroName, IfndefStack, DK_Ifndef, DK_Ifndef,
                          true);
@@ -61,6 +67,8 @@ public:
   }
 
   void Endif(SourceLocation Loc, SourceLocation IfLoc) override {
+    if (Check.skipLocation(Loc))
+      return;
     if (!IfStack.empty() && IfLoc == IfStack.back().Loc)
       IfStack.pop_back();
     if (!IfdefStack.empty() && IfLoc == IfdefStack.back().Loc)

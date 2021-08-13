@@ -94,6 +94,8 @@ void IncludeModernizePPCallbacks::InclusionDirective(
     bool IsAngled, CharSourceRange FilenameRange, const FileEntry *File,
     StringRef SearchPath, StringRef RelativePath, const Module *Imported,
     SrcMgr::CharacteristicKind FileType) {
+  if (Check.skipLocation(HashLoc))
+    return;
   // FIXME: Take care of library symbols from the global namespace.
   //
   // Reasonable options for the check:

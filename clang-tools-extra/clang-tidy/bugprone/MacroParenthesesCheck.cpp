@@ -23,6 +23,8 @@ public:
 
   void MacroDefined(const Token &MacroNameTok,
                     const MacroDirective *MD) override {
+    if (Check->skipLocation(MacroNameTok.getLocation()))
+      return;
     replacementList(MacroNameTok, MD->getMacroInfo());
     argument(MacroNameTok, MD->getMacroInfo());
   }

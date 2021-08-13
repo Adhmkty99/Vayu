@@ -25,6 +25,8 @@ void RestrictedIncludesPPCallbacks::InclusionDirective(
     bool IsAngled, CharSourceRange FilenameRange, const FileEntry *File,
     StringRef SearchPath, StringRef RelativePath, const Module *Imported,
     SrcMgr::CharacteristicKind FileType) {
+  if (Check.skipLocation(HashLoc))
+    return;
   if (!Check.contains(FileName) && SrcMgr::isSystem(FileType)) {
     SmallString<256> FullPath;
     llvm::sys::path::append(FullPath, SearchPath);

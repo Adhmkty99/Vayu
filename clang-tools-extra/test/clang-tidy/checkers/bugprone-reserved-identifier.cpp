@@ -1,7 +1,9 @@
-// RUN: %check_clang_tidy %s bugprone-reserved-identifier %t -- --skip-headers=0 -- \
+// RUN: %check_clang_tidy -check-suffixes=,DEFAULT \
+// RUN:   %s bugprone-reserved-identifier %t -- --skip-headers=0 -- \
 // RUN:   -I%S/Inputs/bugprone-reserved-identifier \
 // RUN:   -isystem %S/Inputs/bugprone-reserved-identifier/system
-// RUN: %check_clang_tidy %s bugprone-reserved-identifier %t -- --skip-headers -- \
+// RUN: %check_clang_tidy -check-suffixes=,SKIPHEADER \
+// RUN:   %s bugprone-reserved-identifier %t -- --skip-headers -- \
 // RUN:   -I%S/Inputs/bugprone-reserved-identifier \
 // RUN:   -isystem %S/Inputs/bugprone-reserved-identifier/system
 
@@ -207,3 +209,9 @@ void function_() {}
 using alias_ = int;
 template <typename templateParam_>
 struct S_ {};
+
+// Warnings in included files are suppressed by default.
+// CHECK-MESSAGES-DEFAULT: Suppressed {{.*}} warnings
+//
+// With --skip-headers, warnings in header files are skip, not suppressed.
+// CHECK-MESSAGES-SKIPHEADER-NOT: Suppressed {{.*}} warnings

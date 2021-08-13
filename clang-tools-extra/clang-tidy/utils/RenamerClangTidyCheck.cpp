@@ -73,6 +73,8 @@ public:
   /// MacroDefined calls checkMacro for macros in the main file
   void MacroDefined(const Token &MacroNameTok,
                     const MacroDirective *MD) override {
+    if (Check->skipLocation(MacroNameTok.getLocation()))
+      return;
     if (MD->getMacroInfo()->isBuiltinMacro())
       return;
     if (PP->getSourceManager().isWrittenInBuiltinFile(
@@ -88,6 +90,8 @@ public:
   void MacroExpands(const Token &MacroNameTok, const MacroDefinition &MD,
                     SourceRange /*Range*/,
                     const MacroArgs * /*Args*/) override {
+    if (Check->skipLocation(MacroNameTok.getLocation()))
+      return;
     Check->expandMacro(MacroNameTok, MD.getMacroInfo());
   }
 

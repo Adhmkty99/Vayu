@@ -74,7 +74,9 @@ private:
   using FileIncludes = llvm::SmallVector<IncludeDirective, 8>;
   llvm::SmallDenseMap<FileID, FileIncludes> IncludeDirectives;
 
+protected:
   RestrictSystemIncludesCheck &Check;
+private:
   const SourceManager &SM;
 };
 

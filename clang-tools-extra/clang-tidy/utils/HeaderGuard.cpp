@@ -79,6 +79,9 @@ public:
       if (!MI->isUsedForHeaderGuard())
         continue;
 
+      if (Check->skipLocation(MI->getDefinitionLoc()))
+        continue;
+
       const FileEntry *FE =
           SM.getFileEntryForID(SM.getFileID(MI->getDefinitionLoc()));
       std::string FileName = cleanPath(FE->getName());
@@ -213,6 +216,8 @@ public:
       FileID FID = SM.translateFile(FE.getValue());
       SourceLocation StartLoc = SM.getLocForStartOfFile(FID);
       if (StartLoc.isInvalid())
+        continue;
+      if (Check->skipLocation(StartLoc))
         continue;
 
       std::string CPPVar = Check->getHeaderGuard(FileName);

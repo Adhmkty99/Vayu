@@ -345,7 +345,8 @@ class SimplifyBooleanExprCheck::Visitor : public RecursiveASTVisitor<Visitor> {
       : Check(Check), Result(Result) {}
 
   bool VisitBinaryOperator(BinaryOperator *Op) {
-    Check->reportBinOp(Result, Op);
+    if (!Check->skipLocation(Op->getBeginLoc()))
+      Check->reportBinOp(Result, Op);
     return true;
   }
 

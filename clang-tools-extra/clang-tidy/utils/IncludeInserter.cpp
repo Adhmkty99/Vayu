@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../ClangTidyDiagnosticConsumer.h"
 #include "IncludeInserter.h"
 #include "clang/Lex/PPCallbacks.h"
 #include "clang/Lex/Preprocessor.h"
@@ -28,6 +29,8 @@ public:
                           StringRef /*SearchPath*/, StringRef /*RelativePath*/,
                           const Module * /*ImportedModule*/,
                           SrcMgr::CharacteristicKind /*FileType*/) override {
+    if (ClangTidyDiagnosticConsumer::skipLocation(HashLocation))
+      return;
     Inserter->addInclude(FileNameRef, IsAngled, HashLocation,
                          IncludeToken.getEndLoc());
   }

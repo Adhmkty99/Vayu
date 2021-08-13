@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "../ClangTidyDiagnosticConsumer.h"
 #include "LambdaFunctionNameCheck.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
@@ -35,6 +36,8 @@ public:
   void MacroExpands(const Token &MacroNameTok,
                     const MacroDefinition &MD, SourceRange Range,
                     const MacroArgs *Args) override {
+    if (ClangTidyDiagnosticConsumer::skipLocation(MacroNameTok.getLocation()))
+      return;
     bool HasFile = false;
     bool HasLine = false;
     for (const auto& T : MD.getMacroInfo()->tokens()) {

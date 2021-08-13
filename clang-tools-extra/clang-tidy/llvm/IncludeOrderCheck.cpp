@@ -80,6 +80,8 @@ void IncludeOrderPPCallbacks::InclusionDirective(
     bool IsAngled, CharSourceRange FilenameRange, const FileEntry *File,
     StringRef SearchPath, StringRef RelativePath, const Module *Imported,
     SrcMgr::CharacteristicKind FileType) {
+  if (Check.skipLocation(HashLoc))
+    return;
   // We recognize the first include as a special main module header and want
   // to leave it in the top position.
   IncludeDirective ID = {HashLoc, FilenameRange, std::string(FileName),
@@ -146,6 +148,9 @@ void IncludeOrderPPCallbacks::EndOfMainFile() {
           break;
 
       if (I == E)
+        continue;
+
+      if (Check.skipLocation(FileDirectives[I].Loc))
         continue;
 
       // Emit a warning.

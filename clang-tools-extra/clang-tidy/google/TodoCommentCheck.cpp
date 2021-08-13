@@ -22,6 +22,8 @@ public:
         TodoMatch("^// *TODO *(\\(.*\\))?:?( )?(.*)$") {}
 
   bool HandleComment(Preprocessor &PP, SourceRange Range) override {
+    if (Check.skipLocation(Range.getBegin()))
+      return false;
     StringRef Text =
         Lexer::getSourceText(CharSourceRange::getCharRange(Range),
                              PP.getSourceManager(), PP.getLangOpts());

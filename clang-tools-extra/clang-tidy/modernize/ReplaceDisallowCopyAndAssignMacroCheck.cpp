@@ -27,6 +27,9 @@ public:
 
   void MacroExpands(const Token &MacroNameTok, const MacroDefinition &MD,
                     SourceRange Range, const MacroArgs *Args) override {
+    if (Check.skipLocation(MacroNameTok.getLocation()))
+      return;
+
     IdentifierInfo *Info = MacroNameTok.getIdentifierInfo();
     if (!Info || !Args || Args->getNumMacroArguments() != 1)
       return;
