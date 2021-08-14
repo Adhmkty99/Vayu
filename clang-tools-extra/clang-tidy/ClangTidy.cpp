@@ -313,11 +313,18 @@ public:
       std::unique_ptr<ast_matchers::MatchFinder> Finder,
       std::unique_ptr<ast_matchers::MatchFinder> AllFileFinder,
       std::vector<std::unique_ptr<ClangTidyCheck>> Checks,
-      std::vector<std::unique_ptr<ClangTidyCheck>> AllFileChecks)
+      std::vector<std::unique_ptr<ClangTidyCheck>> AllFileChecks,
+      ASTConsumer *FinderASTConsumerPtr,
+      std::unique_ptr<ClangTidyLocationFilter> Filter)
       : MultiplexConsumer(std::move(Consumers)),
         Profiling(std::move(Profiling)), Finder(std::move(Finder)),
         AllFileFinder(std::move(AllFileFinder)), Checks(std::move(Checks)),
-        AllFileChecks(std::move(AllFileChecks)) {}
+        AllFileChecks(std::move(AllFileChecks)),
+        FinderASTConsumerPtr(FinderASTConsumerPtr),
+        Filter(std::move(Filter)) {}
+  ~ClangTidyASTConsumer() override;
+  bool HandleTopLevelDecl(DeclGroupRef DG) override;
+  void HandleTranslationUnit(ASTContext &Context) override;
 
 private:
   // Destructor order matters! Profiling must be destructed last.
@@ -327,6 +334,17 @@ private:
   std::unique_ptr<ast_matchers::MatchFinder> AllFileFinder;
   std::vector<std::unique_ptr<ClangTidyCheck>> Checks;
   std::vector<std::unique_ptr<ClangTidyCheck>> AllFileChecks;
+
+  /// Remembered Finder's ASTConsumer, which is also pushed into
+  /// and managed by MultiplexConsumer.
+  ASTConsumer *FinderASTConsumerPtr;
+
+  // When --skip-headers, Filter is not null and handleTopLevelDecl
+  // will collect Decls into TopLevelDecls.
+  /// Check if a top level Decl should be skipped.
+  std::unique_ptr<ClangTidyLocationFilter> Filter;
+  /// All (filtered) top level decls.
+  std::vector<Decl *> TopLevelDecls;
 };
 
 } // namespace
@@ -389,6 +407,69 @@ static CheckersList getAnalyzerCheckersAndPackages(ClangTidyContext &Context,
   return List;
 }
 #endif // CLANG_TIDY_ENABLE_STATIC_ANALYZER
+
+template <class T>
+bool isTemplateSpecializationKind(const NamedDecl *D,
+                                  TemplateSpecializationKind Kind) {
+  if (const auto *TD = dyn_cast<T>(D))
+    return TD->getTemplateSpecializationKind() == Kind;
+  return false;
+}
+
+bool isTemplateSpecializationKind(const NamedDecl *D,
+                                  TemplateSpecializationKind Kind) {
+  return isTemplateSpecializationKind<FunctionDecl>(D, Kind) ||
+         isTemplateSpecializationKind<CXXRecordDecl>(D, Kind) ||
+         isTemplateSpecializationKind<VarDecl>(D, Kind);
+}
+
+bool isImplicitTemplateInstantiation(const NamedDecl *D) {
+  return isTemplateSpecializationKind(D, TSK_ImplicitInstantiation);
+}
+
+ClangTidyASTConsumer::~ClangTidyASTConsumer() {}
+
+bool ClangTidyASTConsumer::HandleTopLevelDecl(DeclGroupRef DG) {
+  if (!MultiplexConsumer::HandleTopLevelDecl(DG))
+    return false;
+  if (Filter.get() != nullptr) {
+    for (Decl *D : DG) {
+      if (const NamedDecl *ND = dyn_cast<NamedDecl>(D))
+        if (isImplicitTemplateInstantiation(ND))
+          continue;
+      // ObjCMethodDecl are not actually top-level decls.
+      if (isa<ObjCMethodDecl>(D))
+        continue;
+      // Some tidy checker like abseil-upgrade-duration-conversions has a Finder matcher
+      // to match template function defined in a namespace in a header file.
+      // Do not skip such top-level Decl::Namespace.
+      if (D->getKind() == Decl::Namespace || !Filter->skipLocation(D->getLocation()))
+        TopLevelDecls.push_back(D);
+    }
+  }
+  return true;
+}
+
+void ClangTidyASTConsumer::HandleTranslationUnit(ASTContext &Context) {
+  // If skip-headers is not on, there is no Filter and no skip TopLevelDecls.
+  // If there is no MatchFinder-based checks, FinderASTConsumerPtr is nullptr
+  // and there is no need to change TopLevelDecls.
+  if (Filter.get() != nullptr && nullptr != FinderASTConsumerPtr) {
+    for (auto &Consumer : Consumers) {
+      if (Consumer.get() == FinderASTConsumerPtr) {
+        const auto &SavedScope = Context.getTraversalScope();
+        Context.setTraversalScope(TopLevelDecls);
+        Consumer->HandleTranslationUnit(Context);
+        Context.setTraversalScope(SavedScope);
+      } else {
+        Consumer->HandleTranslationUnit(Context);
+      }
+    }
+  } else {
+    for (auto &Consumer : Consumers)
+      Consumer->HandleTranslationUnit(Context);
+  }
+}
 
 std::unique_ptr<clang::ASTConsumer>
 ClangTidyASTConsumerFactory::CreateASTConsumer(
@@ -462,8 +543,12 @@ ClangTidyASTConsumerFactory::CreateASTConsumer(
   }
 
   std::vector<std::unique_ptr<ASTConsumer>> Consumers;
-  if (!Checks.empty())
-    Consumers.push_back(Finder->newASTConsumer());
+  ASTConsumer *FinderASTConsumerPtr = nullptr;
+  if (!Checks.empty()) {
+    std::unique_ptr<ASTConsumer> FinderASTConsumer(Finder->newASTConsumer());
+    FinderASTConsumerPtr = FinderASTConsumer.get();
+    Consumers.push_back(std::move(FinderASTConsumer));
+  }
   if (!AllFileChecks.empty())
     Consumers.push_back(AllFileFinder->newASTConsumer());
 
@@ -484,9 +569,17 @@ ClangTidyASTConsumerFactory::CreateASTConsumer(
     Consumers.push_back(std::move(AnalysisConsumer));
   }
 #endif // CLANG_TIDY_ENABLE_STATIC_ANALYZER
+  // TODO(chh): simplify creation of Filter;
+  std::unique_ptr<ClangTidyLocationFilter> Filter;
+  if (*Context.getOptions().SkipHeaders) {
+    std::unique_ptr<ClangTidyLocationFilter> LocationFilter(
+        ClangTidyDiagnosticConsumer::newLocationFilter(&Context));
+    Filter = std::move(LocationFilter);
+  }
   return std::make_unique<ClangTidyASTConsumer>(
       std::move(Consumers), std::move(Profiling), std::move(Finder),
-      std::move(AllFileFinder), std::move(Checks), std::move(AllFileChecks));
+      std::move(AllFileFinder), std::move(Checks), std::move(AllFileChecks),
+      FinderASTConsumerPtr, std::move(Filter));
 }
 
 std::vector<std::string> ClangTidyASTConsumerFactory::getCheckNames() {

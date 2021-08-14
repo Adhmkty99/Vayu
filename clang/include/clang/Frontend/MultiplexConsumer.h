@@ -77,8 +77,9 @@ public:
   void InitializeSema(Sema &S) override;
   void ForgetSema() override;
 
-private:
+protected:
   std::vector<std::unique_ptr<ASTConsumer>> Consumers; // Owns these.
+private:
   std::unique_ptr<MultiplexASTMutationListener> MutationListener;
   std::unique_ptr<MultiplexASTDeserializationListener> DeserializationListener;
 };
