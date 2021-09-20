@@ -414,16 +414,27 @@ toolchains::MinGW::MinGW(const Driver &D, const llvm::Triple &Triple,
     Base = std::string(
         llvm::sys::path::parent_path(getDriver().getInstalledDir()));
 
-  Base += llvm::sys::path::get_separator();
+  const auto Slash = llvm::sys::path::get_separator();
+  Base += Slash;
   findGccLibDir();
   // GccLibDir must precede Base/lib so that the
   // correct crtbegin.o ,cetend.o would be found.
   getFilePaths().push_back(GccLibDir);
-  getFilePaths().push_back(
-      (Base + Arch + llvm::sys::path::get_separator() + "lib").str());
+  getFilePaths().push_back((Base + Arch + Slash + "lib").str());
   getFilePaths().push_back(Base + "lib");
   // openSUSE
   getFilePaths().push_back(Base + Arch + "/sys-root/mingw/lib");
+
+  if (GetCXXStdlibType(Args) == ToolChain::CST_Libcxx) {
+    // libc++ is installed alongside LLVM in either lib$SUFFIX or
+    // $TRIPLE/lib$SUFFIX.
+    getFilePaths().push_back((getDriver().Dir + Slash + ".." + Slash + Arch +
+                              Slash + "include" + Slash + "c++" + Slash + "v1")
+                                 .str());
+    getFilePaths().push_back((getDriver().Dir + Slash + ".." + Slash +
+                              "include" + Slash + "c++" + Slash + "v1")
+                                 .str());
+  }
 
   NativeLLVMSupport =
       Args.getLastArgValue(options::OPT_fuse_ld_EQ, CLANG_DEFAULT_LINKER)
@@ -586,6 +597,15 @@ void toolchains::MinGW::AddClangCXXStdlibIncludeArgs(
 
   switch (GetCXXStdlibType(DriverArgs)) {
   case ToolChain::CST_Libcxx:
+    // Try the toolchain locations first.
+    addSystemInclude(DriverArgs, CC1Args,
+                     getDriver().Dir + Slash + ".." + Slash + Arch + Slash +
+                         "include" + Slash + "c++" + Slash + "v1");
+    addSystemInclude(DriverArgs, CC1Args,
+                     getDriver().Dir + Slash + ".." + Slash + "include" +
+                         Slash + "c++" + Slash + "v1");
+
+    // But fall back to the sysroot.
     addSystemInclude(DriverArgs, CC1Args, Base + Arch + Slash + "include" +
                                               Slash + "c++" + Slash + "v1");
     addSystemInclude(DriverArgs, CC1Args,
