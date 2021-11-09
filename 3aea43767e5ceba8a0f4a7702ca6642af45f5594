@@ -33,6 +33,23 @@
       "message": "Hi, Bill.  Do you have +2 powers on this CL?\n\nShould I apply to be in pushers-toolchain-* so I don\u0027t have to ask for your +2 on every commit?  Thanks!",
       "revId": "3aea43767e5ceba8a0f4a7702ca6642af45f5594",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "afefd9f0_63ab199f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2021-11-09T18:46:06Z",
+      "side": 1,
+      "message": "Do you expect to be making a lot of changes to this project? Is there an updated design doc for how this is going to be maintained? I suspect that there won\u0027t be many LLVM changes from the upstream Kotlin folks, other than major releases.",
+      "revId": "3aea43767e5ceba8a0f4a7702ca6642af45f5594",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
   ]
 }
