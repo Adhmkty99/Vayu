@@ -1,14 +1,22 @@
 ========================
-lld 11.0.0 Release Notes
+lld 12.0.0 Release Notes
 ========================
 
 .. contents::
     :local:
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+=======
+.. warning::
+   These are in-progress notes for the upcoming LLVM 12.0.0 release.
+   Release notes for previous releases can be found on
+   `the Download Page <https://releases.llvm.org/download.html>`_.
+
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 Introduction
 ============
 
-This document contains the release notes for the lld linker, release 11.0.0.
+This document contains the release notes for the lld linker, release 12.0.0.
 Here we describe the status of lld, including major improvements
 from the previous release. All lld releases may be downloaded
 from the `LLVM releases web site <https://llvm.org/releases/>`_.
@@ -19,6 +27,7 @@ Non-comprehensive list of changes in this release
 ELF Improvements
 ----------------
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * ``--lto-emit-asm`` is added to emit assembly output for debugging purposes.
   (`D77231 <https://reviews.llvm.org/D77231>`_)
 * ``--lto-whole-program-visibility`` is added to specify that classes have hidden LTO visibility in LTO and ThinLTO links of source files compiled with ``-fwhole-program-vtables``. See `LTOVisibility <https://clang.llvm.org/docs/LTOVisibility.html>`_ for details.
@@ -131,10 +140,15 @@ ELF Improvements
   (`D71820 <https://reviews.llvm.org/D71820>`_)
 * SPARCv9: more relocation types are supported.
   (`D77672 <https://reviews.llvm.org/D77672>`_)
+=======
+* ``--error-handling-script`` is added to allow for user-defined handlers upon
+  missing libraries. (`D87758 <https://reviews.llvm.org/D87758>`_)
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 Breaking changes
 ----------------
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * One-dash form of some long option (``--thinlto-*``, ``--lto-*``, ``--shuffle-sections=``)
   are no longer supported.
   (`D79371 <https://reviews.llvm.org/D79371>`_)
@@ -156,6 +170,9 @@ Breaking changes
   The new behavior matches GNU ld.
   (`D75225 <https://reviews.llvm.org/D75225>`_)
 * ``--no-threads`` is removed. Use ``--threads=1`` instead. ``--threads`` (no-op) is removed.
+=======
+* ...
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 COFF Improvements
 -----------------

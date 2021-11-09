@@ -17,11 +17,15 @@ func @nestedtensor(tensor<tensor<i8>>) -> () // expected-error {{invalid tensor 
 
 // -----
 
-func @indexvector(vector<4 x index>) -> () // expected-error {{vector elements must be int or float type}}
+func @illegalmemrefelementtype(memref<?xtensor<i8>>) -> () // expected-error {{invalid memref element type}}
 
 // -----
 
-func @indexmemref(memref<? x index>) -> () // expected-error {{invalid memref element type}}
+func @illegalunrankedmemrefelementtype(memref<*xtensor<i8>>) -> () // expected-error {{invalid memref element type}}
+
+// -----
+
+func @indexvector(vector<4 x index>) -> () // expected-error {{vector elements must be int or float type}}
 
 // -----
 // Test no map in memref type.
@@ -166,7 +170,8 @@ func @block_first_has_predecessor() {
 // -----
 
 func @no_return() {
-  %x = constant 0 : i32  // expected-error {{block with no terminator}}
+  %x = constant 0 : i32
+  %y = constant 1 : i32  // expected-error {{block with no terminator}}
 }
 
 // -----
@@ -714,14 +719,14 @@ func @elementsattr_malformed_opaque() -> () {
 
 func @elementsattr_malformed_opaque1() -> () {
 ^bb0:
-  "foo"(){bar = opaque<"", "0xQZz123"> : tensor<1xi8>} : () -> () // expected-error {{elements hex string only contains hex digits}}
+  "foo"(){bar = opaque<"", "0xQZz123"> : tensor<1xi8>} : () -> () // expected-error {{expected string containing hex digits starting with `0x`}}
 }
 
 // -----
 
 func @elementsattr_malformed_opaque2() -> () {
 ^bb0:
-  "foo"(){bar = opaque<"", "00abc"> : tensor<1xi8>} : () -> () // expected-error {{elements hex string should start with '0x'}}
+  "foo"(){bar = opaque<"", "00abc"> : tensor<1xi8>} : () -> () // expected-error {{expected string containing hex digits starting with `0x`}}
 }
 
 // -----
@@ -918,7 +923,7 @@ func @negative_in_tensor_size() -> tensor<1x-1xi32>
 // -----
 
 func @invalid_nested_dominance() {
-  "foo.region"() ({
+  "test.ssacfg_region"() ({
     // expected-error @+1 {{operand #0 does not dominate this use}}
     "foo.use" (%1) : (i32) -> ()
     br ^bb2
@@ -1106,7 +1111,7 @@ func @bad_complex(complex<i32)
 // -----
 
 func @invalid_region_dominance() {
-  "foo.region"() ({
+  "test.ssacfg_region"() ({
     // expected-error @+1 {{operand #0 does not dominate this use}}
     "foo.use" (%def) : (i32) -> ()
     "foo.yield" () : () -> ()
@@ -1121,7 +1126,7 @@ func @invalid_region_dominance() {
 
 func @invalid_region_dominance() {
   // expected-note @+1 {{operand defined here}}
-  %def = "foo.region_with_def"() ({
+  %def = "test.ssacfg_region"() ({
     // expected-error @+1 {{operand #0 does not dominate this use}}
     "foo.use" (%def) : (i32) -> ()
     "foo.yield" () : () -> ()
@@ -1509,9 +1514,14 @@ func @really_large_bound() {
 // -----
 
 func @duplicate_dictionary_attr_key() {
-  // expected-error @+1 {{duplicate key in dictionary attribute}}
+  // expected-error @+1 {{duplicate key 'a' in dictionary attribute}}
   "foo.op"() {a, a} : () -> ()
 }
+
+// -----
+
+// expected-error @+1 {{attribute 'attr' occurs more than once in the attribute list}}
+test.format_symbol_name_attr_op @name { attr = "xx" }
 
 // -----
 
@@ -1534,7 +1544,7 @@ func @dominance_error_in_unreachable_op() -> i1 {
   %c = constant false
   return %c : i1
 ^bb0:
-  "dummy" () ({  // unreachable
+  "test.ssacfg_region" () ({ // unreachable
     ^bb1:
 // expected-error @+1 {{operand #0 does not dominate this use}}
       %2:3 = "bar"(%1) : (i64) -> (i1,i1,i1)
@@ -1546,3 +1556,23 @@ func @dominance_error_in_unreachable_op() -> i1 {
   }) : () -> ()
   return %c : i1
 }
+
+// -----
+
+func @invalid_region_dominance_with_dominance_free_regions() {
+  test.graph_region {
+    "foo.use" (%1) : (i32) -> ()
+    "foo.region"() ({
+      %1 = constant 0 : i32  // This value is used outside of the region.
+      "foo.yield" () : () -> ()
+    }, {
+      // expected-error @+1 {{expected operation name in quotes}}
+      %2 = constant 1 i32  // Syntax error causes region deletion.
+    }) : () -> ()
+  }
+  return
+}
+
+// -----
+
+func @foo() {} // expected-error {{expected non-empty function body}}

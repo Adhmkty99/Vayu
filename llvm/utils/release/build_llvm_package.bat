@@ -27,8 +27,13 @@ set python64_dir=C:\Users\%USERNAME%\AppData\Local\Programs\Python\Python36
 for /f "usebackq" %%i in (`PowerShell ^(Get-Date^).ToString^('yyyyMMdd'^)`) do set datestamp=%%i
 
 set revision=%1
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 set package_version=11.1.0-%revision:~0,8%
 set clang_format_vs_version=11.1.0.%datestamp%
+=======
+set package_version=12.0.0-%revision:~0,8%
+set clang_format_vs_version=12.0.0.%datestamp%
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 set build_dir=llvm_package_%revision:~0,8%
 
 echo Revision: %revision%

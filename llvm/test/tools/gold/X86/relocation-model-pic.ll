@@ -1,9 +1,4 @@
-; RUN: cat %s >%t.pic.ll
-; RUN: echo '!llvm.module.flags = !{!0}' >>%t.pic.ll
-; RUN: echo '!0 = !{i32 1, !"PIC Level", i32 2}' >>%t.pic.ll
-
 ; RUN: llvm-as %s -o %t.o
-; RUN: llvm-as %t.pic.ll -o %t.pic.o
 
 ;; Non-PIC source.
 
@@ -16,6 +11,7 @@
 ; RUN:    --export-dynamic --noinhibit-exec -pie \
 ; RUN:    --plugin-opt=save-temps %t.o -o %t-out
 ; RUN: llvm-readobj -r %t-out.lto.o | FileCheck %s --check-prefix=PIC
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 
 ; RUN: %gold -m elf_x86_64 -plugin %llvmshlibdir/LLVMgold%shlibext \
 ; RUN:    --export-dynamic --noinhibit-exec \
@@ -26,16 +22,23 @@
 ; RUN:    -r \
 ; RUN:    --plugin-opt=save-temps %t.o -o %t-out
 ; RUN: llvm-readobj -r %t-out.lto.o | FileCheck %s --check-prefix=STATIC
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 ;; PIC source.
 
 ; RUN: %gold -m elf_x86_64 -plugin %llvmshlibdir/LLVMgold%shlibext \
 ; RUN:    --shared \
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; RUN:    --plugin-opt=save-temps %t.pic.o -o %t-out
+=======
+; RUN:    --plugin-opt=save-temps %t.o -o %t-out
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; RUN: llvm-readobj -r %t-out.lto.o | FileCheck %s --check-prefix=PIC
 
 ; RUN: %gold -m elf_x86_64 -plugin %llvmshlibdir/LLVMgold%shlibext \
 ; RUN:    --export-dynamic --noinhibit-exec -pie \
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; RUN:    --plugin-opt=save-temps %t.pic.o -o %t-out
 ; RUN: llvm-readobj -r %t-out.lto.o | FileCheck %s --check-prefix=PIC
 
@@ -43,15 +46,22 @@
 ; RUN:    --export-dynamic --noinhibit-exec \
 ; RUN:    --plugin-opt=save-temps %t.pic.o -o %t-out
 ; RUN: llvm-readobj -r %t-out.lto.o | FileCheck %s --check-prefix=STATIC
+=======
+; RUN:    --plugin-opt=save-temps %t.o -o %t-out
+; RUN: llvm-readobj -r %t-out.lto.o | FileCheck %s --check-prefix=PIC
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 ; RUN: %gold -m elf_x86_64 -plugin %llvmshlibdir/LLVMgold%shlibext \
 ; RUN:    -r \
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; RUN:    --plugin-opt=save-temps %t.pic.o -o %t-out
+=======
+; RUN:    --plugin-opt=save-temps %t.o -o %t-out
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; RUN: llvm-readobj -r %t-out.lto.o | FileCheck %s --check-prefix=PIC
 
 
 ; PIC: R_X86_64_GOTPCREL foo
-; STATIC: R_X86_64_PC32 foo
 
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
@@ -61,3 +71,6 @@ define i32 @main() {
   %t = load i32, i32* @foo
   ret i32 %t
 }
+
+!llvm.module.flags = !{!0}
+!0 = !{i32 1, !"PIC Level", i32 2}

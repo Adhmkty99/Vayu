@@ -342,6 +342,11 @@ Grammar used by Flang to parse OpenMP 4.5.
                  ATOMIC [seq_cst]
        atomic-clause -> READ | WRITE | UPDATE | CAPTURE
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+=======
+2.13.6 end-atomic -> END ATOMIC
+
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 2.13.7 flush -> FLUSH [(variable-name-list)]
 
 2.13.8 ordered -> ORDERED ordered-construct-clause [[[,] ordered-construct-clause]...]

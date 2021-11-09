@@ -706,9 +706,13 @@ void ReportRace(ThreadState *thr) {
   }
 #endif
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
   if (!OutputReport(thr, rep))
     return;
 
+=======
+  OutputReport(thr, rep);
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 }
 
 void PrintCurrentStack(ThreadState *thr, uptr pc) {

@@ -71,6 +71,7 @@ accepted if enabled by command-line options.
 * `NAME=` as synonym for `FILE=`
 * Data edit descriptors without width or other details
 * `D` lines in fixed form as comments or debug code
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * `CONVERT=` on the OPEN and INQUIRE statements
 * `DISPOSE=` on the OPEN and INQUIRE statements
 * Leading semicolons are ignored before any statement that
@@ -146,6 +147,89 @@ accepted if enabled by command-line options.
   `FINDLOC`, `MAXLOC`, and `MINLOC` in the absence of an explicit
   `KIND=` actual argument.  We return `INTEGER(KIND=8)` by default in
   these cases when the `-flarge-sizes` option is enabled.
+=======
+* `CARRIAGECONTROL=` on the OPEN and INQUIRE statements
+* `CONVERT=` on the OPEN and INQUIRE statements
+* `DISPOSE=` on the OPEN and INQUIRE statements
+* Leading semicolons are ignored before any statement that
+  could have a label
+* The character `&` in column 1 in fixed form source is a variant form
+  of continuation line.
+* Character literals as elements of an array constructor without an explicit
+  type specifier need not have the same length; the longest literal determines
+  the length parameter of the implicit type, not the first.
+* Outside a character literal, a comment after a continuation marker (&)
+  need not begin with a comment marker (!).
+* Classic C-style /*comments*/ are skipped, so multi-language header
+  files are easier to write and use.
+* $ and \ edit descriptors are supported in FORMAT to suppress newline
+  output on user prompts.
+* REAL and DOUBLE PRECISION variable and bounds in DO loops
+* Integer literals without explicit kind specifiers that are out of range
+  for the default kind of INTEGER are assumed to have the least larger kind
+  that can hold them, if one exists.
+* BOZ literals can be used as INTEGER values in contexts where the type is
+  unambiguous: the right hand sides of assigments and initializations
+  of INTEGER entities, and as actual arguments to a few intrinsic functions
+  (ACHAR, BTEST, CHAR).  But they cannot be used if the type would not
+  be known (e.g., `IAND(X'1',X'2')`).
+* BOZ literals can also be used as REAL values in some contexts where the
+  type is unambiguous, such as initializations of REAL parameters.
+* EQUIVALENCE of numeric and character sequences (a ubiquitous extension)
+* Values for whole anonymous parent components in structure constructors
+  (e.g., `EXTENDEDTYPE(PARENTTYPE(1,2,3))` rather than `EXTENDEDTYPE(1,2,3)`
+   or `EXTENDEDTYPE(PARENTTYPE=PARENTTYPE(1,2,3))`).
+* Some intrinsic functions are specified in the standard as requiring the
+  same type and kind for their arguments (viz., ATAN with two arguments,
+  ATAN2, DIM, HYPOT, MAX, MIN, MOD, and MODULO);
+  we allow distinct types to be used, promoting
+  the arguments as if they were operands to an intrinsic `+` operator,
+  and defining the result type accordingly.
+* DOUBLE COMPLEX intrinsics DREAL, DCMPLX, DCONJG, and DIMAG.
+* INT_PTR_KIND intrinsic returns the kind of c_intptr_t.
+* Restricted specific conversion intrinsics FLOAT, SNGL, IDINT, IFIX, DREAL,
+  and DCMPLX accept arguments of any kind instead of only the default kind or
+  double precision kind. Their result kinds remain as specified.
+* Specific intrinsics AMAX0, AMAX1, AMIN0, AMIN1, DMAX1, DMIN1, MAX0, MAX1,
+  MIN0, and MIN1 accept more argument types than specified. They are replaced by
+  the related generics followed by conversions to the specified result types.
+* When a scalar CHARACTER actual argument of the same kind is known to
+  have a length shorter than the associated dummy argument, it is extended
+  on the right with blanks, similar to assignment.
+* When a dummy argument is `POINTER` or `ALLOCATABLE` and is `INTENT(IN)`, we
+  relax enforcement of some requirements on actual arguments that must otherwise
+  hold true for definable arguments.
+* Assignment of `LOGICAL` to `INTEGER` and vice versa (but not other types) is
+  allowed.  The values are normalized.
+* An effectively empty source file (no program unit) is accepted and
+  produces an empty relocatable output file.
+* A `RETURN` statement may appear in a main program.
+* DATA statement initialization is allowed for procedure pointers outside
+  structure constructors.
+* Nonstandard intrinsic functions: ISNAN
+
+### Extensions supported when enabled by options
+
+* C-style backslash escape sequences in quoted CHARACTER literals
+  (but not Hollerith) [-fbackslash]
+* Logical abbreviations `.T.`, `.F.`, `.N.`, `.A.`, `.O.`, and `.X.`
+  [-flogical-abbreviations]
+* `.XOR.` as a synonym for `.NEQV.` [-fxor-operator]
+* The default `INTEGER` type is required by the standard to occupy
+  the same amount of storage as the default `REAL` type.  Default
+  `REAL` is of course 32-bit IEEE-754 floating-point today.  This legacy
+  rule imposes an artificially small constraint in some cases
+  where Fortran mandates that something have the default `INTEGER`
+  type: specifically, the results of references to the intrinsic functions
+  `SIZE`, `LBOUND`, `UBOUND`, `SHAPE`, and the location reductions
+  `FINDLOC`, `MAXLOC`, and `MINLOC` in the absence of an explicit
+  `KIND=` actual argument.  We return `INTEGER(KIND=8)` by default in
+  these cases when the `-flarge-sizes` option is enabled.
+* Treat each specification-part like is has `IMPLICIT NONE`
+  [-fimplicit-none-type-always]
+* Ignore occurrences of `IMPLICIT NONE` and `IMPLICIT NONE(TYPE)`
+  [-fimplicit-none-type-never]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 ### Extensions and legacy features deliberately not supported
 

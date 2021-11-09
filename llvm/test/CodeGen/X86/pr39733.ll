@@ -17,6 +17,7 @@ define void @test55() {
 ; CHECK-NEXT:    vmovdqa %xmm0, {{[0-9]+}}(%rsp)
 ; CHECK-NEXT:    vmovdqa {{[0-9]+}}(%rsp), %xmm0
 ; CHECK-NEXT:    vmovdqa %xmm0, {{[0-9]+}}(%rsp)
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK-NEXT:    vmovdqa {{[0-9]+}}(%rsp), %xmm0
 ; CHECK-NEXT:    vpmovsxwd %xmm0, %xmm1
 ; CHECK-NEXT:    # implicit-def: $ymm2
@@ -25,6 +26,16 @@ define void @test55() {
 ; CHECK-NEXT:    vpmovsxwd %xmm0, %xmm0
 ; CHECK-NEXT:    vinsertf128 $1, %xmm0, %ymm2, %ymm2
 ; CHECK-NEXT:    vmovdqa %ymm2, (%rsp)
+=======
+; CHECK-NEXT:    vmovdqa {{[0-9]+}}(%rsp), %xmm1
+; CHECK-NEXT:    vpmovsxwd %xmm1, %xmm2
+; CHECK-NEXT:    # implicit-def: $ymm0
+; CHECK-NEXT:    vmovaps %xmm2, %xmm0
+; CHECK-NEXT:    vpshufd {{.*#+}} xmm1 = xmm1[2,3,2,3]
+; CHECK-NEXT:    vpmovsxwd %xmm1, %xmm1
+; CHECK-NEXT:    vinsertf128 $1, %xmm1, %ymm0, %ymm0
+; CHECK-NEXT:    vmovdqa %ymm0, (%rsp)
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; CHECK-NEXT:    movq %rbp, %rsp
 ; CHECK-NEXT:    popq %rbp
 ; CHECK-NEXT:    .cfi_def_cfa %rsp, 8

@@ -1,3 +1,4 @@
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 //==--AArch64StackOffset.h ---------------------------------------*- C++ -*-==//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -149,3 +150,5 @@ public:
 } // end namespace llvm
 
 #endif
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)

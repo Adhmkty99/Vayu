@@ -64,11 +64,14 @@ struct BlockMergeInfo {
   Block *mergeBlock;
   Block *continueBlock; // nullptr for spv.selection
   Location loc;
+  uint32_t control;
 
-  BlockMergeInfo(Location location)
-      : mergeBlock(nullptr), continueBlock(nullptr), loc(location) {}
-  BlockMergeInfo(Location location, Block *m, Block *c = nullptr)
-      : mergeBlock(m), continueBlock(c), loc(location) {}
+  BlockMergeInfo(Location location, uint32_t control)
+      : mergeBlock(nullptr), continueBlock(nullptr), loc(location),
+        control(control) {}
+  BlockMergeInfo(Location location, uint32_t control, Block *m,
+                 Block *c = nullptr)
+      : mergeBlock(m), continueBlock(c), loc(location), control(control) {}
 };
 
 /// A struct for containing OpLine instruction information.
@@ -83,6 +86,43 @@ struct DebugLine {
 
 /// Map from a selection/loop's header block to its merge (and continue) target.
 using BlockMergeInfoMap = DenseMap<Block *, BlockMergeInfo>;
+
+/// A "deferred struct type" is a struct type with one or more member types not
+/// known when the Deserializer first encounters the struct. This happens, for
+/// example, with recursive structs where a pointer to the struct type is
+/// forward declared through OpTypeForwardPointer in the SPIR-V module before
+/// the struct declaration; the actual pointer to struct type should be defined
+/// later through an OpTypePointer. For example, the following C struct:
+///
+/// struct A {
+///   A* next;
+/// };
+///
+/// would be represented in the SPIR-V module as:
+///
+/// OpName %A "A"
+/// OpTypeForwardPointer %APtr Generic
+/// %A = OpTypeStruct %APtr
+/// %APtr = OpTypePointer Generic %A
+///
+/// This means that the spirv::StructType cannot be fully constructed directly
+/// when the Deserializer encounters it. Instead we create a
+/// DeferredStructTypeInfo that contains all the information we know about the
+/// spirv::StructType. Once all forward references for the struct are resolved,
+/// the struct's body is set with all member info.
+struct DeferredStructTypeInfo {
+  spirv::StructType deferredStructType;
+
+  // A list of all unresolved member types for the struct. First element of each
+  // item is operand ID, second element is member index in the struct.
+  SmallVector<std::pair<uint32_t, unsigned>, 0> unresolvedMemberTypes;
+
+  // The list of member types. For unresolved members, this list contains
+  // place-holder empty types that will be updated later.
+  SmallVector<Type, 4> memberTypes;
+  SmallVector<spirv::StructType::OffsetInfo, 0> offsetInfo;
+  SmallVector<spirv::StructType::MemberDecorationInfo, 0> memberDecorationsInfo;
+};
 
 /// A SPIR-V module serializer.
 ///
@@ -103,7 +143,7 @@ public:
   LogicalResult deserialize();
 
   /// Collects the final SPIR-V ModuleOp.
-  Optional<spirv::ModuleOp> collect();
+  spirv::OwningSPIRVModuleRef collect();
 
 private:
   //===--------------------------------------------------------------------===//
@@ -111,7 +151,7 @@ private:
   //===--------------------------------------------------------------------===//
 
   /// Initializes the `module` ModuleOp in this deserializer instance.
-  spirv::ModuleOp createModuleOp();
+  spirv::OwningSPIRVModuleRef createModuleOp();
 
   /// Processes SPIR-V module header in `binary`.
   LogicalResult processHeader();
@@ -184,6 +224,11 @@ private:
     return specConstMap.lookup(id);
   }
 
+  /// Gets the composite specialization constant with the given result <id>.
+  spirv::SpecConstantCompositeOp getSpecConstantComposite(uint32_t id) {
+    return specConstCompositeMap.lookup(id);
+  }
+
   /// Creates a spirv::SpecConstantOp.
   spirv::SpecConstantOp createSpecConstant(Location loc, uint32_t resultID,
                                            Attribute defaultValue);
@@ -216,6 +261,8 @@ private:
   /// registers the type into `module`.
   LogicalResult processType(spirv::Opcode opcode, ArrayRef<uint32_t> operands);
 
+  LogicalResult processOpTypePointer(ArrayRef<uint32_t> operands);
+
   LogicalResult processArrayType(ArrayRef<uint32_t> operands);
 
   LogicalResult processCooperativeMatrixType(ArrayRef<uint32_t> operands);
@@ -245,6 +292,8 @@ private:
   /// Processes a SPIR-V OpConstantComposite instruction with the given
   /// `operands`.
   LogicalResult processConstantComposite(ArrayRef<uint32_t> operands);
+
+  LogicalResult processSpecConstantComposite(ArrayRef<uint32_t> operands);
 
   /// Processes a SPIR-V OpConstantNull instruction with the given `operands`.
   LogicalResult processConstantNull(ArrayRef<uint32_t> operands);
@@ -350,8 +399,9 @@ private:
   /// Get the Value associated with a result <id>.
   ///
   /// This method materializes normal constants and inserts "casting" ops
-  /// (`spv._address_of` and `spv._reference_of`) to turn an symbol into a SSA
-  /// value for handling uses of module scope constants/variables in functions.
+  /// (`spv.mlir.addressof` and `spv.mlir.referenceof`) to turn an symbol into a
+  /// SSA value for handling uses of module scope constants/variables in
+  /// functions.
   Value getValue(uint32_t id);
 
   /// Slices the first instruction out of `binary` and returns its opcode and
@@ -376,6 +426,8 @@ private:
   /// Processes a OpUndef instruction. Adds a spv.Undef operation at the current
   /// insertion point.
   LogicalResult processUndef(ArrayRef<uint32_t> operands);
+
+  LogicalResult processTypeForwardPointer(ArrayRef<uint32_t> operands);
 
   /// Method to dispatch to the specialized deserialization function for an
   /// operation in SPIR-V dialect that is a mirror of an instruction in the
@@ -425,7 +477,7 @@ private:
   Location unknownLoc;
 
   /// The SPIR-V ModuleOp.
-  Optional<spirv::ModuleOp> module;
+  spirv::OwningSPIRVModuleRef module;
 
   /// The current function under construction.
   Optional<spirv::FuncOp> curFunction;
@@ -456,8 +508,11 @@ private:
   /// (and type) here. Later when it's used, we materialize the constant.
   DenseMap<uint32_t, std::pair<Attribute, Type>> constantMap;
 
-  // Result <id> to variable mapping.
+  // Result <id> to spec constant mapping.
   DenseMap<uint32_t, spirv::SpecConstantOp> specConstMap;
+
+  // Result <id> to composite spec constant mapping.
+  DenseMap<uint32_t, spirv::SpecConstantCompositeOp> specConstCompositeMap;
 
   // Result <id> to variable mapping.
   DenseMap<uint32_t, spirv::GlobalVariableOp> globalVariableMap;
@@ -515,6 +570,13 @@ private:
   // processed.
   SmallVector<std::pair<spirv::Opcode, ArrayRef<uint32_t>>, 4>
       deferredInstructions;
+
+  /// A list of IDs for all types forward-declared through OpTypeForwardPointer
+  /// instructions.
+  llvm::SetVector<uint32_t> typeForwardPointerIDs;
+
+  /// A list of all structs which have unresolved member types.
+  SmallVector<DeferredStructTypeInfo, 0> deferredStructTypesInfos;
 };
 } // namespace
 
@@ -556,13 +618,15 @@ LogicalResult Deserializer::deserialize() {
   return success();
 }
 
-Optional<spirv::ModuleOp> Deserializer::collect() { return module; }
+spirv::OwningSPIRVModuleRef Deserializer::collect() {
+  return std::move(module);
+}
 
 //===----------------------------------------------------------------------===//
 // Module structure
 //===----------------------------------------------------------------------===//
 
-spirv::ModuleOp Deserializer::createModuleOp() {
+spirv::OwningSPIRVModuleRef Deserializer::createModuleOp() {
   OpBuilder builder(context);
   OperationState state(unknownLoc, spirv::ModuleOp::getOperationName());
   spirv::ModuleOp::build(builder, state);
@@ -717,10 +781,14 @@ LogicalResult Deserializer::processDecoration(ArrayRef<uint32_t> words) {
     }
     typeDecorations[words[0]] = words[2];
     break;
+  case spirv::Decoration::Aliased:
   case spirv::Decoration::Block:
   case spirv::Decoration::BufferBlock:
   case spirv::Decoration::Flat:
+  case spirv::Decoration::NonReadable:
+  case spirv::Decoration::NonWritable:
   case spirv::Decoration::NoPerspective:
+  case spirv::Decoration::Restrict:
     if (words.size() != 2) {
       return emitError(unknownLoc, "OpDecoration with ")
              << decorationName << "needs a single target <id>";
@@ -800,15 +868,9 @@ LogicalResult Deserializer::processFunction(ArrayRef<uint32_t> operands) {
     return emitError(unknownLoc, "duplicate function definition/declaration");
   }
 
-  auto functionControl = spirv::symbolizeFunctionControl(operands[2]);
-  if (!functionControl) {
+  auto fnControl = spirv::symbolizeFunctionControl(operands[2]);
+  if (!fnControl) {
     return emitError(unknownLoc, "unknown Function Control: ") << operands[2];
-  }
-  if (functionControl.getValue() != spirv::FunctionControl::None) {
-    /// TODO: Handle different function controls
-    return emitError(unknownLoc, "unhandled Function Control: '")
-           << spirv::stringifyFunctionControl(functionControl.getValue())
-           << "'";
   }
 
   Type fnType = getType(operands[3]);
@@ -826,8 +888,8 @@ LogicalResult Deserializer::processFunction(ArrayRef<uint32_t> operands) {
   }
 
   std::string fnName = getFunctionSymbol(operands[1]);
-  auto funcOp =
-      opBuilder.create<spirv::FuncOp>(unknownLoc, fnName, functionType);
+  auto funcOp = opBuilder.create<spirv::FuncOp>(
+      unknownLoc, fnName, functionType, fnControl.getValue());
   curFunction = funcMap[operands[1]] = funcOp;
   LLVM_DEBUG(llvm::dbgs() << "-- start function " << fnName << " (type = "
                           << fnType << ", id = " << operands[1] << ") --\n");
@@ -1156,16 +1218,7 @@ LogicalResult Deserializer::processType(spirv::Opcode opcode,
     typeMap[operands[0]] = VectorType::get({operands[2]}, elementTy);
   } break;
   case spirv::Opcode::OpTypePointer: {
-    if (operands.size() != 3) {
-      return emitError(unknownLoc, "OpTypePointer must have two parameters");
-    }
-    auto pointeeType = getType(operands[2]);
-    if (!pointeeType) {
-      return emitError(unknownLoc, "unknown OpTypePointer pointee type <id> ")
-             << operands[2];
-    }
-    auto storageClass = static_cast<spirv::StorageClass>(operands[1]);
-    typeMap[operands[0]] = spirv::PointerType::get(pointeeType, storageClass);
+    return processOpTypePointer(operands);
   } break;
   case spirv::Opcode::OpTypeArray:
     return processArrayType(operands);
@@ -1182,6 +1235,59 @@ LogicalResult Deserializer::processType(spirv::Opcode opcode,
   default:
     return emitError(unknownLoc, "unhandled type instruction");
   }
+  return success();
+}
+
+LogicalResult Deserializer::processOpTypePointer(ArrayRef<uint32_t> operands) {
+  if (operands.size() != 3)
+    return emitError(unknownLoc, "OpTypePointer must have two parameters");
+
+  auto pointeeType = getType(operands[2]);
+  if (!pointeeType)
+    return emitError(unknownLoc, "unknown OpTypePointer pointee type <id> ")
+           << operands[2];
+
+  uint32_t typePointerID = operands[0];
+  auto storageClass = static_cast<spirv::StorageClass>(operands[1]);
+  typeMap[typePointerID] = spirv::PointerType::get(pointeeType, storageClass);
+
+  for (auto *deferredStructIt = std::begin(deferredStructTypesInfos);
+       deferredStructIt != std::end(deferredStructTypesInfos);) {
+    for (auto *unresolvedMemberIt =
+             std::begin(deferredStructIt->unresolvedMemberTypes);
+         unresolvedMemberIt !=
+         std::end(deferredStructIt->unresolvedMemberTypes);) {
+      if (unresolvedMemberIt->first == typePointerID) {
+        // The newly constructed pointer type can resolve one of the
+        // deferred struct type members; update the memberTypes list and
+        // clean the unresolvedMemberTypes list accordingly.
+        deferredStructIt->memberTypes[unresolvedMemberIt->second] =
+            typeMap[typePointerID];
+        unresolvedMemberIt =
+            deferredStructIt->unresolvedMemberTypes.erase(unresolvedMemberIt);
+      } else {
+        ++unresolvedMemberIt;
+      }
+    }
+
+    if (deferredStructIt->unresolvedMemberTypes.empty()) {
+      // All deferred struct type members are now resolved, set the struct body.
+      auto structType = deferredStructIt->deferredStructType;
+
+      assert(structType && "expected a spirv::StructType");
+      assert(structType.isIdentified() && "expected an indentified struct");
+
+      if (failed(structType.trySetBody(
+              deferredStructIt->memberTypes, deferredStructIt->offsetInfo,
+              deferredStructIt->memberDecorationsInfo)))
+        return failure();
+
+      deferredStructIt = deferredStructTypesInfos.erase(deferredStructIt);
+    } else {
+      ++deferredStructIt;
+    }
+  }
+
   return success();
 }
 
@@ -1288,22 +1394,34 @@ Deserializer::processRuntimeArrayType(ArrayRef<uint32_t> operands) {
 }
 
 LogicalResult Deserializer::processStructType(ArrayRef<uint32_t> operands) {
+  // TODO: Find a way to handle identified structs when debug info is stripped.
+
   if (operands.empty()) {
     return emitError(unknownLoc, "OpTypeStruct must have at least result <id>");
   }
+
   if (operands.size() == 1) {
     // Handle empty struct.
-    typeMap[operands[0]] = spirv::StructType::getEmpty(context);
+    typeMap[operands[0]] =
+        spirv::StructType::getEmpty(context, nameMap.lookup(operands[0]).str());
     return success();
   }
 
-  SmallVector<Type, 0> memberTypes;
+  // First element is operand ID, second element is member index in the struct.
+  SmallVector<std::pair<uint32_t, unsigned>, 0> unresolvedMemberTypes;
+  SmallVector<Type, 4> memberTypes;
+
   for (auto op : llvm::drop_begin(operands, 1)) {
     Type memberType = getType(op);
-    if (!memberType) {
+    bool typeForwardPtr = (typeForwardPointerIDs.count(op) != 0);
+
+    if (!memberType && !typeForwardPtr)
       return emitError(unknownLoc, "OpTypeStruct references undefined <id> ")
              << op;
-    }
+
+    if (!memberType)
+      unresolvedMemberTypes.emplace_back(op, memberTypes.size());
+
     memberTypes.push_back(memberType);
   }
 
@@ -1335,8 +1453,28 @@ LogicalResult Deserializer::processStructType(ArrayRef<uint32_t> operands) {
       }
     }
   }
-  typeMap[operands[0]] =
-      spirv::StructType::get(memberTypes, offsetInfo, memberDecorationsInfo);
+
+  uint32_t structID = operands[0];
+  std::string structIdentifier = nameMap.lookup(structID).str();
+
+  if (structIdentifier.empty()) {
+    assert(unresolvedMemberTypes.empty() &&
+           "didn't expect unresolved member types");
+    typeMap[structID] =
+        spirv::StructType::get(memberTypes, offsetInfo, memberDecorationsInfo);
+  } else {
+    auto structTy = spirv::StructType::getIdentified(context, structIdentifier);
+    typeMap[structID] = structTy;
+
+    if (!unresolvedMemberTypes.empty())
+      deferredStructTypesInfos.push_back({structTy, unresolvedMemberTypes,
+                                          memberTypes, offsetInfo,
+                                          memberDecorationsInfo});
+    else if (failed(structTy.trySetBody(memberTypes, offsetInfo,
+                                        memberDecorationsInfo)))
+      return failure();
+  }
+
   // TODO: Update StructType to have member name as attribute as
   // well.
   return success();
@@ -1547,6 +1685,41 @@ Deserializer::processConstantComposite(ArrayRef<uint32_t> operands) {
   return success();
 }
 
+LogicalResult
+Deserializer::processSpecConstantComposite(ArrayRef<uint32_t> operands) {
+  if (operands.size() < 2) {
+    return emitError(unknownLoc,
+                     "OpConstantComposite must have type <id> and result <id>");
+  }
+  if (operands.size() < 3) {
+    return emitError(unknownLoc,
+                     "OpConstantComposite must have at least 1 parameter");
+  }
+
+  Type resultType = getType(operands[0]);
+  if (!resultType) {
+    return emitError(unknownLoc, "undefined result type from <id> ")
+           << operands[0];
+  }
+
+  auto resultID = operands[1];
+  auto symName = opBuilder.getStringAttr(getSpecConstantSymbol(resultID));
+
+  SmallVector<Attribute, 4> elements;
+  elements.reserve(operands.size() - 2);
+  for (unsigned i = 2, e = operands.size(); i < e; ++i) {
+    auto elementInfo = getSpecConstant(operands[i]);
+    elements.push_back(opBuilder.getSymbolRefAttr(elementInfo));
+  }
+
+  auto op = opBuilder.create<spirv::SpecConstantCompositeOp>(
+      unknownLoc, TypeAttr::get(resultType), symName,
+      opBuilder.getArrayAttr(elements));
+  specConstCompositeMap[resultID] = op;
+
+  return success();
+}
+
 LogicalResult Deserializer::processConstantNull(ArrayRef<uint32_t> operands) {
   if (operands.size() != 2) {
     return emitError(unknownLoc,
@@ -1679,16 +1852,12 @@ LogicalResult Deserializer::processSelectionMerge(ArrayRef<uint32_t> operands) {
         "OpSelectionMerge must specify merge target and selection control");
   }
 
-  if (static_cast<uint32_t>(spirv::SelectionControl::None) != operands[1]) {
-    return emitError(unknownLoc,
-                     "unimplmented OpSelectionMerge selection control: ")
-           << operands[2];
-  }
-
   auto *mergeBlock = getOrCreateBlock(operands[0]);
   auto loc = createFileLineColLoc(opBuilder);
+  auto selectionControl = operands[1];
 
-  if (!blockMergeInfo.try_emplace(curBlock, loc, mergeBlock).second) {
+  if (!blockMergeInfo.try_emplace(curBlock, loc, selectionControl, mergeBlock)
+           .second) {
     return emitError(
         unknownLoc,
         "a block cannot have more than one OpSelectionMerge instruction");
@@ -1707,16 +1876,13 @@ LogicalResult Deserializer::processLoopMerge(ArrayRef<uint32_t> operands) {
                                  "continue target and loop control");
   }
 
-  if (static_cast<uint32_t>(spirv::LoopControl::None) != operands[2]) {
-    return emitError(unknownLoc, "unimplmented OpLoopMerge loop control: ")
-           << operands[2];
-  }
-
   auto *mergeBlock = getOrCreateBlock(operands[0]);
   auto *continueBlock = getOrCreateBlock(operands[1]);
   auto loc = createFileLineColLoc(opBuilder);
+  uint32_t loopControl = operands[2];
 
-  if (!blockMergeInfo.try_emplace(curBlock, loc, mergeBlock, continueBlock)
+  if (!blockMergeInfo
+           .try_emplace(curBlock, loc, loopControl, mergeBlock, continueBlock)
            .second) {
     return emitError(
         unknownLoc,
@@ -1769,25 +1935,27 @@ public:
   /// the `headerBlock` will be redirected to the `mergeBlock`.
   /// This method will also update `mergeInfo` by remapping all blocks inside to
   /// the newly cloned ones inside structured control flow op's regions.
-  static LogicalResult structurize(Location loc, BlockMergeInfoMap &mergeInfo,
+  static LogicalResult structurize(Location loc, uint32_t control,
+                                   BlockMergeInfoMap &mergeInfo,
                                    Block *headerBlock, Block *mergeBlock,
                                    Block *continueBlock) {
-    return ControlFlowStructurizer(loc, mergeInfo, headerBlock, mergeBlock,
-                                   continueBlock)
+    return ControlFlowStructurizer(loc, control, mergeInfo, headerBlock,
+                                   mergeBlock, continueBlock)
         .structurizeImpl();
   }
 
 private:
-  ControlFlowStructurizer(Location loc, BlockMergeInfoMap &mergeInfo,
-                          Block *header, Block *merge, Block *cont)
-      : location(loc), blockMergeInfo(mergeInfo), headerBlock(header),
-        mergeBlock(merge), continueBlock(cont) {}
+  ControlFlowStructurizer(Location loc, uint32_t control,
+                          BlockMergeInfoMap &mergeInfo, Block *header,
+                          Block *merge, Block *cont)
+      : location(loc), control(control), blockMergeInfo(mergeInfo),
+        headerBlock(header), mergeBlock(merge), continueBlock(cont) {}
 
   /// Creates a new spv.selection op at the beginning of the `mergeBlock`.
-  spirv::SelectionOp createSelectionOp();
+  spirv::SelectionOp createSelectionOp(uint32_t selectionControl);
 
   /// Creates a new spv.loop op at the beginning of the `mergeBlock`.
-  spirv::LoopOp createLoopOp();
+  spirv::LoopOp createLoopOp(uint32_t loopControl);
 
   /// Collects all blocks reachable from `headerBlock` except `mergeBlock`.
   void collectBlocksInConstruct();
@@ -1795,6 +1963,7 @@ private:
   LogicalResult structurizeImpl();
 
   Location location;
+  uint32_t control;
 
   BlockMergeInfoMap &blockMergeInfo;
 
@@ -1806,26 +1975,26 @@ private:
 };
 } // namespace
 
-spirv::SelectionOp ControlFlowStructurizer::createSelectionOp() {
+spirv::SelectionOp
+ControlFlowStructurizer::createSelectionOp(uint32_t selectionControl) {
   // Create a builder and set the insertion point to the beginning of the
   // merge block so that the newly created SelectionOp will be inserted there.
   OpBuilder builder(&mergeBlock->front());
 
-  auto control = builder.getI32IntegerAttr(
-      static_cast<uint32_t>(spirv::SelectionControl::None));
+  auto control = builder.getI32IntegerAttr(selectionControl);
   auto selectionOp = builder.create<spirv::SelectionOp>(location, control);
   selectionOp.addMergeBlock();
 
   return selectionOp;
 }
 
-spirv::LoopOp ControlFlowStructurizer::createLoopOp() {
+spirv::LoopOp ControlFlowStructurizer::createLoopOp(uint32_t loopControl) {
   // Create a builder and set the insertion point to the beginning of the
   // merge block so that the newly created LoopOp will be inserted there.
   OpBuilder builder(&mergeBlock->front());
 
-  // TODO: handle loop control properly
-  auto loopOp = builder.create<spirv::LoopOp>(location);
+  auto control = builder.getI32IntegerAttr(loopControl);
+  auto loopOp = builder.create<spirv::LoopOp>(location, control);
   loopOp.addEntryAndMergeBlock();
 
   return loopOp;
@@ -1850,10 +2019,10 @@ LogicalResult ControlFlowStructurizer::structurizeImpl() {
   Operation *op = nullptr;
   bool isLoop = continueBlock != nullptr;
   if (isLoop) {
-    if (auto loopOp = createLoopOp())
+    if (auto loopOp = createLoopOp(control))
       op = loopOp.getOperation();
   } else {
-    if (auto selectionOp = createSelectionOp())
+    if (auto selectionOp = createSelectionOp(control))
       op = selectionOp.getOperation();
   }
   if (!op)
@@ -1912,10 +2081,10 @@ LogicalResult ControlFlowStructurizer::structurizeImpl() {
   // Go through all ops and remap the operands.
   auto remapOperands = [&](Operation *op) {
     for (auto &operand : op->getOpOperands())
-      if (auto mappedOp = mapper.lookupOrNull(operand.get()))
+      if (Value mappedOp = mapper.lookupOrNull(operand.get()))
         operand.set(mappedOp);
     for (auto &succOp : op->getBlockOperands())
-      if (auto mappedOp = mapper.lookupOrNull(succOp.get()))
+      if (Block *mappedOp = mapper.lookupOrNull(succOp.get()))
         succOp.set(mappedOp);
   };
   for (auto &block : body) {
@@ -1990,7 +2159,8 @@ LogicalResult ControlFlowStructurizer::structurizeImpl() {
       // The iterator should be erased before adding a new entry into
       // blockMergeInfo to avoid iterator invalidation.
       blockMergeInfo.erase(it);
-      blockMergeInfo.try_emplace(newHeader, loc, newMerge, newContinue);
+      blockMergeInfo.try_emplace(newHeader, loc, it->second.control, newMerge,
+                                 newContinue);
     }
 
     // The structured selection/loop's entry block does not have arguments.
@@ -2094,9 +2264,9 @@ LogicalResult Deserializer::structurizeControlFlow() {
     // Erase this case before calling into structurizer, who will update
     // blockMergeInfo.
     blockMergeInfo.erase(blockMergeInfo.begin());
-    if (failed(ControlFlowStructurizer::structurize(mergeInfo.loc,
-                                                    blockMergeInfo, headerBlock,
-                                                    mergeBlock, continueBlock)))
+    if (failed(ControlFlowStructurizer::structurize(
+            mergeInfo.loc, mergeInfo.control, blockMergeInfo, headerBlock,
+            mergeBlock, continueBlock)))
       return failure();
   }
 
@@ -2175,6 +2345,12 @@ Value Deserializer::getValue(uint32_t id) {
     auto referenceOfOp = opBuilder.create<spirv::ReferenceOfOp>(
         unknownLoc, constOp.default_value().getType(),
         opBuilder.getSymbolRefAttr(constOp.getOperation()));
+    return referenceOfOp.reference();
+  }
+  if (auto constCompositeOp = getSpecConstantComposite(id)) {
+    auto referenceOfOp = opBuilder.create<spirv::ReferenceOfOp>(
+        unknownLoc, constCompositeOp.type(),
+        opBuilder.getSymbolRefAttr(constCompositeOp.getOperation()));
     return referenceOfOp.reference();
   }
   if (auto undef = getUndefType(id)) {
@@ -2280,6 +2456,8 @@ LogicalResult Deserializer::processInstruction(spirv::Opcode opcode,
     return processConstant(operands, /*isSpec=*/true);
   case spirv::Opcode::OpConstantComposite:
     return processConstantComposite(operands);
+  case spirv::Opcode::OpSpecConstantComposite:
+    return processSpecConstantComposite(operands);
   case spirv::Opcode::OpConstantTrue:
     return processConstantBool(/*isTrue=*/true, operands, /*isSpec=*/false);
   case spirv::Opcode::OpSpecConstantTrue:
@@ -2310,6 +2488,8 @@ LogicalResult Deserializer::processInstruction(spirv::Opcode opcode,
     return processPhi(operands);
   case spirv::Opcode::OpUndef:
     return processUndef(operands);
+  case spirv::Opcode::OpTypeForwardPointer:
+    return processTypeForwardPointer(operands);
   default:
     break;
   }
@@ -2325,6 +2505,19 @@ LogicalResult Deserializer::processUndef(ArrayRef<uint32_t> operands) {
     return emitError(unknownLoc, "unknown type <id> with OpUndef instruction");
   }
   undefMap[operands[1]] = type;
+  return success();
+}
+
+LogicalResult
+Deserializer::processTypeForwardPointer(ArrayRef<uint32_t> operands) {
+  if (operands.size() != 2)
+    return emitError(unknownLoc,
+                     "OpTypeForwardPointer instruction must have two operands");
+
+  typeForwardPointerIDs.insert(operands[0]);
+  // TODO: Use the 2nd operand (Storage Class) to validate the OpTypePointer
+  // instruction that defines the actual type.
+
   return success();
 }
 
@@ -2354,7 +2547,7 @@ Deserializer::processOp<spirv::EntryPointOp>(ArrayRef<uint32_t> words) {
     return emitError(unknownLoc,
                      "missing Execution Model specification in OpEntryPoint");
   }
-  auto exec_model = opBuilder.getI32IntegerAttr(words[wordIndex++]);
+  auto execModel = opBuilder.getI32IntegerAttr(words[wordIndex++]);
   if (wordIndex >= words.size()) {
     return emitError(unknownLoc, "missing <id> in OpEntryPoint");
   }
@@ -2382,7 +2575,7 @@ Deserializer::processOp<spirv::EntryPointOp>(ArrayRef<uint32_t> words) {
     interface.push_back(opBuilder.getSymbolRefAttr(arg.getOperation()));
     wordIndex++;
   }
-  opBuilder.create<spirv::EntryPointOp>(unknownLoc, exec_model,
+  opBuilder.create<spirv::EntryPointOp>(unknownLoc, execModel,
                                         opBuilder.getSymbolRefAttr(fnName),
                                         opBuilder.getArrayAttr(interface));
   return success();
@@ -2594,5 +2787,5 @@ spirv::OwningSPIRVModuleRef spirv::deserialize(ArrayRef<uint32_t> binary,
   if (failed(deserializer.deserialize()))
     return nullptr;
 
-  return deserializer.collect().getValueOr(nullptr);
+  return deserializer.collect();
 }

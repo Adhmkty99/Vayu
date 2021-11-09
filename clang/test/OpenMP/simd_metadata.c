@@ -5,7 +5,6 @@
 // RUN: %clang_cc1 -fopenmp -triple i386-unknown-unknown -target-feature +avx -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=X86-AVX
 // RUN: %clang_cc1 -fopenmp -triple i386-unknown-unknown -target-feature +avx512f -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=X86-AVX512
 // RUN: %clang_cc1 -fopenmp -triple powerpc64-unknown-unknown -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=PPC
-// RUN: %clang_cc1 -fopenmp -triple powerpc64-unknown-unknown -target-abi elfv1-qpx -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=PPC-QPX
 
 // RUN: %clang_cc1 -fopenmp-simd -triple x86_64-unknown-unknown -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=X86
 // RUN: %clang_cc1 -fopenmp-simd -triple x86_64-unknown-unknown -target-feature +avx -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=X86-AVX
@@ -14,7 +13,6 @@
 // RUN: %clang_cc1 -fopenmp-simd -triple i386-unknown-unknown -target-feature +avx -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=X86-AVX
 // RUN: %clang_cc1 -fopenmp-simd -triple i386-unknown-unknown -target-feature +avx512f -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=X86-AVX512
 // RUN: %clang_cc1 -fopenmp-simd -triple powerpc64-unknown-unknown -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=PPC
-// RUN: %clang_cc1 -fopenmp-simd -triple powerpc64-unknown-unknown -target-abi elfv1-qpx -emit-llvm %s -o - | FileCheck %s -check-prefix=CHECK -check-prefix=PPC-QPX
 
 void h1(float *c, float *a, double b[], int size)
 {
@@ -27,12 +25,21 @@ void h1(float *c, float *a, double b[], int size)
 // CHECK-NEXT:    call void @llvm.assume(i1 [[C_MASKCOND]])
 // CHECK:         [[A_PTRINT:%.+]] = ptrtoint
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 // X86-NEXT:     [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 15
 // X86-AVX-NEXT: [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 31
 // X86-AVX512-NEXT: [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 63
 // PPC-NEXT:     [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 15
 // PPC-QPX-NEXT: [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 15
+=======
+  // X86-NEXT:       call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 16) ]
+  // X86-AVX-NEXT:   call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 32) ]
+  // X86-AVX512-NEXT:call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 64) ]
+  // PPC-NEXT:       call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 16) ]
+  // CHECK-NEXT:     load
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 // CHECK-NEXT:    [[A_MASKCOND:%.+]] = icmp eq i{{[0-9]+}} [[A_MASKEDPTR]], 0
 // CHECK-NEXT:    call void @llvm.assume(i1 [[A_MASKCOND]])
 // CHECK:         [[B_PTRINT:%.+]] = ptrtoint
@@ -45,6 +52,12 @@ void h1(float *c, float *a, double b[], int size)
 
 // CHECK-NEXT:    [[B_MASKCOND:%.+]] = icmp eq i{{[0-9]+}} [[B_MASKEDPTR]], 0
 // CHECK-NEXT:    call void @llvm.assume(i1 [[B_MASKCOND]])
+=======
+  // X86-NEXT:       call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 16) ]
+  // X86-AVX-NEXT:   call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 32) ]
+  // X86-AVX512-NEXT:call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 64) ]
+  // PPC-NEXT:       call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 16) ]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
   for (int i = 0; i < size; ++i) {
     c[i] = a[i] * a[i] + b[i] * b[t];
     ++t;
@@ -58,12 +71,21 @@ void h1(float *c, float *a, double b[], int size)
 // CHECK-NEXT:    call void @llvm.assume(i1 [[C_MASKCOND]])
 // CHECK:         [[A_PTRINT:%.+]] = ptrtoint
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 // X86-NEXT:     [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 15
 // X86-AVX-NEXT: [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 31
 // X86-AVX512-NEXT: [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 63
 // PPC-NEXT:     [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 15
 // PPC-QPX-NEXT: [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 15
+=======
+  // X86-NEXT:       call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 16) ]
+  // X86-AVX-NEXT:   call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 32) ]
+  // X86-AVX512-NEXT:call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 64) ]
+  // PPC-NEXT:       call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 16) ]
+  // CHECK-NEXT:     load
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 // CHECK-NEXT:    [[A_MASKCOND:%.+]] = icmp eq i{{[0-9]+}} [[A_MASKEDPTR]], 0
 // CHECK-NEXT:    call void @llvm.assume(i1 [[A_MASKCOND]])
 // CHECK:         [[B_PTRINT:%.+]] = ptrtoint
@@ -76,6 +98,12 @@ void h1(float *c, float *a, double b[], int size)
 
 // CHECK-NEXT:    [[B_MASKCOND:%.+]] = icmp eq i{{[0-9]+}} [[B_MASKEDPTR]], 0
 // CHECK-NEXT:    call void @llvm.assume(i1 [[B_MASKCOND]])
+=======
+  // X86-NEXT:       call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 16) ]
+  // X86-AVX-NEXT:   call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 32) ]
+  // X86-AVX512-NEXT:call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 64) ]
+  // PPC-NEXT:       call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 16) ]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
   for (int i = 0; i < size; ++i) {
     c[i] = a[i] * a[i] + b[i] * b[t];
     ++t;
@@ -89,12 +117,21 @@ void h1(float *c, float *a, double b[], int size)
 // CHECK-NEXT:    call void @llvm.assume(i1 [[C_MASKCOND]])
 // CHECK:         [[A_PTRINT:%.+]] = ptrtoint
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 // X86-NEXT:     [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 15
 // X86-AVX-NEXT: [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 31
 // X86-AVX512-NEXT: [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 63
 // PPC-NEXT:     [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 15
 // PPC-QPX-NEXT: [[A_MASKEDPTR:%.+]] = and i{{[0-9]+}} [[A_PTRINT]], 15
+=======
+  // X86-NEXT:       call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 16) ]
+  // X86-AVX-NEXT:   call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 32) ]
+  // X86-AVX512-NEXT:call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 64) ]
+  // PPC-NEXT:       call void @llvm.assume(i1 true) [ "align"(float* [[PTR5:%.*]], {{i64|i32}} 16) ]
+  // CHECK-NEXT:     load
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 // CHECK-NEXT:    [[A_MASKCOND:%.+]] = icmp eq i{{[0-9]+}} [[A_MASKEDPTR]], 0
 // CHECK-NEXT:    call void @llvm.assume(i1 [[A_MASKCOND]])
 // CHECK:         [[B_PTRINT:%.+]] = ptrtoint
@@ -107,6 +144,12 @@ void h1(float *c, float *a, double b[], int size)
 
 // CHECK-NEXT:    [[B_MASKCOND:%.+]] = icmp eq i{{[0-9]+}} [[B_MASKEDPTR]], 0
 // CHECK-NEXT:    call void @llvm.assume(i1 [[B_MASKCOND]])
+=======
+  // X86-NEXT:       call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 16) ]
+  // X86-AVX-NEXT:   call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 32) ]
+  // X86-AVX512-NEXT:call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 64) ]
+  // PPC-NEXT:       call void @llvm.assume(i1 true) [ "align"(double* [[PTR6:%.*]], {{i64|i32}} 16) ]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
   for (int i = 0; i < size; ++i) {
     c[i] = a[i] * a[i] + b[i] * b[t];
     ++t;
@@ -137,7 +180,8 @@ void h3(float *c, float *a, float *b, int size)
     }
 // CHECK: store float {{.+}}, float* {{.+}}, align {{.+}}, !llvm.access.group ![[ACCESS_GROUP_13:[0-9]+]]
   }
-// CHECK: br label %{{.+}}, !llvm.loop [[LOOP_H3_HEADER:![0-9]+]]
+  // CHECK: br label %{{.+}}, !llvm.loop [[LOOP_H3_HEADER_INNER:![0-9]+]]
+  // CHECK: br label %{{.+}}, !llvm.loop [[LOOP_H3_HEADER:![0-9]+]]
 }
 
 // Metadata for h1:

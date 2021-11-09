@@ -31,11 +31,13 @@ protected:
   bool HasD;
   bool HasC;
   bool HasB;
+  bool HasV;
+  bool HasZfh;
 
 public:
   RISCVTargetInfo(const llvm::Triple &Triple, const TargetOptions &)
-      : TargetInfo(Triple), HasM(false), HasA(false), HasF(false),
-        HasD(false), HasC(false), HasB(false) {
+      : TargetInfo(Triple), HasM(false), HasA(false), HasF(false), HasD(false),
+        HasC(false), HasB(false), HasV(false), HasZfh(false) {
     LongDoubleWidth = 128;
     LongDoubleAlign = 128;
     LongDoubleFormat = &llvm::APFloat::IEEEquad();
@@ -106,6 +108,11 @@ public:
 
   bool isValidCPUName(StringRef Name) const override;
   void fillValidCPUList(SmallVectorImpl<StringRef> &Values) const override;
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+=======
+  bool isValidTuneCPUName(StringRef Name) const override;
+  void fillValidTuneCPUList(SmallVectorImpl<StringRef> &Values) const override;
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
   void setMaxAtomicWidth() override {
     MaxAtomicPromoteWidth = 128;
@@ -133,6 +140,11 @@ public:
 
   bool isValidCPUName(StringRef Name) const override;
   void fillValidCPUList(SmallVectorImpl<StringRef> &Values) const override;
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+=======
+  bool isValidTuneCPUName(StringRef Name) const override;
+  void fillValidTuneCPUList(SmallVectorImpl<StringRef> &Values) const override;
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
   void setMaxAtomicWidth() override {
     MaxAtomicPromoteWidth = 128;

@@ -1,3 +1,4 @@
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; RUN: opt < %s -constprop -S | FileCheck %s
 
 ; Overflow on a float to int or int to float conversion is undefined (PR21130).
@@ -61,3 +62,5 @@ define <3 x half> @nan_v3f64_trunc() {
   %f = fptrunc <3 x double> <double 0x7FF0020000000000, double 0x7FF003FFFFFFFFFF, double 0x7FF8000000000001> to <3 x half>
   ret <3 x half> %f
 }
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)

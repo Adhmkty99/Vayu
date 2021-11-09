@@ -88,8 +88,8 @@ define dso_local void @test_trunc(%struct.Foo* %f, i32* %i) {
 ;
 ; CHECK-O0-LABEL: test_trunc:
 ; CHECK-O0:       # %bb.0: # %entry
-; CHECK-O0-NEXT:    # kill: def $edx killed $edx killed $rdx
-; CHECK-O0-NEXT:    movl %edx, (%rcx)
+; CHECK-O0-NEXT:    movl %edx, %eax
+; CHECK-O0-NEXT:    movl %eax, (%rcx)
 ; CHECK-O0-NEXT:    jmp use_foo # TAILCALL
 entry:
   %0 = addrspacecast i32* %i to i32 addrspace(270)*
@@ -135,8 +135,11 @@ define dso_local void @test_null_arg(%struct.Foo* %f) {
 ; ALL-NEXT:    nop
 ; ALL-NEXT:    addq $40, %rsp
 ; ALL-NEXT:    retq
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; ALL-NEXT:    .seh_handlerdata
 ; ALL-NEXT:    .text
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; ALL-NEXT:    .seh_endproc
 entry:
   call void @test_noop1(%struct.Foo* %f, i32 addrspace(270)* null)
@@ -152,8 +155,8 @@ define void @test_unrecognized(%struct.Foo* %f, i32 addrspace(14)* %i) {
 ;
 ; CHECK-O0-LABEL: test_unrecognized:
 ; CHECK-O0:       # %bb.0: # %entry
-; CHECK-O0-NEXT:    # kill: def $edx killed $edx killed $rdx
-; CHECK-O0-NEXT:    movl %edx, (%rcx)
+; CHECK-O0-NEXT:    movl %edx, %eax
+; CHECK-O0-NEXT:    movl %eax, (%rcx)
 ; CHECK-O0-NEXT:    jmp use_foo # TAILCALL
 entry:
   %0 = addrspacecast i32 addrspace(14)* %i to i32 addrspace(270)*

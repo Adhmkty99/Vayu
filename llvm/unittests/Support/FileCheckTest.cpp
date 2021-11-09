@@ -1,3 +1,4 @@
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 //===- llvm/unittest/Support/FileCheckTest.cpp - FileCheck tests --===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -1620,3 +1621,5 @@ TEST_F(FileCheckTest, FileCheckContext) {
   EXPECT_EQ(cantFail(ExpressionVal->getSignedValue()), 36);
 }
 } // namespace
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)

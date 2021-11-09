@@ -966,13 +966,15 @@ int FTN_STDCALL KMP_EXPAND_NAME(FTN_IS_INITIAL_DEVICE)(void) {
 int FTN_STDCALL FTN_GET_INITIAL_DEVICE(void) KMP_WEAK_ATTRIBUTE_EXTERNAL;
 int FTN_STDCALL FTN_GET_INITIAL_DEVICE(void) {
 #if KMP_MIC || KMP_OS_DARWIN || KMP_OS_WINDOWS || defined(KMP_STUB)
-  return KMP_HOST_DEVICE;
+  // same as omp_get_num_devices()
+  return 0;
 #else
   int (*fptr)();
   if ((*(void **)(&fptr) = dlsym(RTLD_NEXT, "omp_get_initial_device"))) {
     return (*fptr)();
   } else { // liboffload & libomptarget don't exist
-    return KMP_HOST_DEVICE;
+    // same as omp_get_num_devices()
+    return 0;
   }
 #endif
 }
@@ -1319,14 +1321,18 @@ int FTN_STDCALL KMP_EXPAND_NAME(FTN_GET_MAX_TASK_PRIORITY)(void) {
 // loaded, we assume we are on the host and return KMP_HOST_DEVICE.
 // Compiler/libomptarget will handle this if called inside target.
 int FTN_STDCALL FTN_GET_DEVICE_NUM(void) KMP_WEAK_ATTRIBUTE_EXTERNAL;
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 int FTN_STDCALL FTN_GET_DEVICE_NUM(void) { return KMP_HOST_DEVICE; }
+=======
+int FTN_STDCALL FTN_GET_DEVICE_NUM(void) { return FTN_GET_INITIAL_DEVICE(); }
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 // Compiler will ensure that this is only called from host in sequential region
 int FTN_STDCALL FTN_PAUSE_RESOURCE(kmp_pause_status_t kind, int device_num) {
 #ifdef KMP_STUB
   return 1; // just fail
 #else
-  if (device_num == KMP_HOST_DEVICE)
+  if (device_num == FTN_GET_INITIAL_DEVICE())
     return __kmpc_pause_resource(kind);
   else {
 #if !KMP_OS_WINDOWS

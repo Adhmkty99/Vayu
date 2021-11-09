@@ -266,11 +266,19 @@ public:
 
   /// Set the exception handling to be used with constrained floating point
   void setDefaultConstrainedExcept(fp::ExceptionBehavior NewExcept) {
+#ifndef NDEBUG
+    Optional<StringRef> ExceptStr = ExceptionBehaviorToStr(NewExcept);
+    assert(ExceptStr.hasValue() && "Garbage strict exception behavior!");
+#endif
     DefaultConstrainedExcept = NewExcept;
   }
 
   /// Set the rounding mode handling to be used with constrained floating point
   void setDefaultConstrainedRounding(RoundingMode NewRounding) {
+#ifndef NDEBUG
+    Optional<StringRef> RoundingStr = RoundingModeToStr(NewRounding);
+    assert(RoundingStr.hasValue() && "Garbage strict rounding mode!");
+#endif
     DefaultConstrainedRounding = NewRounding;
   }
 
@@ -294,8 +302,7 @@ public:
   }
 
   void setConstrainedFPCallAttr(CallInst *I) {
-    if (!I->hasFnAttr(Attribute::StrictFP))
-      I->addAttribute(AttributeList::FunctionIndex, Attribute::StrictFP);
+    I->addAttribute(AttributeList::FunctionIndex, Attribute::StrictFP);
   }
 
   void setDefaultOperandBundles(ArrayRef<OperandBundleDef> OpBundles) {
@@ -574,12 +581,22 @@ public:
                         NoAliasTag);
   }
 
+  CallInst *CreateMemTransferInst(
+      Intrinsic::ID IntrID, Value *Dst, MaybeAlign DstAlign, Value *Src,
+      MaybeAlign SrcAlign, Value *Size, bool isVolatile = false,
+      MDNode *TBAATag = nullptr, MDNode *TBAAStructTag = nullptr,
+      MDNode *ScopeTag = nullptr, MDNode *NoAliasTag = nullptr);
+
   CallInst *CreateMemCpy(Value *Dst, MaybeAlign DstAlign, Value *Src,
                          MaybeAlign SrcAlign, Value *Size,
                          bool isVolatile = false, MDNode *TBAATag = nullptr,
                          MDNode *TBAAStructTag = nullptr,
                          MDNode *ScopeTag = nullptr,
-                         MDNode *NoAliasTag = nullptr);
+                         MDNode *NoAliasTag = nullptr) {
+    return CreateMemTransferInst(Intrinsic::memcpy, Dst, DstAlign, Src,
+                                 SrcAlign, Size, isVolatile, TBAATag,
+                                 TBAAStructTag, ScopeTag, NoAliasTag);
+  }
 
   CallInst *CreateMemCpyInline(Value *Dst, MaybeAlign DstAlign, Value *Src,
                                MaybeAlign SrcAlign, Value *Size);
@@ -801,7 +818,7 @@ public:
   /// start a new statepoint sequence.
   CallInst *CreateGCStatepointCall(uint64_t ID, uint32_t NumPatchBytes,
                                    Value *ActualCallee, uint32_t Flags,
-                                   ArrayRef<Use> CallArgs,
+                                   ArrayRef<Value *> CallArgs,
                                    Optional<ArrayRef<Use>> TransitionArgs,
                                    Optional<ArrayRef<Use>> DeoptArgs,
                                    ArrayRef<Value *> GCArgs,
@@ -830,7 +847,7 @@ public:
   InvokeInst *CreateGCStatepointInvoke(
       uint64_t ID, uint32_t NumPatchBytes, Value *ActualInvokee,
       BasicBlock *NormalDest, BasicBlock *UnwindDest, uint32_t Flags,
-      ArrayRef<Use> InvokeArgs, Optional<ArrayRef<Use>> TransitionArgs,
+      ArrayRef<Value *> InvokeArgs, Optional<ArrayRef<Use>> TransitionArgs,
       Optional<ArrayRef<Use>> DeoptArgs, ArrayRef<Value *> GCArgs,
       const Twine &Name = "");
 
@@ -857,6 +874,10 @@ public:
                              int DerivedOffset,
                              Type *ResultType,
                              const Twine &Name = "");
+
+  /// Create a call to llvm.vscale, multiplied by \p Scaling. The type of VScale
+  /// will be the same type as that of \p Scaling.
+  Value *CreateVScale(Constant *Scaling, const Twine &Name = "");
 
   /// Create a call to intrinsic \p ID with 1 operand which is mangled on its
   /// type.
@@ -2428,6 +2449,13 @@ public:
     return Insert(new ShuffleVectorInst(V1, V2, Mask), Name);
   }
 
+  /// Create a unary shuffle. The second vector operand of the IR instruction
+  /// is undefined.
+  Value *CreateShuffleVector(Value *V, ArrayRef<int> Mask,
+                             const Twine &Name = "") {
+    return CreateShuffleVector(V, UndefValue::get(V->getType()), Mask, Name);
+  }
+
   Value *CreateExtractValue(Value *Agg,
                             ArrayRef<unsigned> Idxs,
                             const Twine &Name = "") {
@@ -2491,6 +2519,10 @@ public:
   /// Return a vector value that contains \arg V broadcasted to \p
   /// NumElts elements.
   Value *CreateVectorSplat(unsigned NumElts, Value *V, const Twine &Name = "");
+
+  /// Return a vector value that contains \arg V broadcasted to \p
+  /// EC elements.
+  Value *CreateVectorSplat(ElementCount EC, Value *V, const Twine &Name = "");
 
   /// Return a value that has been extracted from a larger integer type.
   Value *CreateExtractInteger(const DataLayout &DL, Value *From,

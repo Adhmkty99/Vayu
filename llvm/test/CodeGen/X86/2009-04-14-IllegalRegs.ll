@@ -20,18 +20,35 @@ define i32 @z() nounwind ssp {
 ; CHECK-NEXT:    movb %cl, {{[0-9]+}}(%esp)
 ; CHECK-NEXT:    movb $15, {{[0-9]+}}(%esp)
 ; CHECK-NEXT:    movl %esp, %eax
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK-NEXT:    movl $8, %edx
 ; CHECK-NEXT:    leal {{[0-9]+}}(%esp), %esi
 ; CHECK-NEXT:    movl %edx, %ecx
-; CHECK-NEXT:    movl %eax, %edi
+=======
+; CHECK-NEXT:    movl $8, %ecx
+; CHECK-NEXT:    movl %ecx, {{[-0-9]+}}(%e{{[sb]}}p) ## 4-byte Spill
+; CHECK-NEXT:    leal {{[0-9]+}}(%esp), %esi
 ; CHECK-NEXT:    movl %esi, {{[-0-9]+}}(%e{{[sb]}}p) ## 4-byte Spill
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; CHECK-NEXT:    movl %eax, %edi
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; CHECK-NEXT:    movl %esi, {{[-0-9]+}}(%e{{[sb]}}p) ## 4-byte Spill
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; CHECK-NEXT:    rep;movsl (%esi), %es:(%edi)
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK-NEXT:    movl %eax, %ecx
 ; CHECK-NEXT:    addl $36, %ecx
 ; CHECK-NEXT:    movl %ecx, {{[-0-9]+}}(%e{{[sb]}}p) ## 4-byte Spill
 ; CHECK-NEXT:    movl %edx, %ecx
 ; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %edi ## 4-byte Reload
 ; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %esi ## 4-byte Reload
+=======
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %esi ## 4-byte Reload
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %ecx ## 4-byte Reload
+; CHECK-NEXT:    movl %eax, %edi
+; CHECK-NEXT:    addl $36, %edi
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; CHECK-NEXT:    rep;movsl (%esi), %es:(%edi)
 ; CHECK-NEXT:    movb {{[0-9]+}}(%esp), %bl
 ; CHECK-NEXT:    movb %bl, 32(%eax)
@@ -42,11 +59,11 @@ define i32 @z() nounwind ssp {
 ; CHECK-NEXT:    movl %eax, {{[0-9]+}}(%esp)
 ; CHECK-NEXT:  ## %bb.1: ## %return
 ; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %eax
-; CHECK-NEXT:    movl L___stack_chk_guard$non_lazy_ptr, %ecx
-; CHECK-NEXT:    movl (%ecx), %ecx
-; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %edx
-; CHECK-NEXT:    cmpl %edx, %ecx
 ; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) ## 4-byte Spill
+; CHECK-NEXT:    movl L___stack_chk_guard$non_lazy_ptr, %eax
+; CHECK-NEXT:    movl (%eax), %eax
+; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %ecx
+; CHECK-NEXT:    cmpl %ecx, %eax
 ; CHECK-NEXT:    jne LBB0_3
 ; CHECK-NEXT:  ## %bb.2: ## %SP_return
 ; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %eax ## 4-byte Reload
@@ -74,7 +91,7 @@ entry:
 	store i8 %5, i8* %7, align 1
 	%8 = getelementptr %struct.X, %struct.X* %xxx, i32 0, i32 0		; <i8*> [#uses=1]
 	store i8 15, i8* %8, align 1
-	%9 = call i32 (...) bitcast (i32 (%struct.X*, %struct.X*)* @f to i32 (...)*)(%struct.X* byval align 4 %xxx, %struct.X* byval align 4 %xxx) nounwind		; <i32> [#uses=1]
+	%9 = call i32 (...) bitcast (i32 (%struct.X*, %struct.X*)* @f to i32 (...)*)(%struct.X* byval(%struct.X) align 4 %xxx, %struct.X* byval(%struct.X) align 4 %xxx) nounwind		; <i32> [#uses=1]
 	store i32 %9, i32* %0, align 4
 	%10 = load i32, i32* %0, align 4		; <i32> [#uses=1]
 	store i32 %10, i32* %retval, align 4
@@ -85,4 +102,4 @@ return:		; preds = %entry
 	ret i32 %retval1
 }
 
-declare i32 @f(%struct.X* byval align 4, %struct.X* byval align 4) nounwind ssp
+declare i32 @f(%struct.X* byval(%struct.X) align 4, %struct.X* byval(%struct.X) align 4) nounwind ssp

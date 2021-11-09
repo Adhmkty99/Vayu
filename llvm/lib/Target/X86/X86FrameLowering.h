@@ -14,6 +14,7 @@
 #define LLVM_LIB_TARGET_X86_X86FRAMELOWERING_H
 
 #include "llvm/CodeGen/TargetFrameLowering.h"
+#include "llvm/Support/TypeSize.h"
 
 namespace llvm {
 
@@ -102,16 +103,17 @@ public:
   bool canSimplifyCallFramePseudos(const MachineFunction &MF) const override;
   bool needsFrameIndexResolution(const MachineFunction &MF) const override;
 
-  int getFrameIndexReference(const MachineFunction &MF, int FI,
-                             Register &FrameReg) const override;
+  StackOffset getFrameIndexReference(const MachineFunction &MF, int FI,
+                                     Register &FrameReg) const override;
 
   int getWin64EHFrameIndexRef(const MachineFunction &MF, int FI,
                               Register &SPReg) const;
-  int getFrameIndexReferenceSP(const MachineFunction &MF, int FI,
-                               Register &SPReg, int Adjustment) const;
-  int getFrameIndexReferencePreferSP(const MachineFunction &MF, int FI,
-                                     Register &FrameReg,
-                                     bool IgnoreSPUpdates) const override;
+  StackOffset getFrameIndexReferenceSP(const MachineFunction &MF, int FI,
+                                       Register &SPReg, int Adjustment) const;
+  StackOffset
+  getFrameIndexReferencePreferSP(const MachineFunction &MF, int FI,
+                                 Register &FrameReg,
+                                 bool IgnoreSPUpdates) const override;
 
   MachineBasicBlock::iterator
   eliminateCallFramePseudoInstr(MachineFunction &MF, MachineBasicBlock &MBB,
@@ -221,6 +223,7 @@ private:
                                        MachineBasicBlock::iterator MBBI,
                                        const DebugLoc &DL, uint64_t Offset,
                                        uint64_t Align) const;
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 
   /// Emit a stub to later inline the target stack probe.
   MachineInstr *emitStackProbeInlineStub(MachineFunction &MF,
@@ -228,6 +231,8 @@ private:
                                          MachineBasicBlock::iterator MBBI,
                                          const DebugLoc &DL,
                                          bool InProlog) const;
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
   /// Aligns the stack pointer by ANDing it with -MaxAlign.
   void BuildStackAlignAND(MachineBasicBlock &MBB,

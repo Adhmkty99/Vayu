@@ -6,6 +6,7 @@
 // REQUIRES: libomptarget-debug
 
 #include <stdlib.h>
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 #include <stdio.h>
 
 int *allocate(size_t n) {
@@ -33,6 +34,39 @@ int main(void) {
   deallocate(V, 10);
 // CHECK-NOT: RefCount=2
   cnt = malloc(sizeof(int));
+=======
+
+int *allocate(size_t n) {
+  int *ptr = malloc(sizeof(int) * n);
+#pragma omp target enter data map(to : ptr[:n])
+  return ptr;
+}
+
+void deallocate(int *ptr, size_t n) {
+#pragma omp target exit data map(delete : ptr[:n])
+  free(ptr);
+}
+
+#pragma omp declare target
+int *cnt;
+void foo() {
+  ++(*cnt);
+}
+#pragma omp end declare target
+
+int main(void) {
+  int *A = allocate(10);
+  int *V = allocate(10);
+  deallocate(A, 10);
+  deallocate(V, 10);
+// CHECK-NOT: RefCount=2
+  cnt = malloc(sizeof(int));
+  *cnt = 0;
+#pragma omp target map(cnt[:1])
+  foo();
+  printf("Cnt = %d.\n", *cnt);
+// CHECK: Cnt = 1.
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
   *cnt = 0;
 #pragma omp target data map(cnt[:1])
 #pragma omp target
