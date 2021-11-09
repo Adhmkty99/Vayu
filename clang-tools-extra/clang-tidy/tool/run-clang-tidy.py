@@ -83,7 +83,11 @@ def get_tidy_invocation(f, clang_tidy_binary, checks, tmpdir, build_path,
                         header_filter, allow_enabling_alpha_checkers,
                         extra_arg, extra_arg_before, quiet, config):
   """Gets a command line for clang-tidy."""
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
   start = [clang_tidy_binary]
+=======
+  start = [clang_tidy_binary, '--use-color']
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
   if allow_enabling_alpha_checkers:
     start.append('-allow-enabling-analyzer-alpha-checkers')
   if header_filter is not None:

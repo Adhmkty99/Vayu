@@ -47,10 +47,19 @@ Flang is LLVM's Fortran frontend
    OptionComparison
    ParserCombinators
    RuntimeDescriptor
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
    Calls
    Character
    ArrayComposition
    BijectiveInternalNameUniquing
+=======
+   RuntimeTypeInfo
+   Calls
+   Character
+   ArrayComposition
+   BijectiveInternalNameUniquing
+   DoConcurrent
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ```
 
 # Indices and tables

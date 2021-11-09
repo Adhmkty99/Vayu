@@ -1,15 +1,24 @@
 =========================
-LLVM 11.0.0 Release Notes
+LLVM 12.0.0 Release Notes
 =========================
 
 .. contents::
     :local:
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+=======
+.. warning::
+   These are in-progress notes for the upcoming LLVM 12 release.
+   Release notes for previous releases can be found on
+   `the Download Page <https://releases.llvm.org/download.html>`_.
+
+
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 Introduction
 ============
 
 This document contains the release notes for the LLVM Compiler Infrastructure,
-release 11.0.0.  Here we describe the status of LLVM, including major improvements
+release 12.0.0.  Here we describe the status of LLVM, including major improvements
 from the previous release, improvements in various subprojects of LLVM, and
 some of the current users of the code.  All LLVM releases may be downloaded
 from the `LLVM releases web site <https://llvm.org/releases/>`_.
@@ -27,12 +36,30 @@ Deprecated and Removed Features/APIs
 Non-comprehensive list of changes in this release
 =================================================
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * The llgo frontend has been removed for now, but may be resurrected in the
   future.
+=======
+* The ConstantPropagation pass was removed. Users should use the InstSimplify
+  pass instead.
+
+
+.. NOTE
+   If you would like to document a larger change, then you can add a
+   subsection about it right here. You can copy the following boilerplate
+   and un-indent it (the indentation causes it to be inside this comment).
+
+   Special New Feature
+   -------------------
+
+   Makes programs 10x faster by doing Special New Thing.
+
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 Changes to the LLVM IR
 ----------------------
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * The callsite attribute `vector-function-abi-variant
   <https://llvm.org/docs/LangRef.html#call-site-attributes>`_ has been
   added to describe the mapping between scalar functions and vector
@@ -41,16 +68,20 @@ Changes to the LLVM IR
   ``VFDatabase`` class. When scanning through the set of vector
   functions associated with a scalar call, the loop vectorizer now
   relies on ``VFDatabase``, instead of ``TargetLibraryInfo``.
+=======
+* ...
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
-* `dereferenceable` attributes and metadata on pointers no longer imply
-  anything about the alignment of the pointer in question. Previously, some
-  optimizations would make assumptions based on the type of the pointer. This
-  behavior was undocumented. To preserve optimizations, frontends may need to
-  be updated to generate appropriate `align` attributes and metadata.
+* Added the ``byref`` attribute to better represent argument passing
+  for the `amdgpu_kernel` calling convention.
 
-* The DIModule metadata is extended to contain file and line number
-  information. This information is used to represent Fortran modules debug
-  info at IR level.
+* Added type parameter to the ``sret`` attribute to continue work on
+  removing pointer element types.
+
+* The ``llvm.experimental.vector.reduce`` family of intrinsics have been renamed
+  to drop the "experimental" from the name, reflecting their now fully supported
+  status in the IR.
+
 
 * LLVM IR now supports two distinct ``llvm::FixedVectorType`` and
   ``llvm::ScalableVectorType`` vector types, both derived from the
@@ -78,6 +109,7 @@ Changes to the LLVM IR
 Changes to building LLVM
 ------------------------
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * The LLVM project has started the migration towards Python 3, and the build
   system now prefers Python 3 whenever available.  If the Python 3 interpreter
   (or libraries) are not found, the build system will, for the time being, fall
@@ -133,10 +165,30 @@ Changes to the AArch64 Backend
   and intrinsics support.
 
 * Added support for Cortex-A34, Cortex-A77, Cortex-A78 and Cortex-X1 cores.
+=======
+* The internal ``llvm-build`` Python script and the associated ``LLVMBuild.txt``
+  files used to describe the LLVM component structure have been removed and
+  replaced by a pure ``CMake`` approach, where each component stores extra
+  properties in the created targets. These properties are processed once all
+  components are defined to resolve library dependencies and produce the header
+  expected by llvm-config.
+
+Changes to TableGen
+-------------------
+
+* The new "TableGen Programmer's Reference" replaces the "TableGen Language
+  Introduction" and "TableGen Language Reference" documents.
+
+* The syntax for specifying an integer range in a range list has changed.
+  The old syntax used a hyphen in the range (e.g., ``{0-9}``). The new syntax
+  uses the "`...`" range punctuation (e.g., ``{0...9}``). The hyphen syntax
+  is deprecated.
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 Changes to the ARM Backend
 --------------------------
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * Implemented C-language intrinsics for the full Arm v8.1-M MVE instruction
   set. ``<arm_mve.h>`` now supports the complete API defined in the Arm C
   Language Extensions.
@@ -153,6 +205,12 @@ Changes to the ARM Backend
   behavior. This improves compatibility with GCC.
 
 * Added support for Armv8.6-A:
+=======
+During this release ...
+
+Changes to the MIPS Target
+--------------------------
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
   Assembly and intrinsics support for the Armv8.6-A Matrix Multiply extension
   for Neon vectors.
@@ -288,6 +346,7 @@ Changes to the SystemZ Target
 Changes to the X86 Target
 -------------------------
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * Functions with the probe-stack attribute set to "inline-asm" are now protected
   against stack clash without the need of a third-party probing function and
   with limited impact on performance.
@@ -309,39 +368,60 @@ Changes to the X86 Target
   handling
 * Exteded recognition of rotation patterns to handle funnel shift as well,
   allowing us to remove the existing x86-specific SHLD/SHRD combine.
+=======
+During this release ...
+
+* The 'mpx' feature was removed from the backend. It had been removed from clang
+  frontend in 10.0. Mention of the 'mpx' feature in an IR file will print a
+  message to stderr, but IR should still compile.
+* Support for ``-march=alderlake``, ``-march=sapphirerapids``,
+  ``-march=znver3`` and ``-march=x86-64-v[234]`` has been added.
+* The assembler now has support for {disp32} and {disp8} pseudo prefixes for
+  controlling displacement size for memory operands and jump displacements. The
+  assembler also supports the .d32 and .d8 mnemonic suffixes to do the same.
+* A new function attribute "tune-cpu" has been added to support -mtune like gcc.
+  This allows microarchitectural optimizations to be applied independent from
+  the "target-cpu" attribute or TargetMachine CPU which will be used to select
+  Instruction Set. If the attribute is not present, the tune CPU will follow
+  the target CPU.
+* Support for ``HRESET`` instructions has been added.
+* Support for ``UINTR`` instructions has been added.
+* Support for ``AVXVNNI`` instructions has been added.
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 Changes to the AMDGPU Target
 -----------------------------
 
-* The backend default denormal handling mode has been switched to on
-  for all targets for all compute function types. Frontends wishing to
-  retain the old behavior should explicitly request f32 denormal
-  flushing.
+During this release ...
+
+* The new ``byref`` attribute is now the preferred method for
+  representing aggregate kernel arguments.
 
 Changes to the AVR Target
 -----------------------------
 
-* Moved from an experimental backend to an official backend. AVR support is now
-  included by default in all LLVM builds and releases and is available under
-  the "avr-unknown-unknown" target triple.
+During this release ...
 
 Changes to the WebAssembly Target
 ---------------------------------
 
-* Programs which don't have a "main" function, called "reactors" are now
-  properly supported, with a new `-mexec-model=reactor` flag. Programs which
-  previously used `-Wl,--no-entry` to avoid having a main function should
-  switch to this new flag, so that static initialization is properly
-  performed.
-
-* `__attribute__((visibility("protected")))` now evokes a warning, as
-  WebAssembly does not support "protected" visibility.
+During this release ...
 
 Changes to the Windows Target
 -----------------------------
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * Produce COFF weak external symbols for IR level weak symbols without a comdat
   (e.g. for `__attribute__((weak))` in C)
+=======
+
+Changes to the C API
+--------------------
+
+
+Changes to the Go bindings
+--------------------------
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 
 Changes to the DAG infrastructure
@@ -355,13 +435,7 @@ Changes to the DAG infrastructure
 Changes to the Debug Info
 -------------------------
 
-* LLVM now supports the debug entry values (DW_OP_entry_value) production for
-  the x86, ARM, and AArch64 targets by default. Other targets can use
-  the utility by using the experimental option ("-debug-entry-values").
-  This is a debug info feature that allows debuggers to recover the value of
-  optimized-out parameters by going up a stack frame and interpreting the values
-  passed to the callee. The feature improves the debugging user experience when
-  debugging optimized code.
+During this release ...
 
 Changes to the Gold Plugin
 --------------------------
@@ -372,25 +446,36 @@ Changes to the Gold Plugin
 Changes to the LLVM tools
 ---------------------------------
 
-* Added an option (--show-section-sizes) to llvm-dwarfdump to show the sizes
-  of all debug sections within a file.
+* llvm-readobj and llvm-readelf behavior has changed to report an error when
+  executed with no input files instead of reading an input from stdin.
+  Reading from stdin can still be achieved by specifying `-` as an input file.
 
-* llvm-nm now implements the flag ``--special-syms`` and will filter out special
-  symbols, i.e. mapping symbols on ARM and AArch64, by default. This matches
-  the GNU nm behavior.
-
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 * llvm-rc now tolerates -1 as menu item ID, supports the language id option
   and allows string table values to be split into multiple string literals
 
 * llvm-lib supports adding import library objects in addition to regular
   object files
+=======
+Changes to LLDB
+---------------------------------
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
-External Open Source Projects Using LLVM 11
+Changes to Sanitizers
+---------------------
+
+The integer sanitizer `-fsanitize=integer` now has a new sanitizer:
+`-fsanitize=unsigned-shift-base`. It's not undefined behavior for an unsigned
+left shift to overflow (i.e. to shift bits out), but it has been the source of
+bugs and exploits in certain codebases in the past.
+
+External Open Source Projects Using LLVM 12
 ===========================================
 
 Zig Programming Language
 ------------------------
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 `Zig <https://ziglang.org>`_  is a general-purpose programming language and
 toolchain for maintaining robust, optimal, and reusable software. In addition
 to supporting LLVM as an optional backend, Zig links Clang and LLD to provide
@@ -400,6 +485,8 @@ from source compiler-rt, mingw-w64, musl, glibc, libcxx, libcxxabi, and
 libunwind for the selected target - a "batteries included" drop-in for GCC/Clang
 that works the same on every platform.
 
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 Additional Information
 ======================
 

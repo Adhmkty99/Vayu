@@ -4,9 +4,14 @@
 define i32 @fptosi_wh(half %a) nounwind ssp {
 entry:
 ; CHECK-LABEL: fptosi_wh
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK: fcvt s1, h0
 ; CHECK: fcvtzs [[REG:w[0-9]+]], s1
 ; CHECK: mov w0, [[REG]]
+=======
+; CHECK: fcvt [[REG:s[0-9]+]], h0
+; CHECK: fcvtzs w0, [[REG]]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
   %conv = fptosi half %a to i32
   ret i32 %conv
 }
@@ -15,9 +20,14 @@ entry:
 define i32 @fptoui_swh(half %a) nounwind ssp {
 entry:
 ; CHECK-LABEL: fptoui_swh
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK: fcvt s1, h0
 ; CHECK: fcvtzu [[REG:w[0-9]+]], s1
 ; CHECK: mov w0, [[REG]]
+=======
+; CHECK: fcvt [[REG:s[0-9]+]], h0
+; CHECK: fcvtzu w0, [[REG]]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
   %conv = fptoui half %a to i32
   ret i32 %conv
 }
@@ -26,8 +36,8 @@ entry:
 define half @sitofp_hw_i1(i1 %a) nounwind ssp {
 entry:
 ; CHECK-LABEL: sitofp_hw_i1
-; CHECK: sbfx w8, w0, #0, #1
-; CHECK: scvtf s0, w8
+; CHECK: sbfx [[REG:w[0-9]+]], w0, #0, #1
+; CHECK: scvtf s0, [[REG]]
 ; CHECK: fcvt  h0, s0
   %conv = sitofp i1 %a to half
   ret half %conv
@@ -37,8 +47,8 @@ entry:
 define half @sitofp_hw_i8(i8 %a) nounwind ssp {
 entry:
 ; CHECK-LABEL: sitofp_hw_i8
-; CHECK: sxtb w8, w0
-; CHECK: scvtf s0, w8
+; CHECK: sxtb [[REG:w[0-9]+]], w0
+; CHECK: scvtf s0, [[REG]]
 ; CHECK: fcvt  h0, s0
   %conv = sitofp i8 %a to half
   ret half %conv
@@ -48,8 +58,8 @@ entry:
 define half @sitofp_hw_i16(i16 %a) nounwind ssp {
 entry:
 ; CHECK-LABEL: sitofp_hw_i16
-; CHECK: sxth w8, w0
-; CHECK: scvtf s0, w8
+; CHECK: sxth [[REG:w[0-9]+]], w0
+; CHECK: scvtf s0, [[REG]]
 ; CHECK: fcvt  h0, s0
   %conv = sitofp i16 %a to half
   ret half %conv
@@ -79,8 +89,8 @@ entry:
 define half @uitofp_hw_i1(i1 %a) nounwind ssp {
 entry:
 ; CHECK-LABEL: uitofp_hw_i1
-; CHECK: and w8, w0, #0x1
-; CHECK: ucvtf s0, w8
+; CHECK: and [[REG:w[0-9]+]], w0, #0x1
+; CHECK: ucvtf s0, [[REG]]
 ; CHECK: fcvt  h0, s0
   %conv = uitofp i1 %a to half
   ret half %conv
@@ -90,8 +100,8 @@ entry:
 define half @uitofp_hw_i8(i8 %a) nounwind ssp {
 entry:
 ; CHECK-LABEL: uitofp_hw_i8
-; CHECK: and w8, w0, #0xff
-; CHECK: ucvtf s0, w8
+; CHECK: and [[REG:w[0-9]+]], w0, #0xff
+; CHECK: ucvtf s0, [[REG]]
 ; CHECK: fcvt  h0, s0
   %conv = uitofp i8 %a to half
   ret half %conv
@@ -101,8 +111,8 @@ entry:
 define half @uitofp_hw_i16(i16 %a) nounwind ssp {
 entry:
 ; CHECK-LABEL: uitofp_hw_i16
-; CHECK: and w8, w0, #0xffff
-; CHECK: ucvtf s0, w8
+; CHECK: and [[REG:w[0-9]+]], w0, #0xffff
+; CHECK: ucvtf s0, [[REG]]
 ; CHECK: fcvt  h0, s0
   %conv = uitofp i16 %a to half
   ret half %conv

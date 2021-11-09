@@ -23,10 +23,9 @@ using namespace mlir;
 using namespace mlir::gpu;
 using namespace mlir::scf;
 
+#include "mlir/Dialect/GPU/ParallelLoopMapperAttr.cpp.inc"
 #include "mlir/Dialect/GPU/ParallelLoopMapperEnums.cpp.inc"
 namespace mlir {
-
-#include "mlir/Dialect/GPU/ParallelLoopMapperAttr.cpp.inc"
 namespace gpu {
 
 StringRef getMappingAttrName() { return "mapping"; }
@@ -124,7 +123,7 @@ static void mapParallelOp(ParallelOp parallelOp,
                           MappingLevel mappingLevel = MapGrid) {
   // Do not try to add a mapping to already mapped loops or nested loops.
   if (parallelOp.getAttr(getMappingAttrName()) ||
-      ((mappingLevel == MapGrid) && parallelOp.getParentOfType<ParallelOp>()))
+      ((mappingLevel == MapGrid) && parallelOp->getParentOfType<ParallelOp>()))
     return;
 
   MLIRContext *ctx = parallelOp.getContext();

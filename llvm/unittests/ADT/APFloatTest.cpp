@@ -1816,11 +1816,12 @@ TEST(APFloatTest, convert) {
   EXPECT_FALSE(losesInfo);
 
   test = APFloat::getSNaN(APFloat::IEEEsingle());
-  APFloat X87SNaN = APFloat::getSNaN(APFloat::x87DoubleExtended());
-  test.convert(APFloat::x87DoubleExtended(), APFloat::rmNearestTiesToEven,
-               &losesInfo);
-  EXPECT_TRUE(test.bitwiseIsEqual(X87SNaN));
+  APFloat::opStatus status = test.convert(APFloat::x87DoubleExtended(), APFloat::rmNearestTiesToEven, &losesInfo);
+  // Conversion quiets the SNAN, so now 2 bits of the 64-bit significand should be set.
+  APInt topTwoBits(64, 0x6000000000000000);
+  EXPECT_TRUE(test.bitwiseIsEqual(APFloat::getQNaN(APFloat::x87DoubleExtended(), false, &topTwoBits)));
   EXPECT_FALSE(losesInfo);
+  EXPECT_EQ(status, APFloat::opInvalidOp);
 
   test = APFloat::getQNaN(APFloat::IEEEsingle());
   APFloat X87QNaN = APFloat::getQNaN(APFloat::x87DoubleExtended());
@@ -1832,6 +1833,7 @@ TEST(APFloatTest, convert) {
   test = APFloat::getSNaN(APFloat::x87DoubleExtended());
   test.convert(APFloat::x87DoubleExtended(), APFloat::rmNearestTiesToEven,
                &losesInfo);
+  APFloat X87SNaN = APFloat::getSNaN(APFloat::x87DoubleExtended());
   EXPECT_TRUE(test.bitwiseIsEqual(X87SNaN));
   EXPECT_FALSE(losesInfo);
 
@@ -1841,6 +1843,7 @@ TEST(APFloatTest, convert) {
   EXPECT_TRUE(test.bitwiseIsEqual(X87QNaN));
   EXPECT_FALSE(losesInfo);
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
   // The payload is lost in truncation, but we must retain NaN, so we set the bit after the quiet bit.
   APInt payload(52, 1);
   test = APFloat::getSNaN(APFloat::IEEEdouble(), false, &payload);
@@ -1848,6 +1851,15 @@ TEST(APFloatTest, convert) {
   EXPECT_EQ(0x7fa00000, test.bitcastToAPInt());
   EXPECT_TRUE(losesInfo);
   EXPECT_EQ(status, APFloat::opOK);
+=======
+  // The payload is lost in truncation, but we retain NaN by setting the quiet bit.
+  APInt payload(52, 1);
+  test = APFloat::getSNaN(APFloat::IEEEdouble(), false, &payload);
+  status = test.convert(APFloat::IEEEsingle(), APFloat::rmNearestTiesToEven, &losesInfo);
+  EXPECT_EQ(0x7fc00000, test.bitcastToAPInt());
+  EXPECT_TRUE(losesInfo);
+  EXPECT_EQ(status, APFloat::opInvalidOp);
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
   // The payload is lost in truncation. QNaN remains QNaN.
   test = APFloat::getQNaN(APFloat::IEEEdouble(), false, &payload);
@@ -4695,5 +4707,16 @@ TEST(APFloatTest, PPCDoubleDoubleFrexp) {
   EXPECT_EQ(2, Exp);
   EXPECT_EQ(0x3fe8000000000000ull, Result.bitcastToAPInt().getRawData()[0]);
   EXPECT_EQ(0x3c98000000000000ull, Result.bitcastToAPInt().getRawData()[1]);
+}
+
+TEST(APFloatTest, x87Largest) {
+  APFloat MaxX87Val = APFloat::getLargest(APFloat::x87DoubleExtended());
+  EXPECT_TRUE(MaxX87Val.isLargest());
+}
+
+TEST(APFloatTest, x87Next) {
+  APFloat F(APFloat::x87DoubleExtended(), "-1.0");
+  F.next(false);
+  EXPECT_TRUE(ilogb(F) == -1);
 }
 }

@@ -11,6 +11,7 @@
 
 import sys, os
 from datetime import date
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -45,6 +46,50 @@ else:
     extensions.append('recommonmark')
   else:
     source_parsers = {'.md': 'recommonmark.parser.CommonMarkParser'}
+=======
+from recommonmark.parser import CommonMarkParser
+
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use os.path.abspath to make it absolute, like shown here.
+#sys.path.insert(0, os.path.abspath('.'))
+
+# -- General configuration -----------------------------------------------------
+
+# https://github.com/readthedocs/recommonmark/issues/177
+#Method used to remove the warning message.
+class CustomCommonMarkParser(CommonMarkParser):
+    def visit_document(self, node):
+        pass
+
+
+# If your documentation needs a minimal Sphinx version, state it here.
+#needs_sphinx = '1.0'
+# Add any Sphinx extension module names here, as strings. They can be extensions
+# coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
+extensions = ['sphinx.ext.todo', 'sphinx.ext.mathjax', 'sphinx.ext.intersphinx']
+
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['_templates']
+
+# The suffix of source filenames.
+source_suffix = {
+    '.rst': 'restructuredtext',
+}
+try:
+  import recommonmark
+except ImportError:
+  # manpages do not use any .md sources
+  if not tags.has('builder-man'):
+    raise
+else:
+  import sphinx
+  if sphinx.version_info >= (3, 0):
+    # This requires 0.5 or later.
+    extensions.append('recommonmark')
+  else:
+    source_parsers = {'.md': CustomCommonMarkParser}
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
   source_suffix['.md'] = 'markdown'
   extensions.append('sphinx_markdown_tables')
 

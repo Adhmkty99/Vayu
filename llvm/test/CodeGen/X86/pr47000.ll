@@ -13,6 +13,7 @@ define <4 x half> @doTheTestMod(<4 x half> %0, <4 x half> %1) nounwind {
 ; CHECK-NEXT:    pushl %esi
 ; CHECK-NEXT:    subl $124, %esp
 ; CHECK-NEXT:    movl {{[0-9]+}}(%esp), %eax
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK-NEXT:    movl %eax, %ecx
 ; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %dx
 ; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %si
@@ -135,6 +136,125 @@ define <4 x half> @doTheTestMod(<4 x half> %0, <4 x half> %1) nounwind {
 ; CHECK-NEXT:    movw %bp, (%ecx)
 ; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %esi # 4-byte Reload
 ; CHECK-NEXT:    movl %esi, %eax
+=======
+; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
+; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
+; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %si
+; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %dx
+; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %cx
+; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %ax
+; CHECK-NEXT:    movw %ax, {{[-0-9]+}}(%e{{[sb]}}p) # 2-byte Spill
+; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %di
+; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %bx
+; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %bp
+; CHECK-NEXT:    movw {{[0-9]+}}(%esp), %ax
+; CHECK-NEXT:    movw %ax, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movw {{[-0-9]+}}(%e{{[sb]}}p), %ax # 2-byte Reload
+; CHECK-NEXT:    movw %bp, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movw %bx, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movw %di, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movw %si, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movw %dx, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movw %cx, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movw %ax, {{[0-9]+}}(%esp)
+; CHECK-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
+; CHECK-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
+; CHECK-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
+; CHECK-NEXT:    movzwl {{[0-9]+}}(%esp), %ecx
+; CHECK-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
+; CHECK-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
+; CHECK-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
+; CHECK-NEXT:    movzwl {{[0-9]+}}(%esp), %eax
+; CHECK-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    movl %ecx, (%eax)
+; CHECK-NEXT:    calll __gnu_h2f_ieee
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %ecx # 4-byte Reload
+; CHECK-NEXT:    fstpt {{[-0-9]+}}(%e{{[sb]}}p) # 10-byte Folded Spill
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    movl %ecx, (%eax)
+; CHECK-NEXT:    calll __gnu_h2f_ieee
+; CHECK-NEXT:    fldt {{[-0-9]+}}(%e{{[sb]}}p) # 10-byte Folded Reload
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    fxch %st(1)
+; CHECK-NEXT:    fstps 4(%eax)
+; CHECK-NEXT:    fstps (%eax)
+; CHECK-NEXT:    calll fmodf
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    fstps (%eax)
+; CHECK-NEXT:    calll __gnu_f2h_ieee
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %ecx # 4-byte Reload
+; CHECK-NEXT:    movw %ax, {{[-0-9]+}}(%e{{[sb]}}p) # 2-byte Spill
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    movl %ecx, (%eax)
+; CHECK-NEXT:    calll __gnu_h2f_ieee
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %ecx # 4-byte Reload
+; CHECK-NEXT:    fstpt {{[-0-9]+}}(%e{{[sb]}}p) # 10-byte Folded Spill
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    movl %ecx, (%eax)
+; CHECK-NEXT:    calll __gnu_h2f_ieee
+; CHECK-NEXT:    fldt {{[-0-9]+}}(%e{{[sb]}}p) # 10-byte Folded Reload
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    fxch %st(1)
+; CHECK-NEXT:    fstps 4(%eax)
+; CHECK-NEXT:    fstps (%eax)
+; CHECK-NEXT:    calll fmodf
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    fstps (%eax)
+; CHECK-NEXT:    calll __gnu_f2h_ieee
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %ecx # 4-byte Reload
+; CHECK-NEXT:    movw %ax, %si
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    movl %ecx, (%eax)
+; CHECK-NEXT:    calll __gnu_h2f_ieee
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %ecx # 4-byte Reload
+; CHECK-NEXT:    fstpt {{[-0-9]+}}(%e{{[sb]}}p) # 10-byte Folded Spill
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    movl %ecx, (%eax)
+; CHECK-NEXT:    calll __gnu_h2f_ieee
+; CHECK-NEXT:    fldt {{[-0-9]+}}(%e{{[sb]}}p) # 10-byte Folded Reload
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    fxch %st(1)
+; CHECK-NEXT:    fstps 4(%eax)
+; CHECK-NEXT:    fstps (%eax)
+; CHECK-NEXT:    calll fmodf
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    fstps (%eax)
+; CHECK-NEXT:    calll __gnu_f2h_ieee
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %ecx # 4-byte Reload
+; CHECK-NEXT:    movw %ax, %di
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    movl %ecx, (%eax)
+; CHECK-NEXT:    calll __gnu_h2f_ieee
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %ecx # 4-byte Reload
+; CHECK-NEXT:    fstpt {{[-0-9]+}}(%e{{[sb]}}p) # 10-byte Folded Spill
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    movl %ecx, (%eax)
+; CHECK-NEXT:    calll __gnu_h2f_ieee
+; CHECK-NEXT:    fldt {{[-0-9]+}}(%e{{[sb]}}p) # 10-byte Folded Reload
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    fxch %st(1)
+; CHECK-NEXT:    fstps 4(%eax)
+; CHECK-NEXT:    fstps (%eax)
+; CHECK-NEXT:    calll fmodf
+; CHECK-NEXT:    movl %esp, %eax
+; CHECK-NEXT:    fstps (%eax)
+; CHECK-NEXT:    calll __gnu_f2h_ieee
+; CHECK-NEXT:    movw {{[-0-9]+}}(%e{{[sb]}}p), %dx # 2-byte Reload
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %ecx # 4-byte Reload
+; CHECK-NEXT:    movw %ax, %bx
+; CHECK-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %eax # 4-byte Reload
+; CHECK-NEXT:    movw %bx, 6(%ecx)
+; CHECK-NEXT:    movw %di, 4(%ecx)
+; CHECK-NEXT:    movw %si, 2(%ecx)
+; CHECK-NEXT:    movw %dx, (%ecx)
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; CHECK-NEXT:    addl $124, %esp
 ; CHECK-NEXT:    popl %esi
 ; CHECK-NEXT:    popl %edi

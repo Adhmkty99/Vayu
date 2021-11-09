@@ -4,8 +4,8 @@
 ; RUN: llc -fast-isel-sink-local-values     -mtriple=x86_64-unknown-linux-gnu -o - %s | FileCheck %s -check-prefix=X64
 ; RUN: llc -fast-isel-sink-local-values     -mtriple=i686-unknown             -o - %s | FileCheck %s -check-prefix=686
 
-@var_22 = external global i16, align 2
-@var_27 = external global i16, align 2
+@var_22 = external dso_local global i16, align 2
+@var_27 = external dso_local global i16, align 2
 
 define void @foo() {
 ; X640-LABEL: foo:
@@ -28,10 +28,17 @@ define void @foo() {
 ; X640-NEXT:    movl %eax, %eax
 ; X640-NEXT:    movl %eax, %ecx
 ; X640-NEXT:    # kill: def $cl killed $rcx
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; X640-NEXT:    sarq %cl, %rdx
 ; X640-NEXT:    # kill: def $dl killed $dl killed $rdx
 ; X640-NEXT:    # implicit-def: $rsi
 ; X640-NEXT:    movb %dl, (%rsi)
+=======
+; X640-NEXT:    sarq %cl, %rax
+; X640-NEXT:    movb %al, %cl
+; X640-NEXT:    # implicit-def: $rax
+; X640-NEXT:    movb %cl, (%rax)
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; X640-NEXT:    retq
 ;
 ; 6860-LABEL: foo:
@@ -45,12 +52,18 @@ define void @foo() {
 ; 6860-NEXT:    pushl %edi
 ; 6860-NEXT:    pushl %esi
 ; 6860-NEXT:    andl $-8, %esp
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 6860-NEXT:    subl $32, %esp
 ; 6860-NEXT:    .cfi_offset %esi, -20
 ; 6860-NEXT:    .cfi_offset %edi, -16
 ; 6860-NEXT:    .cfi_offset %ebx, -12
 ; 6860-NEXT:    movw var_22, %ax
+=======
+; 6860-NEXT:    subl $24, %esp
+; 6860-NEXT:    movw var_22, %dx
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 6860-NEXT:    movzwl var_27, %ecx
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 6860-NEXT:    movw %cx, %dx
 ; 6860-NEXT:    xorw %dx, %ax
 ; 6860-NEXT:    # implicit-def: $esi
@@ -59,7 +72,18 @@ define void @foo() {
 ; 6860-NEXT:    # kill: def $si killed $si killed $esi
 ; 6860-NEXT:    movzwl %si, %ecx
 ; 6860-NEXT:    movl %ecx, {{[0-9]+}}(%esp)
+=======
+; 6860-NEXT:    movw %cx, %ax
+; 6860-NEXT:    xorw %ax, %dx
+; 6860-NEXT:    # implicit-def: $eax
+; 6860-NEXT:    movw %dx, %ax
+; 6860-NEXT:    xorl %ecx, %eax
+; 6860-NEXT:    # kill: def $ax killed $ax killed $eax
+; 6860-NEXT:    movzwl %ax, %eax
+; 6860-NEXT:    movl %eax, {{[0-9]+}}(%esp)
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 6860-NEXT:    movl $0, {{[0-9]+}}(%esp)
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 6860-NEXT:    movw var_22, %ax
 ; 6860-NEXT:    movzwl var_27, %ecx
 ; 6860-NEXT:    movw %cx, %dx
@@ -70,11 +94,32 @@ define void @foo() {
 ; 6860-NEXT:    # kill: def $di killed $di killed $edi
 ; 6860-NEXT:    movzwl %di, %ebx
 ; 6860-NEXT:    # kill: def $cl killed $cl killed $ecx
+=======
+; 6860-NEXT:    movw var_22, %dx
+; 6860-NEXT:    movzwl var_27, %eax
+; 6860-NEXT:    movw %ax, %cx
+; 6860-NEXT:    xorw %cx, %dx
+; 6860-NEXT:    # implicit-def: $ecx
+; 6860-NEXT:    movw %dx, %cx
+; 6860-NEXT:    xorl %eax, %ecx
+; 6860-NEXT:    # kill: def $cx killed $cx killed $ecx
+; 6860-NEXT:    movzwl %cx, %edx
+; 6860-NEXT:    movb %al, %cl
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 6860-NEXT:    addb $30, %cl
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 6860-NEXT:    xorl %eax, %eax
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 6860-NEXT:    movb %cl, {{[-0-9]+}}(%e{{[sb]}}p) # 1-byte Spill
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 6860-NEXT:    shrdl %cl, %eax, %ebx
+=======
+; 6860-NEXT:    xorl %eax, %eax
+; 6860-NEXT:    shrdl %cl, %eax, %edx
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 6860-NEXT:    movb {{[-0-9]+}}(%e{{[sb]}}p), %cl # 1-byte Reload
+; 6860-NEXT:    movl %edx, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
 ; 6860-NEXT:    testb $32, %cl
 ; 6860-NEXT:    movl %ebx, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
 ; 6860-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
@@ -84,6 +129,7 @@ define void @foo() {
 ; 6860-NEXT:    movl %eax, {{[-0-9]+}}(%e{{[sb]}}p) # 4-byte Spill
 ; 6860-NEXT:  .LBB0_2: # %bb
 ; 6860-NEXT:    movl {{[-0-9]+}}(%e{{[sb]}}p), %eax # 4-byte Reload
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 6860-NEXT:    # kill: def $al killed $al killed $eax
 ; 6860-NEXT:    # implicit-def: $ecx
 ; 6860-NEXT:    movb %al, (%ecx)
@@ -91,6 +137,12 @@ define void @foo() {
 ; 6860-NEXT:    popl %esi
 ; 6860-NEXT:    popl %edi
 ; 6860-NEXT:    popl %ebx
+=======
+; 6860-NEXT:    movb %al, %cl
+; 6860-NEXT:    # implicit-def: $eax
+; 6860-NEXT:    movb %cl, (%eax)
+; 6860-NEXT:    movl %ebp, %esp
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 6860-NEXT:    popl %ebp
 ; 6860-NEXT:    .cfi_def_cfa %esp, 4
 ; 6860-NEXT:    retl

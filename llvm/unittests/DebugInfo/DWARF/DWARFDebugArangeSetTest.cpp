@@ -14,6 +14,16 @@ using namespace llvm;
 
 namespace {
 
+struct WarningHandler {
+  ~WarningHandler() { EXPECT_THAT_ERROR(std::move(Err), Succeeded()); }
+
+  void operator()(Error E) { Err = joinErrors(std::move(Err), std::move(E)); }
+
+  Error getWarning() { return std::move(Err); }
+
+  Error Err = Error::success();
+};
+
 template <size_t SecSize>
 void ExpectExtractError(const char (&SecDataRaw)[SecSize],
                         const char *ErrorMessage) {
@@ -22,7 +32,8 @@ void ExpectExtractError(const char (&SecDataRaw)[SecSize],
                                /* AddressSize = */ 4);
   DWARFDebugArangeSet Set;
   uint64_t Offset = 0;
-  Error E = Set.extract(Extractor, &Offset);
+  WarningHandler Warnings;
+  Error E = Set.extract(Extractor, &Offset, Warnings);
   ASSERT_TRUE(E.operator bool());
   EXPECT_STREQ(ErrorMessage, toString(std::move(E)).c_str());
 }
@@ -177,6 +188,7 @@ TEST(DWARFDebugArangeSet, ZeroAddressEntry) {
       "\x00\x00\x00\x00" // Padding
       "\x00\x00\x00\x00" // Entry1: Address
       "\x01\x00\x00\x00" //         Length
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
       "\x00\x00\x00\x00" // Termination tuple
       "\x00\x00\x00\x00";
   DWARFDataExtractor Extractor(
@@ -233,12 +245,93 @@ TEST(DWARFDebugArangesSet, PrematureTerminator) {
       "\x00\x00\x00\x00" //         terminator
       "\x01\x00\x00\x00" // Entry2: Address
       "\x01\x00\x00\x00" //         Length
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
       "\x00\x00\x00\x00" // Termination tuple
       "\x00\x00\x00\x00";
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
   ExpectExtractError(
       DebugArangesSecRaw,
       "address range table at offset 0x0 has a premature "
       "terminator entry at offset 0x10");
+=======
+  DWARFDataExtractor Extractor(
+      StringRef(DebugArangesSecRaw, sizeof(DebugArangesSecRaw) - 1),
+      /*IsLittleEndian=*/true,
+      /*AddressSize=*/4);
+  DWARFDebugArangeSet Set;
+  uint64_t Offset = 0;
+  ASSERT_THAT_ERROR(Set.extract(Extractor, &Offset, WarningHandler()),
+                    Succeeded());
+  auto Range = Set.descriptors();
+  auto Iter = Range.begin();
+  ASSERT_EQ(std::distance(Iter, Range.end()), 1);
+  EXPECT_EQ(Iter->Address, 0u);
+  EXPECT_EQ(Iter->Length, 1u);
+}
+
+TEST(DWARFDebugArangeSet, ZeroLengthEntry) {
+  static const char DebugArangesSecRaw[] =
+      "\x1c\x00\x00\x00" // Length
+      "\x02\x00"         // Version
+      "\x00\x00\x00\x00" // Debug Info Offset
+      "\x04"             // Address Size
+      "\x00"             // Segment Selector Size
+      "\x00\x00\x00\x00" // Padding
+      "\x01\x00\x00\x00" // Entry1: Address
+      "\x00\x00\x00\x00" //         Length
+      "\x00\x00\x00\x00" // Termination tuple
+      "\x00\x00\x00\x00";
+  DWARFDataExtractor Extractor(
+      StringRef(DebugArangesSecRaw, sizeof(DebugArangesSecRaw) - 1),
+      /*IsLittleEndian=*/true,
+      /*AddressSize=*/4);
+  DWARFDebugArangeSet Set;
+  uint64_t Offset = 0;
+  ASSERT_THAT_ERROR(Set.extract(Extractor, &Offset, WarningHandler()),
+                    Succeeded());
+  auto Range = Set.descriptors();
+  auto Iter = Range.begin();
+  ASSERT_EQ(std::distance(Iter, Range.end()), 1);
+  EXPECT_EQ(Iter->Address, 1u);
+  EXPECT_EQ(Iter->Length, 0u);
+}
+
+TEST(DWARFDebugArangesSet, PrematureTerminator) {
+  static const char DebugArangesSecRaw[] =
+      "\x24\x00\x00\x00" // Length
+      "\x02\x00"         // Version
+      "\x00\x00\x00\x00" // Debug Info Offset
+      "\x04"             // Address Size
+      "\x00"             // Segment Selector Size
+      "\x00\x00\x00\x00" // Padding
+      "\x00\x00\x00\x00" // Entry1: Premature
+      "\x00\x00\x00\x00" //         terminator
+      "\x01\x00\x00\x00" // Entry2: Address
+      "\x01\x00\x00\x00" //         Length
+      "\x00\x00\x00\x00" // Termination tuple
+      "\x00\x00\x00\x00";
+  DWARFDataExtractor Extractor(
+      StringRef(DebugArangesSecRaw, sizeof(DebugArangesSecRaw) - 1),
+      /*IsLittleEndian=*/true,
+      /*AddressSize=*/4);
+  DWARFDebugArangeSet Set;
+  uint64_t Offset = 0;
+  WarningHandler Warnings;
+  ASSERT_THAT_ERROR(Set.extract(Extractor, &Offset, Warnings), Succeeded());
+  auto Range = Set.descriptors();
+  auto Iter = Range.begin();
+  ASSERT_EQ(std::distance(Iter, Range.end()), 2);
+  EXPECT_EQ(Iter->Address, 0u);
+  EXPECT_EQ(Iter->Length, 0u);
+  ++Iter;
+  EXPECT_EQ(Iter->Address, 1u);
+  EXPECT_EQ(Iter->Length, 1u);
+  EXPECT_THAT_ERROR(
+      Warnings.getWarning(),
+      FailedWithMessage("address range table at offset 0x0 has a premature "
+                        "terminator entry at offset 0x10"));
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 }
 
 } // end anonymous namespace

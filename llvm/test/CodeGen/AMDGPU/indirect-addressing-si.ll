@@ -99,8 +99,8 @@ entry:
 ; MOVREL: s_add_i32 m0, s{{[0-9]+}}, 0xfffffe{{[0-9a-z]+}}
 ; MOVREL: v_movrels_b32_e32 v{{[0-9]}}, v0
 
-; IDXMODE: s_addk_i32 [[ADD_IDX:s[0-9]+]], 0xfe00{{$}}
-; IDXMODE: v_mov_b32_e32 v0,
+; IDXMODE-DAG: s_addk_i32 [[ADD_IDX:s[0-9]+]], 0xfe00{{$}}
+; IDXMODE-DAG: v_mov_b32_e32 v0,
 ; IDXMODE: v_mov_b32_e32 v1,
 ; IDXMODE: v_mov_b32_e32 v2,
 ; IDXMODE: v_mov_b32_e32 v3,

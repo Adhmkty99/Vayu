@@ -56,3 +56,19 @@ define double @fneg_no_ice(float %x) {
   %e3 = fmul double %e, %e2
   ret double %e3
 }
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+=======
+
+define double @fneg_fmul_const(double %x) {
+; CHECK-LABEL: fneg_fmul_const:
+; CHECK:       # %bb.0: # %entry
+; CHECK-NEXT:    lis r3, .LCPI4_0@ha
+; CHECK-NEXT:    lfd f0, .LCPI4_0@l(r3)
+; CHECK-NEXT:    fmul f1, f1, f0
+; CHECK-NEXT:    blr
+entry:
+  %f = fmul double %x, 1.2345
+  %s = fneg double %f
+  ret double %s
+}
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)

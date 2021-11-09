@@ -371,10 +371,10 @@ CieRecord *EhFrameSection::addCie(EhSectionPiece &cie, ArrayRef<RelTy> rels) {
   return rec;
 }
 
-// There is one FDE per function. Returns true if a given FDE
-// points to a live function.
+// There is one FDE per function. Returns a non-null pointer to the function
+// symbol if the given FDE points to a live function.
 template <class ELFT, class RelTy>
-bool EhFrameSection::isFdeLive(EhSectionPiece &fde, ArrayRef<RelTy> rels) {
+Defined *EhFrameSection::isFdeLive(EhSectionPiece &fde, ArrayRef<RelTy> rels) {
   auto *sec = cast<EhInputSection>(fde.sec);
   unsigned firstRelI = fde.firstRelocation;
 
@@ -384,7 +384,7 @@ bool EhFrameSection::isFdeLive(EhSectionPiece &fde, ArrayRef<RelTy> rels) {
   // corresponding FDEs, which results in creating bad .eh_frame sections.
   // To deal with that, we ignore such FDEs.
   if (firstRelI == (unsigned)-1)
-    return false;
+    return nullptr;
 
   const RelTy &rel = rels[firstRelI];
   Symbol &b = sec->template getFile<ELFT>()->getRelocTargetSym(rel);
@@ -392,9 +392,9 @@ bool EhFrameSection::isFdeLive(EhSectionPiece &fde, ArrayRef<RelTy> rels) {
   // FDEs for garbage-collected or merged-by-ICF sections, or sections in
   // another partition, are dead.
   if (auto *d = dyn_cast<Defined>(&b))
-    if (SectionBase *sec = d->section)
-      return sec->partition == partition;
-  return false;
+    if (d->section && d->section->partition == partition)
+      return d;
+  return nullptr;
 }
 
 // .eh_frame is a sequence of CIE or FDE records. In general, there
@@ -446,6 +446,51 @@ void EhFrameSection::addSection(EhInputSection *sec) {
 
   for (auto *ds : sec->dependentSections)
     dependentSections.push_back(ds);
+}
+
+// Used by ICF<ELFT>::handleLSDA(). This function is very similar to
+// EhFrameSection::addRecords().
+template <class ELFT, class RelTy>
+void EhFrameSection::iterateFDEWithLSDAAux(
+    EhInputSection &sec, ArrayRef<RelTy> rels, DenseSet<size_t> &ciesWithLSDA,
+    llvm::function_ref<void(InputSection &)> fn) {
+  for (EhSectionPiece &piece : sec.pieces) {
+    // Skip ZERO terminator.
+    if (piece.size == 4)
+      continue;
+
+    size_t offset = piece.inputOff;
+    uint32_t id =
+        endian::read32<ELFT::TargetEndianness>(piece.data().data() + 4);
+    if (id == 0) {
+      if (hasLSDA(piece))
+        ciesWithLSDA.insert(offset);
+      continue;
+    }
+    uint32_t cieOffset = offset + 4 - id;
+    if (ciesWithLSDA.count(cieOffset) == 0)
+      continue;
+
+    // The CIE has a LSDA argument. Call fn with d's section.
+    if (Defined *d = isFdeLive<ELFT>(piece, rels))
+      if (auto *s = dyn_cast_or_null<InputSection>(d->section))
+        fn(*s);
+  }
+}
+
+template <class ELFT>
+void EhFrameSection::iterateFDEWithLSDA(
+    llvm::function_ref<void(InputSection &)> fn) {
+  DenseSet<size_t> ciesWithLSDA;
+  for (EhInputSection *sec : sections) {
+    ciesWithLSDA.clear();
+    if (sec->areRelocsRela)
+      iterateFDEWithLSDAAux<ELFT>(*sec, sec->template relas<ELFT>(),
+                                  ciesWithLSDA, fn);
+    else
+      iterateFDEWithLSDAAux<ELFT>(*sec, sec->template rels<ELFT>(),
+                                  ciesWithLSDA, fn);
+  }
 }
 
 static void writeCieFde(uint8_t *buf, ArrayRef<uint8_t> d) {
@@ -652,11 +697,8 @@ bool GotSection::isNeeded() const {
 }
 
 void GotSection::writeTo(uint8_t *buf) {
-  // Buf points to the start of this section's buffer,
-  // whereas InputSectionBase::relocateAlloc() expects its argument
-  // to point to the start of the output section.
   target->writeGotHeader(buf);
-  relocateAlloc(buf - outSecOff, buf - outSecOff + size);
+  relocateAlloc(buf, buf + size);
 }
 
 static uint64_t getMipsPageAddr(uint64_t addr) {
@@ -1569,10 +1611,14 @@ void RelocationBaseSection::finalizeContents() {
   else
     getParent()->link = 0;
 
-  if (in.relaPlt == this)
+  if (in.relaPlt == this) {
+    getParent()->flags |= ELF::SHF_INFO_LINK;
     getParent()->info = in.gotPlt->getParent()->sectionIndex;
-  if (in.relaIplt == this)
+  }
+  if (in.relaIplt == this) {
+    getParent()->flags |= ELF::SHF_INFO_LINK;
     getParent()->info = in.igotPlt->getParent()->sectionIndex;
+  }
 }
 
 RelrBaseSection::RelrBaseSection()
@@ -2153,9 +2199,8 @@ template <class ELFT> void SymbolTableSection<ELFT>::writeTo(uint8_t *buf) {
     else
       eSym->st_size = sym->getSize();
 
-    // st_value is usually an address of a symbol, but that has a
-    // special meaning for uninstantiated common symbols (this can
-    // occur if -r is given).
+    // st_value is usually an address of a symbol, but that has a special
+    // meaning for uninstantiated common symbols (--no-define-common).
     if (BssSection *commonSec = getCommonSec(ent.sym))
       eSym->st_value = commonSec->alignment;
     else if (isDefinedHere)
@@ -2873,7 +2918,8 @@ void GdbIndexSection::writeTo(uint8_t *buf) {
   uint32_t cuOff = 0;
   for (GdbChunk &chunk : chunks) {
     for (AddressEntry &e : chunk.addressAreas) {
-      uint64_t baseAddr = e.section->getVA(0);
+      // In the case of ICF there may be duplicate address range entries.
+      const uint64_t baseAddr = e.section->repl->getVA(0);
       write64le(buf, baseAddr + e.lowAddress);
       write64le(buf + 8, baseAddr + e.highAddress);
       write32le(buf + 16, e.cuIndex + cuOff);
@@ -3454,7 +3500,7 @@ void ARMExidxSyntheticSection::writeTo(uint8_t *buf) {
     assert(isec->getParent() != nullptr);
     if (InputSection *d = findExidxSection(isec)) {
       memcpy(buf + offset, d->data().data(), d->data().size());
-      d->relocateAlloc(buf, buf + d->getSize());
+      d->relocateAlloc(buf + d->outSecOff, buf + d->outSecOff + d->getSize());
       offset += d->getSize();
     } else {
       // A Linker generated CANTUNWIND section.
@@ -3484,8 +3530,8 @@ bool ARMExidxSyntheticSection::classof(const SectionBase *d) {
 }
 
 ThunkSection::ThunkSection(OutputSection *os, uint64_t off)
-    : SyntheticSection(SHF_ALLOC | SHF_EXECINSTR, SHT_PROGBITS, 4,
-                       ".text.thunk") {
+    : SyntheticSection(SHF_ALLOC | SHF_EXECINSTR, SHT_PROGBITS,
+                       config->emachine == EM_PPC64 ? 16 : 4, ".text.thunk") {
   this->parent = os;
   this->outSecOff = off;
 }
@@ -3760,6 +3806,15 @@ template class elf::MipsOptionsSection<ELF32LE>;
 template class elf::MipsOptionsSection<ELF32BE>;
 template class elf::MipsOptionsSection<ELF64LE>;
 template class elf::MipsOptionsSection<ELF64BE>;
+
+template void EhFrameSection::iterateFDEWithLSDA<ELF32LE>(
+    function_ref<void(InputSection &)>);
+template void EhFrameSection::iterateFDEWithLSDA<ELF32BE>(
+    function_ref<void(InputSection &)>);
+template void EhFrameSection::iterateFDEWithLSDA<ELF64LE>(
+    function_ref<void(InputSection &)>);
+template void EhFrameSection::iterateFDEWithLSDA<ELF64BE>(
+    function_ref<void(InputSection &)>);
 
 template class elf::MipsReginfoSection<ELF32LE>;
 template class elf::MipsReginfoSection<ELF32BE>;

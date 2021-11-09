@@ -7,8 +7,12 @@
 
 ; CHECK-NOT:  warning:
 ; CHECK: FDE cie=00000000 pc=00000000...00000004
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ;; TODO Take relocation into consideration
 ; CHECK: FDE cie=00000000 pc=00000000...00000004
+=======
+; CHECK: FDE cie=00000000 pc=00000004...00000008
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 define void @foo() {
 entry:

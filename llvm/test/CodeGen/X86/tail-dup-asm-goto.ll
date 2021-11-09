@@ -3,7 +3,11 @@
 
 ; Ensure that we don't duplicate a block with an "INLINEASM_BR" instruction
 ; during code gen.
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 declare void @foo()
+=======
+declare dso_local void @foo()
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 
 define i8* @test1(i8** %arg1, i8* %arg2) {
   ; CHECK-LABEL: name: test1

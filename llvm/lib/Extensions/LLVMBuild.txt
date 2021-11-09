@@ -1,3 +1,4 @@
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ;===- ./lib/Extensions/LLVMBuild.txt -------------------------------*- Conf -*--===;
 ;
 ; Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -19,3 +20,5 @@ type = Library
 name = Extensions
 parent = Libraries
 required_libraries = Support
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)

@@ -131,6 +131,7 @@ below; this is of course not standard terminology.
 Internal and module subprograms that are ever passed as arguments &/or
 assigned as targets of procedure pointers may be F77ish.
 
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 Every F77ish procedure can and must be distiguished at compilation time.
 Such procedures should respect the external naming conventions (when external)
 and any legacy ABI used for Fortran '77 programs on the target architecture,
@@ -486,6 +487,363 @@ type-bound procedure in the type corresponds to an index into this table.
 Calls to dummy procedures and procedure pointers that resolve to
 internal procedures need to pass an additional "host instance" argument that
 addresses a block of storage in the stack frame of the their
+=======
+Every F77ish procedure can and must be distinguished at compilation time.
+Such procedures should respect the external naming conventions (when external)
+and any legacy ABI used for Fortran '77 programs on the target architecture,
+so that portable libraries can be compiled
+and used by distinct implementations (and their versions)
+of Fortran.
+
+Note that F77ish functions still have known result types, possibly by means
+of implicit typing of their names.
+They can also be `CHARACTER(*)` assumed-length character functions.
+
+In other words: these F77sh procedures that do not require the use of an explicit
+interface and that can possibly be referenced, directly or indirectly,
+with implicit interfaces are limited to argument lists that comprise
+only the addresses of effective arguments and the length of a `CHARACTER` function result
+(when there is one), and they can return only scalar values with constant
+type parameter values.
+None of their arguments or results need be (or can be) implemented
+with descriptors,
+and any internal procedures passed to them as arguments must be
+simple addresses of non-internal subprograms or trampolines for
+internal procedures.
+
+Note that the `INTENT` attribute does not, by itself,
+require the use of explicit interface; neither does the use of a dummy
+procedure (implicit or explicit in their interfaces).
+So the analysis of calls to F77ish procedures must allow for the
+invisible use of `INTENT(OUT)`.
+
+## Protocol overview
+
+Here is a summary script of all of the actions that may need to be taken
+by the calling procedure and its referenced procedure to effect
+the call, entry, exit, and return steps of the procedure reference
+protocol.
+The order of these steps is not particularly strict, and we have
+some design alternatives that are explored further below.
+
+### Before the call:
+
+1. Compute &/or copy into temporary storage the values of
+   some effective argument expressions and designators (see below).
+1. Create and populate descriptors for arguments that use them
+   (see below).
+1. Possibly allocate function result storage,
+   when its size can be known by all callers; function results that are
+   neither `POINTER` nor `ALLOCATABLE` must have explicit shapes (C816).
+1. Create and populate a descriptor for the function result, if it
+   needs one (deferred-shape/-length `POINTER`, any `ALLOCATABLE`,
+   derived type with non-constant length parameters, &c.).
+1. Capture the values of host-escaping local objects in memory;
+   package them into single address (for calls to internal procedures &
+   for calls that pass internal procedures as arguments).
+1. Resolve the target procedure's polymorphic binding, if any.
+1. Marshal effective argument addresses (or values for `%VAL()` and some
+   discretionary `VALUE` arguments) into registers.
+1. Marshal `CHARACTER` argument lengths in additional value arguments for
+   `CHARACTER` effective arguments not passed via descriptors.
+   These lengths must be 64-bit integers.
+1. Marshal an extra argument for the length of a `CHARACTER` function
+   result if the function is F77ish.
+1. Marshal an extra argument for the function result's descriptor,
+   if it needs one.
+1. Set the "host instance" (static link) register when calling an internal
+   procedure from its host or another internal procedure, a procedure pointer,
+   or dummy procedure (when it has a descriptor).
+1. Jump.
+
+### On entry:
+1. For subprograms with alternate `ENTRY` points: shuffle `ENTRY` dummy arguments
+   set a compiler-generated variable to identify the alternate entry point,
+   and jump to the common entry point for common processing and a `switch()`
+   to the statement after the `ENTRY`.
+1. Capture `CHARACTER` argument &/or assumed-length result length values.
+1. Complete `VALUE` copying if this step will not always be done
+   by the caller (as I think it should be).
+1. Finalize &/or re-initialize `INTENT(OUT)` non-pointer
+   effective arguments (see below).
+1. For interoperable procedures called from C: compact discontiguous
+   dummy argument values when necessary (`CONTIGUOUS` &/or
+   explicit-shape/assumed-size arrays of assumed-length `CHARACTER(*)`).
+1. Optionally compact assumed-shape arguments for contiguity on one
+   or more leading dimensions to improve SIMD vectorization, if not
+   `TARGET` and not already sufficiently contiguous.
+   (PGI does this in the caller, whether the callee needs it or not.)
+1. Complete allocation of function result storage, if that has
+   not been done by the caller.
+1. Initialize components of derived type local variables,
+   including the function result.
+
+Execute the callee, populating the function result or selecting
+the subroutine's alternate return.
+
+### On exit:
+1. Clean up local scope (finalization, deallocation)
+1. Deallocate `VALUE` argument temporaries.
+   (But don't finalize them; see 7.5.6.3(3)).
+1. Replace any assumed-shape argument data that were compacted on
+   entry for contiguity when the data were possibly
+   modified across the call (never when `INTENT(IN)` or `VALUE`).
+1. Identify alternate `RETURN` to caller.
+1. Marshal results.
+1. Jump
+
+### On return to the caller:
+1. Save the result registers, if any.
+1. Copy effective argument array designator data that was copied into
+   a temporary back into its original storage (see below).
+1. Complete deallocation of effective argument temporaries (not `VALUE`).
+1. Reload definable host-escaping local objects from memory, if they
+   were saved to memory by the host before the call.
+1. `GO TO` alternate return, if any.
+1. Use the function result in an expression.
+1. Eventually, finalize &/or deallocate the function result.
+
+(I've omitted some obvious steps, like preserving/restoring callee-saved
+registers on entry/exit, dealing with caller-saved registers before/after
+calls, and architecture-dependent ABI requirements.)
+
+## The messy details
+
+### Copying effective argument values into temporary storage
+
+There are several conditions that require the compiler to generate
+code that allocates and populates temporary storage for an actual
+argument.
+
+First, effective arguments that are expressions, not designators, obviously
+need to be computed and captured into memory in order to be passed
+by reference.
+This includes parenthesized designators like `(X)`, which are
+expressions in Fortran, as an important special case.
+(This case also technically includes unparenthesized constants,
+but those are better implemented by passing addresses in read-only
+memory.)
+The dummy argument cannot be known to have `INTENT(OUT)` or
+`INTENT(IN OUT)`.
+
+Small scalar or elemental `VALUE` arguments may be passed in registers,
+as should arguments wrapped in the legacy VMS `%VAL()` notation.
+Multiple elemental `VALUE` arguments might be packed into SIMD registers.
+
+Effective arguments that are designators, not expressions, must also
+be copied into temporaries in the following situations.
+
+1. Coindexed objects need to be copied into the local image.
+   This can get very involved if they contain `ALLOCATABLE`
+   components, which also need to be copied, along with their
+   `ALLOCATABLE` components, and may be best implemented with a runtime
+   library routine working off a description of the type.
+1. Effective arguments associated with dummies with the `VALUE`
+   attribute need to be copied; this can be done on either
+   side of the call, but there are optimization opportunities
+   available when the caller's side bears the responsibility.
+1. In non-elemental calls, the values of array sections with
+   vector-valued subscripts need to be gathered into temporaries.
+   These effective arguments are not definable, and they are not allowed to
+   be associated with non-`VALUE` dummy arguments with the attributes
+   `INTENT(OUT)`, `INTENT(IN OUT)`, `ASYNCHRONOUS`, or `VOLATILE`
+   (15.5.2.4(21)); `INTENT()` can't always be checked.
+1. Non-simply-contiguous (9.5.4) arrays being passed to non-`POINTER`
+   dummy arguments that must be contiguous (due to a `CONTIGUOUS`
+   attribute, or not being assumed-shape or assumed-rank; this
+   is always the case for F77ish procedures).
+   This should be a runtime decision, so that effective arguments
+   that turn out to be contiguous can be passed cheaply.
+   This rule does not apply to coarray dummies, whose effective arguments
+   are required to be simply contiguous when this rule would otherwise
+   force the use of a temporary (15.5.2.8); neither does it apply
+   to `ASYNCHRONOUS` and `VOLATILE` effective arguments, which are
+   disallowed when copies would be necessary (C1538 - C1540).
+   *Only temporaries created by this contiguity requirement are
+   candidates for being copied back to the original variable after
+   the call* (see below).
+
+Fortran requires (18.3.6(5)) that calls to interoperable procedures
+with dummy argument arrays with contiguity requirements
+handle the compaction of discontiguous data *in the Fortran callee*,
+at least when called from C.
+And discontiguous data must be compacted on the *caller's* side
+when passed from Fortran to C (18.3.6(6)).
+
+We could perform all argument compaction (discretionary or
+required) in the callee, but there are many cases where the
+compiler knows that the effective argument data are contiguous
+when compiling the caller (a temporary is needed for other reasons,
+or the effective argument is simply contiguous) and a run-time test for
+discontiguity in the callee can be avoided by using a caller-compaction
+convention when we have the freedom to choose.
+
+While we are unlikely to want to _needlessly_ use a temporary for
+an effective argument that does not require one for any of these
+reasons above, we are specifically disallowed from doing so
+by the standard in cases where pointers to the original target
+data are required to be valid across the call (15.5.2.4(9-10)).
+In particular, compaction of assumed-shape arrays for discretionary
+contiguity on the leading dimension to ease SIMD vectorization
+cannot be done safely for `TARGET` dummies without `VALUE`.
+
+Effective arguments associated with known `INTENT(OUT)` dummies that
+require allocation of a temporary -- and this can only be for reasons of
+contiguity -- don't have to populate it, but they do have to perform
+minimal initialization of any `ALLOCATABLE` components so that
+the runtime doesn't crash when the callee finalizes and deallocates
+them.
+`ALLOCATABLE` coarrays are prohibited from being affected by `INTENT(OUT)`
+(see C846).
+Note that calls to implicit interfaces must conservatively allow
+for the use of `INTENT(OUT)` by the callee.
+
+Except for `VALUE` and known `INTENT(IN)` dummy arguments, the original
+contents of local designators that have been compacted into temporaries
+could optionally have their `ALLOCATABLE` components invalidated
+across the call as an aid to debugging.
+
+Except for `VALUE` and known `INTENT(IN)` dummy arguments, the contents of
+the temporary storage will be copied back into the effective argument
+designator after control returns from the procedure, and it may be necessary
+to preserve addresses (or the values of subscripts and cosubscripts
+needed to recalculate them) of the effective argument designator, or its
+elements, in additional temporary storage if they can't be safely or
+quickly recomputed after the call.
+
+### `INTENT(OUT)` preparation
+
+Effective arguments that are associated with `INTENT(OUT)`
+dummy arguments are required to be definable.
+This cannot always be checked, as the use of `INTENT(OUT)`
+does not by itself mandate the use of an explicit interface.
+
+`INTENT(OUT)` arguments are finalized (as if) on entry to the called
+procedure.  In particular, in calls to elemental procedures,
+the elements of an array are finalized by a scalar or elemental
+`FINAL` procedure (7.5.6.3(7)).
+
+Derived type components that are `ALLOCATABLE` are finalized
+and deallocated; they are prohibited from being coarrays.
+Components with initializers are (re)initialized.
+
+The preparation of effective arguments for `INTENT(OUT)` could be
+done on either side of the call.  If the preparation is
+done by the caller, there is an optimization opportunity
+in situations where unmodified incoming `INTENT(OUT)` dummy
+arguments whose types lack `FINAL` procedures are being passed
+onward as outgoing `INTENT(OUT)` arguments.
+
+### Arguments and function results requiring descriptors
+
+Dummy arguments are represented with the addresses of new descriptors
+when they have any of the following characteristics:
+
+1. assumed-shape array (`DIMENSION::A(:)`)
+1. assumed-rank array (`DIMENSION::A(..)`)
+1. parameterized derived type with assumed `LEN` parameters
+1. polymorphic (`CLASS(T)`, `CLASS(*)`)
+1. assumed-type (`TYPE(*)`)
+1. coarray dummy argument
+1. `INTENT(IN) POINTER` argument (15.5.2.7, C.10.4)
+
+`ALLOCATABLE` and other `POINTER` arguments can be passed by simple
+address.
+
+Non-F77ish procedures use descriptors to represent two further
+kinds of dummy arguments:
+
+1. assumed-length `CHARACTER(*)`
+1. dummy procedures
+
+F77ish procedures use other means to convey character length and host instance
+links (respectively) for these arguments.
+
+Function results are described by the caller & callee in
+a caller-supplied descriptor when they have any of the following
+characteristics, some which necessitate an explicit interface:
+
+1. deferred-shape array (so `ALLOCATABLE` or `POINTER`)
+1. derived type with any non-constant `LEN` parameter
+   (C795 prohibit assumed lengths)
+1. procedure pointer result (when the interface must be explicit)
+
+Storage for a function call's result is allocated by the caller when
+possible: the result is neither `ALLOCATABLE` nor `POINTER`,
+the shape is scalar or explicit, and the type has `LEN` parameters
+that are constant expressions.
+In other words, the result doesn't require the use of a descriptor
+but can't be returned in registers.
+This allows a function result to be written directly into a local
+variable or temporary when it is safe to treat the variable as if
+it were an additional `INTENT(OUT)` argument.
+(Storage for `CHARACTER` results, assumed or explicit, is always
+allocated by the caller, and the length is always passed so that
+an assumed-length external function will work when eventually
+called from a scope that declares the length that it will use
+(15.5.2.9 (2)).)
+
+Note that the lower bounds of the dimensions of non-`POINTER`
+non-`ALLOCATABLE` dummy argument arrays are determined by the
+callee, not the caller.
+(A Fortran pitfall: declaring `A(0:9)`, passing it to a dummy
+array `D(:)`, and assuming that `LBOUND(D,1)` will be zero
+in the callee.)
+If the declaration of an assumed-shape dummy argument array
+contains an explicit lower bound expression (R819), its value
+needs to be computed by the callee;
+it may be captured and saved in the incoming descriptor
+as long as we assume that argument descriptors can be modified
+by callees.
+Callers should fill in all of the fields of outgoing
+non-`POINTER` non-`ALLOCATABLE` argument
+descriptors with the assumption that the callee will use 1 for
+lower bound values, and callees can rely on them being 1 if
+not modified.
+
+### Copying temporary storage back into argument designators
+
+Except for `VALUE` and known `INTENT(IN)` dummy arguments and array sections
+with vector-valued subscripts (15.5.2.4(21)), temporary storage into
+which effective argument data were compacted for contiguity before the call
+must be redistributed back to its original storage by the caller after
+the return.
+
+In conjunction with saved cosubscript values, a standard descriptor
+would suffice to represent a pointer to the original storage into which the
+temporary data should be redistributed;
+the descriptor need not be fully populated with type information.
+
+Note that coindexed objects with `ALLOCATABLE` ultimate components
+are required to be associated only with dummy arguments with the
+`VALUE` &/or `INTENT(IN)` attributes (15.6.2.4(6)), so there is no
+requirement that the local image somehow reallocate remote storage
+when copying the data back.
+
+### Polymorphic bindings
+
+Calls to the type-bound procedures of monomorphic types are
+resolved at compilation time, as are calls to `NON_OVERRIDABLE`
+type-bound procedures.
+The resolution of calls to overridable type-bound procedures of
+polymorphic types must be completed at execution (generic resolution
+of type-bound procedure bindings from effective argument types, kinds,
+and ranks is always a compilation-time task (15.5.6, C.10.6)).
+
+Each derived type that declares or inherits any overridable
+type-bound procedure bindings must correspond to a static constant
+table of code addresses (or, more likely, a static constant type
+description containing or pointing to such a table, along with
+information used by the runtime support library for initialization,
+copying, finalization, and I/O of type instances).  Each overridable
+type-bound procedure in the type corresponds to an index into this table.
+
+### Host instance linkage
+
+Calls to dummy procedures and procedure pointers that resolve to
+internal procedures need to pass an additional "host instance" argument that
+addresses a block of storage in the stack frame of their
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 host subprogram that was active at the time they were passed as an
 effective argument or associated with a procedure pointer.
 This is similar to a static link in implementations of programming

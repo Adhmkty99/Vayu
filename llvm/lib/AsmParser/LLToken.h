@@ -74,6 +74,7 @@ enum Kind {
   kw_localexec,
   kw_zeroinitializer,
   kw_undef,
+  kw_poison,
   kw_null,
   kw_none,
   kw_to,
@@ -170,6 +171,7 @@ enum Kind {
   kw_amdgpu_ps,
   kw_amdgpu_cs,
   kw_amdgpu_kernel,
+  kw_amdgpu_gfx,
   kw_tailcc,
 
   // Attributes:
@@ -240,6 +242,8 @@ enum Kind {
   kw_writeonly,
   kw_zeroext,
   kw_immarg,
+  kw_byref,
+  kw_mustprogress,
 
   kw_type,
   kw_opaque,
@@ -357,6 +361,7 @@ enum Kind {
   kw_extractvalue,
   kw_insertvalue,
   kw_blockaddress,
+  kw_dso_local_equivalent,
 
   kw_freeze,
 

@@ -1,4 +1,5 @@
-; RUN: opt < %s -basic-aa -aa-eval -print-all-alias-modref-info -basic-aa-recphi -disable-output 2>&1 | FileCheck %s
+; RUN: opt < %s -basic-aa -aa-eval -print-all-alias-modref-info -disable-output 2>&1 | FileCheck %s --check-prefixes=CHECK,NO-PHI-VALUES
+; RUN: opt < %s -phi-values -basic-aa -aa-eval -print-all-alias-modref-info -disable-output 2>&1 | FileCheck %s --check-prefixes=CHECK,PHI-VALUES
 
 ; CHECK-LABEL: Function: simple: 5 pointers, 0 call sites
 ; CHECK:         NoAlias:      float* %src1, float* %src2
@@ -141,6 +142,7 @@ if.end: ; preds = %f.exit
 ; CHECK:         NoAlias:      [3 x i16]* %int_arr.10, i16** %argv.6.par
 ; CHECK:         NoAlias:      i16* %_tmp1, i16** %argv.6.par
 ; CHECK:         PartialAlias: [3 x i16]* %int_arr.10, i16* %_tmp1
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK:         MayAlias:     i16* %ls1.9.0, i16** %argv.6.par
 ; CHECK:         MayAlias:     [3 x i16]* %int_arr.10, i16* %ls1.9.0
 ; CHECK:         MayAlias:     i16* %_tmp1, i16* %ls1.9.0
@@ -186,6 +188,156 @@ bb4:                                              ; preds = %bb3
 
 bb5:                                              ; preds = %bb3, %bb4
   ret i16 0
+=======
+; CHECK:         NoAlias:      i16* %ls1.9.0, i16** %argv.6.par
+; CHECK:         MayAlias:     [3 x i16]* %int_arr.10, i16* %ls1.9.0
+; CHECK:         MayAlias:     i16* %_tmp1, i16* %ls1.9.0
+; CHECK:         NoAlias:      i16* %_tmp7, i16** %argv.6.par
+; CHECK:         MayAlias:     [3 x i16]* %int_arr.10, i16* %_tmp7
+; CHECK:         MayAlias:     i16* %_tmp1, i16* %_tmp7
+; CHECK:         NoAlias:      i16* %_tmp7, i16* %ls1.9.0
+; CHECK:         NoAlias:      i16* %_tmp11, i16** %argv.6.par
+; CHECK:         PartialAlias: [3 x i16]* %int_arr.10, i16* %_tmp11
+; CHECK:         NoAlias:      i16* %_tmp1, i16* %_tmp11
+; CHECK:         MayAlias:     i16* %_tmp11, i16* %ls1.9.0
+; CHECK:         MayAlias:     i16* %_tmp11, i16* %_tmp7
+; CHECK:         Both ModRef:  Ptr: i16** %argv.6.par  <->  %_tmp16 = call i16 @call(i32 %_tmp13)
+; CHECK:         NoModRef:  Ptr: [3 x i16]* %int_arr.10        <->  %_tmp16 = call i16 @call(i32 %_tmp13)
+; CHECK:         NoModRef:  Ptr: i16* %_tmp1   <->  %_tmp16 = call i16 @call(i32 %_tmp13)
+; CHECK:         Both ModRef:  Ptr: i16* %ls1.9.0      <->  %_tmp16 = call i16 @call(i32 %_tmp13)
+; CHECK:         Both ModRef:  Ptr: i16* %_tmp7        <->  %_tmp16 = call i16 @call(i32 %_tmp13)
+; CHECK:         NoModRef:  Ptr: i16* %_tmp11  <->  %_tmp16 = call i16 @call(i32 %_tmp13)
+define i16 @negative(i16 %argc.5.par, i16** nocapture readnone %argv.6.par) {
+  %int_arr.10 = alloca [3 x i16], align 1
+  %_tmp1 = getelementptr inbounds [3 x i16], [3 x i16]* %int_arr.10, i16 0, i16 2
+  br label %bb1
+
+bb1:                                              ; preds = %bb1, %0
+  %i.7.0 = phi i16 [ 2, %0 ], [ %_tmp5, %bb1 ]
+  %ls1.9.0 = phi i16* [ %_tmp1, %0 ], [ %_tmp7, %bb1 ]
+  store i16 %i.7.0, i16* %ls1.9.0, align 1
+  %_tmp5 = add nsw i16 %i.7.0, -1
+  %_tmp7 = getelementptr i16, i16* %ls1.9.0, i16 -1
+  %_tmp9 = icmp sgt i16 %i.7.0, 0
+  br i1 %_tmp9, label %bb1, label %bb3
+
+bb3:                                              ; preds = %bb1
+  %_tmp11 = getelementptr inbounds [3 x i16], [3 x i16]* %int_arr.10, i16 0, i16 1
+  %_tmp12 = load i16, i16* %_tmp11, align 1
+  %_tmp13 = sext i16 %_tmp12 to i32
+  %_tmp16 = call i16 @call(i32 %_tmp13)
+  %_tmp18.not = icmp eq i16 %_tmp12, 1
+  br i1 %_tmp18.not, label %bb5, label %bb4
+
+bb4:                                              ; preds = %bb3
+  ret i16 1
+
+bb5:                                              ; preds = %bb3, %bb4
+  ret i16 0
+}
+
+; CHECK-LABEL: Function: dynamic_offset
+; CHECK: NoAlias:  i8* %a, i8* %p.base
+; CHECK: MayAlias: i8* %p, i8* %p.base
+; CHECK: NoAlias:  i8* %a, i8* %p
+; CHECK: MayAlias: i8* %p.base, i8* %p.next
+; CHECK: NoAlias:  i8* %a, i8* %p.next
+; CHECK: MayAlias: i8* %p, i8* %p.next
+define void @dynamic_offset(i1 %c, i8* noalias %p.base) {
+entry:
+  %a = alloca i8
+  br label %loop
+
+loop:
+  %p = phi i8* [ %p.base, %entry ], [ %p.next, %loop ]
+  %offset = call i16 @call(i32 0)
+  %p.next = getelementptr inbounds i8, i8* %p, i16 %offset
+  br i1 %c, label %loop, label %exit
+
+exit:
+  ret void
+}
+
+; TODO: Currently yields an asymmetric result.
+; CHECK-LABEL: Function: symmetry
+; CHECK: MayAlias:  i32* %p, i32* %p.base
+; CHECK: MayAlias:  i32* %p.base, i32* %p.next
+; CHECK: NoAlias:   i32* %p, i32* %p.next
+; CHECK: MayAlias:  i32* %p.base, i32* %result
+; CHECK: NoAlias:   i32* %p, i32* %result
+; CHECK: MustAlias: i32* %p.next, i32* %result
+define i32* @symmetry(i32* %p.base, i1 %c) {
+entry:
+  br label %loop
+
+loop:
+  %p = phi i32* [ %p.base, %entry ], [ %p.next, %loop ]
+  %p.next = getelementptr inbounds i32, i32* %p, i32 1
+  br i1 %c, label %loop, label %exit
+
+exit:
+  %result = phi i32* [ %p.next, %loop ]
+  ret i32* %result
+}
+
+; CHECK-LABEL: Function: nested_loop
+; CHECK: NoAlias:  i8* %a, i8* %p.base
+; CHECK: NoAlias:  i8* %a, i8* %p.outer
+; CHECK: NoAlias:  i8* %a, i8* %p.outer.next
+; NO-PHI-VALUES: MayAlias: i8* %a, i8* %p.inner
+; PHI-VALUES: NoAlias: i8* %a, i8* %p.inner
+; CHECK: NoAlias:  i8* %a, i8* %p.inner.next
+define void @nested_loop(i1 %c, i1 %c2, i8* noalias %p.base) {
+entry:
+  %a = alloca i8
+  br label %outer_loop
+
+outer_loop:
+  %p.outer = phi i8* [ %p.base, %entry ], [ %p.outer.next, %outer_loop_latch ]
+  br label %inner_loop
+
+inner_loop:
+  %p.inner = phi i8* [ %p.outer, %outer_loop ], [ %p.inner.next, %inner_loop ]
+  %p.inner.next = getelementptr inbounds i8, i8* %p.inner, i64 1
+  br i1 %c, label %inner_loop, label %outer_loop_latch
+
+outer_loop_latch:
+  %p.outer.next = getelementptr inbounds i8, i8* %p.inner, i64 10
+  br i1 %c2, label %outer_loop, label %exit
+
+exit:
+  ret void
+}
+
+; Same as the previous test case, but avoiding phi of phi.
+; CHECK-LABEL: Function: nested_loop2
+; CHECK: NoAlias:  i8* %a, i8* %p.base
+; CHECK: NoAlias:  i8* %a, i8* %p.outer
+; CHECK: NoAlias:  i8* %a, i8* %p.outer.next
+; CHECK: MayAlias: i8* %a, i8* %p.inner
+; CHECK: NoAlias:  i8* %a, i8* %p.inner.next
+; TODO: (a, p.inner) could be NoAlias
+define void @nested_loop2(i1 %c, i1 %c2, i8* noalias %p.base) {
+entry:
+  %a = alloca i8
+  br label %outer_loop
+
+outer_loop:
+  %p.outer = phi i8* [ %p.base, %entry ], [ %p.outer.next, %outer_loop_latch ]
+  %p.outer.next = getelementptr inbounds i8, i8* %p.outer, i64 10
+  br label %inner_loop
+
+inner_loop:
+  %p.inner = phi i8* [ %p.outer.next, %outer_loop ], [ %p.inner.next, %inner_loop ]
+  %p.inner.next = getelementptr inbounds i8, i8* %p.inner, i64 1
+  br i1 %c, label %inner_loop, label %outer_loop_latch
+
+outer_loop_latch:
+  br i1 %c2, label %outer_loop, label %exit
+
+exit:
+  ret void
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 }
 
 declare i16 @call(i32)

@@ -15,33 +15,106 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 0
+; GCN-NEXT:    v_writelane_b32 v0, s5, 1
+; GCN-NEXT:    v_writelane_b32 v0, s6, 2
+; GCN-NEXT:    v_writelane_b32 v0, s7, 3
+; GCN-NEXT:    v_writelane_b32 v0, s8, 4
+; GCN-NEXT:    v_writelane_b32 v0, s9, 5
+; GCN-NEXT:    v_writelane_b32 v0, s10, 6
+; GCN-NEXT:    v_writelane_b32 v0, s11, 7
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[12:19]
+; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 8
+; GCN-NEXT:    v_writelane_b32 v0, s5, 9
+; GCN-NEXT:    v_writelane_b32 v0, s6, 10
+; GCN-NEXT:    v_writelane_b32 v0, s7, 11
+; GCN-NEXT:    v_writelane_b32 v0, s8, 12
+; GCN-NEXT:    v_writelane_b32 v0, s9, 13
+; GCN-NEXT:    v_writelane_b32 v0, s10, 14
+; GCN-NEXT:    v_writelane_b32 v0, s11, 15
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[20:27]
+; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 16
+; GCN-NEXT:    v_writelane_b32 v0, s5, 17
+; GCN-NEXT:    v_writelane_b32 v0, s6, 18
+; GCN-NEXT:    v_writelane_b32 v0, s7, 19
+; GCN-NEXT:    v_writelane_b32 v0, s8, 20
+; GCN-NEXT:    v_writelane_b32 v0, s9, 21
+; GCN-NEXT:    v_writelane_b32 v0, s10, 22
+; GCN-NEXT:    v_writelane_b32 v0, s11, 23
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[36:43]
+; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 24
+; GCN-NEXT:    v_writelane_b32 v0, s5, 25
+; GCN-NEXT:    v_writelane_b32 v0, s6, 26
+; GCN-NEXT:    v_writelane_b32 v0, s7, 27
+; GCN-NEXT:    v_writelane_b32 v0, s8, 28
+; GCN-NEXT:    v_writelane_b32 v0, s9, 29
+; GCN-NEXT:    v_writelane_b32 v0, s10, 30
+; GCN-NEXT:    v_writelane_b32 v0, s11, 31
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[44:51]
+; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 32
+; GCN-NEXT:    v_writelane_b32 v0, s5, 33
+; GCN-NEXT:    v_writelane_b32 v0, s6, 34
+; GCN-NEXT:    v_writelane_b32 v0, s7, 35
+; GCN-NEXT:    v_writelane_b32 v0, s8, 36
+; GCN-NEXT:    v_writelane_b32 v0, s9, 37
+; GCN-NEXT:    v_writelane_b32 v0, s10, 38
+; GCN-NEXT:    v_writelane_b32 v0, s11, 39
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[52:59]
+; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 40
+; GCN-NEXT:    v_writelane_b32 v0, s5, 41
+; GCN-NEXT:    v_writelane_b32 v0, s6, 42
+; GCN-NEXT:    v_writelane_b32 v0, s7, 43
+; GCN-NEXT:    v_writelane_b32 v0, s8, 44
+; GCN-NEXT:    v_writelane_b32 v0, s9, 45
+; GCN-NEXT:    v_writelane_b32 v0, s10, 46
+; GCN-NEXT:    v_writelane_b32 v0, s11, 47
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[60:67]
+; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 48
+; GCN-NEXT:    v_writelane_b32 v0, s5, 49
+; GCN-NEXT:    v_writelane_b32 v0, s6, 50
+; GCN-NEXT:    v_writelane_b32 v0, s7, 51
+; GCN-NEXT:    v_writelane_b32 v0, s8, 52
+; GCN-NEXT:    v_writelane_b32 v0, s9, 53
+; GCN-NEXT:    v_writelane_b32 v0, s10, 54
+; GCN-NEXT:    v_writelane_b32 v0, s11, 55
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[68:75]
+; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 56
+; GCN-NEXT:    v_writelane_b32 v0, s5, 57
+; GCN-NEXT:    v_writelane_b32 v0, s6, 58
+; GCN-NEXT:    v_writelane_b32 v0, s7, 59
+; GCN-NEXT:    v_writelane_b32 v0, s8, 60
+; GCN-NEXT:    v_writelane_b32 v0, s9, 61
+; GCN-NEXT:    v_writelane_b32 v0, s10, 62
+; GCN-NEXT:    v_writelane_b32 v0, s11, 63
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[76:83]
+; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v1, s4, 0
+; GCN-NEXT:    v_writelane_b32 v1, s5, 1
+; GCN-NEXT:    v_writelane_b32 v1, s6, 2
+; GCN-NEXT:    v_writelane_b32 v1, s7, 3
+; GCN-NEXT:    v_writelane_b32 v1, s8, 4
+; GCN-NEXT:    v_writelane_b32 v1, s9, 5
+; GCN-NEXT:    v_writelane_b32 v1, s10, 6
+; GCN-NEXT:    v_writelane_b32 v1, s11, 7
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[84:91]
+; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    v_writelane_b32 v0, s4, 0
 ; GCN-NEXT:    v_writelane_b32 v0, s5, 1
 ; GCN-NEXT:    v_writelane_b32 v0, s6, 2
@@ -120,7 +193,96 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    ; def s[4:11]
 ; GCN-NEXT:    ;;#ASMEND
 ; GCN-NEXT:    s_mov_b32 s3, 0
+=======
+; GCN-NEXT:    v_writelane_b32 v1, s4, 8
+; GCN-NEXT:    v_writelane_b32 v1, s5, 9
+; GCN-NEXT:    v_writelane_b32 v1, s6, 10
+; GCN-NEXT:    v_writelane_b32 v1, s7, 11
+; GCN-NEXT:    v_writelane_b32 v1, s8, 12
+; GCN-NEXT:    v_writelane_b32 v1, s9, 13
+; GCN-NEXT:    v_writelane_b32 v1, s10, 14
+; GCN-NEXT:    v_writelane_b32 v1, s11, 15
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:11]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v1, s4, 16
+; GCN-NEXT:    v_writelane_b32 v1, s5, 17
+; GCN-NEXT:    v_writelane_b32 v1, s6, 18
+; GCN-NEXT:    v_writelane_b32 v1, s7, 19
+; GCN-NEXT:    v_writelane_b32 v1, s8, 20
+; GCN-NEXT:    v_writelane_b32 v1, s9, 21
+; GCN-NEXT:    v_writelane_b32 v1, s10, 22
+; GCN-NEXT:    v_writelane_b32 v1, s11, 23
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:11]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v1, s4, 24
+; GCN-NEXT:    v_writelane_b32 v1, s5, 25
+; GCN-NEXT:    v_writelane_b32 v1, s6, 26
+; GCN-NEXT:    v_writelane_b32 v1, s7, 27
+; GCN-NEXT:    v_writelane_b32 v1, s8, 28
+; GCN-NEXT:    v_writelane_b32 v1, s9, 29
+; GCN-NEXT:    v_writelane_b32 v1, s10, 30
+; GCN-NEXT:    v_writelane_b32 v1, s11, 31
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:11]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v1, s4, 32
+; GCN-NEXT:    v_writelane_b32 v1, s5, 33
+; GCN-NEXT:    v_writelane_b32 v1, s6, 34
+; GCN-NEXT:    v_writelane_b32 v1, s7, 35
+; GCN-NEXT:    v_writelane_b32 v1, s8, 36
+; GCN-NEXT:    v_writelane_b32 v1, s9, 37
+; GCN-NEXT:    v_writelane_b32 v1, s10, 38
+; GCN-NEXT:    v_writelane_b32 v1, s11, 39
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:11]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v1, s4, 40
+; GCN-NEXT:    v_writelane_b32 v1, s5, 41
+; GCN-NEXT:    v_writelane_b32 v1, s6, 42
+; GCN-NEXT:    v_writelane_b32 v1, s7, 43
+; GCN-NEXT:    v_writelane_b32 v1, s8, 44
+; GCN-NEXT:    v_writelane_b32 v1, s9, 45
+; GCN-NEXT:    v_writelane_b32 v1, s10, 46
+; GCN-NEXT:    v_writelane_b32 v1, s11, 47
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:11]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v1, s4, 48
+; GCN-NEXT:    v_writelane_b32 v1, s5, 49
+; GCN-NEXT:    v_writelane_b32 v1, s6, 50
+; GCN-NEXT:    v_writelane_b32 v1, s7, 51
+; GCN-NEXT:    v_writelane_b32 v1, s8, 52
+; GCN-NEXT:    v_writelane_b32 v1, s9, 53
+; GCN-NEXT:    v_writelane_b32 v1, s10, 54
+; GCN-NEXT:    v_writelane_b32 v1, s11, 55
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:11]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v1, s4, 56
+; GCN-NEXT:    v_writelane_b32 v1, s5, 57
+; GCN-NEXT:    v_writelane_b32 v1, s6, 58
+; GCN-NEXT:    v_writelane_b32 v1, s7, 59
+; GCN-NEXT:    v_writelane_b32 v1, s8, 60
+; GCN-NEXT:    v_writelane_b32 v1, s9, 61
+; GCN-NEXT:    v_writelane_b32 v1, s10, 62
+; GCN-NEXT:    v_writelane_b32 v1, s11, 63
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:11]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v2, s4, 0
+; GCN-NEXT:    v_writelane_b32 v2, s5, 1
+; GCN-NEXT:    v_writelane_b32 v2, s6, 2
+; GCN-NEXT:    v_writelane_b32 v2, s7, 3
+; GCN-NEXT:    v_writelane_b32 v2, s8, 4
+; GCN-NEXT:    v_writelane_b32 v2, s9, 5
+; GCN-NEXT:    v_writelane_b32 v2, s10, 6
+; GCN-NEXT:    v_writelane_b32 v2, s11, 7
+; GCN-NEXT:    s_mov_b32 s1, 0
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    s_waitcnt lgkmcnt(0)
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    s_cmp_lg_u32 s2, s3
 ; GCN-NEXT:    v_writelane_b32 v0, s12, 56
 ; GCN-NEXT:    v_writelane_b32 v0, s13, 57
@@ -202,8 +364,94 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    v_writelane_b32 v2, s9, 5
 ; GCN-NEXT:    v_writelane_b32 v2, s10, 6
 ; GCN-NEXT:    v_writelane_b32 v2, s11, 7
+=======
+; GCN-NEXT:    s_cmp_lg_u32 s0, s1
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    s_cbranch_scc1 BB0_2
 ; GCN-NEXT:  ; %bb.1: ; %bb0
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+=======
+; GCN-NEXT:    v_readlane_b32 s8, v1, 56
+; GCN-NEXT:    v_readlane_b32 s9, v1, 57
+; GCN-NEXT:    v_readlane_b32 s10, v1, 58
+; GCN-NEXT:    v_readlane_b32 s11, v1, 59
+; GCN-NEXT:    v_readlane_b32 s12, v1, 60
+; GCN-NEXT:    v_readlane_b32 s13, v1, 61
+; GCN-NEXT:    v_readlane_b32 s14, v1, 62
+; GCN-NEXT:    v_readlane_b32 s15, v1, 63
+; GCN-NEXT:    v_readlane_b32 s16, v1, 48
+; GCN-NEXT:    v_readlane_b32 s17, v1, 49
+; GCN-NEXT:    v_readlane_b32 s18, v1, 50
+; GCN-NEXT:    v_readlane_b32 s19, v1, 51
+; GCN-NEXT:    v_readlane_b32 s20, v1, 52
+; GCN-NEXT:    v_readlane_b32 s21, v1, 53
+; GCN-NEXT:    v_readlane_b32 s22, v1, 54
+; GCN-NEXT:    v_readlane_b32 s23, v1, 55
+; GCN-NEXT:    v_readlane_b32 s24, v1, 40
+; GCN-NEXT:    v_readlane_b32 s25, v1, 41
+; GCN-NEXT:    v_readlane_b32 s26, v1, 42
+; GCN-NEXT:    v_readlane_b32 s27, v1, 43
+; GCN-NEXT:    v_readlane_b32 s28, v1, 44
+; GCN-NEXT:    v_readlane_b32 s29, v1, 45
+; GCN-NEXT:    v_readlane_b32 s30, v1, 46
+; GCN-NEXT:    v_readlane_b32 s31, v1, 47
+; GCN-NEXT:    v_readlane_b32 s36, v1, 32
+; GCN-NEXT:    v_readlane_b32 s37, v1, 33
+; GCN-NEXT:    v_readlane_b32 s38, v1, 34
+; GCN-NEXT:    v_readlane_b32 s39, v1, 35
+; GCN-NEXT:    v_readlane_b32 s40, v1, 36
+; GCN-NEXT:    v_readlane_b32 s41, v1, 37
+; GCN-NEXT:    v_readlane_b32 s42, v1, 38
+; GCN-NEXT:    v_readlane_b32 s43, v1, 39
+; GCN-NEXT:    v_readlane_b32 s44, v1, 24
+; GCN-NEXT:    v_readlane_b32 s45, v1, 25
+; GCN-NEXT:    v_readlane_b32 s46, v1, 26
+; GCN-NEXT:    v_readlane_b32 s47, v1, 27
+; GCN-NEXT:    v_readlane_b32 s48, v1, 28
+; GCN-NEXT:    v_readlane_b32 s49, v1, 29
+; GCN-NEXT:    v_readlane_b32 s50, v1, 30
+; GCN-NEXT:    v_readlane_b32 s51, v1, 31
+; GCN-NEXT:    v_readlane_b32 s52, v1, 16
+; GCN-NEXT:    v_readlane_b32 s53, v1, 17
+; GCN-NEXT:    v_readlane_b32 s54, v1, 18
+; GCN-NEXT:    v_readlane_b32 s55, v1, 19
+; GCN-NEXT:    v_readlane_b32 s56, v1, 20
+; GCN-NEXT:    v_readlane_b32 s57, v1, 21
+; GCN-NEXT:    v_readlane_b32 s58, v1, 22
+; GCN-NEXT:    v_readlane_b32 s59, v1, 23
+; GCN-NEXT:    v_readlane_b32 s60, v1, 8
+; GCN-NEXT:    v_readlane_b32 s61, v1, 9
+; GCN-NEXT:    v_readlane_b32 s62, v1, 10
+; GCN-NEXT:    v_readlane_b32 s63, v1, 11
+; GCN-NEXT:    v_readlane_b32 s64, v1, 12
+; GCN-NEXT:    v_readlane_b32 s65, v1, 13
+; GCN-NEXT:    v_readlane_b32 s66, v1, 14
+; GCN-NEXT:    v_readlane_b32 s67, v1, 15
+; GCN-NEXT:    v_readlane_b32 s68, v1, 0
+; GCN-NEXT:    v_readlane_b32 s69, v1, 1
+; GCN-NEXT:    v_readlane_b32 s70, v1, 2
+; GCN-NEXT:    v_readlane_b32 s71, v1, 3
+; GCN-NEXT:    v_readlane_b32 s72, v1, 4
+; GCN-NEXT:    v_readlane_b32 s73, v1, 5
+; GCN-NEXT:    v_readlane_b32 s74, v1, 6
+; GCN-NEXT:    v_readlane_b32 s75, v1, 7
+; GCN-NEXT:    v_readlane_b32 s76, v0, 56
+; GCN-NEXT:    v_readlane_b32 s77, v0, 57
+; GCN-NEXT:    v_readlane_b32 s78, v0, 58
+; GCN-NEXT:    v_readlane_b32 s79, v0, 59
+; GCN-NEXT:    v_readlane_b32 s80, v0, 60
+; GCN-NEXT:    v_readlane_b32 s81, v0, 61
+; GCN-NEXT:    v_readlane_b32 s82, v0, 62
+; GCN-NEXT:    v_readlane_b32 s83, v0, 63
+; GCN-NEXT:    v_readlane_b32 s84, v0, 48
+; GCN-NEXT:    v_readlane_b32 s85, v0, 49
+; GCN-NEXT:    v_readlane_b32 s86, v0, 50
+; GCN-NEXT:    v_readlane_b32 s87, v0, 51
+; GCN-NEXT:    v_readlane_b32 s88, v0, 52
+; GCN-NEXT:    v_readlane_b32 s89, v0, 53
+; GCN-NEXT:    v_readlane_b32 s90, v0, 54
+; GCN-NEXT:    v_readlane_b32 s91, v0, 55
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 0
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 1
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 2
@@ -215,6 +463,7 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:7]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 56
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 57
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 58
@@ -223,97 +472,7 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    v_readlane_b32 s5, v0, 61
 ; GCN-NEXT:    v_readlane_b32 s6, v0, 62
 ; GCN-NEXT:    v_readlane_b32 s7, v0, 63
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s0, v1, 0
-; GCN-NEXT:    v_readlane_b32 s1, v1, 1
-; GCN-NEXT:    v_readlane_b32 s2, v1, 2
-; GCN-NEXT:    v_readlane_b32 s3, v1, 3
-; GCN-NEXT:    v_readlane_b32 s4, v1, 4
-; GCN-NEXT:    v_readlane_b32 s5, v1, 5
-; GCN-NEXT:    v_readlane_b32 s6, v1, 6
-; GCN-NEXT:    v_readlane_b32 s7, v1, 7
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s0, v1, 8
-; GCN-NEXT:    v_readlane_b32 s1, v1, 9
-; GCN-NEXT:    v_readlane_b32 s2, v1, 10
-; GCN-NEXT:    v_readlane_b32 s3, v1, 11
-; GCN-NEXT:    v_readlane_b32 s4, v1, 12
-; GCN-NEXT:    v_readlane_b32 s5, v1, 13
-; GCN-NEXT:    v_readlane_b32 s6, v1, 14
-; GCN-NEXT:    v_readlane_b32 s7, v1, 15
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s0, v1, 16
-; GCN-NEXT:    v_readlane_b32 s1, v1, 17
-; GCN-NEXT:    v_readlane_b32 s2, v1, 18
-; GCN-NEXT:    v_readlane_b32 s3, v1, 19
-; GCN-NEXT:    v_readlane_b32 s4, v1, 20
-; GCN-NEXT:    v_readlane_b32 s5, v1, 21
-; GCN-NEXT:    v_readlane_b32 s6, v1, 22
-; GCN-NEXT:    v_readlane_b32 s7, v1, 23
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s0, v1, 24
-; GCN-NEXT:    v_readlane_b32 s1, v1, 25
-; GCN-NEXT:    v_readlane_b32 s2, v1, 26
-; GCN-NEXT:    v_readlane_b32 s3, v1, 27
-; GCN-NEXT:    v_readlane_b32 s4, v1, 28
-; GCN-NEXT:    v_readlane_b32 s5, v1, 29
-; GCN-NEXT:    v_readlane_b32 s6, v1, 30
-; GCN-NEXT:    v_readlane_b32 s7, v1, 31
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s0, v1, 32
-; GCN-NEXT:    v_readlane_b32 s1, v1, 33
-; GCN-NEXT:    v_readlane_b32 s2, v1, 34
-; GCN-NEXT:    v_readlane_b32 s3, v1, 35
-; GCN-NEXT:    v_readlane_b32 s4, v1, 36
-; GCN-NEXT:    v_readlane_b32 s5, v1, 37
-; GCN-NEXT:    v_readlane_b32 s6, v1, 38
-; GCN-NEXT:    v_readlane_b32 s7, v1, 39
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s0, v1, 40
-; GCN-NEXT:    v_readlane_b32 s1, v1, 41
-; GCN-NEXT:    v_readlane_b32 s2, v1, 42
-; GCN-NEXT:    v_readlane_b32 s3, v1, 43
-; GCN-NEXT:    v_readlane_b32 s4, v1, 44
-; GCN-NEXT:    v_readlane_b32 s5, v1, 45
-; GCN-NEXT:    v_readlane_b32 s6, v1, 46
-; GCN-NEXT:    v_readlane_b32 s7, v1, 47
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s0, v1, 48
-; GCN-NEXT:    v_readlane_b32 s1, v1, 49
-; GCN-NEXT:    v_readlane_b32 s2, v1, 50
-; GCN-NEXT:    v_readlane_b32 s3, v1, 51
-; GCN-NEXT:    v_readlane_b32 s4, v1, 52
-; GCN-NEXT:    v_readlane_b32 s5, v1, 53
-; GCN-NEXT:    v_readlane_b32 s6, v1, 54
-; GCN-NEXT:    v_readlane_b32 s7, v1, 55
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s0, v1, 56
-; GCN-NEXT:    v_readlane_b32 s1, v1, 57
-; GCN-NEXT:    v_readlane_b32 s2, v1, 58
-; GCN-NEXT:    v_readlane_b32 s3, v1, 59
-; GCN-NEXT:    v_readlane_b32 s4, v1, 60
-; GCN-NEXT:    v_readlane_b32 s5, v1, 61
-; GCN-NEXT:    v_readlane_b32 s6, v1, 62
-; GCN-NEXT:    v_readlane_b32 s7, v1, 63
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
+=======
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 8
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 9
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 10
@@ -322,9 +481,20 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    v_readlane_b32 s5, v0, 13
 ; GCN-NEXT:    v_readlane_b32 s6, v0, 14
 ; GCN-NEXT:    v_readlane_b32 s7, v0, 15
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:7]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v1, 0
+; GCN-NEXT:    v_readlane_b32 s1, v1, 1
+; GCN-NEXT:    v_readlane_b32 s2, v1, 2
+; GCN-NEXT:    v_readlane_b32 s3, v1, 3
+; GCN-NEXT:    v_readlane_b32 s4, v1, 4
+; GCN-NEXT:    v_readlane_b32 s5, v1, 5
+; GCN-NEXT:    v_readlane_b32 s6, v1, 6
+; GCN-NEXT:    v_readlane_b32 s7, v1, 7
+=======
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 16
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 17
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 18
@@ -333,9 +503,20 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    v_readlane_b32 s5, v0, 21
 ; GCN-NEXT:    v_readlane_b32 s6, v0, 22
 ; GCN-NEXT:    v_readlane_b32 s7, v0, 23
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:7]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v1, 8
+; GCN-NEXT:    v_readlane_b32 s1, v1, 9
+; GCN-NEXT:    v_readlane_b32 s2, v1, 10
+; GCN-NEXT:    v_readlane_b32 s3, v1, 11
+; GCN-NEXT:    v_readlane_b32 s4, v1, 12
+; GCN-NEXT:    v_readlane_b32 s5, v1, 13
+; GCN-NEXT:    v_readlane_b32 s6, v1, 14
+; GCN-NEXT:    v_readlane_b32 s7, v1, 15
+=======
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 24
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 25
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 26
@@ -344,9 +525,20 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    v_readlane_b32 s5, v0, 29
 ; GCN-NEXT:    v_readlane_b32 s6, v0, 30
 ; GCN-NEXT:    v_readlane_b32 s7, v0, 31
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:7]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v1, 16
+; GCN-NEXT:    v_readlane_b32 s1, v1, 17
+; GCN-NEXT:    v_readlane_b32 s2, v1, 18
+; GCN-NEXT:    v_readlane_b32 s3, v1, 19
+; GCN-NEXT:    v_readlane_b32 s4, v1, 20
+; GCN-NEXT:    v_readlane_b32 s5, v1, 21
+; GCN-NEXT:    v_readlane_b32 s6, v1, 22
+; GCN-NEXT:    v_readlane_b32 s7, v1, 23
+=======
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 32
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 33
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 34
@@ -355,9 +547,20 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    v_readlane_b32 s5, v0, 37
 ; GCN-NEXT:    v_readlane_b32 s6, v0, 38
 ; GCN-NEXT:    v_readlane_b32 s7, v0, 39
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:7]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v1, 24
+; GCN-NEXT:    v_readlane_b32 s1, v1, 25
+; GCN-NEXT:    v_readlane_b32 s2, v1, 26
+; GCN-NEXT:    v_readlane_b32 s3, v1, 27
+; GCN-NEXT:    v_readlane_b32 s4, v1, 28
+; GCN-NEXT:    v_readlane_b32 s5, v1, 29
+; GCN-NEXT:    v_readlane_b32 s6, v1, 30
+; GCN-NEXT:    v_readlane_b32 s7, v1, 31
+=======
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 40
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 41
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 42
@@ -366,20 +569,20 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    v_readlane_b32 s5, v0, 45
 ; GCN-NEXT:    v_readlane_b32 s6, v0, 46
 ; GCN-NEXT:    v_readlane_b32 s7, v0, 47
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:7]
 ; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s0, v0, 48
-; GCN-NEXT:    v_readlane_b32 s1, v0, 49
-; GCN-NEXT:    v_readlane_b32 s2, v0, 50
-; GCN-NEXT:    v_readlane_b32 s3, v0, 51
-; GCN-NEXT:    v_readlane_b32 s4, v0, 52
-; GCN-NEXT:    v_readlane_b32 s5, v0, 53
-; GCN-NEXT:    v_readlane_b32 s6, v0, 54
-; GCN-NEXT:    v_readlane_b32 s7, v0, 55
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:7]
-; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v1, 32
+; GCN-NEXT:    v_readlane_b32 s1, v1, 33
+; GCN-NEXT:    v_readlane_b32 s2, v1, 34
+; GCN-NEXT:    v_readlane_b32 s3, v1, 35
+; GCN-NEXT:    v_readlane_b32 s4, v1, 36
+; GCN-NEXT:    v_readlane_b32 s5, v1, 37
+; GCN-NEXT:    v_readlane_b32 s6, v1, 38
+; GCN-NEXT:    v_readlane_b32 s7, v1, 39
+=======
 ; GCN-NEXT:    v_readlane_b32 s0, v2, 0
 ; GCN-NEXT:    v_readlane_b32 s1, v2, 1
 ; GCN-NEXT:    v_readlane_b32 s2, v2, 2
@@ -388,6 +591,147 @@ define amdgpu_kernel void @spill_sgprs_to_multiple_vgprs(i32 addrspace(1)* %out,
 ; GCN-NEXT:    v_readlane_b32 s5, v2, 5
 ; GCN-NEXT:    v_readlane_b32 s6, v2, 6
 ; GCN-NEXT:    v_readlane_b32 s7, v2, 7
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[84:91]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v1, 40
+; GCN-NEXT:    v_readlane_b32 s1, v1, 41
+; GCN-NEXT:    v_readlane_b32 s2, v1, 42
+; GCN-NEXT:    v_readlane_b32 s3, v1, 43
+; GCN-NEXT:    v_readlane_b32 s4, v1, 44
+; GCN-NEXT:    v_readlane_b32 s5, v1, 45
+; GCN-NEXT:    v_readlane_b32 s6, v1, 46
+; GCN-NEXT:    v_readlane_b32 s7, v1, 47
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[76:83]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v1, 48
+; GCN-NEXT:    v_readlane_b32 s1, v1, 49
+; GCN-NEXT:    v_readlane_b32 s2, v1, 50
+; GCN-NEXT:    v_readlane_b32 s3, v1, 51
+; GCN-NEXT:    v_readlane_b32 s4, v1, 52
+; GCN-NEXT:    v_readlane_b32 s5, v1, 53
+; GCN-NEXT:    v_readlane_b32 s6, v1, 54
+; GCN-NEXT:    v_readlane_b32 s7, v1, 55
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[68:75]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v1, 56
+; GCN-NEXT:    v_readlane_b32 s1, v1, 57
+; GCN-NEXT:    v_readlane_b32 s2, v1, 58
+; GCN-NEXT:    v_readlane_b32 s3, v1, 59
+; GCN-NEXT:    v_readlane_b32 s4, v1, 60
+; GCN-NEXT:    v_readlane_b32 s5, v1, 61
+; GCN-NEXT:    v_readlane_b32 s6, v1, 62
+; GCN-NEXT:    v_readlane_b32 s7, v1, 63
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[60:67]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v0, 8
+; GCN-NEXT:    v_readlane_b32 s1, v0, 9
+; GCN-NEXT:    v_readlane_b32 s2, v0, 10
+; GCN-NEXT:    v_readlane_b32 s3, v0, 11
+; GCN-NEXT:    v_readlane_b32 s4, v0, 12
+; GCN-NEXT:    v_readlane_b32 s5, v0, 13
+; GCN-NEXT:    v_readlane_b32 s6, v0, 14
+; GCN-NEXT:    v_readlane_b32 s7, v0, 15
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[52:59]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v0, 16
+; GCN-NEXT:    v_readlane_b32 s1, v0, 17
+; GCN-NEXT:    v_readlane_b32 s2, v0, 18
+; GCN-NEXT:    v_readlane_b32 s3, v0, 19
+; GCN-NEXT:    v_readlane_b32 s4, v0, 20
+; GCN-NEXT:    v_readlane_b32 s5, v0, 21
+; GCN-NEXT:    v_readlane_b32 s6, v0, 22
+; GCN-NEXT:    v_readlane_b32 s7, v0, 23
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[44:51]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v0, 24
+; GCN-NEXT:    v_readlane_b32 s1, v0, 25
+; GCN-NEXT:    v_readlane_b32 s2, v0, 26
+; GCN-NEXT:    v_readlane_b32 s3, v0, 27
+; GCN-NEXT:    v_readlane_b32 s4, v0, 28
+; GCN-NEXT:    v_readlane_b32 s5, v0, 29
+; GCN-NEXT:    v_readlane_b32 s6, v0, 30
+; GCN-NEXT:    v_readlane_b32 s7, v0, 31
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[36:43]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v0, 32
+; GCN-NEXT:    v_readlane_b32 s1, v0, 33
+; GCN-NEXT:    v_readlane_b32 s2, v0, 34
+; GCN-NEXT:    v_readlane_b32 s3, v0, 35
+; GCN-NEXT:    v_readlane_b32 s4, v0, 36
+; GCN-NEXT:    v_readlane_b32 s5, v0, 37
+; GCN-NEXT:    v_readlane_b32 s6, v0, 38
+; GCN-NEXT:    v_readlane_b32 s7, v0, 39
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[24:31]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v0, 40
+; GCN-NEXT:    v_readlane_b32 s1, v0, 41
+; GCN-NEXT:    v_readlane_b32 s2, v0, 42
+; GCN-NEXT:    v_readlane_b32 s3, v0, 43
+; GCN-NEXT:    v_readlane_b32 s4, v0, 44
+; GCN-NEXT:    v_readlane_b32 s5, v0, 45
+; GCN-NEXT:    v_readlane_b32 s6, v0, 46
+; GCN-NEXT:    v_readlane_b32 s7, v0, 47
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[16:23]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v0, 48
+; GCN-NEXT:    v_readlane_b32 s1, v0, 49
+; GCN-NEXT:    v_readlane_b32 s2, v0, 50
+; GCN-NEXT:    v_readlane_b32 s3, v0, 51
+; GCN-NEXT:    v_readlane_b32 s4, v0, 52
+; GCN-NEXT:    v_readlane_b32 s5, v0, 53
+; GCN-NEXT:    v_readlane_b32 s6, v0, 54
+; GCN-NEXT:    v_readlane_b32 s7, v0, 55
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[8:15]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v2, 0
+; GCN-NEXT:    v_readlane_b32 s1, v2, 1
+; GCN-NEXT:    v_readlane_b32 s2, v2, 2
+; GCN-NEXT:    v_readlane_b32 s3, v2, 3
+; GCN-NEXT:    v_readlane_b32 s4, v2, 4
+; GCN-NEXT:    v_readlane_b32 s5, v2, 5
+; GCN-NEXT:    v_readlane_b32 s6, v2, 6
+; GCN-NEXT:    v_readlane_b32 s7, v2, 7
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:7]
 ; GCN-NEXT:    ;;#ASMEND
@@ -446,9 +790,26 @@ define amdgpu_kernel void @split_sgpr_spill_2_vgprs(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; def s[4:19]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 0
+; GCN-NEXT:    v_writelane_b32 v0, s5, 1
+; GCN-NEXT:    v_writelane_b32 v0, s6, 2
+; GCN-NEXT:    v_writelane_b32 v0, s7, 3
+; GCN-NEXT:    v_writelane_b32 v0, s8, 4
+; GCN-NEXT:    v_writelane_b32 v0, s9, 5
+; GCN-NEXT:    v_writelane_b32 v0, s10, 6
+; GCN-NEXT:    v_writelane_b32 v0, s11, 7
+; GCN-NEXT:    v_writelane_b32 v0, s12, 8
+; GCN-NEXT:    v_writelane_b32 v0, s13, 9
+; GCN-NEXT:    v_writelane_b32 v0, s14, 10
+; GCN-NEXT:    v_writelane_b32 v0, s15, 11
+; GCN-NEXT:    v_writelane_b32 v0, s16, 12
+; GCN-NEXT:    v_writelane_b32 v0, s17, 13
+; GCN-NEXT:    v_writelane_b32 v0, s18, 14
+; GCN-NEXT:    v_writelane_b32 v0, s19, 15
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[36:51]
+; GCN-NEXT:    ; def s[4:19]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    v_writelane_b32 v0, s4, 0
 ; GCN-NEXT:    v_writelane_b32 v0, s5, 1
 ; GCN-NEXT:    v_writelane_b32 v0, s6, 2
@@ -494,7 +855,81 @@ define amdgpu_kernel void @split_sgpr_spill_2_vgprs(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    ; def s[0:1]
 ; GCN-NEXT:    ;;#ASMEND
 ; GCN-NEXT:    s_mov_b32 s3, 0
+=======
+; GCN-NEXT:    v_writelane_b32 v0, s4, 16
+; GCN-NEXT:    v_writelane_b32 v0, s5, 17
+; GCN-NEXT:    v_writelane_b32 v0, s6, 18
+; GCN-NEXT:    v_writelane_b32 v0, s7, 19
+; GCN-NEXT:    v_writelane_b32 v0, s8, 20
+; GCN-NEXT:    v_writelane_b32 v0, s9, 21
+; GCN-NEXT:    v_writelane_b32 v0, s10, 22
+; GCN-NEXT:    v_writelane_b32 v0, s11, 23
+; GCN-NEXT:    v_writelane_b32 v0, s12, 24
+; GCN-NEXT:    v_writelane_b32 v0, s13, 25
+; GCN-NEXT:    v_writelane_b32 v0, s14, 26
+; GCN-NEXT:    v_writelane_b32 v0, s15, 27
+; GCN-NEXT:    v_writelane_b32 v0, s16, 28
+; GCN-NEXT:    v_writelane_b32 v0, s17, 29
+; GCN-NEXT:    v_writelane_b32 v0, s18, 30
+; GCN-NEXT:    v_writelane_b32 v0, s19, 31
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:19]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 32
+; GCN-NEXT:    v_writelane_b32 v0, s5, 33
+; GCN-NEXT:    v_writelane_b32 v0, s6, 34
+; GCN-NEXT:    v_writelane_b32 v0, s7, 35
+; GCN-NEXT:    v_writelane_b32 v0, s8, 36
+; GCN-NEXT:    v_writelane_b32 v0, s9, 37
+; GCN-NEXT:    v_writelane_b32 v0, s10, 38
+; GCN-NEXT:    v_writelane_b32 v0, s11, 39
+; GCN-NEXT:    v_writelane_b32 v0, s12, 40
+; GCN-NEXT:    v_writelane_b32 v0, s13, 41
+; GCN-NEXT:    v_writelane_b32 v0, s14, 42
+; GCN-NEXT:    v_writelane_b32 v0, s15, 43
+; GCN-NEXT:    v_writelane_b32 v0, s16, 44
+; GCN-NEXT:    v_writelane_b32 v0, s17, 45
+; GCN-NEXT:    v_writelane_b32 v0, s18, 46
+; GCN-NEXT:    v_writelane_b32 v0, s19, 47
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:19]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s4, 48
+; GCN-NEXT:    v_writelane_b32 v0, s5, 49
+; GCN-NEXT:    v_writelane_b32 v0, s6, 50
+; GCN-NEXT:    v_writelane_b32 v0, s7, 51
+; GCN-NEXT:    v_writelane_b32 v0, s8, 52
+; GCN-NEXT:    v_writelane_b32 v0, s9, 53
+; GCN-NEXT:    v_writelane_b32 v0, s10, 54
+; GCN-NEXT:    v_writelane_b32 v0, s11, 55
+; GCN-NEXT:    v_writelane_b32 v0, s12, 56
+; GCN-NEXT:    v_writelane_b32 v0, s13, 57
+; GCN-NEXT:    v_writelane_b32 v0, s14, 58
+; GCN-NEXT:    v_writelane_b32 v0, s15, 59
+; GCN-NEXT:    v_writelane_b32 v0, s16, 60
+; GCN-NEXT:    v_writelane_b32 v0, s17, 61
+; GCN-NEXT:    v_writelane_b32 v0, s18, 62
+; GCN-NEXT:    v_writelane_b32 v0, s19, 63
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:11]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v1, s4, 0
+; GCN-NEXT:    v_writelane_b32 v1, s5, 1
+; GCN-NEXT:    v_writelane_b32 v1, s6, 2
+; GCN-NEXT:    v_writelane_b32 v1, s7, 3
+; GCN-NEXT:    v_writelane_b32 v1, s8, 4
+; GCN-NEXT:    v_writelane_b32 v1, s9, 5
+; GCN-NEXT:    v_writelane_b32 v1, s10, 6
+; GCN-NEXT:    v_writelane_b32 v1, s11, 7
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[2:3]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v1, s2, 8
+; GCN-NEXT:    v_writelane_b32 v1, s3, 9
+; GCN-NEXT:    s_mov_b32 s1, 0
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    s_waitcnt lgkmcnt(0)
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    s_cmp_lg_u32 s2, s3
 ; GCN-NEXT:    v_writelane_b32 v0, s36, 32
 ; GCN-NEXT:    v_writelane_b32 v0, s37, 33
@@ -538,8 +973,40 @@ define amdgpu_kernel void @split_sgpr_spill_2_vgprs(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    v_writelane_b32 v1, s27, 7
 ; GCN-NEXT:    v_writelane_b32 v1, s0, 8
 ; GCN-NEXT:    v_writelane_b32 v1, s1, 9
+=======
+; GCN-NEXT:    s_cmp_lg_u32 s0, s1
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    s_cbranch_scc1 BB1_2
 ; GCN-NEXT:  ; %bb.1: ; %bb0
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+=======
+; GCN-NEXT:    v_readlane_b32 s16, v1, 8
+; GCN-NEXT:    v_readlane_b32 s17, v1, 9
+; GCN-NEXT:    v_readlane_b32 s20, v1, 0
+; GCN-NEXT:    v_readlane_b32 s21, v1, 1
+; GCN-NEXT:    v_readlane_b32 s22, v1, 2
+; GCN-NEXT:    v_readlane_b32 s23, v1, 3
+; GCN-NEXT:    v_readlane_b32 s24, v1, 4
+; GCN-NEXT:    v_readlane_b32 s25, v1, 5
+; GCN-NEXT:    v_readlane_b32 s26, v1, 6
+; GCN-NEXT:    v_readlane_b32 s27, v1, 7
+; GCN-NEXT:    v_readlane_b32 s36, v0, 32
+; GCN-NEXT:    v_readlane_b32 s37, v0, 33
+; GCN-NEXT:    v_readlane_b32 s38, v0, 34
+; GCN-NEXT:    v_readlane_b32 s39, v0, 35
+; GCN-NEXT:    v_readlane_b32 s40, v0, 36
+; GCN-NEXT:    v_readlane_b32 s41, v0, 37
+; GCN-NEXT:    v_readlane_b32 s42, v0, 38
+; GCN-NEXT:    v_readlane_b32 s43, v0, 39
+; GCN-NEXT:    v_readlane_b32 s44, v0, 40
+; GCN-NEXT:    v_readlane_b32 s45, v0, 41
+; GCN-NEXT:    v_readlane_b32 s46, v0, 42
+; GCN-NEXT:    v_readlane_b32 s47, v0, 43
+; GCN-NEXT:    v_readlane_b32 s48, v0, 44
+; GCN-NEXT:    v_readlane_b32 s49, v0, 45
+; GCN-NEXT:    v_readlane_b32 s50, v0, 46
+; GCN-NEXT:    v_readlane_b32 s51, v0, 47
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 0
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 1
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 2
@@ -559,6 +1026,7 @@ define amdgpu_kernel void @split_sgpr_spill_2_vgprs(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:15]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 32
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 33
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 34
@@ -575,9 +1043,7 @@ define amdgpu_kernel void @split_sgpr_spill_2_vgprs(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    v_readlane_b32 s13, v0, 45
 ; GCN-NEXT:    v_readlane_b32 s14, v0, 46
 ; GCN-NEXT:    v_readlane_b32 s15, v0, 47
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[0:15]
-; GCN-NEXT:    ;;#ASMEND
+=======
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 16
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 17
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 18
@@ -594,25 +1060,28 @@ define amdgpu_kernel void @split_sgpr_spill_2_vgprs(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    v_readlane_b32 s13, v0, 29
 ; GCN-NEXT:    v_readlane_b32 s14, v0, 30
 ; GCN-NEXT:    v_readlane_b32 s15, v0, 31
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:15]
 ; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s16, v1, 0
-; GCN-NEXT:    v_readlane_b32 s17, v1, 1
-; GCN-NEXT:    v_readlane_b32 s18, v1, 2
-; GCN-NEXT:    v_readlane_b32 s19, v1, 3
-; GCN-NEXT:    v_readlane_b32 s20, v1, 4
-; GCN-NEXT:    v_readlane_b32 s21, v1, 5
-; GCN-NEXT:    v_readlane_b32 s22, v1, 6
-; GCN-NEXT:    v_readlane_b32 s23, v1, 7
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[16:23]
-; GCN-NEXT:    ;;#ASMEND
-; GCN-NEXT:    v_readlane_b32 s24, v1, 8
-; GCN-NEXT:    v_readlane_b32 s25, v1, 9
-; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; use s[24:25]
-; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v0, 16
+; GCN-NEXT:    v_readlane_b32 s1, v0, 17
+; GCN-NEXT:    v_readlane_b32 s2, v0, 18
+; GCN-NEXT:    v_readlane_b32 s3, v0, 19
+; GCN-NEXT:    v_readlane_b32 s4, v0, 20
+; GCN-NEXT:    v_readlane_b32 s5, v0, 21
+; GCN-NEXT:    v_readlane_b32 s6, v0, 22
+; GCN-NEXT:    v_readlane_b32 s7, v0, 23
+; GCN-NEXT:    v_readlane_b32 s8, v0, 24
+; GCN-NEXT:    v_readlane_b32 s9, v0, 25
+; GCN-NEXT:    v_readlane_b32 s10, v0, 26
+; GCN-NEXT:    v_readlane_b32 s11, v0, 27
+; GCN-NEXT:    v_readlane_b32 s12, v0, 28
+; GCN-NEXT:    v_readlane_b32 s13, v0, 29
+; GCN-NEXT:    v_readlane_b32 s14, v0, 30
+; GCN-NEXT:    v_readlane_b32 s15, v0, 31
+=======
 ; GCN-NEXT:    v_readlane_b32 s0, v0, 48
 ; GCN-NEXT:    v_readlane_b32 s1, v0, 49
 ; GCN-NEXT:    v_readlane_b32 s2, v0, 50
@@ -629,6 +1098,59 @@ define amdgpu_kernel void @split_sgpr_spill_2_vgprs(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    v_readlane_b32 s13, v0, 61
 ; GCN-NEXT:    v_readlane_b32 s14, v0, 62
 ; GCN-NEXT:    v_readlane_b32 s15, v0, 63
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[36:51]
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s16, v1, 0
+; GCN-NEXT:    v_readlane_b32 s17, v1, 1
+; GCN-NEXT:    v_readlane_b32 s18, v1, 2
+; GCN-NEXT:    v_readlane_b32 s19, v1, 3
+; GCN-NEXT:    v_readlane_b32 s20, v1, 4
+; GCN-NEXT:    v_readlane_b32 s21, v1, 5
+; GCN-NEXT:    v_readlane_b32 s22, v1, 6
+; GCN-NEXT:    v_readlane_b32 s23, v1, 7
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    ; use s[16:23]
+=======
+; GCN-NEXT:    ; use s[20:27]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s24, v1, 8
+; GCN-NEXT:    v_readlane_b32 s25, v1, 9
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMSTART
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    ; use s[24:25]
+=======
+; GCN-NEXT:    ; use s[16:17]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
+; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
+; GCN-NEXT:    v_readlane_b32 s0, v0, 48
+; GCN-NEXT:    v_readlane_b32 s1, v0, 49
+; GCN-NEXT:    v_readlane_b32 s2, v0, 50
+; GCN-NEXT:    v_readlane_b32 s3, v0, 51
+; GCN-NEXT:    v_readlane_b32 s4, v0, 52
+; GCN-NEXT:    v_readlane_b32 s5, v0, 53
+; GCN-NEXT:    v_readlane_b32 s6, v0, 54
+; GCN-NEXT:    v_readlane_b32 s7, v0, 55
+; GCN-NEXT:    v_readlane_b32 s8, v0, 56
+; GCN-NEXT:    v_readlane_b32 s9, v0, 57
+; GCN-NEXT:    v_readlane_b32 s10, v0, 58
+; GCN-NEXT:    v_readlane_b32 s11, v0, 59
+; GCN-NEXT:    v_readlane_b32 s12, v0, 60
+; GCN-NEXT:    v_readlane_b32 s13, v0, 61
+; GCN-NEXT:    v_readlane_b32 s14, v0, 62
+; GCN-NEXT:    v_readlane_b32 s15, v0, 63
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:15]
 ; GCN-NEXT:    ;;#ASMEND
@@ -663,6 +1185,7 @@ ret:
 define amdgpu_kernel void @no_vgprs_last_sgpr_spill(i32 addrspace(1)* %out, i32 %in) #1 {
 ; GCN-LABEL: no_vgprs_last_sgpr_spill:
 ; GCN:       ; %bb.0:
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    s_mov_b32 s20, SCRATCH_RSRC_DWORD0
 ; GCN-NEXT:    s_mov_b32 s21, SCRATCH_RSRC_DWORD1
 ; GCN-NEXT:    s_mov_b32 s22, -1
@@ -670,6 +1193,15 @@ define amdgpu_kernel void @no_vgprs_last_sgpr_spill(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    s_add_u32 s20, s20, s3
 ; GCN-NEXT:    s_addc_u32 s21, s21, 0
 ; GCN-NEXT:    s_load_dword s2, s[0:1], 0xb
+=======
+; GCN-NEXT:    s_mov_b32 s52, SCRATCH_RSRC_DWORD0
+; GCN-NEXT:    s_mov_b32 s53, SCRATCH_RSRC_DWORD1
+; GCN-NEXT:    s_mov_b32 s54, -1
+; GCN-NEXT:    s_mov_b32 s55, 0xe8f000
+; GCN-NEXT:    s_add_u32 s52, s52, s3
+; GCN-NEXT:    s_addc_u32 s53, s53, 0
+; GCN-NEXT:    s_load_dword s0, s[0:1], 0xb
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ;;#ASMEND
 ; GCN-NEXT:    ;;#ASMSTART
@@ -685,9 +1217,26 @@ define amdgpu_kernel void @no_vgprs_last_sgpr_spill(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; def s[4:19]
 ; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v31, s4, 0
+; GCN-NEXT:    v_writelane_b32 v31, s5, 1
+; GCN-NEXT:    v_writelane_b32 v31, s6, 2
+; GCN-NEXT:    v_writelane_b32 v31, s7, 3
+; GCN-NEXT:    v_writelane_b32 v31, s8, 4
+; GCN-NEXT:    v_writelane_b32 v31, s9, 5
+; GCN-NEXT:    v_writelane_b32 v31, s10, 6
+; GCN-NEXT:    v_writelane_b32 v31, s11, 7
+; GCN-NEXT:    v_writelane_b32 v31, s12, 8
+; GCN-NEXT:    v_writelane_b32 v31, s13, 9
+; GCN-NEXT:    v_writelane_b32 v31, s14, 10
+; GCN-NEXT:    v_writelane_b32 v31, s15, 11
+; GCN-NEXT:    v_writelane_b32 v31, s16, 12
+; GCN-NEXT:    v_writelane_b32 v31, s17, 13
+; GCN-NEXT:    v_writelane_b32 v31, s18, 14
+; GCN-NEXT:    v_writelane_b32 v31, s19, 15
 ; GCN-NEXT:    ;;#ASMSTART
-; GCN-NEXT:    ; def s[36:51]
+; GCN-NEXT:    ; def s[4:19]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    v_writelane_b32 v31, s4, 0
 ; GCN-NEXT:    v_writelane_b32 v31, s5, 1
 ; GCN-NEXT:    v_writelane_b32 v31, s6, 2
@@ -730,7 +1279,74 @@ define amdgpu_kernel void @no_vgprs_last_sgpr_spill(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    ; def s[0:1]
 ; GCN-NEXT:    ;;#ASMEND
 ; GCN-NEXT:    s_mov_b32 s3, 0
+=======
+; GCN-NEXT:    v_writelane_b32 v31, s4, 16
+; GCN-NEXT:    v_writelane_b32 v31, s5, 17
+; GCN-NEXT:    v_writelane_b32 v31, s6, 18
+; GCN-NEXT:    v_writelane_b32 v31, s7, 19
+; GCN-NEXT:    v_writelane_b32 v31, s8, 20
+; GCN-NEXT:    v_writelane_b32 v31, s9, 21
+; GCN-NEXT:    v_writelane_b32 v31, s10, 22
+; GCN-NEXT:    v_writelane_b32 v31, s11, 23
+; GCN-NEXT:    v_writelane_b32 v31, s12, 24
+; GCN-NEXT:    v_writelane_b32 v31, s13, 25
+; GCN-NEXT:    v_writelane_b32 v31, s14, 26
+; GCN-NEXT:    v_writelane_b32 v31, s15, 27
+; GCN-NEXT:    v_writelane_b32 v31, s16, 28
+; GCN-NEXT:    v_writelane_b32 v31, s17, 29
+; GCN-NEXT:    v_writelane_b32 v31, s18, 30
+; GCN-NEXT:    v_writelane_b32 v31, s19, 31
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:19]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v31, s4, 32
+; GCN-NEXT:    v_writelane_b32 v31, s5, 33
+; GCN-NEXT:    v_writelane_b32 v31, s6, 34
+; GCN-NEXT:    v_writelane_b32 v31, s7, 35
+; GCN-NEXT:    v_writelane_b32 v31, s8, 36
+; GCN-NEXT:    v_writelane_b32 v31, s9, 37
+; GCN-NEXT:    v_writelane_b32 v31, s10, 38
+; GCN-NEXT:    v_writelane_b32 v31, s11, 39
+; GCN-NEXT:    v_writelane_b32 v31, s12, 40
+; GCN-NEXT:    v_writelane_b32 v31, s13, 41
+; GCN-NEXT:    v_writelane_b32 v31, s14, 42
+; GCN-NEXT:    v_writelane_b32 v31, s15, 43
+; GCN-NEXT:    v_writelane_b32 v31, s16, 44
+; GCN-NEXT:    v_writelane_b32 v31, s17, 45
+; GCN-NEXT:    v_writelane_b32 v31, s18, 46
+; GCN-NEXT:    v_writelane_b32 v31, s19, 47
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[4:19]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v31, s4, 48
+; GCN-NEXT:    v_writelane_b32 v31, s5, 49
+; GCN-NEXT:    v_writelane_b32 v31, s6, 50
+; GCN-NEXT:    v_writelane_b32 v31, s7, 51
+; GCN-NEXT:    v_writelane_b32 v31, s8, 52
+; GCN-NEXT:    v_writelane_b32 v31, s9, 53
+; GCN-NEXT:    v_writelane_b32 v31, s10, 54
+; GCN-NEXT:    v_writelane_b32 v31, s11, 55
+; GCN-NEXT:    v_writelane_b32 v31, s12, 56
+; GCN-NEXT:    v_writelane_b32 v31, s13, 57
+; GCN-NEXT:    v_writelane_b32 v31, s14, 58
+; GCN-NEXT:    v_writelane_b32 v31, s15, 59
+; GCN-NEXT:    v_writelane_b32 v31, s16, 60
+; GCN-NEXT:    v_writelane_b32 v31, s17, 61
+; GCN-NEXT:    v_writelane_b32 v31, s18, 62
+; GCN-NEXT:    v_writelane_b32 v31, s19, 63
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; def s[2:3]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    v_writelane_b32 v0, s2, 0
+; GCN-NEXT:    v_writelane_b32 v0, s3, 1
+; GCN-NEXT:    s_mov_b64 s[2:3], exec
+; GCN-NEXT:    s_mov_b64 exec, 3
+; GCN-NEXT:    buffer_store_dword v0, off, s[52:55], 0 offset:4 ; 4-byte Folded Spill
+; GCN-NEXT:    s_mov_b64 exec, s[2:3]
+; GCN-NEXT:    s_mov_b32 s1, 0
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    s_waitcnt lgkmcnt(0)
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    s_cmp_lg_u32 s2, s3
 ; GCN-NEXT:    v_writelane_b32 v31, s36, 32
 ; GCN-NEXT:    v_writelane_b32 v31, s37, 33
@@ -772,8 +1388,12 @@ define amdgpu_kernel void @no_vgprs_last_sgpr_spill(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    buffer_store_dword v0, off, s[20:23], 0 offset:4 ; 4-byte Folded Spill
 ; GCN-NEXT:    s_mov_b64 exec, s[0:1]
 ; GCN-NEXT:    buffer_load_dword v0, off, s[20:23], 0
+=======
+; GCN-NEXT:    s_cmp_lg_u32 s0, s1
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    s_cbranch_scc1 BB2_2
 ; GCN-NEXT:  ; %bb.1: ; %bb0
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    v_readlane_b32 s0, v31, 0
 ; GCN-NEXT:    v_readlane_b32 s1, v31, 1
 ; GCN-NEXT:    v_readlane_b32 s2, v31, 2
@@ -790,9 +1410,63 @@ define amdgpu_kernel void @no_vgprs_last_sgpr_spill(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    v_readlane_b32 s13, v31, 13
 ; GCN-NEXT:    v_readlane_b32 s14, v31, 14
 ; GCN-NEXT:    v_readlane_b32 s15, v31, 15
+=======
+; GCN-NEXT:    v_readlane_b32 s36, v31, 32
+; GCN-NEXT:    v_readlane_b32 s37, v31, 33
+; GCN-NEXT:    v_readlane_b32 s38, v31, 34
+; GCN-NEXT:    v_readlane_b32 s39, v31, 35
+; GCN-NEXT:    v_readlane_b32 s40, v31, 36
+; GCN-NEXT:    v_readlane_b32 s41, v31, 37
+; GCN-NEXT:    v_readlane_b32 s42, v31, 38
+; GCN-NEXT:    v_readlane_b32 s43, v31, 39
+; GCN-NEXT:    v_readlane_b32 s44, v31, 40
+; GCN-NEXT:    v_readlane_b32 s45, v31, 41
+; GCN-NEXT:    v_readlane_b32 s46, v31, 42
+; GCN-NEXT:    v_readlane_b32 s47, v31, 43
+; GCN-NEXT:    v_readlane_b32 s48, v31, 44
+; GCN-NEXT:    v_readlane_b32 s49, v31, 45
+; GCN-NEXT:    v_readlane_b32 s50, v31, 46
+; GCN-NEXT:    v_readlane_b32 s51, v31, 47
+; GCN-NEXT:    v_readlane_b32 s0, v31, 16
+; GCN-NEXT:    v_readlane_b32 s1, v31, 17
+; GCN-NEXT:    v_readlane_b32 s2, v31, 18
+; GCN-NEXT:    v_readlane_b32 s3, v31, 19
+; GCN-NEXT:    v_readlane_b32 s4, v31, 20
+; GCN-NEXT:    v_readlane_b32 s5, v31, 21
+; GCN-NEXT:    v_readlane_b32 s6, v31, 22
+; GCN-NEXT:    v_readlane_b32 s7, v31, 23
+; GCN-NEXT:    v_readlane_b32 s8, v31, 24
+; GCN-NEXT:    v_readlane_b32 s9, v31, 25
+; GCN-NEXT:    v_readlane_b32 s10, v31, 26
+; GCN-NEXT:    v_readlane_b32 s11, v31, 27
+; GCN-NEXT:    v_readlane_b32 s12, v31, 28
+; GCN-NEXT:    v_readlane_b32 s13, v31, 29
+; GCN-NEXT:    v_readlane_b32 s14, v31, 30
+; GCN-NEXT:    v_readlane_b32 s15, v31, 31
+; GCN-NEXT:    v_readlane_b32 s16, v31, 0
+; GCN-NEXT:    v_readlane_b32 s17, v31, 1
+; GCN-NEXT:    v_readlane_b32 s18, v31, 2
+; GCN-NEXT:    v_readlane_b32 s19, v31, 3
+; GCN-NEXT:    v_readlane_b32 s20, v31, 4
+; GCN-NEXT:    v_readlane_b32 s21, v31, 5
+; GCN-NEXT:    v_readlane_b32 s22, v31, 6
+; GCN-NEXT:    v_readlane_b32 s23, v31, 7
+; GCN-NEXT:    v_readlane_b32 s24, v31, 8
+; GCN-NEXT:    v_readlane_b32 s25, v31, 9
+; GCN-NEXT:    v_readlane_b32 s26, v31, 10
+; GCN-NEXT:    v_readlane_b32 s27, v31, 11
+; GCN-NEXT:    v_readlane_b32 s28, v31, 12
+; GCN-NEXT:    v_readlane_b32 s29, v31, 13
+; GCN-NEXT:    v_readlane_b32 s30, v31, 14
+; GCN-NEXT:    v_readlane_b32 s31, v31, 15
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[16:31]
+; GCN-NEXT:    ;;#ASMEND
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
 ; GCN-NEXT:    ; use s[0:15]
 ; GCN-NEXT:    ;;#ASMEND
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    v_readlane_b32 s0, v31, 32
 ; GCN-NEXT:    v_readlane_b32 s1, v31, 33
 ; GCN-NEXT:    v_readlane_b32 s2, v31, 34
@@ -854,11 +1528,48 @@ define amdgpu_kernel void @no_vgprs_last_sgpr_spill(i32 addrspace(1)* %out, i32 
 ; GCN-NEXT:    s_mov_b64 exec, 3
 ; GCN-NEXT:    buffer_load_dword v0, off, s[20:23], 0 offset:4 ; 4-byte Folded Reload
 ; GCN-NEXT:    s_mov_b64 exec, s[16:17]
+=======
+; GCN-NEXT:    v_readlane_b32 s4, v31, 48
+; GCN-NEXT:    v_readlane_b32 s5, v31, 49
+; GCN-NEXT:    v_readlane_b32 s6, v31, 50
+; GCN-NEXT:    v_readlane_b32 s7, v31, 51
+; GCN-NEXT:    v_readlane_b32 s8, v31, 52
+; GCN-NEXT:    v_readlane_b32 s9, v31, 53
+; GCN-NEXT:    v_readlane_b32 s10, v31, 54
+; GCN-NEXT:    v_readlane_b32 s11, v31, 55
+; GCN-NEXT:    v_readlane_b32 s12, v31, 56
+; GCN-NEXT:    v_readlane_b32 s13, v31, 57
+; GCN-NEXT:    v_readlane_b32 s14, v31, 58
+; GCN-NEXT:    v_readlane_b32 s15, v31, 59
+; GCN-NEXT:    v_readlane_b32 s16, v31, 60
+; GCN-NEXT:    v_readlane_b32 s17, v31, 61
+; GCN-NEXT:    v_readlane_b32 s18, v31, 62
+; GCN-NEXT:    v_readlane_b32 s19, v31, 63
+; GCN-NEXT:    s_mov_b64 s[0:1], exec
+; GCN-NEXT:    s_mov_b64 exec, 3
+; GCN-NEXT:    buffer_load_dword v0, off, s[52:55], 0 offset:4 ; 4-byte Folded Reload
+; GCN-NEXT:    s_mov_b64 exec, s[0:1]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    s_waitcnt vmcnt(0)
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    v_readlane_b32 s16, v0, 0
 ; GCN-NEXT:    v_readlane_b32 s17, v0, 1
+=======
+; GCN-NEXT:    v_readlane_b32 s0, v0, 0
+; GCN-NEXT:    v_readlane_b32 s1, v0, 1
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMSTART
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; GCN-NEXT:    ; use s[16:17]
+=======
+; GCN-NEXT:    ; use s[36:51]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[4:19]
+; GCN-NEXT:    ;;#ASMEND
+; GCN-NEXT:    ;;#ASMSTART
+; GCN-NEXT:    ; use s[0:1]
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; GCN-NEXT:    ;;#ASMEND
 ; GCN-NEXT:  BB2_2: ; %ret
 ; GCN-NEXT:    s_endpgm

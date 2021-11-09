@@ -1,3 +1,4 @@
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 //===-- PlatformAppleWatchSimulator.cpp -----------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -346,3 +347,5 @@ bool PlatformAppleWatchSimulator::GetSupportedArchitectureAtIndex(
   }
   return false;
 }
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)

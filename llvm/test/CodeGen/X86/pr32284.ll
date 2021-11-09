@@ -4,7 +4,7 @@
 ; RUN: llc -fast-isel-sink-local-values -O0 -mtriple=i686-unknown   -mcpu=skx -o - %s | FileCheck %s --check-prefix=686-O0
 ; RUN: llc -fast-isel-sink-local-values     -mtriple=i686-unknown   -mcpu=skx -o - %s | FileCheck %s --check-prefix=686
 
-@c = external constant i8, align 1
+@c = external dso_local constant i8, align 1
 
 define void @foo() {
 ; X86-O0-LABEL: foo:
@@ -115,9 +115,9 @@ entry:
   ret void
 }
 
-@var_5 = external global i32, align 4
-@var_57 = external global i64, align 8
-@_ZN8struct_210member_2_0E = external global i64, align 8
+@var_5 = external dso_local global i32, align 4
+@var_57 = external dso_local global i64, align 8
+@_ZN8struct_210member_2_0E = external dso_local global i64, align 8
 
 define void @f1() {
 ; X86-O0-LABEL: f1:
@@ -178,6 +178,7 @@ define void @f1() {
 ;
 ; 686-O0-LABEL: f1:
 ; 686-O0:       # %bb.0: # %entry
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 686-O0-NEXT:    pushl %ebp
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 8
 ; 686-O0-NEXT:    pushl %ebx
@@ -186,12 +187,18 @@ define void @f1() {
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 16
 ; 686-O0-NEXT:    pushl %esi
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 20
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 686-O0-NEXT:    subl $1, %esp
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 21
 ; 686-O0-NEXT:    .cfi_offset %esi, -20
 ; 686-O0-NEXT:    .cfi_offset %edi, -16
 ; 686-O0-NEXT:    .cfi_offset %ebx, -12
 ; 686-O0-NEXT:    .cfi_offset %ebp, -8
+=======
+; 686-O0-NEXT:    .cfi_def_cfa_offset 5
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 686-O0-NEXT:    movl var_5, %eax
 ; 686-O0-NEXT:    movl %eax, %ecx
 ; 686-O0-NEXT:    sarl $31, %ecx
@@ -200,27 +207,36 @@ define void @f1() {
 ; 686-O0-NEXT:    orl %ecx, %eax
 ; 686-O0-NEXT:    setne (%esp)
 ; 686-O0-NEXT:    movl var_5, %ecx
+; 686-O0-NEXT:    movl %ecx, %eax
+; 686-O0-NEXT:    sarl $31, %eax
 ; 686-O0-NEXT:    movl %ecx, %edx
-; 686-O0-NEXT:    sarl $31, %edx
-; 686-O0-NEXT:    movl %ecx, %esi
-; 686-O0-NEXT:    subl $-1, %esi
-; 686-O0-NEXT:    sete %bl
-; 686-O0-NEXT:    movzbl %bl, %edi
+; 686-O0-NEXT:    subl $-1, %edx
+; 686-O0-NEXT:    sete %dl
+; 686-O0-NEXT:    movzbl %dl, %edx
 ; 686-O0-NEXT:    addl $7093, %ecx # imm = 0x1BB5
-; 686-O0-NEXT:    adcl $0, %edx
-; 686-O0-NEXT:    subl %edi, %ecx
-; 686-O0-NEXT:    sbbl $0, %edx
-; 686-O0-NEXT:    setl %bl
-; 686-O0-NEXT:    movzbl %bl, %edi
-; 686-O0-NEXT:    movl %edi, var_57
+; 686-O0-NEXT:    adcl $0, %eax
+; 686-O0-NEXT:    subl %edx, %ecx
+; 686-O0-NEXT:    sbbl $0, %eax
+; 686-O0-NEXT:    setl %al
+; 686-O0-NEXT:    movzbl %al, %eax
+; 686-O0-NEXT:    movl %eax, var_57
 ; 686-O0-NEXT:    movl $0, var_57+4
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 686-O0-NEXT:    movl var_5, %edi
 ; 686-O0-NEXT:    subl $-1, %edi
 ; 686-O0-NEXT:    sete %bl
 ; 686-O0-NEXT:    movzbl %bl, %ebp
 ; 686-O0-NEXT:    movl %ebp, _ZN8struct_210member_2_0E
+=======
+; 686-O0-NEXT:    movl var_5, %eax
+; 686-O0-NEXT:    subl $-1, %eax
+; 686-O0-NEXT:    sete %al
+; 686-O0-NEXT:    movzbl %al, %eax
+; 686-O0-NEXT:    movl %eax, _ZN8struct_210member_2_0E
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 686-O0-NEXT:    movl $0, _ZN8struct_210member_2_0E+4
 ; 686-O0-NEXT:    addl $1, %esp
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 20
 ; 686-O0-NEXT:    popl %esi
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 16
@@ -229,6 +245,8 @@ define void @f1() {
 ; 686-O0-NEXT:    popl %ebx
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 8
 ; 686-O0-NEXT:    popl %ebp
+=======
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 4
 ; 686-O0-NEXT:    retl
 ;
@@ -300,7 +318,7 @@ entry:
 }
 
 
-@var_7 = external global i8, align 1
+@var_7 = external dso_local global i8, align 1
 
 define void @f2() {
 ; X86-O0-LABEL: f2:
@@ -314,6 +332,7 @@ define void @f2() {
 ; X86-O0-NEXT:    xorl %edx, %eax
 ; X86-O0-NEXT:    # kill: def $ax killed $ax killed $eax
 ; X86-O0-NEXT:    movw %ax, -{{[0-9]+}}(%rsp)
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; X86-O0-NEXT:    movzbl var_7, %edx
 ; X86-O0-NEXT:    # kill: def $dx killed $dx killed $edx
 ; X86-O0-NEXT:    cmpw $0, %dx
@@ -329,6 +348,23 @@ define void @f2() {
 ; X86-O0-NEXT:    # kill: def $si killed $si killed $esi
 ; X86-O0-NEXT:    # implicit-def: $r8
 ; X86-O0-NEXT:    movw %si, (%r8)
+=======
+; X86-O0-NEXT:    movzbl var_7, %eax
+; X86-O0-NEXT:    # kill: def $ax killed $ax killed $eax
+; X86-O0-NEXT:    cmpw $0, %ax
+; X86-O0-NEXT:    setne %al
+; X86-O0-NEXT:    xorb $-1, %al
+; X86-O0-NEXT:    andb $1, %al
+; X86-O0-NEXT:    movzbl %al, %eax
+; X86-O0-NEXT:    movzbl var_7, %ecx
+; X86-O0-NEXT:    cmpl %ecx, %eax
+; X86-O0-NEXT:    sete %al
+; X86-O0-NEXT:    andb $1, %al
+; X86-O0-NEXT:    movzbl %al, %eax
+; X86-O0-NEXT:    movw %ax, %cx
+; X86-O0-NEXT:    # implicit-def: $rax
+; X86-O0-NEXT:    movw %cx, (%rax)
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; X86-O0-NEXT:    retq
 ;
 ; X64-LABEL: f2:
@@ -367,6 +403,7 @@ define void @f2() {
 ; 686-O0-NEXT:    xorl %edx, %eax
 ; 686-O0-NEXT:    # kill: def $ax killed $ax killed $eax
 ; 686-O0-NEXT:    movw %ax, (%esp)
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 686-O0-NEXT:    movzbl var_7, %edx
 ; 686-O0-NEXT:    # kill: def $dx killed $dx killed $edx
 ; 686-O0-NEXT:    cmpw $0, %dx
@@ -382,6 +419,23 @@ define void @f2() {
 ; 686-O0-NEXT:    # kill: def $si killed $si killed $esi
 ; 686-O0-NEXT:    # implicit-def: $edi
 ; 686-O0-NEXT:    movw %si, (%edi)
+=======
+; 686-O0-NEXT:    movzbl var_7, %eax
+; 686-O0-NEXT:    # kill: def $ax killed $ax killed $eax
+; 686-O0-NEXT:    cmpw $0, %ax
+; 686-O0-NEXT:    setne %al
+; 686-O0-NEXT:    xorb $-1, %al
+; 686-O0-NEXT:    andb $1, %al
+; 686-O0-NEXT:    movzbl %al, %eax
+; 686-O0-NEXT:    movzbl var_7, %ecx
+; 686-O0-NEXT:    cmpl %ecx, %eax
+; 686-O0-NEXT:    sete %al
+; 686-O0-NEXT:    andb $1, %al
+; 686-O0-NEXT:    movzbl %al, %eax
+; 686-O0-NEXT:    movw %ax, %cx
+; 686-O0-NEXT:    # implicit-def: $eax
+; 686-O0-NEXT:    movw %cx, (%eax)
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 686-O0-NEXT:    addl $2, %esp
 ; 686-O0-NEXT:    .cfi_def_cfa_offset 12
 ; 686-O0-NEXT:    popl %esi
@@ -436,9 +490,9 @@ entry:
 }
 
 
-@var_13 = external global i32, align 4
-@var_16 = external global i32, align 4
-@var_46 = external global i32, align 4
+@var_13 = external dso_local global i32, align 4
+@var_16 = external dso_local global i32, align 4
+@var_46 = external dso_local global i32, align 4
 
 define void @f3() #0 {
 ; X86-O0-LABEL: f3:
@@ -502,6 +556,7 @@ define void @f3() #0 {
 ; 686-O0-NEXT:    pushl %edi
 ; 686-O0-NEXT:    pushl %esi
 ; 686-O0-NEXT:    andl $-8, %esp
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; 686-O0-NEXT:    subl $8, %esp
 ; 686-O0-NEXT:    .cfi_offset %esi, -16
 ; 686-O0-NEXT:    .cfi_offset %edi, -12
@@ -517,6 +572,22 @@ define void @f3() #0 {
 ; 686-O0-NEXT:    andl %edi, %eax
 ; 686-O0-NEXT:    orl %eax, %ecx
 ; 686-O0-NEXT:    movl %ecx, (%esp)
+=======
+; 686-O0-NEXT:    subl $16, %esp
+; 686-O0-NEXT:    .cfi_offset %esi, -12
+; 686-O0-NEXT:    movl var_13, %ecx
+; 686-O0-NEXT:    movl %ecx, %eax
+; 686-O0-NEXT:    notl %eax
+; 686-O0-NEXT:    testl %ecx, %ecx
+; 686-O0-NEXT:    sete %cl
+; 686-O0-NEXT:    movzbl %cl, %ecx
+; 686-O0-NEXT:    movl var_16, %esi
+; 686-O0-NEXT:    movl %eax, %edx
+; 686-O0-NEXT:    xorl %esi, %edx
+; 686-O0-NEXT:    andl %edx, %ecx
+; 686-O0-NEXT:    orl %ecx, %eax
+; 686-O0-NEXT:    movl %eax, (%esp)
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; 686-O0-NEXT:    movl $0, {{[0-9]+}}(%esp)
 ; 686-O0-NEXT:    movl var_13, %eax
 ; 686-O0-NEXT:    notl %eax

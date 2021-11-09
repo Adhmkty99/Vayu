@@ -9,9 +9,14 @@ define void @test1(i32 %x) #0 {
 ; CHECK-NEXT:    pushq %rax
 ; CHECK-NEXT:    cmpl $0, %edi
 ; CHECK-NEXT:    setne %al
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK-NEXT:    movzbl %al, %ecx
 ; CHECK-NEXT:    andl $1, %ecx
 ; CHECK-NEXT:    movl %ecx, %edi
+=======
+; CHECK-NEXT:    movzbl %al, %edi
+; CHECK-NEXT:    andl $1, %edi
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; CHECK-NEXT:    callq callee1
 ; CHECK-NEXT:    popq %rax
 ; CHECK-NEXT:    retq
@@ -27,10 +32,16 @@ define void @test2(i32 %x) #0 {
 ; CHECK-NEXT:    pushq %rax
 ; CHECK-NEXT:    cmpl $0, %edi
 ; CHECK-NEXT:    setne %al
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK-NEXT:    movzbl %al, %ecx
 ; CHECK-NEXT:    andl $1, %ecx
 ; CHECK-NEXT:    negl %ecx
 ; CHECK-NEXT:    movl %ecx, %edi
+=======
+; CHECK-NEXT:    movzbl %al, %edi
+; CHECK-NEXT:    andl $1, %edi
+; CHECK-NEXT:    negl %edi
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; CHECK-NEXT:    callq callee2
 ; CHECK-NEXT:    popq %rax
 ; CHECK-NEXT:    retq

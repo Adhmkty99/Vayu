@@ -83,6 +83,7 @@ define i32 @test2(i32 %key) #0 {
 ; CHECK-O0-NEXT:    movl {{[0-9]+}}(%rsp), %ecx
 ; CHECK-O0-NEXT:    movl {{[0-9]+}}(%rsp), %edx
 ; CHECK-O0-NEXT:    movl {{[0-9]+}}(%rsp), %esi
+<<<<<<< HEAD   (1fdec5 [lldb] Fix fallout caused by D89156 on 11.0.1 for MacOS)
 ; CHECK-O0-NEXT:    movl (%rsp), %edi
 ; CHECK-O0-NEXT:    movl {{[0-9]+}}(%rsp), %r8d
 ; CHECK-O0-NEXT:    addl %r8d, %edi
@@ -90,6 +91,14 @@ define i32 @test2(i32 %key) #0 {
 ; CHECK-O0-NEXT:    addl %edx, %edi
 ; CHECK-O0-NEXT:    addl %ecx, %edi
 ; CHECK-O0-NEXT:    movl %edi, %eax
+=======
+; CHECK-O0-NEXT:    movl (%rsp), %eax
+; CHECK-O0-NEXT:    movl {{[0-9]+}}(%rsp), %edi
+; CHECK-O0-NEXT:    addl %edi, %eax
+; CHECK-O0-NEXT:    addl %esi, %eax
+; CHECK-O0-NEXT:    addl %edx, %eax
+; CHECK-O0-NEXT:    addl %ecx, %eax
+>>>>>>> BRANCH (664b18 Reland Pin -loop-reduce to legacy PM)
 ; CHECK-O0-NEXT:    addq $24, %rsp
 ; CHECK-O0-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-O0-NEXT:    retq
@@ -296,7 +305,7 @@ define void @consume_i1_ret() {
 
 declare swiftcc { i1, i1, i1, i1 } @produce_i1_ret()
 
-define swiftcc void @foo(i64* sret %agg.result, i64 %val) {
+define swiftcc void @foo(i64* sret(i64) %agg.result, i64 %val) {
 ; CHECK-LABEL: foo:
 ; CHECK:       # %bb.0:
 ; CHECK-NEXT:    movq %rdi, (%rax)
@@ -419,10 +428,10 @@ define swiftcc { i32, i32, i32, i32 } @gen7(i32 %key) {
 ;
 ; CHECK-O0-LABEL: gen7:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    movl %edi, %eax
-; CHECK-O0-NEXT:    movl %edi, %edx
-; CHECK-O0-NEXT:    movl %edi, %ecx
 ; CHECK-O0-NEXT:    movl %edi, %r8d
+; CHECK-O0-NEXT:    movl %r8d, %eax
+; CHECK-O0-NEXT:    movl %r8d, %edx
+; CHECK-O0-NEXT:    movl %r8d, %ecx
 ; CHECK-O0-NEXT:    retq
   %v0 = insertvalue { i32, i32, i32, i32 } undef, i32 %key, 0
   %v1 = insertvalue { i32, i32, i32, i32 } %v0, i32 %key, 1
@@ -442,10 +451,10 @@ define swiftcc { i64, i64, i64, i64 } @gen8(i64 %key) {
 ;
 ; CHECK-O0-LABEL: gen8:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    movq %rdi, %rax
-; CHECK-O0-NEXT:    movq %rdi, %rdx
-; CHECK-O0-NEXT:    movq %rdi, %rcx
 ; CHECK-O0-NEXT:    movq %rdi, %r8
+; CHECK-O0-NEXT:    movq %r8, %rax
+; CHECK-O0-NEXT:    movq %r8, %rdx
+; CHECK-O0-NEXT:    movq %r8, %rcx
 ; CHECK-O0-NEXT:    retq
   %v0 = insertvalue { i64, i64, i64, i64 } undef, i64 %key, 0
   %v1 = insertvalue { i64, i64, i64, i64 } %v0, i64 %key, 1
@@ -465,11 +474,10 @@ define swiftcc { i8, i8, i8, i8 } @gen9(i8 %key) {
 ;
 ; CHECK-O0-LABEL: gen9:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    # kill: def $dil killed $dil killed $edi
-; CHECK-O0-NEXT:    movb %dil, %al
-; CHECK-O0-NEXT:    movb %dil, %dl
-; CHECK-O0-NEXT:    movb %dil, %cl
 ; CHECK-O0-NEXT:    movb %dil, %r8b
+; CHECK-O0-NEXT:    movb %r8b, %al
+; CHECK-O0-NEXT:    movb %r8b, %dl
+; CHECK-O0-NEXT:    movb %r8b, %cl
 ; CHECK-O0-NEXT:    retq
   %v0 = insertvalue { i8, i8, i8, i8 } undef, i8 %key, 0
   %v1 = insertvalue { i8, i8, i8, i8 } %v0, i8 %key, 1
@@ -491,17 +499,14 @@ define swiftcc { double, double, double, double, i64, i64, i64, i64 } @gen10(dou
 ;
 ; CHECK-O0-LABEL: gen10:
 ; CHECK-O0:       # %bb.0:
-; CHECK-O0-NEXT:    movsd %xmm0, {{[-0-9]+}}(%r{{[sb]}}p) # 8-byte Spill
-; CHECK-O0-NEXT:    movsd {{[-0-9]+}}(%r{{[sb]}}p), %xmm1 # 8-byte Reload
-; CHECK-O0-NEXT:    # xmm1 = mem[0],zero
-; CHECK-O0-NEXT:    movsd {{[-0-9]+}}(%r{{[sb]}}p), %xmm2 # 8-byte Reload
-; CHECK-O0-NEXT:    # xmm2 = mem[0],zero
-; CHECK-O0-NEXT:    movsd {{[-0-9]+}}(%r{{[sb]}}p), %xmm3 # 8-byte Reload
-; CHECK-O0-NEXT:    # xmm3 = mem[0],zero
-; CHECK-O0-NEXT:    movq %rdi, %rax
-; CHECK-O0-NEXT:    movq %rdi, %rdx
-; CHECK-O0-NEXT:    movq %rdi, %rcx
 ; CHECK-O0-NEXT:    movq %rdi, %r8
+; CHECK-O0-NEXT:    movaps %xmm0, %xmm3
+; CHECK-O0-NEXT:    movaps %xmm3, %xmm0
+; CHECK-O0-NEXT:    movaps %xmm3, %xmm1
+; CHECK-O0-NEXT:    movaps %xmm3, %xmm2
+; CHECK-O0-NEXT:    movq %r8, %rax
+; CHECK-O0-NEXT:    movq %r8, %rdx
+; CHECK-O0-NEXT:    movq %r8, %rcx
 ; CHECK-O0-NEXT:    retq
   %v0 = insertvalue { double, double, double, double, i64, i64, i64, i64 } undef, double %keyd, 0
   %v1 = insertvalue { double, double, double, double, i64, i64, i64, i64 } %v0, double %keyd, 1
@@ -570,13 +575,15 @@ define swiftcc { <4 x float>, float } @test12() #0 {
 ;
 ; CHECK-O0-LABEL: test12:
 ; CHECK-O0:       # %bb.0: # %entry
-; CHECK-O0-NEXT:    pushq %rax
-; CHECK-O0-NEXT:    .cfi_def_cfa_offset 16
+; CHECK-O0-NEXT:    subq $24, %rsp
+; CHECK-O0-NEXT:    .cfi_def_cfa_offset 32
 ; CHECK-O0-NEXT:    callq gen12
-; CHECK-O0-NEXT:    addps %xmm1, %xmm0
-; CHECK-O0-NEXT:    addps %xmm2, %xmm0
+; CHECK-O0-NEXT:    movaps %xmm1, (%rsp) # 16-byte Spill
 ; CHECK-O0-NEXT:    movaps %xmm3, %xmm1
-; CHECK-O0-NEXT:    popq %rax
+; CHECK-O0-NEXT:    movaps (%rsp), %xmm3 # 16-byte Reload
+; CHECK-O0-NEXT:    addps %xmm3, %xmm0
+; CHECK-O0-NEXT:    addps %xmm2, %xmm0
+; CHECK-O0-NEXT:    addq $24, %rsp
 ; CHECK-O0-NEXT:    .cfi_def_cfa_offset 8
 ; CHECK-O0-NEXT:    retq
 entry:
