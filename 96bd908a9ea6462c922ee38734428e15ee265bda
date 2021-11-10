@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "a910a9dc_60e50fd6",
+        "filename": "busytown-build.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2021-11-10T21:07:05Z",
+      "side": 1,
+      "message": "If you expect to use the prebuilt ninja/cmake, you should move them to the start of `$PATH`, rather than appending it. The other alternative is to always be explicit when invoking cmake/ninja.\n\nAlso, is this not going to be built for Darwin? You will need to generalize this if so, but that might not be in your immediate concerns.",
+      "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}

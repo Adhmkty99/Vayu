@@ -106,6 +106,24 @@
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "51732534_5921a0e4",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2021-11-10T21:07:05Z",
+      "side": 1,
+      "message": "It\u0027s not the build team. It\u0027s Google policy to not run or distribute software that we can\u0027t audit. We\u0027re expected to be able to reproduce the binaries that we run on developer machines, as well as those that would potentially run on customer machines.",
+      "parentUuid": "b5ba4810_2c65979b",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "b28477e9_cae87e9b",
