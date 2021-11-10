@@ -1,0 +1,220 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "f63a29e1_63235730",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "It could be good to get someone more familiar with native builds to eventually take a look too; I\u0027m familiar with the part about Bash and build servers though",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab62dada_0b4238d4",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 1,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "If we could simply use the same llvm as JetBrains, would that be interesting? Should we suggest to them that it would be neat for them to publish theirs?",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "b28477e9_cae87e9b",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 2,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "adding `set -e` at the top should cause `bash` to halt as soon as any one of these commands fails",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "188c5369_b02c2311",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "Does this rely on having cd\u0027d to `$SRC/kotlin-native-toolchain` before the clone on line #3? Does this require having already cloned some prebuilts to the path in line #6?\n\nIt might be simpler to set PREBUILTS as a relative path or to just remind people to check out the corresponding repo branch",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ab43a687_2534d674",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 13,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "This comment about the process being equivalent to what JetBrains does seems to duplicate line 1 about this coming from a command in the JetBrains repo, is it possible to shorten this text somehow?",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "d1677b70_5f23004b",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 17,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "Maybe this comment about how the script works would be more interesting if moved closer to the invocation of one of the stages (so line 44)?",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "503632ba_c4042607",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 20,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "Probably want to cd to the dir of the script first so that if someone also wants to run `./llvm-project/busytown-build.sh` that can also work\n\nFor example, `cd \"$(dirname $0)\"`",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "01727753_f755d382",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 23,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "Is this going to be running on a continuous integration server? If so we usually use `OUT_DIR` as the name of the variable that specifies where to put transient files, and `DIST_DIR` as the name of the variable that specifies where to put. We should use the path specified by the build server but having a default if unset is good too\n\nhttps://android.googlesource.com/platform/frameworks/support/+/46771da284c79d77e6e969956da27ebd33d44c23/busytown/impl/build.sh#11",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "97bc10bc_899d8659",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 44,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "it could be easier to notice how much of the script is referenced by a particular comment if the corresponding section gets extracted into a function\n\nExample function: https://android.googlesource.com/platform/frameworks/support/+/46771da284c79d77e6e969956da27ebd33d44c23/busytown/impl/build-studio-and-androidx.sh#39",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "701330fd_5f4ebbdc",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "Does this require ninja installed on the system? Can we use a prebuilt?",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "3a482dbf_ce5e6292",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 67,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "Maybe clearer to say \"using the compiler we just built\"?",
+      "range": {
+        "startLine": 67,
+        "startChar": 18,
+        "endLine": 67,
+        "endChar": 32
+      },
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5ed67c7f_0ab5c7b4",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 77,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T19:19:58Z",
+      "side": 1,
+      "message": "Is this hard to verify?",
+      "range": {
+        "startLine": 77,
+        "startChar": 20,
+        "endLine": 77,
+        "endChar": 31
+      },
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
