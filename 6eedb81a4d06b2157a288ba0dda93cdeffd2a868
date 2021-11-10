@@ -55,6 +55,24 @@
     {
       "unresolved": true,
       "key": {
+        "uuid": "bc874cd9_69317612",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T20:54:38Z",
+      "side": 1,
+      "message": "Cool. It seems I only have permission to give a +1 but I think patchset #3 is good enough for a +1; hopefully whoever +2\u0027s it can also take a nontrivial look at it too.\n\nThanks",
+      "parentUuid": "de5e3191_c4f23894",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
         "uuid": "ab62dada_0b4238d4",
         "filename": "busytown-build.sh",
         "patchSetId": 2
@@ -364,6 +382,24 @@
       "side": 1,
       "message": "Added a comment.  This was added to the PATH with the PATH statement above (because that\u0027s how cmake insists on working).",
       "parentUuid": "701330fd_5f4ebbdc",
+      "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "6b928ece_510b2c0e",
+        "filename": "busytown-build.sh",
+        "patchSetId": 2
+      },
+      "lineNbr": 63,
+      "author": {
+        "id": 1137668
+      },
+      "writtenOn": "2021-11-10T20:54:38Z",
+      "side": 1,
+      "message": "It looks like this is adding ninja to the end of the path rather than the beginning, so if there is a ninja installed already then I think it would be used first. I guess that if this works though then that\u0027s probably ok.\n\nIt could be nice to replace this line with a reference to the prebuilt ninja to make it easier for readers to verify that it\u0027s using a prebuilt",
+      "parentUuid": "ce18638c_4dda00bd",
       "revId": "6eedb81a4d06b2157a288ba0dda93cdeffd2a868",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     },
