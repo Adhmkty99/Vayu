@@ -50,6 +50,24 @@
       "message": "Do you expect to be making a lot of changes to this project? Is there an updated design doc for how this is going to be maintained? I suspect that there won\u0027t be many LLVM changes from the upstream Kotlin folks, other than major releases.",
       "revId": "3aea43767e5ceba8a0f4a7702ca6642af45f5594",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "693ffec4_acae741e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1060413
+      },
+      "writtenOn": "2021-11-10T14:53:33Z",
+      "side": 1,
+      "message": "I expect I\u0027ll merely be adding a custom build script to point to from busytown.  My current doc is very stale, I\u0027ll update it in the next day or two.  Thanks!",
+      "parentUuid": "afefd9f0_63ab199f",
+      "revId": "3aea43767e5ceba8a0f4a7702ca6642af45f5594",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
   ]
 }
