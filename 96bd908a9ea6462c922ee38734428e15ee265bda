@@ -18,6 +18,47 @@
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0ba131a9_19a2d4d4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2021-11-12T17:19:23Z",
+      "side": 1,
+      "message": "Yep, I\u0027m happy to approve stuff here. If you think you\u0027ll be making a lot of changes, we can get this particular branch a different set of permissions. For the general project though, we\u0027re pretty careful because this is really an external project that generally doesn\u0027t get anything other than direct merges from upstream.",
+      "parentUuid": "d633404f_eabb50cb",
+      "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "ca5ee6e6_c86a2075",
+        "filename": "busytown-build.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2021-11-12T17:19:23Z",
+      "side": 1,
+      "message": "You don\u0027t need the `\u003d...` part to export a variable, especially if you\u0027re just reassigning the previous value. You can just `export DIST_DIR`. For `$OUT_DIR`, the only benefit you\u0027re getting there is getting rid of the `../..` part of the path from `$ROOT` or a similarly non-normalized path from a user.",
+      "range": {
+        "startLine": 41,
+        "startChar": 15,
+        "endLine": 41,
+        "endChar": 27
+      },
+      "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "a910a9dc_60e50fd6",
