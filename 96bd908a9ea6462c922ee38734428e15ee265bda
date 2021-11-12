@@ -54,6 +54,24 @@
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "30a4d80c_08ba906b",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2021-11-12T17:45:01Z",
+      "side": 1,
+      "message": "SGTM",
+      "parentUuid": "0d590bdd_35cc80b1",
+      "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ca5ee6e6_c86a2075",
@@ -150,6 +168,24 @@
       "side": 1,
       "message": "Also, yes we\u0027ll eventually build for darwin, but that looks to have enough wrinkles of its own that I\u0027d like to see this fully working on Linux first.",
       "parentUuid": "b7f8301c_bda65e3b",
+      "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "60934d0a_a5ef7fd8",
+        "filename": "busytown-build.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1010056
+      },
+      "writtenOn": "2021-11-12T17:45:01Z",
+      "side": 1,
+      "message": "100% understand. We\u0027ve done the same thing in many cases.",
+      "parentUuid": "891a6fd7_1f0679cd",
       "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
