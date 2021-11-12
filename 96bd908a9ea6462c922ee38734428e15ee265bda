@@ -36,6 +36,24 @@
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     },
     {
+      "unresolved": false,
+      "key": {
+        "uuid": "0d590bdd_35cc80b1",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 3
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1060413
+      },
+      "writtenOn": "2021-11-12T17:42:47Z",
+      "side": 1,
+      "message": "Thank you!\n\nMy hope is that the only changes we need to make is in this script to customize what build we need, and then if new Kotlin versions upgrade LLVM, we\u0027ll follow them.  How about on the third CL (or when you get bored), we can adjust the permissions?",
+      "parentUuid": "0ba131a9_19a2d4d4",
+      "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
       "unresolved": true,
       "key": {
         "uuid": "ca5ee6e6_c86a2075",
@@ -49,6 +67,30 @@
       "writtenOn": "2021-11-12T17:19:23Z",
       "side": 1,
       "message": "You don\u0027t need the `\u003d...` part to export a variable, especially if you\u0027re just reassigning the previous value. You can just `export DIST_DIR`. For `$OUT_DIR`, the only benefit you\u0027re getting there is getting rid of the `../..` part of the path from `$ROOT` or a similarly non-normalized path from a user.",
+      "range": {
+        "startLine": 41,
+        "startChar": 15,
+        "endLine": 41,
+        "endChar": 27
+      },
+      "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "55ab308a_16c7fd83",
+        "filename": "busytown-build.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 41,
+      "author": {
+        "id": 1060413
+      },
+      "writtenOn": "2021-11-12T17:42:47Z",
+      "side": 1,
+      "message": "Makes sense, thanks!",
+      "parentUuid": "ca5ee6e6_c86a2075",
       "range": {
         "startLine": 41,
         "startChar": 15,
@@ -90,6 +132,24 @@
       "side": 1,
       "message": "Good point, added belt _and_ suspenders.",
       "parentUuid": "a910a9dc_60e50fd6",
+      "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "891a6fd7_1f0679cd",
+        "filename": "busytown-build.sh",
+        "patchSetId": 3
+      },
+      "lineNbr": 47,
+      "author": {
+        "id": 1060413
+      },
+      "writtenOn": "2021-11-12T17:42:47Z",
+      "side": 1,
+      "message": "Also, yes we\u0027ll eventually build for darwin, but that looks to have enough wrinkles of its own that I\u0027d like to see this fully working on Linux first.",
+      "parentUuid": "b7f8301c_bda65e3b",
       "revId": "96bd908a9ea6462c922ee38734428e15ee265bda",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
