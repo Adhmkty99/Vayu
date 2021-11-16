@@ -22,11 +22,13 @@ set -e
 # For why we run a 2-stage bootstrap, see
 #  https://llvm.org/docs/BuildingADistribution.html#general-distribution-guidance
 
-echo "Trivially succeeding to prevent musket turndown, until we resolve b/206804351"
-exit 0
+echo "DEBUG: what libstdc++ do we have?"
+/sbin/ldconfig -p | grep stdc++
+
+# strings /usr/lib/libstdc++.so.6 | grep LIBCXX
 
 # find script
-SCRIPT_DIR="$(cd $(dirname $0) && pwd)"
+SCRIPT_DIR=$(cd "$(dirname $0)" && pwd)
 cd $SCRIPT_DIR
 
 LLVM_PROJECT=$SCRIPT_DIR
@@ -36,8 +38,10 @@ ROOT=$SCRIPT_DIR/../..
 if [ "$OUT_DIR" == "" ]; then
   OUT_DIR="$ROOT/out"
 fi
+rm -rf $OUT_DIR
 mkdir -p "$OUT_DIR"
-export OUT_DIR="$(cd $OUT_DIR && pwd)"
+OUT_DIR="$(cd $OUT_DIR && pwd)"
+export OUT_DIR
 
 if [ "$DIST_DIR" == "" ]; then
   DIST_DIR="$OUT_DIR/dist"
@@ -48,6 +52,11 @@ export DIST_DIR
 PREBUILTS=$ROOT/prebuilts
 BIN_PATH=$PREBUILTS/build-tools/linux-x86/bin
 
+# We need a host clang to build the stage1 clang to build the stage2 clang
+# (build machines have a very old gcc by default)
+HOST_SYSROOT=$PREBUILTS/clang/host/linux-x86/clang-r433403b
+HOST_CLANG_BIN=$HOST_SYSROOT/bin
+
 # Add prebuilts (especially ninja) to PATH
 #   (cmake won't run if ninja is not on PATH)
 export PATH=$BIN_PATH:$PATH
@@ -55,19 +64,31 @@ export PATH=$BIN_PATH:$PATH
 CMAKE=$PREBUILTS/cmake/linux-x86/bin/cmake
 NINJA=$BIN_PATH/ninja
 
-CMAKE_COMMON_OPTS="\
-    -G Ninja \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DLLVM_ENABLE_ASSERTIONS=OFF \
-    -DLLVM_ENABLE_TERMINFO=OFF \
-    -DLLVM_INCLUDE_GO_TESTS=OFF \
-    -DLLVM_ENABLE_Z3_SOLVER=OFF \
-    -DCOMPILER_RT_BUILD_BUILTINS=ON \
-    -DLLVM_ENABLE_THREADS=ON \
-    -DLLVM_OPTIMIZED_TABLEGEN=ON \
-    -DLLVM_ENABLE_PROJECTS=clang;lld;libcxx;libcxxabi;compiler-rt \
-    -DLLVM_BUILD_LLVM_DYLIB=OFF \
-    -DLLVM_LINK_LLVM_DYLIB=OFF"
+LINKER_FLAGS=(-fuse-ld=lld -static-libstdc++)
+
+CMAKE_COMMON_OPTS=(
+    -G Ninja
+    -DCMAKE_BUILD_TYPE=Release
+    -DLLVM_ENABLE_ASSERTIONS=OFF
+    -DLLVM_ENABLE_TERMINFO=OFF
+    -DLLVM_INCLUDE_GO_TESTS=OFF
+    -DLLVM_ENABLE_Z3_SOLVER=OFF
+    -DCOMPILER_RT_BUILD_BUILTINS=ON
+    -DLLVM_ENABLE_THREADS=ON
+    -DLLVM_OPTIMIZED_TABLEGEN=ON
+    -DLLVM_ENABLE_PROJECTS="clang;lld;libcxx;libcxxabi;compiler-rt"
+    -DLLVM_BUILD_LLVM_DYLIB=OFF
+    -DLLVM_LINK_LLVM_DYLIB=OFF
+)
+
+function cmakeBinArgs() {
+    binDir=$1
+    echo "\
+	-DCMAKE_C_COMPILER=$binDir/clang \
+	-DCMAKE_CXX_COMPILER=$binDir/clang++ \
+	-DCMAKE_LINKER=$binDir/ld.lld \
+	-DCMAKE_AR=$binDir/llvm-ar"
+}
 
 function stage1build() {
     STAGE1=$OUT_DIR/stage1
@@ -81,10 +102,17 @@ function stage1build() {
     # Build a toolset into $STAGE1.  We only need native, because
     # this is just for the next step.
 
+    # Probably move this out
+    export LD_FLAGS="$LD_FLAGS -fuse-ld=lld"
+
     $CMAKE \
+	$(cmakeBinArgs $HOST_CLANG_BIN) \
 	-DCMAKE_INSTALL_PREFIX=$STAGE1 \
 	-DLLVM_TARGETS_TO_BUILD=Native \
-	$CMAKE_COMMON_OPTS \
+    -DCMAKE_EXE_LINKER_FLAGS="${LINKER_FLAGS[*]}" \
+    -DCMAKE_SHARED_LINKER_FLAGS="${LINKER_FLAGS[*]}" \
+    -DCMAKE_MODULE_LINKER_FLAGS="${LINKER_FLAGS[*]}" \
+	"${CMAKE_COMMON_OPTS[@]}" \
 	$LLVM_PROJECT/llvm
 
     $NINJA install
@@ -104,12 +132,10 @@ function stage2build() {
     # available targets, according to package.py documentation
 
     $CMAKE \
+	$(cmakeBinArgs $STAGE1/bin) \
 	-DCMAKE_INSTALL_PREFIX=$DIST_DIR \
-	-DCMAKE_C_COMPILER=$STAGE1/bin/clang \
-	-DCMAKE_CXX_COMPILER=$STAGE1/bin/clang++ \
-	-DCMAKE_LINKER=$STAGE1/bin/ld.lld \
-	-DCMAKE_AR=$STAGE1/bin/llvm-ar \
-	$CMAKE_COMMON_OPTS \
+	"${CMAKE_COMMON_OPTS[@]}" \
+    -DLLVM_ENABLE_LIBCXX=ON \
 	$LLVM_PROJECT/llvm
 
     $NINJA install
