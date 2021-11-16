@@ -22,9 +22,6 @@ set -e
 # For why we run a 2-stage bootstrap, see
 #  https://llvm.org/docs/BuildingADistribution.html#general-distribution-guidance
 
-echo "Trivially succeeding to prevent musket turndown, until we resolve b/206804351"
-exit 0
-
 # find script
 SCRIPT_DIR="$(cd $(dirname $0) && pwd)"
 cd $SCRIPT_DIR
@@ -36,6 +33,7 @@ ROOT=$SCRIPT_DIR/../..
 if [ "$OUT_DIR" == "" ]; then
   OUT_DIR="$ROOT/out"
 fi
+rm -rf $OUT_DIR
 mkdir -p "$OUT_DIR"
 export OUT_DIR="$(cd $OUT_DIR && pwd)"
 
@@ -47,6 +45,11 @@ export DIST_DIR
 
 PREBUILTS=$ROOT/prebuilts
 BIN_PATH=$PREBUILTS/build-tools/linux-x86/bin
+
+# We need a host clang to build the stage1 clang to build the stage2 clang
+# (build machines have a very old gcc by default)
+HOST_SYSROOT=$PREBUILTS/clang/host/linux-x86/clang-r433403b
+HOST_CLANG_BIN=$HOST_SYSROOT/bin
 
 # Add prebuilts (especially ninja) to PATH
 #   (cmake won't run if ninja is not on PATH)
@@ -69,6 +72,15 @@ CMAKE_COMMON_OPTS="\
     -DLLVM_BUILD_LLVM_DYLIB=OFF \
     -DLLVM_LINK_LLVM_DYLIB=OFF"
 
+function cmakeBinArgs() {
+    binDir=$1
+    echo "\
+	-DCMAKE_C_COMPILER=$binDir/clang \
+	-DCMAKE_CXX_COMPILER=$binDir/clang++ \
+	-DCMAKE_LINKER=$binDir/ld.lld \
+	-DCMAKE_AR=$binDir/llvm-ar"
+}
+
 function stage1build() {
     STAGE1=$OUT_DIR/stage1
     mkdir -p $STAGE1
@@ -78,10 +90,14 @@ function stage1build() {
     mkdir -p $STAGE1BUILD
     pushd $STAGE1BUILD
 
+    GCC_TOOLCHAIN=$PREBUILTS/gcc/linux-x86/host/x86_64-linux-glibc2.17-4.8/x86_64-linux
+
     # Build a toolset into $STAGE1.  We only need native, because
     # this is just for the next step.
 
     $CMAKE \
+	$(cmakeBinArgs $HOST_CLANG_BIN) \
+	-DCMAKE_CLANG_OPTIONS=--gcc_toolchain=$GCC_TOOLCHAIN \
 	-DCMAKE_INSTALL_PREFIX=$STAGE1 \
 	-DLLVM_TARGETS_TO_BUILD=Native \
 	$CMAKE_COMMON_OPTS \
@@ -104,11 +120,8 @@ function stage2build() {
     # available targets, according to package.py documentation
 
     $CMAKE \
+	$(cmakeBinArgs $STAGE1/bin) \
 	-DCMAKE_INSTALL_PREFIX=$DIST_DIR \
-	-DCMAKE_C_COMPILER=$STAGE1/bin/clang \
-	-DCMAKE_CXX_COMPILER=$STAGE1/bin/clang++ \
-	-DCMAKE_LINKER=$STAGE1/bin/ld.lld \
-	-DCMAKE_AR=$STAGE1/bin/llvm-ar \
 	$CMAKE_COMMON_OPTS \
 	$LLVM_PROJECT/llvm
 
