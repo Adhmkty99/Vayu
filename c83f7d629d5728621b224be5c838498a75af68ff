@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "829d2cd7_26a07039",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1060413
+      },
+      "writtenOn": "2021-11-17T17:12:02Z",
+      "side": 1,
+      "message": "See bug for details, but I\u0027d like to temporarily swap in a passing script so that I can use abtd to debug an actual fix to the GCC problem linked in the bug.",
+      "revId": "c83f7d629d5728621b224be5c838498a75af68ff",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
