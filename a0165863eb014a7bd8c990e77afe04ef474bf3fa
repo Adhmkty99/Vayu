@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "d95728e6_fa092431",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 9
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2021-11-23T21:14:04Z",
+      "side": 1,
+      "message": "Looking at the errors from the forrest runs, I think a better option is to _use_ libc++ during the build, in addition to building one for the release.  To do this, use LLVM_ENABLE_LIBCXX\u003dON.  This may work if the build machines have libc++ preinstalled.\n\nIf that doesn\u0027t work, follow the steps used in the platform clang toolchain where we avoid using anything from the build machine:\n\n1. Use LLVM_ENABLE_LIBCXX\u003dON: https://source.corp.google.com/android/toolchain/llvm_android/base_builders.py;l\u003d47\n2. Set -static-libstdc++ in stage 1 build: https://source.corp.google.com/android/toolchain/llvm_android/builders.py;rcl\u003d7e2595d3f993cf9da6fbdefcf32a53de0f2128fe;l\u003d93\n3. Use LD_LIBRARY_PATH during stage2 build: https://source.corp.google.com/android/toolchain/llvm_android/builders.py;rcl\u003d7e2595d3f993cf9da6fbdefcf32a53de0f2128fe;l\u003d160",
+      "revId": "a0165863eb014a7bd8c990e77afe04ef474bf3fa",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
