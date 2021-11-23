@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "5b6d79b1_c4325fe2",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 11
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2021-11-23T23:52:15Z",
+      "side": 1,
+      "message": "\u003e /usr/bin/ld: utils/count/CMakeFiles/count.dir/count.c.o: unrecognized relocation (0x2a) in section `.text.main\u0027\n\nLink with lld: add `-fuse-ld\u003dlld` linker flag.",
+      "revId": "5464a91920f2954684b1ed03d7f92ee092a38fd3",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
