@@ -183,9 +183,14 @@ static _Unwind_Reason_Code unwindOneFrame(_Unwind_State state,
   if (result != _URC_CONTINUE_UNWIND)
     return result;
 
-  if (__unw_step(reinterpret_cast<unw_cursor_t *>(context)) != UNW_STEP_SUCCESS)
+  switch (__unw_step(reinterpret_cast<unw_cursor_t *>(context))) {
+  case UNW_STEP_SUCCESS:
+    return _URC_CONTINUE_UNWIND;
+  case UNW_STEP_END:
+    return _URC_END_OF_STACK;
+  default:
     return _URC_FAILURE;
-  return _URC_CONTINUE_UNWIND;
+  }
 }
 
 // Generates mask discriminator for _Unwind_VRS_Pop, e.g. for _UVRSC_CORE /
@@ -991,9 +996,14 @@ extern "C" _LIBUNWIND_EXPORT _Unwind_Reason_Code
 __gnu_unwind_frame(_Unwind_Exception *exception_object,
                    struct _Unwind_Context *context) {
   unw_cursor_t *cursor = (unw_cursor_t *)context;
-  if (__unw_step(cursor) != UNW_STEP_SUCCESS)
+  switch (__unw_step(cursor)) {
+  case UNW_STEP_SUCCESS:
+    return _URC_OK;
+  case UNW_STEP_END:
+    return _URC_END_OF_STACK;
+  default:
     return _URC_FAILURE;
-  return _URC_OK;
+  }
 }
 
 #endif  // defined(_LIBUNWIND_ARM_EHABI)
