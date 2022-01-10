@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "88ad940d_f9554489",
+        "filename": "busytown-build.sh",
+        "patchSetId": 24
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2022-01-10T17:21:51Z",
+      "side": 1,
+      "message": "This branch uses the \u0027master\u0027 project of prebuilts/clang/host/linux-x86.  clang-r433403b has been deleted recently.  Use clang-r437112b instead.\n\nWe should work out how to keep this version updated once kotlin native reaches a stable point.  In the mean time, watch out for build breaks and update the prebuilt version as necessary 😊.",
+      "range": {
+        "startLine": 52,
+        "startChar": 45,
+        "endLine": 52,
+        "endChar": 59
+      },
+      "revId": "28b7da89a618522d969d4bf984334efc9f75542a",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
