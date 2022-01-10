@@ -22,6 +22,30 @@
       },
       "revId": "28b7da89a618522d969d4bf984334efc9f75542a",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f24342cd_45a01af1",
+        "filename": "busytown-build.sh",
+        "patchSetId": 24
+      },
+      "lineNbr": 52,
+      "author": {
+        "id": 1060413
+      },
+      "writtenOn": "2022-01-10T21:22:23Z",
+      "side": 1,
+      "message": "Done, thanks!",
+      "parentUuid": "88ad940d_f9554489",
+      "range": {
+        "startLine": 52,
+        "startChar": 45,
+        "endLine": 52,
+        "endChar": 59
+      },
+      "revId": "28b7da89a618522d969d4bf984334efc9f75542a",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
   ]
 }
