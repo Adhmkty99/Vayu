@@ -86,8 +86,9 @@ function cmakeBinArgs() {
 	-DCMAKE_AR=$binDir/llvm-ar"
 }
 
+STAGE1=$OUT_DIR/stage1
+
 function stage1build() {
-    STAGE1=$OUT_DIR/stage1
     mkdir -p $STAGE1
 
     STAGE1BUILD=$OUT_DIR/stage1build
@@ -142,3 +143,6 @@ stage1build
 
 echo "Skipping stage 2 build for now: b/213465361"
 # stage2build
+
+echo "Copying stage 1 build directly to distribution folder"
+cp -r $STAGE1 $DIST_DIR
