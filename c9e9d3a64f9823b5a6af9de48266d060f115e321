@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": true,
+      "key": {
+        "uuid": "8bc01078_1443205d",
+        "filename": "libcxx/test/std/utilities/smartptr/unique.ptr/unique.ptr.class/unique.ptr.observers/op_arrow.runtime.fail.cpp",
+        "patchSetId": 2
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 1890456
+      },
+      "writtenOn": "2022-02-17T22:14:22Z",
+      "side": 1,
+      "message": "I get this error msg: Line 26: member reference type \u0027std::unique_ptr\u003cV[]\u003e\u0027 is not a pointer; did you mean to use \u0027.\u0027?\nDo we need to use \u0027.\u0027 rather than \u0027-\u003e\u0027 ?",
+      "revId": "c9e9d3a64f9823b5a6af9de48266d060f115e321",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
