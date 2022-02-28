@@ -16,6 +16,23 @@
       "message": "git fetch https://android.googlesource.com/toolchain/llvm-project refs/changes/72/1996472/1 \u0026\u0026 git checkout -b change-1996472 FETCH_HEAD",
       "revId": "4c603efb0cca074e9238af8b4106c30add4418f6",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "8321083d_1562916a",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1608061
+      },
+      "writtenOn": "2022-02-28T19:07:38Z",
+      "side": 1,
+      "message": "git fetch https://android.googlesource.com/toolchain/llvm-project refs/changes/72/1996472/1 \u0026\u0026 git checkout -b change-1996472 FETCH_HEAD",
+      "revId": "4c603efb0cca074e9238af8b4106c30add4418f6",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
   ]
 }
