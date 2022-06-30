@@ -15,6 +15,9 @@
 // Ensure locale-independence for unicode tests.
 // RUN: env LANG=en_US.UTF-8 %{gdb} -nx -batch -iex "set autoload off" -ex "source %S/../../../utils/gdb/libcxx/printers.py" -ex "python register_libcxx_printer_loader()" -ex "source %S/gdb_pretty_printer_test.py" %t.exe
 
+// Musl uses a different layout for the mbstate_t in std::fpos
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 #include <bitset>
 #include <deque>
 #include <list>
