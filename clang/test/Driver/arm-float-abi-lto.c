@@ -1,5 +1,7 @@
 // REQUIRES: arm-registered-target
 
+// XFAIL: -linux-musl
+
 // RUN: %clang --target=arm-none-eabi -mcpu=cortex-m33 -mfloat-abi=hard -O1 %s -S -o - -emit-llvm -DCALL_LIB -DDEFINE_LIB | FileCheck %s
 
 // RUN: %clang --target=arm-none-eabi -mcpu=cortex-m33 -mfloat-abi=hard -O1 %s -flto=full -c -o %t.call_full.bc -DCALL_LIB
