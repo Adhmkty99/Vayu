@@ -13,6 +13,9 @@
 
 // XFAIL: libcpp-has-no-wide-characters
 
+// Musl doesn't translate dates
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // REQUIRES: locale.en_US.UTF-8
 // REQUIRES: locale.fr_FR.UTF-8
 // REQUIRES: locale.ru_RU.UTF-8

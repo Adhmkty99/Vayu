@@ -18,6 +18,9 @@
 // TODO FMT Evaluate gcc-11 status
 // UNSUPPORTED: gcc-11
 
+// Musl only supports posix default number punctuation.
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // REQUIRES: locale.en_US.UTF-8
 
 // <format>

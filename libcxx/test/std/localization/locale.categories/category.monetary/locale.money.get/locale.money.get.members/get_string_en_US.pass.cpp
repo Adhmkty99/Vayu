@@ -16,6 +16,9 @@
 // REQUIRES: locale.en_US.UTF-8
 // XFAIL: LIBCXX-WINDOWS-FIXME
 
+// Musl doesn't implement monetary locales
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 #include <locale>
 #include <ios>
 #include <streambuf>

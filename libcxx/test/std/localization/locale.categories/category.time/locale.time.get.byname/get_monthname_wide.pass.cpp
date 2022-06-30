@@ -11,6 +11,9 @@
 // REQUIRES: locale.zh_CN.UTF-8
 // XFAIL: libcpp-has-no-wide-characters
 
+// Musl doesn't translate dates
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // <locale>
 
 // class time_get_byname<charT, InputIterator>

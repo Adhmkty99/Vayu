@@ -8,6 +8,9 @@
 
 // REQUIRES: locale.en_US.UTF-8
 
+// Musl ctype doesn't support locales
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // <locale>
 
 // template <class charT> class ctype_byname;

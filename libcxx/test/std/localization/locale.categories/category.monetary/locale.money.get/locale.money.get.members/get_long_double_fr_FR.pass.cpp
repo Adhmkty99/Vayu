@@ -16,6 +16,9 @@
 
 // REQUIRES: locale.fr_FR.UTF-8
 
+// Musl doesn't implement monetary locales
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // <locale>
 
 // class money_get<charT, InputIterator>

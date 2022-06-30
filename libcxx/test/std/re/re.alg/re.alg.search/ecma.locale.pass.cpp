@@ -23,6 +23,9 @@
 // TODO: investigation needed
 // XFAIL: target={{.*}}-linux-gnu{{.*}}, freebsd
 
+// Musl doesn't support custom collations.
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 #include <regex>
 #include <cassert>
 #include "test_macros.h"

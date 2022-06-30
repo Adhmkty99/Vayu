@@ -9,6 +9,9 @@
 // NetBSD does not support most of LC_* at the moment
 // XFAIL: netbsd
 
+// Musl newlocale returns a default locale for unknown names
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // REQUIRES: locale.ru_RU.UTF-8
 // REQUIRES: locale.zh_CN.UTF-8
 

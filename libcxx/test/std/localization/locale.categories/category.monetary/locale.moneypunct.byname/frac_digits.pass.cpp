@@ -8,6 +8,9 @@
 
 // <locale>
 
+// Musl doesn't implement monetary locales
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // REQUIRES: locale.en_US.UTF-8
 // REQUIRES: locale.fr_FR.UTF-8
 // REQUIRES: locale.ru_RU.UTF-8

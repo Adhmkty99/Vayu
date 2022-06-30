@@ -12,6 +12,9 @@
 
 // XFAIL: LIBCXX-WINDOWS-FIXME
 
+// Musl doesn't translate dates
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // <locale>
 
 // class time_get_byname<charT, InputIterator>

@@ -9,6 +9,9 @@
 // NetBSD does not support LC_COLLATE at the moment
 // XFAIL: netbsd
 
+// Musl doesn't implement custom collation orders
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // <locale>
 
 // template <class charT> class collate_byname

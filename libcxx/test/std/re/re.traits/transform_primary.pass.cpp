@@ -9,6 +9,9 @@
 // NetBSD does not support LC_COLLATE at the moment
 // XFAIL: netbsd
 
+// Musl doesn't support custom collation.
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // REQUIRES: locale.cs_CZ.ISO8859-2
 
 // <regex>

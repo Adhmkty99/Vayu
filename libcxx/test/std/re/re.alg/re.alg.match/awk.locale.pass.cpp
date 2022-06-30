@@ -21,6 +21,9 @@
 // XFAIL: target={{.*}}-linux-gnu{{.*}}, netbsd, freebsd
 // REQUIRES: locale.cs_CZ.ISO8859-2
 
+// Musl doesn't support custom collations.
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 #include <regex>
 #include <cassert>
 #include "test_macros.h"

@@ -11,6 +11,9 @@
 // XFAIL: LIBCXX-AIX-FIXME
 // XFAIL: libcpp-has-no-wide-characters
 
+// Musl ctype doesn't support locales
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // <locale>
 
 // template <class charT> class ctype_byname;

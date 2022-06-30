@@ -12,8 +12,8 @@
 
 // iter_type put(iter_type s, ios_base& iob, char_type fill, long double v) const;
 
-// TODO GLIBC uses a different string for positive and negative NAN numbers.
-// XFAIL: target={{.*}}-linux-gnu{{.*}}
+// TODO GLIBC and musl use a different string for positive and negative NAN numbers.
+// XFAIL: target={{.*}}-linux-gnu{{.*}}, target={{.*}}-linux-musl{{.*}}, {{.*}}-linux-musl{{.*}}
 
 // XFAIL: LIBCXX-WINDOWS-FIXME
 // XFAIL: LIBCXX-AIX-FIXME

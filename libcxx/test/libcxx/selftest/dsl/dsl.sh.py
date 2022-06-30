@@ -8,6 +8,10 @@
 
 # XFAIL: LIBCXX-WINDOWS-FIXME
 
+# Musl ::setlocale(LC_ALL, "for_sure_this_is_not_an_existing_locale") returns
+# the list of current locales, not NULL.
+# XFAIL: {{.*}}-linux-musl{{.*}}
+
 # Note: We prepend arguments with 'x' to avoid thinking there are too few
 #       arguments in case an argument is an empty string.
 # RUN: %{python} %s x%S x%T x%{substitutions}

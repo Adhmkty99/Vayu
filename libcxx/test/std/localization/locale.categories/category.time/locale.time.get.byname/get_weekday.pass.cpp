@@ -24,6 +24,9 @@
 // TODO: investigation needed
 // XFAIL: target={{.*}}-linux-gnu{{.*}}
 
+// Musl doesn't translate dates
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 #include <locale>
 #include <cassert>
 #include "test_macros.h"

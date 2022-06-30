@@ -14,6 +14,9 @@
 // XFAIL: LIBCXX-WINDOWS-FIXME
 // XFAIL: LIBCXX-AIX-FIXME
 
+// Musl doesn't implement monetary locales
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 // REQUIRES: locale.fr_FR.UTF-8
 
 // <locale>

@@ -22,6 +22,9 @@
 // TODO: investigation needed
 // XFAIL: target={{.*}}-linux-gnu{{.*}}
 
+// Musl doesn't support custom collations.
+// XFAIL: {{.*}}-linux-musl{{.*}}
+
 #include <regex>
 #include <iterator>
 #include <cassert>
