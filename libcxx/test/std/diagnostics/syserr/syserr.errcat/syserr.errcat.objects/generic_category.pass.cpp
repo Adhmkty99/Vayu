@@ -28,7 +28,8 @@ void test_message_for_bad_value() {
     const std::error_category& e_cat1 = std::generic_category();
     const std::string msg = e_cat1.message(-1);
     // Exact message format varies by platform.
-    LIBCPP_ASSERT(msg.rfind("Unknown error", 0) == 0);
+    LIBCPP_ASSERT(msg.rfind("Unknown error", 0) == 0 ||
+                  msg.rfind("No error information", 0) == 0);
     assert(errno == E2BIG);
 }
 
