@@ -115,8 +115,11 @@ TEST(DynamicLibrary, Overload) {
 }
 
 TEST(DynamicLibrary, Shutdown) {
-  std::string A("PipSqueak"), B, C("SecondLib");
-  std::vector<std::string> Order;
+  // Use static storage for these, if dlclose is a noop then the loaded libraries
+  // can hold references to these and attempt to write to them when their
+  // destructors are called during process exit.
+  static std::string A("PipSqueak"), B, C("SecondLib");
+  static std::vector<std::string> Order;
   {
     std::string Err;
     llvm_shutdown_obj Shutdown;
@@ -159,16 +162,24 @@ TEST(DynamicLibrary, Shutdown) {
     TO_0(Order);
     TO_1(Order);
   }
-  EXPECT_EQ(A, "Global::~Global");
-  EXPECT_EQ(B, "Local::~Local");
-  EXPECT_EQ(FuncPtr<SetStrings>(
+  if (A != "PipSqueak") {
+    EXPECT_EQ(A, "Global::~Global");
+    EXPECT_EQ(B, "Local::~Local");
+    EXPECT_EQ(FuncPtr<SetStrings>(
                 DynamicLibrary::SearchForAddressOfSymbol("SetStrings")),
-            nullptr);
+              nullptr);
 
-  // Test unload/destruction ordering
-  EXPECT_EQ(Order.size(), 2UL);
-  EXPECT_EQ(Order.front(), "SecondLib");
-  EXPECT_EQ(Order.back(), "PipSqueak");
+    // Test unload/destruction ordering
+    EXPECT_EQ(Order.size(), 2UL);
+    EXPECT_EQ(Order.front(), "SecondLib");
+    EXPECT_EQ(Order.back(), "PipSqueak");
+  } else {
+    // Posix allows dlclose to be a noop, and it is implemented as a noop in musl libc.
+    // Verify nothing changed.
+    EXPECT_EQ(A, "PipSqueak");
+    EXPECT_EQ(B, "Local::Local(SecondLib)");
+    EXPECT_EQ(Order.size(), 0UL);
+  }
 }
 
 #else
