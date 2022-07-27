@@ -397,7 +397,7 @@ bool TargetTransformInfo::isLegalNTLoad(Type *DataType, Align Alignment) const {
 }
 
 bool TargetTransformInfo::isLegalBroadcastLoad(Type *ElementTy,
-                                               unsigned NumElements) const {
+                                               ElementCount NumElements) const {
   return TTIImpl->isLegalBroadcastLoad(ElementTy, NumElements);
 }
 
@@ -626,9 +626,8 @@ Optional<unsigned> TargetTransformInfo::getVScaleForTuning() const {
   return TTIImpl->getVScaleForTuning();
 }
 
-bool TargetTransformInfo::shouldMaximizeVectorBandwidth(
-    TargetTransformInfo::RegisterKind K) const {
-  return TTIImpl->shouldMaximizeVectorBandwidth(K);
+bool TargetTransformInfo::shouldMaximizeVectorBandwidth() const {
+  return TTIImpl->shouldMaximizeVectorBandwidth();
 }
 
 ElementCount TargetTransformInfo::getMinimumVF(unsigned ElemWidth,
