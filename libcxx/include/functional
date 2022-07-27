@@ -502,6 +502,7 @@ POLICY:  For non-variadic implementations, the number of arguments is limited
 #include <__functional/bind_front.h>
 #include <__functional/binder1st.h>
 #include <__functional/binder2nd.h>
+#include <__functional/boyer_moore_searcher.h>
 #include <__functional/compose.h>
 #include <__functional/default_searcher.h>
 #include <__functional/function.h>
@@ -527,6 +528,10 @@ POLICY:  For non-variadic implementations, the number of arguments is limited
 #include <type_traits>
 #include <typeinfo>
 #include <version>
+
+#ifndef _LIBCPP_REMOVE_TRANSITIVE_INCLUDES
+#  include <utility>
+#endif
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
