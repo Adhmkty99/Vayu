@@ -12,9 +12,11 @@
 #include "sqrt_80_bit_long_double.h"
 #include "src/__support/CPP/Bit.h"
 #include "src/__support/CPP/TypeTraits.h"
+#include "src/__support/CPP/UInt128.h"
 #include "src/__support/FPUtil/FEnvImpl.h"
 #include "src/__support/FPUtil/FPBits.h"
 #include "src/__support/FPUtil/PlatformDefs.h"
+#include "src/__support/FPUtil/builtin_wrappers.h"
 
 namespace __llvm_libc {
 namespace fputil {
@@ -30,21 +32,6 @@ template <> struct SpecialLongDouble<long double> {
   static constexpr bool VALUE = true;
 };
 #endif // SPECIAL_X86_LONG_DOUBLE
-
-// The following overloads are matched based on what is accepted by
-// __builtin_clz* rather than using the exactly-sized aliases from stdint.h.
-// This way, we can avoid making any assumptions about integer sizes and let the
-// compiler match for us.
-template <typename T> static inline int clz(T val);
-template <> inline int clz<unsigned int>(unsigned int val) {
-  return __builtin_clz(val);
-}
-template <> inline int clz<unsigned long int>(unsigned long int val) {
-  return __builtin_clzl(val);
-}
-template <> inline int clz<unsigned long long int>(unsigned long long int val) {
-  return __builtin_clzll(val);
-}
 
 template <typename T>
 static inline void normalize(int &exponent,
@@ -62,7 +49,7 @@ inline void normalize<long double>(int &exponent, uint64_t &mantissa) {
 }
 #elif !defined(SPECIAL_X86_LONG_DOUBLE)
 template <>
-inline void normalize<long double>(int &exponent, __uint128_t &mantissa) {
+inline void normalize<long double>(int &exponent, UInt128 &mantissa) {
   const uint64_t hi_bits = static_cast<uint64_t>(mantissa >> 64);
   const int shift = hi_bits ? (clz(hi_bits) - 15)
                             : (clz(static_cast<uint64_t>(mantissa)) + 49);
