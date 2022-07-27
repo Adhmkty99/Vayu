@@ -21,12 +21,9 @@ namespace opts {
 extern cl::OptionCategory BoltOptCategory;
 
 static llvm::cl::opt<bool>
-EliminateVeneers("elim-link-veneers",
-  cl::desc("run veneer elimination pass"),
-  cl::init(true),
-  cl::ZeroOrMore,
-  cl::Hidden,
-  cl::cat(BoltOptCategory));
+    EliminateVeneers("elim-link-veneers",
+                     cl::desc("run veneer elimination pass"), cl::init(true),
+                     cl::Hidden, cl::cat(BoltOptCategory));
 } // namespace opts
 
 namespace llvm {
@@ -63,8 +60,8 @@ void VeneerElimination::runOnFunctions(BinaryContext &BC) {
     }
   }
 
-  LLVM_DEBUG(dbgs() << "BOLT-INFO: number of removed linker-inserted veneers :"
-                    << VeneersCount << "\n");
+  outs() << "BOLT-INFO: number of removed linker-inserted veneers :"
+         << VeneersCount << "\n";
 
   // Handle veneers to veneers in case they occur
   for (auto entry : VeneerDestinations) {
