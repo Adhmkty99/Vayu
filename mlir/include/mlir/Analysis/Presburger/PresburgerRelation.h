@@ -34,7 +34,7 @@ class SetCoalescer;
 /// Note that there are no invariants guaranteed on the list of disjuncts
 /// other than that they are all in the same PresburgerSpace. For example, the
 /// relations may overlap with each other.
-class PresburgerRelation : public PresburgerSpace {
+class PresburgerRelation {
 public:
   /// Return a universe set of the specified type that contains all points.
   static PresburgerRelation getUniverse(const PresburgerSpace &space);
@@ -44,8 +44,24 @@ public:
 
   explicit PresburgerRelation(const IntegerRelation &disjunct);
 
+  unsigned getNumDomainIds() const { return space.getNumDomainIds(); }
+  unsigned getNumRangeIds() const { return space.getNumRangeIds(); }
+  unsigned getNumSymbolIds() const { return space.getNumSymbolIds(); }
+  unsigned getNumLocalIds() const { return space.getNumLocalIds(); }
+  unsigned getNumIds() const { return space.getNumIds(); }
+
   /// Return the number of disjuncts in the union.
   unsigned getNumDisjuncts() const;
+
+  const PresburgerSpace &getSpace() const { return space; }
+
+  /// Set the space to `oSpace`. `oSpace` should not contain any local ids.
+  /// `oSpace` need not have the same number of ids as the current space;
+  /// it could have more or less. If it has less, the extra ids become
+  /// locals of the disjuncts. It can also have more, in which case the
+  /// disjuncts will have fewer locals. If its total number of ids
+  /// exceeds that of some disjunct, an assert failure will occur.
+  void setSpace(const PresburgerSpace &oSpace);
 
   /// Return a reference to the list of disjuncts.
   ArrayRef<IntegerRelation> getAllDisjuncts() const;
@@ -109,6 +125,9 @@ public:
   /// disjuncts in the union.
   PresburgerRelation coalesce() const;
 
+  /// Check whether all local ids in all disjuncts have a div representation.
+  bool hasOnlyDivLocals() const;
+
   /// Print the set's internal state.
   void print(raw_ostream &os) const;
   void dump() const;
@@ -116,11 +135,12 @@ public:
 protected:
   /// Construct an empty PresburgerRelation with the specified number of
   /// dimension and symbols.
-  explicit PresburgerRelation(const PresburgerSpace &space)
-      : PresburgerSpace(space) {
+  explicit PresburgerRelation(const PresburgerSpace &space) : space(space) {
     assert(space.getNumLocalIds() == 0 &&
            "PresburgerRelation cannot have local ids.");
   }
+
+  PresburgerSpace space;
 
   /// The list of disjuncts that this set is the union of.
   SmallVector<IntegerRelation, 2> disjuncts;
