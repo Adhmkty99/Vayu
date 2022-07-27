@@ -247,7 +247,7 @@ void AMDGPUAsmPrinter::emitFunctionBodyEnd() {
   auto &ObjectFileInfo = *Context.getObjectFileInfo();
   auto &ReadOnlySection = *ObjectFileInfo.getReadOnlySection();
 
-  Streamer.PushSection();
+  Streamer.pushSection();
   Streamer.SwitchSection(&ReadOnlySection);
 
   // CP microcode requires the kernel descriptor to be allocated on 64 byte
@@ -269,7 +269,7 @@ void AMDGPUAsmPrinter::emitFunctionBodyEnd() {
                                     CurrentProgramInfo.FlatUsed),
       CurrentProgramInfo.VCCUsed, CurrentProgramInfo.FlatUsed);
 
-  Streamer.PopSection();
+  Streamer.popSection();
 }
 
 void AMDGPUAsmPrinter::emitFunctionEntryLabel() {
@@ -875,10 +875,7 @@ void AMDGPUAsmPrinter::getSIProgramInfo(SIProgramInfo &ProgInfo,
     LDSAlignShift = 9;
   }
 
-  unsigned LDSSpillSize =
-    MFI->getLDSWaveSpillSize() * MFI->getMaxFlatWorkGroupSize();
-
-  ProgInfo.LDSSize = MFI->getLDSSize() + LDSSpillSize;
+  ProgInfo.LDSSize = MFI->getLDSSize();
   ProgInfo.LDSBlocks =
       alignTo(ProgInfo.LDSSize, 1ULL << LDSAlignShift) >> LDSAlignShift;
 
