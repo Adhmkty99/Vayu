@@ -116,6 +116,7 @@ static std::vector<PlatformInfo> getPlatformInfos(const InputFile *input) {
 
   const char *hdr = input->mb.getBufferStart();
 
+  // "Zippered" object files can have multiple LC_BUILD_VERSION load commands.
   std::vector<PlatformInfo> platformInfos;
   for (auto *cmd : findCommands<build_version_command>(hdr, LC_BUILD_VERSION)) {
     PlatformInfo info;
@@ -343,8 +344,6 @@ void ObjFile::parseSections(ArrayRef<SectionHeader> sectionHeaders) {
       section.subsections.push_back({0, isec});
     } else if (auto recordSize = getRecordSize(segname, name)) {
       splitRecords(*recordSize);
-      if (name == section_names::compactUnwind)
-        compactUnwindSection = &section;
     } else if (segname == segment_names::llvm) {
       if (config->callGraphProfileSort && name == section_names::cgProfile)
         checkError(parseCallGraph(data, callGraph));
@@ -636,9 +635,10 @@ static macho::Symbol *createDefined(const NList &sym, StringRef name,
   }
   assert(!isWeakDefCanBeHidden &&
          "weak_def_can_be_hidden on already-hidden symbol?");
+  bool includeInSymtab = !name.startswith("l") && !name.startswith("L");
   return make<Defined>(
       name, isec->getFile(), isec, value, size, sym.n_desc & N_WEAK_DEF,
-      /*isExternal=*/false, /*isPrivateExtern=*/false,
+      /*isExternal=*/false, /*isPrivateExtern=*/false, includeInSymtab,
       sym.n_desc & N_ARM_THUMB_DEF, sym.n_desc & REFERENCED_DYNAMICALLY,
       sym.n_desc & N_NO_DEAD_STRIP);
 }
@@ -658,7 +658,7 @@ static macho::Symbol *createAbsolute(const NList &sym, InputFile *file,
   return make<Defined>(name, file, nullptr, sym.n_value, /*size=*/0,
                        /*isWeakDef=*/false,
                        /*isExternal=*/false, /*isPrivateExtern=*/false,
-                       sym.n_desc & N_ARM_THUMB_DEF,
+                       /*includeInSymtab=*/true, sym.n_desc & N_ARM_THUMB_DEF,
                        /*isReferencedDynamically=*/false,
                        sym.n_desc & N_NO_DEAD_STRIP);
 }
@@ -915,8 +915,19 @@ template <class LP> void ObjFile::parse() {
       parseRelocations(sectionHeaders, sectionHeaders[i], *sections[i]);
 
   parseDebugInfo();
+
+  Section *ehFrameSection = nullptr;
+  Section *compactUnwindSection = nullptr;
+  for (Section *sec : sections) {
+    Section **s = StringSwitch<Section **>(sec->name)
+                      .Case(section_names::compactUnwind, &compactUnwindSection)
+                      .Case(section_names::ehFrame, &ehFrameSection)
+                      .Default(nullptr);
+    if (s)
+      *s = sec;
+  }
   if (compactUnwindSection)
-    registerCompactUnwind();
+    registerCompactUnwind(*compactUnwindSection);
 }
 
 template <class LP> void ObjFile::parseLazy() {
@@ -979,8 +990,8 @@ ArrayRef<data_in_code_entry> ObjFile::getDataInCode() const {
 }
 
 // Create pointers from symbols to their associated compact unwind entries.
-void ObjFile::registerCompactUnwind() {
-  for (const Subsection &subsection : compactUnwindSection->subsections) {
+void ObjFile::registerCompactUnwind(Section &compactUnwindSection) {
+  for (const Subsection &subsection : compactUnwindSection.subsections) {
     ConcatInputSection *isec = cast<ConcatInputSection>(subsection.isec);
     // Hack!! Since each CUE contains a different function address, if ICF
     // operated naively and compared the entire contents of each CUE, entries
@@ -1013,6 +1024,11 @@ void ObjFile::registerCompactUnwind() {
         referentIsec =
             cast<ConcatInputSection>(r.referent.dyn_cast<InputSection *>());
       }
+      // Unwind info lives in __DATA, and finalization of __TEXT will occur
+      // before finalization of __DATA. Moreover, the finalization of unwind
+      // info depends on the exact addresses that it references. So it is safe
+      // for compact unwind to reference addresses in __TEXT, but not addresses
+      // in any other segment.
       if (referentIsec->getSegName() != segment_names::text)
         error(isec->getLocation(r.offset) + " references section " +
               referentIsec->getName() + " which is not in segment __TEXT");
