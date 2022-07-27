@@ -61,11 +61,9 @@ static bool parseShowColorsArgs(
 
   for (auto *a : args) {
     const llvm::opt::Option &O = a->getOption();
-    if (O.matches(clang::driver::options::OPT_fcolor_diagnostics) ||
-        O.matches(clang::driver::options::OPT_fdiagnostics_color)) {
+    if (O.matches(clang::driver::options::OPT_fcolor_diagnostics)) {
       ShowColors = Colors_On;
-    } else if (O.matches(clang::driver::options::OPT_fno_color_diagnostics) ||
-        O.matches(clang::driver::options::OPT_fno_diagnostics_color)) {
+    } else if (O.matches(clang::driver::options::OPT_fno_color_diagnostics)) {
       ShowColors = Colors_Off;
     } else if (O.matches(clang::driver::options::OPT_fdiagnostics_color_EQ)) {
       llvm::StringRef value(a->getValue());
@@ -100,9 +98,6 @@ static void ParseTargetArgs(TargetOptions &opts, llvm::opt::ArgList &args) {
 
 // Tweak the frontend configuration based on the frontend action
 static void setUpFrontendBasedOnAction(FrontendOptions &opts) {
-  assert(opts.programAction != Fortran::frontend::InvalidAction &&
-      "Fortran frontend action not set!");
-
   if (opts.programAction == DebugDumpParsingLog)
     opts.instrumentedParse = true;
 
@@ -149,6 +144,9 @@ static bool ParseFrontendArgs(FrontendOptions &opts, llvm::opt::ArgList &args,
       break;
     case clang::driver::options::OPT_emit_llvm:
       opts.programAction = EmitLLVM;
+      break;
+    case clang::driver::options::OPT_emit_llvm_bc:
+      opts.programAction = EmitLLVMBitcode;
       break;
     case clang::driver::options::OPT_emit_obj:
       opts.programAction = EmitObj;
@@ -595,6 +593,9 @@ bool CompilerInvocation::CreateFromArgs(CompilerInvocation &res,
   success &= parseDiagArgs(res, args, diags);
   res.frontendOpts_.llvmArgs =
       args.getAllArgValues(clang::driver::options::OPT_mllvm);
+
+  res.frontendOpts_.mlirArgs =
+      args.getAllArgValues(clang::driver::options::OPT_mmlir);
 
   return success;
 }

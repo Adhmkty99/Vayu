@@ -112,7 +112,7 @@ static cl::opt<unsigned>
                            "partial unswitching analysis"),
                   cl::init(100), cl::Hidden);
 static cl::opt<bool> FreezeLoopUnswitchCond(
-    "freeze-loop-unswitch-cond", cl::init(false), cl::Hidden,
+    "freeze-loop-unswitch-cond", cl::init(true), cl::Hidden,
     cl::desc("If enabled, the freeze instruction will be added to condition "
              "of loop unswitch to prevent miscompilation."));
 
@@ -570,8 +570,12 @@ static bool unswitchTrivialBranch(Loop &L, BranchInst &BI, DominatorTree &DT,
       assert(match(BI.getCondition(), m_LogicalAnd()) &&
              "Must have an `and` of `i1`s or `select i1 X, Y, false`s for the"
              " condition!");
-    buildPartialUnswitchConditionalBranch(*OldPH, Invariants, ExitDirection,
-                                          *UnswitchedBB, *NewPH, false);
+    buildPartialUnswitchConditionalBranch(
+        *OldPH, Invariants, ExitDirection, *UnswitchedBB, *NewPH,
+        FreezeLoopUnswitchCond && any_of(Invariants, [&](Value *C) {
+          return !isGuaranteedNotToBeUndefOrPoison(C, nullptr,
+                                                   OldPH->getTerminator(), &DT);
+        }));
   }
 
   // Update the dominator tree with the added edge.
@@ -2313,9 +2317,13 @@ static void unswitchNontrivialInvariants(
     if (PartiallyInvariant)
       buildPartialInvariantUnswitchConditionalBranch(
           *SplitBB, Invariants, Direction, *ClonedPH, *LoopPH, L, MSSAU);
-    else
-      buildPartialUnswitchConditionalBranch(*SplitBB, Invariants, Direction,
-                                            *ClonedPH, *LoopPH, InsertFreeze);
+    else {
+      buildPartialUnswitchConditionalBranch(
+          *SplitBB, Invariants, Direction, *ClonedPH, *LoopPH,
+          InsertFreeze && any_of(Invariants, [&](Value *C) {
+            return !isGuaranteedNotToBeUndefOrPoison(C, &AC, BI, &DT);
+          }));
+    }
     DTUpdates.push_back({DominatorTree::Insert, SplitBB, ClonedPH});
 
     if (MSSAU) {

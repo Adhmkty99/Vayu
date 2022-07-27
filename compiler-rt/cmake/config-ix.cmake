@@ -23,8 +23,8 @@ else()
   endif()
 endif()
 
-check_c_compiler_flag(-nodefaultlibs COMPILER_RT_HAS_NODEFAULTLIBS_FLAG)
-if (COMPILER_RT_HAS_NODEFAULTLIBS_FLAG)
+check_c_compiler_flag(-nodefaultlibs C_SUPPORTS_NODEFAULTLIBS_FLAG)
+if (C_SUPPORTS_NODEFAULTLIBS_FLAG)
   set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -nodefaultlibs")
   if (COMPILER_RT_HAS_LIBC)
     list(APPEND CMAKE_REQUIRED_LIBRARIES c)
@@ -244,7 +244,7 @@ endfunction()
 # specific architecture.  When cross-compiling, this is controled via
 # COMPILER_RT_TEST_COMPILER and COMPILER_RT_TEST_COMPILER_CFLAGS.
 macro(get_test_cc_for_arch arch cc_out cflags_out)
-  if(ANDROID OR ${arch} MATCHES "arm|aarch64|riscv32|riscv64")
+  if(ANDROID OR (NOT APPLE AND ${arch} MATCHES "arm|aarch64|riscv32|riscv64"))
     # This is only true if we are cross-compiling.
     # Build all tests with host compiler and use host tools.
     set(${cc_out} ${COMPILER_RT_TEST_COMPILER})
