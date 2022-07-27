@@ -9,11 +9,10 @@
 #ifndef MEMREF_OPS
 #define MEMREF_OPS
 
-include "mlir/Interfaces/ControlFlowInterfaces.td"
-include "mlir/Dialect/MemRef/IR/MemRefBase.td"
 include "mlir/Dialect/Arithmetic/IR/ArithmeticBase.td"
-include "mlir/IR/OpBase.td"
+include "mlir/Dialect/MemRef/IR/MemRefBase.td"
 include "mlir/Interfaces/CastInterfaces.td"
+include "mlir/Interfaces/ControlFlowInterfaces.td"
 include "mlir/Interfaces/CopyOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/ViewLikeInterface.td"
@@ -876,7 +875,7 @@ def MemRef_GlobalOp : MemRef_Op<"global", [Symbol]> {
   let extraClassDeclaration = [{
      bool isExternal() { return !initial_value(); }
      bool isUninitialized() {
-       return !isExternal() && initial_value().getValue().isa<UnitAttr>();
+       return !isExternal() && initial_value()->isa<UnitAttr>();
      }
      /// Returns the constant initial value if the memref.global is a constant,
      /// or null otherwise.
@@ -1256,7 +1255,7 @@ def MemRef_ExpandShapeOp : MemRef_ReassociativeReshapeOp<"expand_shape"> {
     the behavior is undefined.
 
     The source memref can be zero-ranked. In that case, the reassociation
-    indices must be empty and the the result shape may only consist of unit
+    indices must be empty and the result shape may only consist of unit
     dimensions.
 
     For simplicity, this op may not be used to cast dynamicity of dimension
@@ -1294,15 +1293,7 @@ def MemRef_ExpandShapeOp : MemRef_ReassociativeReshapeOp<"expand_shape"> {
     OpBuilder<(ins "ArrayRef<int64_t>":$resultShape, "Value":$src,
                "ArrayRef<ReassociationIndices>":$reassociation)>
   ];
-
-  let extraClassDeclaration = commonExtraClassDeclaration # [{
-    /// Return `true` if this source MemRef type is guaranteed to be collapsible
-    /// according to the given reassociation indices. In the presence of dynamic
-    /// strides this is usually not the case.
-    static bool isGuaranteedCollapsible(
-        MemRefType srcType, ArrayRef<ReassociationIndices> reassociation);
-  }];
-
+  let extraClassDeclaration = commonExtraClassDeclaration;
   let hasVerifier = 1;
 }
 
@@ -1382,7 +1373,14 @@ def MemRef_CollapseShapeOp : MemRef_ReassociativeReshapeOp<"collapse_shape"> {
       build($_builder, $_state, resultType, src, reassociationMaps, attrs);
     }]>
   ];
-  let extraClassDeclaration = commonExtraClassDeclaration;
+  let extraClassDeclaration = commonExtraClassDeclaration # [{
+    /// Return `true` if this source MemRef type is guaranteed to be collapsible
+    /// according to the given reassociation indices. In the presence of dynamic
+    /// strides this is usually not the case.
+    static bool isGuaranteedCollapsible(
+        MemRefType srcType, ArrayRef<ReassociationIndices> reassociation);
+  }];
+
   let hasVerifier = 1;
 }
 

@@ -34,22 +34,6 @@ class StringRef;
 
 class RISCVSubtarget : public RISCVGenSubtargetInfo {
 public:
-  enum ExtZvl : unsigned {
-    NotSet = 0,
-    Zvl32b = 32,
-    Zvl64b = 64,
-    Zvl128b = 128,
-    Zvl256b = 256,
-    Zvl512b = 512,
-    Zvl1024b = 1024,
-    Zvl2048b = 2048,
-    Zvl4096b = 4096,
-    Zvl8192b = 8192,
-    Zvl16384b = 16384,
-    Zvl32768b = 32768,
-    Zvl65536b = 65536
-  };
-
   enum RISCVProcFamilyEnum : uint8_t {
     Others,
     SiFive7,
@@ -106,9 +90,12 @@ private:
   bool IsRV32E = false;
   bool EnableLinkerRelax = false;
   bool EnableRVCHintInstrs = true;
+  bool EnableDefaultUnroll = true;
   bool EnableSaveRestore = false;
+  bool EnableUnalignedScalarMem = false;
+  bool HasLUIADDIFusion = false;
   unsigned XLen = 32;
-  ExtZvl ZvlLen = ExtZvl::NotSet;
+  unsigned ZvlLen = 0;
   MVT XLenVT = MVT::i32;
   uint8_t MaxInterleaveFactor = 2;
   RISCVABI::ABI TargetABI = RISCVABI::ABI_Unknown;
@@ -174,7 +161,7 @@ public:
   bool hasStdExtZbr() const { return HasStdExtZbr; }
   bool hasStdExtZbs() const { return HasStdExtZbs; }
   bool hasStdExtZbt() const { return HasStdExtZbt; }
-  bool hasStdExtZvl() const { return ZvlLen != ExtZvl::NotSet; }
+  bool hasStdExtZvl() const { return ZvlLen != 0; }
   bool hasStdExtZvfh() const { return HasStdExtZvfh; }
   bool hasStdExtZfhmin() const { return HasStdExtZfhmin; }
   bool hasStdExtZfh() const { return HasStdExtZfh; }
@@ -195,7 +182,10 @@ public:
   bool isRV32E() const { return IsRV32E; }
   bool enableLinkerRelax() const { return EnableLinkerRelax; }
   bool enableRVCHintInstrs() const { return EnableRVCHintInstrs; }
+  bool enableDefaultUnroll() const { return EnableDefaultUnroll; }
   bool enableSaveRestore() const { return EnableSaveRestore; }
+  bool enableUnalignedScalarMem() const { return EnableUnalignedScalarMem; }
+  bool hasLUIADDIFusion() const { return HasLUIADDIFusion; }
   MVT getXLenVT() const { return XLenVT; }
   unsigned getXLen() const { return XLen; }
   unsigned getFLen() const {
@@ -207,8 +197,12 @@ public:
 
     return 0;
   }
+  unsigned getELEN() const {
+    assert(hasVInstructions() && "Expected V extension");
+    return hasVInstructionsI64() ? 64 : 32;
+  }
   unsigned getMinVLen() const { return ZvlLen; }
-  unsigned getMaxVLen() const { return Zvl65536b; }
+  unsigned getMaxVLen() const { return 65536; }
   unsigned getRealMinVLen() const {
     unsigned VLen = getMinRVVVectorSizeInBits();
     return VLen == 0 ? getMinVLen() : VLen;
@@ -222,6 +216,8 @@ public:
     assert(i < RISCV::NUM_TARGET_REGS && "Register out of range");
     return UserReservedRegister[i];
   }
+
+  bool hasMacroFusion() const { return hasLUIADDIFusion(); }
 
   // Vector codegen related methods.
   bool hasVInstructions() const { return HasStdExtZve32x; }
@@ -262,8 +258,12 @@ public:
   unsigned getMaxRVVVectorSizeInBits() const;
   unsigned getMinRVVVectorSizeInBits() const;
   unsigned getMaxLMULForFixedLengthVectors() const;
-  unsigned getMaxELENForFixedLengthVectors() const;
   bool useRVVForFixedLengthVectors() const;
+
+  bool enableSubRegLiveness() const override;
+
+  void getPostRAMutations(std::vector<std::unique_ptr<ScheduleDAGMutation>>
+                              &Mutations) const override;
 };
 } // End llvm namespace
 

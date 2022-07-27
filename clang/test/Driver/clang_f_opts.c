@@ -1,4 +1,3 @@
-// REQUIRES: clang-driver
 
 // RUN: %clang -### -S -fasm -fblocks -fbuiltin -fno-math-errno -fcommon -fpascal-strings -fno-blocks -fno-builtin -fmath-errno -fno-common -fno-pascal-strings -fblocks -fbuiltin -fmath-errno -fcommon -fpascal-strings -fsplit-stack %s 2>&1 | FileCheck -check-prefix=CHECK-OPTIONS1 %s
 // RUN: %clang -### -S -fasm -fblocks -fbuiltin -fno-math-errno -fcommon -fpascal-strings -fno-asm -fno-blocks -fno-builtin -fmath-errno -fno-common -fno-pascal-strings -fno-show-source-location -fshort-enums -fprotect-parens %s 2>&1 | FileCheck -check-prefix=CHECK-OPTIONS2 %s
@@ -59,7 +58,7 @@
 // RUN: %clang -### -S -fprofile-sample-use=%S/Inputs/file.prof %s 2>&1 | FileCheck -check-prefix=CHECK-SAMPLE-PROFILE %s
 // CHECK-SAMPLE-PROFILE: "-fprofile-sample-use={{.*}}/file.prof"
 
-//
+
 // RUN: %clang -### -x cuda -nocudainc -nocudalib \
 // RUN:    -c -fprofile-sample-use=%S/Inputs/file.prof %s 2>&1 \
 // RUN:  | FileCheck -check-prefix=CHECK-CUDA-SAMPLE-PROFILE %s
@@ -197,12 +196,12 @@
 // CHECK-ROUNDING-MATH-NOT: "-fno-rounding-math"
 // RUN: %clang -### -S %s 2>&1 | FileCheck -check-prefix=CHECK-ROUNDING-MATH-NOT %s
 // RUN: %clang -### -S -ffp-model=imprecise %s 2>&1 | FileCheck -check-prefix=CHECK-FPMODEL %s
-// CHECK-FPMODEL: unsupported argument 'imprecise' to option 'ffp-model='
+// CHECK-FPMODEL: unsupported argument 'imprecise' to option '-ffp-model='
 // RUN: %clang -### -S -ffp-model=precise %s 2>&1 | FileCheck -check-prefix=IGNORE %s
 // RUN: %clang -### -S -ffp-model=strict %s 2>&1 | FileCheck -check-prefix=IGNORE %s
 // RUN: %clang -### -S -ffp-model=fast %s 2>&1 | FileCheck -check-prefix=IGNORE %s
 // RUN: %clang -### -S -ffp-exception-behavior=trap %s 2>&1 | FileCheck -check-prefix=CHECK-FPEB %s
-// CHECK-FPEB: unsupported argument 'trap' to option 'ffp-exception-behavior='
+// CHECK-FPEB: unsupported argument 'trap' to option '-ffp-exception-behavior='
 // RUN: %clang -### -S -ffp-exception-behavior=maytrap %s 2>&1 | FileCheck -check-prefix=IGNORE %s
 // RUN: %clang -### -S -ffp-exception-behavior=ignore %s 2>&1 | FileCheck -check-prefix=IGNORE %s
 // RUN: %clang -### -S -ffp-exception-behavior=strict %s 2>&1 | FileCheck -check-prefix=IGNORE %s
@@ -393,7 +392,7 @@
 // CHECK-WARNING-DAG: optimization flag '-ftracer' is not supported
 // CHECK-WARNING-DAG: optimization flag '-funroll-all-loops' is not supported
 // CHECK-WARNING-DAG: optimization flag '-funswitch-loops' is not supported
-// CHECK-WARNING-DAG: unsupported argument '1' to option 'flto='
+// CHECK-WARNING-DAG: unsupported argument '1' to option '-flto='
 // CHECK-WARNING-DAG: optimization flag '-falign-labels' is not supported
 // CHECK-WARNING-DAG: optimization flag '-falign-labels=100' is not supported
 // CHECK-WARNING-DAG: optimization flag '-falign-loops' is not supported
@@ -447,7 +446,7 @@
 // Test that an ignored optimization argument only prints 1 warning,
 // not both a warning about not claiming the arg, *and* about not supporting
 // the arg; and that adding -Wno-ignored-optimization silences the warning.
-//
+
 // RUN: %clang -### -fprofile-correction %s 2>&1 \
 // RUN:   | FileCheck --check-prefix=CHECK-NO-WARNING3 %s
 // CHECK-NO-WARNING3: optimization flag '-fprofile-correction' is not supported
@@ -606,3 +605,8 @@
 // CHECK_JMC_WARN_NOT_ELF: -fjmc works only for ELF; option ignored
 // CHECK_NOJMC-NOT: -fjmc
 // CHECK_JMC: -fjmc
+
+// RUN: %clang -### -fintegrated-objemitter -target x86_64 %s 2>&1 | FileCheck -check-prefix=CHECK-INT-OBJEMITTER %s
+// CHECK-INT-OBJEMITTER-NOT: unsupported option '-fintegrated-objemitter' for target
+// RUN: %clang -### -fno-integrated-objemitter -target x86_64 %s 2>&1 | FileCheck -check-prefix=CHECK-NOINT-OBJEMITTER %s
+// CHECK-NOINT-OBJEMITTER: unsupported option '-fno-integrated-objemitter' for target

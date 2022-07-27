@@ -447,7 +447,10 @@ void NVPTX::Assembler::ConstructJob(Compilation &C, const JobAction &JA,
   CmdArgs.push_back("--gpu-name");
   CmdArgs.push_back(Args.MakeArgString(CudaArchToString(gpu_arch)));
   CmdArgs.push_back("--output-file");
-  CmdArgs.push_back(Args.MakeArgString(TC.getInputFilename(Output)));
+  const char *OutputFileName = Args.MakeArgString(TC.getInputFilename(Output));
+  if (std::string(OutputFileName) != std::string(Output.getFilename()))
+    C.addTempFile(OutputFileName);
+  CmdArgs.push_back(OutputFileName);
   for (const auto& II : Inputs)
     CmdArgs.push_back(Args.MakeArgString(II.getFilename()));
 
@@ -533,8 +536,9 @@ void NVPTX::Linker::ConstructJob(Compilation &C, const JobAction &JA,
     const char *Arch = (II.getType() == types::TY_PP_Asm)
                            ? CudaArchToVirtualArchString(gpu_arch)
                            : gpu_arch_str;
-    CmdArgs.push_back(Args.MakeArgString(llvm::Twine("--image=profile=") +
-                                         Arch + ",file=" + II.getFilename()));
+    CmdArgs.push_back(
+        Args.MakeArgString(llvm::Twine("--image=profile=") + Arch +
+                           ",file=" + getToolChain().getInputFilename(II)));
   }
 
   for (const auto& A : Args.getAllArgValues(options::OPT_Xcuda_fatbinary))
@@ -606,8 +610,8 @@ void NVPTX::OpenMPLinker::ConstructJob(Compilation &C, const JobAction &JA,
     if (!II.isFilename())
       continue;
 
-    const char *CubinF = C.addTempFile(
-        C.getArgs().MakeArgString(getToolChain().getInputFilename(II)));
+    const char *CubinF =
+        C.getArgs().MakeArgString(getToolChain().getInputFilename(II));
 
     CmdArgs.push_back(CubinF);
   }
@@ -634,7 +638,12 @@ void NVPTX::getNVPTXTargetFeatures(const Driver &D, const llvm::Triple &Triple,
                                    const llvm::opt::ArgList &Args,
                                    std::vector<StringRef> &Features,
                                    Optional<clang::CudaVersion> Version) {
-  if (!Version) {
+  if (Args.hasArg(options::OPT_cuda_feature_EQ)) {
+    StringRef PtxFeature =
+        Args.getLastArgValue(options::OPT_cuda_feature_EQ, "+ptx42");
+    Features.push_back(Args.MakeArgString(PtxFeature));
+    return;
+  } else if (!Version) {
     CudaInstallationDetector CudaInstallation(D, Triple, Args);
     Version = CudaInstallation.version();
   }
@@ -687,9 +696,8 @@ CudaToolChain::CudaToolChain(const Driver &D, const llvm::Triple &Triple,
 
 std::string CudaToolChain::getInputFilename(const InputInfo &Input) const {
   // Only object files are changed, for example assembly files keep their .s
-  // extensions. CUDA also continues to use .o as they don't use nvlink but
-  // fatbinary.
-  if (!(OK == Action::OFK_OpenMP && Input.getType() == types::TY_Object))
+  // extensions. 
+  if (Input.getType() != types::TY_Object)
     return ToolChain::getInputFilename(Input);
 
   // Replace extension for object files with cubin because nvlink relies on
@@ -844,10 +852,10 @@ CudaToolChain::TranslateArgs(const llvm::opt::DerivedArgList &Args,
       if (!llvm::is_contained(*DAL, A))
         DAL->append(A);
 
-    StringRef Arch = DAL->getLastArgValue(options::OPT_march_EQ);
-    if (Arch.empty())
+    if (!DAL->hasArg(options::OPT_march_EQ))
       DAL->AddJoinedArg(nullptr, Opts.getOption(options::OPT_march_EQ),
-                        CLANG_OPENMP_NVPTX_DEFAULT_ARCH);
+                        !BoundArch.empty() ? BoundArch
+                                           : CLANG_OPENMP_NVPTX_DEFAULT_ARCH);
 
     return DAL;
   }
