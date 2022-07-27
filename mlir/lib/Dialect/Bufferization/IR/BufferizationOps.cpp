@@ -6,8 +6,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/Bufferization/IR/Bufferization.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/MemRef/Utils/MemRefUtils.h"
+#include "mlir/Dialect/Tensor/IR/Tensor.h"
 
 using namespace mlir;
 using namespace mlir::bufferization;
@@ -20,10 +23,6 @@ FailureOr<Value>
 mlir::bufferization::castOrReallocMemRefValue(OpBuilder &b, Value value,
                                               MemRefType destType) {
   auto srcType = value.getType().cast<MemRefType>();
-
-  // Casting to the same type, nothing to do.
-  if (srcType == destType)
-    return value;
 
   // Element type, rank and memory space must match.
   if (srcType.getElementType() != destType.getElementType())
@@ -77,6 +76,55 @@ mlir::bufferization::castOrReallocMemRefValue(OpBuilder &b, Value value,
   Value copy = b.create<memref::AllocOp>(loc, destType, dynamicOperands);
   b.create<memref::CopyOp>(loc, value, copy);
   return copy;
+}
+
+/// Try to fold to_memref(to_tensor(x)). If x's type and the result type of the
+/// to_memref op are different, a memref.cast is needed.
+LogicalResult mlir::bufferization::foldToMemrefToTensorPair(
+    RewriterBase &rewriter, ToMemrefOp toMemref, bool allowSameType) {
+  auto memrefToTensor = toMemref.tensor().getDefiningOp<ToTensorOp>();
+  if (!memrefToTensor)
+    return failure();
+
+  Type srcType = memrefToTensor.memref().getType();
+  Type destType = toMemref.getType();
+
+  // Directly rewrite if the type did not change.
+  if (srcType == destType) {
+    // Function can be configured to only handle cases where a cast is needed.
+    if (!allowSameType)
+      return failure();
+    rewriter.replaceOp(toMemref, memrefToTensor.memref());
+    return success();
+  }
+
+  auto rankedSrcType = srcType.dyn_cast<MemRefType>();
+  auto rankedDestType = destType.dyn_cast<MemRefType>();
+  auto unrankedSrcType = srcType.dyn_cast<UnrankedMemRefType>();
+
+  // Ranked memref -> Ranked memref cast.
+  if (rankedSrcType && rankedDestType) {
+    FailureOr<Value> replacement = castOrReallocMemRefValue(
+        rewriter, memrefToTensor.memref(), rankedDestType);
+    if (failed(replacement))
+      return failure();
+
+    rewriter.replaceOp(toMemref, *replacement);
+    return success();
+  }
+
+  // Unranked memref -> Ranked memref cast: May require a copy.
+  // TODO: Not implemented at the moment.
+  if (unrankedSrcType && rankedDestType)
+    return failure();
+
+  // Unranked memref -> unranked memref cast
+  // Ranked memref -> unranked memref cast: No copy needed.
+  assert(memref::CastOp::areCastCompatible(srcType, destType) &&
+         "expected that types are cast compatible");
+  rewriter.replaceOpWithNewOp<memref::CastOp>(toMemref, destType,
+                                              memrefToTensor.memref());
+  return success();
 }
 
 //===----------------------------------------------------------------------===//
@@ -249,51 +297,6 @@ struct ToMemrefOfCast : public OpRewritePattern<ToMemrefOp> {
   }
 };
 
-/// Try to fold to_memref(to_tensor(x)). If x's type and the result type of the
-/// to_memref op are different, a memref.cast is needed.
-static LogicalResult foldToMemrefToTensorPair(RewriterBase &rewriter,
-                                              ToMemrefOp toMemref,
-                                              bool allowSameType = true) {
-  auto memrefToTensor = toMemref.tensor().getDefiningOp<ToTensorOp>();
-  if (!memrefToTensor)
-    return failure();
-
-  Type srcType = memrefToTensor.memref().getType();
-  Type destType = toMemref.getType();
-
-  // Function can be configured to only handle cases where a cast is needed.
-  if (!allowSameType && srcType == destType)
-    return failure();
-
-  auto rankedSrcType = srcType.dyn_cast<MemRefType>();
-  auto rankedDestType = destType.dyn_cast<MemRefType>();
-  auto unrankedSrcType = srcType.dyn_cast<UnrankedMemRefType>();
-
-  // Ranked memref -> Ranked memref cast.
-  if (rankedSrcType && rankedDestType) {
-    FailureOr<Value> replacement = castOrReallocMemRefValue(
-        rewriter, memrefToTensor.memref(), rankedDestType);
-    if (failed(replacement))
-      return failure();
-
-    rewriter.replaceOp(toMemref, *replacement);
-    return success();
-  }
-
-  // Unranked memref -> Ranked memref cast: May require a copy.
-  // TODO: Not implemented at the moment.
-  if (unrankedSrcType && rankedDestType)
-    return failure();
-
-  // Unranked memref -> unranked memref cast
-  // Ranked memref -> unranked memref cast: No copy needed.
-  assert(memref::CastOp::areCastCompatible(srcType, destType) &&
-         "expected that types are cast compatible");
-  rewriter.replaceOpWithNewOp<memref::CastOp>(toMemref, destType,
-                                              memrefToTensor.memref());
-  return success();
-}
-
 /// Canonicalize bufferization.to_tensor + bufferization.to_memref to
 /// memref.cast when type mismatches prevent `ToMemrefOp::fold` to kick in.
 struct TensorLoadToMemref : public OpRewritePattern<ToMemrefOp> {
@@ -351,7 +354,10 @@ void ToMemrefOp::getCanonicalizationPatterns(RewritePatternSet &results,
 LogicalResult ToMemrefOp::bufferize(RewriterBase &rewriter,
                                     BufferizationState &state) {
   // Fold to_memref(to_tensor(x)) to x. Insert a cast if necessary.
-  return foldToMemrefToTensorPair(rewriter, *this);
+  (void)foldToMemrefToTensorPair(rewriter, *this);
+  // Note: The return value of `bufferize` indicates whether there was an error
+  // or not. (And not whether the pattern matched or not.)
+  return success();
 }
 
 Optional<Operation *> CloneOp::buildDealloc(OpBuilder &builder, Value alloc) {

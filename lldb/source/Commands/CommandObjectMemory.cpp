@@ -16,6 +16,7 @@
 #include "lldb/Interpreter/CommandReturnObject.h"
 #include "lldb/Interpreter/OptionArgParser.h"
 #include "lldb/Interpreter/OptionGroupFormat.h"
+#include "lldb/Interpreter/OptionGroupMemoryTag.h"
 #include "lldb/Interpreter/OptionGroupOutputFile.h"
 #include "lldb/Interpreter/OptionGroupValueObjectDisplay.h"
 #include "lldb/Interpreter/OptionValueLanguage.h"
@@ -90,10 +91,6 @@ public:
       error = m_offset.SetValueFromString(option_value);
       break;
 
-    case '\x01':
-      m_show_tags = true;
-      break;
-
     default:
       llvm_unreachable("Unimplemented option");
     }
@@ -107,7 +104,6 @@ public:
     m_force = false;
     m_offset.Clear();
     m_language_for_type.Clear();
-    m_show_tags = false;
   }
 
   Status FinalizeSettings(Target *target, OptionGroupFormat &format_options) {
@@ -281,7 +277,6 @@ public:
   bool m_force;
   OptionValueUInt64 m_offset;
   OptionValueLanguage m_language_for_type;
-  bool m_show_tags = false;
 };
 
 // Read memory from the inferior process
@@ -336,6 +331,8 @@ public:
     m_option_group.Append(&m_outfile_options, LLDB_OPT_SET_ALL,
                           LLDB_OPT_SET_1 | LLDB_OPT_SET_2 | LLDB_OPT_SET_3);
     m_option_group.Append(&m_varobj_options, LLDB_OPT_SET_ALL, LLDB_OPT_SET_3);
+    m_option_group.Append(&m_memory_tag_options, LLDB_OPT_SET_ALL,
+                          LLDB_OPT_SET_ALL);
     m_option_group.Finalize();
   }
 
@@ -555,11 +552,13 @@ protected:
       if (!m_format_options.AnyOptionWasSet() &&
           !m_memory_options.AnyOptionWasSet() &&
           !m_outfile_options.AnyOptionWasSet() &&
-          !m_varobj_options.AnyOptionWasSet()) {
+          !m_varobj_options.AnyOptionWasSet() &&
+          !m_memory_tag_options.AnyOptionWasSet()) {
         m_format_options = m_prev_format_options;
         m_memory_options = m_prev_memory_options;
         m_outfile_options = m_prev_outfile_options;
         m_varobj_options = m_prev_varobj_options;
+        m_memory_tag_options = m_prev_memory_tag_options;
       }
     }
 
@@ -753,6 +752,7 @@ protected:
     m_prev_memory_options = m_memory_options;
     m_prev_outfile_options = m_outfile_options;
     m_prev_varobj_options = m_varobj_options;
+    m_prev_memory_tag_options = m_memory_tag_options;
     m_prev_compiler_type = compiler_type;
 
     std::unique_ptr<Stream> output_stream_storage;
@@ -864,7 +864,7 @@ protected:
     size_t bytes_dumped = DumpDataExtractor(
         data, output_stream_p, 0, format, item_byte_size, item_count,
         num_per_line / target->GetArchitecture().GetDataByteSize(), addr, 0, 0,
-        exe_scope, m_memory_options.m_show_tags);
+        exe_scope, m_memory_tag_options.GetShowTags().GetCurrentValue());
     m_next_addr = addr + bytes_dumped;
     output_stream_p->EOL();
     return true;
@@ -875,12 +875,14 @@ protected:
   OptionGroupReadMemory m_memory_options;
   OptionGroupOutputFile m_outfile_options;
   OptionGroupValueObjectDisplay m_varobj_options;
+  OptionGroupMemoryTag m_memory_tag_options;
   lldb::addr_t m_next_addr = LLDB_INVALID_ADDRESS;
   lldb::addr_t m_prev_byte_size = 0;
   OptionGroupFormat m_prev_format_options;
   OptionGroupReadMemory m_prev_memory_options;
   OptionGroupOutputFile m_prev_outfile_options;
   OptionGroupValueObjectDisplay m_prev_varobj_options;
+  OptionGroupMemoryTag m_prev_memory_tag_options;
   CompilerType m_prev_compiler_type;
 };
 
@@ -1052,9 +1054,14 @@ protected:
 
     DataBufferHeap buffer;
 
-    if (m_memory_options.m_string.OptionWasSet())
-      buffer.CopyData(m_memory_options.m_string.GetStringValue());
-    else if (m_memory_options.m_expr.OptionWasSet()) {
+    if (m_memory_options.m_string.OptionWasSet()) {
+      llvm::StringRef str = m_memory_options.m_string.GetStringValue();
+      if (str.empty()) {
+        result.AppendError("search string must have non-zero length.");
+        return false;
+      }
+      buffer.CopyData(str);
+    } else if (m_memory_options.m_expr.OptionWasSet()) {
       StackFrame *frame = m_exe_ctx.GetFramePtr();
       ValueObjectSP result_sp;
       if ((eExpressionCompleted ==
@@ -1683,7 +1690,7 @@ protected:
                // address size, etc.), the end of mappable memory will be lower
                // than that. So if we find any non-address bit set, we must be
                // at the end of the mappable range.
-               (abi && (abi->FixDataAddress(load_addr) != load_addr))) {
+               (abi && (abi->FixAnyAddress(load_addr) != load_addr))) {
       result.AppendErrorWithFormat("'%s' takes one argument:\nUsage: %s\n",
                                    m_cmd_name.c_str(), m_cmd_syntax.c_str());
       return false;
