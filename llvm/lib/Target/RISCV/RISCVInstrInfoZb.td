@@ -525,25 +525,25 @@ def CRC32C_D : RVBUnary<0b0110000, 0b11011, 0b001, OPC_OP_IMM, "crc32c.d">,
 } // Predicates = [HasStdExtZbr, IsRV64]
 
 let Predicates = [HasStdExtZbc] in {
-def CLMULR : ALU_rr<0b0000101, 0b010, "clmulr">,
+def CLMULR : ALU_rr<0b0000101, 0b010, "clmulr", /*Commutable*/1>,
              Sched<[WriteCLMUL, ReadCLMUL, ReadCLMUL]>;
 } // Predicates = [HasStdExtZbc]
 
 let Predicates = [HasStdExtZbcOrZbkc] in {
-def CLMUL  : ALU_rr<0b0000101, 0b001, "clmul">,
+def CLMUL  : ALU_rr<0b0000101, 0b001, "clmul", /*Commutable*/1>,
              Sched<[WriteCLMUL, ReadCLMUL, ReadCLMUL]>;
-def CLMULH : ALU_rr<0b0000101, 0b011, "clmulh">,
+def CLMULH : ALU_rr<0b0000101, 0b011, "clmulh", /*Commutable*/1>,
              Sched<[WriteCLMUL, ReadCLMUL, ReadCLMUL]>;
 } // Predicates = [HasStdExtZbcOrZbkc]
 
 let Predicates = [HasStdExtZbb] in {
-def MIN  : ALU_rr<0b0000101, 0b100, "min">,
+def MIN  : ALU_rr<0b0000101, 0b100, "min", /*Commutable*/1>,
            Sched<[WriteIALU, ReadIALU, ReadIALU]>;
-def MINU : ALU_rr<0b0000101, 0b101, "minu">,
+def MINU : ALU_rr<0b0000101, 0b101, "minu", /*Commutable*/1>,
            Sched<[WriteIALU, ReadIALU, ReadIALU]>;
-def MAX  : ALU_rr<0b0000101, 0b110, "max">,
+def MAX  : ALU_rr<0b0000101, 0b110, "max", /*Commutable*/1>,
            Sched<[WriteIALU, ReadIALU, ReadIALU]>;
-def MAXU : ALU_rr<0b0000101, 0b111, "maxu">,
+def MAXU : ALU_rr<0b0000101, 0b111, "maxu", /*Commutable*/1>,
            Sched<[WriteIALU, ReadIALU, ReadIALU]>;
 } // Predicates = [HasStdExtZbb]
 
@@ -922,11 +922,13 @@ def : PatGprGpr<riscv_gorcw, GORCW>;
 
 // Select GREVIW/GORCIW when the immediate doesn't have bit 5 set and the result
 // is sign extended.
-// FIXME: Use binop_allwusers and doPeepholeSExtW instead?
-def : Pat<(i64 (sext_inreg (binop_oneuse<riscv_grev> GPR:$rs1, uimm5:$imm), i32)),
-          (GREVIW GPR:$rs1, uimm5:$imm)>;
-def : Pat<(i64 (sext_inreg (binop_oneuse<riscv_gorc> GPR:$rs1, uimm5:$imm), i32)),
-          (GORCIW GPR:$rs1, uimm5:$imm)>;
+// FIXME: Two special patterns keeped when Imm is 7.
+def : Pat<(i64 (sext_inreg (binop_oneuse<riscv_grev> GPR:$rs1, 7), i32)),
+          (GREVIW GPR:$rs1, 7)>;
+def : Pat<(i64 (sext_inreg (binop_oneuse<riscv_gorc> GPR:$rs1, 7), i32)),
+          (GORCIW GPR:$rs1, 7)>;
+def : PatGprImm<binop_allwusers<riscv_grev>, GREVIW, uimm5>;
+def : PatGprImm<binop_allwusers<riscv_gorc>, GORCIW, uimm5>;
 
 def : PatGprGpr<riscv_shflw, SHFLW>;
 def : PatGprGpr<riscv_unshflw, UNSHFLW>;

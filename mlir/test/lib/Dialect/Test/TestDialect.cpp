@@ -18,9 +18,11 @@
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/IR/TypeUtilities.h"
+#include "mlir/IR/Verifier.h"
 #include "mlir/Reducer/ReductionPatternInterface.h"
 #include "mlir/Transforms/FoldUtils.h"
 #include "mlir/Transforms/InliningUtils.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringSwitch.h"
 
 // Include this before the using namespace lines below to
@@ -642,7 +644,7 @@ ParseResult IsolatedRegionOp::parse(OpAsmParser &parser,
 
   // Parse the body region, and reuse the operand info as the argument info.
   Region *body = result.addRegion();
-  return parser.parseRegion(*body, argInfo, argType, /*argLocations=*/{},
+  return parser.parseRegion(*body, argInfo, argType,
                             /*enableNameShadowing=*/true);
 }
 
@@ -1167,6 +1169,15 @@ void StringAttrPrettyNameOp::getAsmResultNames(
         setNameFn(getResult(i), str.getValue());
 }
 
+void CustomResultsNameOp::getAsmResultNames(
+    function_ref<void(Value, StringRef)> setNameFn) {
+  ArrayAttr value = getNames();
+  for (size_t i = 0, e = value.size(); i != e; ++i)
+    if (auto str = value[i].dyn_cast<StringAttr>())
+      if (!str.getValue().empty())
+        setNameFn(getResult(i), str.getValue());
+}
+
 //===----------------------------------------------------------------------===//
 // ResultTypeWithTraitOp
 //===----------------------------------------------------------------------===//
@@ -1303,6 +1314,37 @@ void SingleNoTerminatorCustomAsmOp::print(OpAsmPrinter &printer) {
       // This op has a single block without terminators. But explicitly mark
       // as not printing block terminators for testing.
       /*printBlockTerminators=*/false);
+}
+
+//===----------------------------------------------------------------------===//
+// TestVerifiersOp
+//===----------------------------------------------------------------------===//
+
+LogicalResult TestVerifiersOp::verify() {
+  if (!getRegion().hasOneBlock())
+    return emitOpError("`hasOneBlock` trait hasn't been verified");
+
+  Operation *definingOp = getInput().getDefiningOp();
+  if (definingOp && failed(mlir::verify(definingOp)))
+    return emitOpError("operand hasn't been verified");
+
+  emitRemark("success run of verifier");
+
+  return success();
+}
+
+LogicalResult TestVerifiersOp::verifyRegions() {
+  if (!getRegion().hasOneBlock())
+    return emitOpError("`hasOneBlock` trait hasn't been verified");
+
+  for (Block &block : getRegion())
+    for (Operation &op : block)
+      if (failed(mlir::verify(&op)))
+        return emitOpError("nested op hasn't been verified");
+
+  emitRemark("success run of region verifier");
+
+  return success();
 }
 
 #include "TestOpEnums.cpp.inc"

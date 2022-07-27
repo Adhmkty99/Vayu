@@ -2204,9 +2204,7 @@ void CXXNameMangler::mangleType(TemplateName TN) {
 
   switch (TN.getKind()) {
   case TemplateName::QualifiedTemplate:
-    TD = TN.getAsQualifiedTemplateName()->getTemplateDecl();
-    goto HaveDecl;
-
+  case TemplateName::UsingTemplate:
   case TemplateName::Template:
     TD = TN.getAsTemplateDecl();
     goto HaveDecl;
@@ -2381,6 +2379,12 @@ bool CXXNameMangler::mangleUnresolvedTypeOrSimpleId(QualType Ty,
       //   template <class U...> void foo(decltype(T<U>::foo) x...);
       // };
       Out << "_SUBSTPACK_";
+      break;
+    }
+    case TemplateName::UsingTemplate: {
+      TemplateDecl *TD = TN.getAsTemplateDecl();
+      assert(TD && !isa<TemplateTemplateParmDecl>(TD));
+      mangleSourceNameWithAbiTags(TD);
       break;
     }
     }

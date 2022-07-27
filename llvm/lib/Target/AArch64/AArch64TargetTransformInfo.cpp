@@ -50,12 +50,6 @@ bool AArch64TTIImpl::areInlineCompatible(const Function *Caller,
   return (CallerBits & CalleeBits) == CalleeBits;
 }
 
-bool AArch64TTIImpl::shouldMaximizeVectorBandwidth(
-    TargetTransformInfo::RegisterKind K) const {
-  assert(K != TargetTransformInfo::RGK_Scalar);
-  return K == TargetTransformInfo::RGK_FixedWidthVector;
-}
-
 /// Calculate the cost of materializing a 64-bit value. This helper
 /// method might only calculate a fraction of a larger immediate. Therefore it
 /// is valid to return a cost of ZERO.
@@ -2600,12 +2594,22 @@ InstructionCost AArch64TTIImpl::getShuffleCost(TTI::ShuffleKind Kind,
                                                VectorType *Tp,
                                                ArrayRef<int> Mask, int Index,
                                                VectorType *SubTp,
-                                               ArrayRef<Value *> Args) {
+                                               ArrayRef<const Value *> Args) {
   Kind = improveShuffleKindFromMask(Kind, Mask);
   std::pair<InstructionCost, MVT> LT = TLI->getTypeLegalizationCost(DL, Tp);
   if (Kind == TTI::SK_Broadcast || Kind == TTI::SK_Transpose ||
       Kind == TTI::SK_Select || Kind == TTI::SK_PermuteSingleSrc ||
       Kind == TTI::SK_Reverse) {
+
+    // Check for broadcast loads.
+    if (Kind == TTI::SK_Broadcast) {
+      bool IsLoad = !Args.empty() && isa<LoadInst>(Args[0]);
+      if (IsLoad && LT.second.isVector() &&
+          isLegalBroadcastLoad(Tp->getElementType(),
+                               LT.second.getVectorElementCount()))
+        return 0; // broadcast is handled by ld1r
+    }
+
     static const CostTblEntry ShuffleTbl[] = {
       // Broadcast shuffle kinds can be performed with 'dup'.
       { TTI::SK_Broadcast, MVT::v8i8,  1 },

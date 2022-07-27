@@ -196,9 +196,21 @@ bool RealOutputEditing<binaryPrecision>::EditEorDOutput(const DataEdit &edit) {
   int scale{isEN || isES ? 1 : edit.modes.scale}; // 'kP' value
   int zeroesAfterPoint{0};
   if (scale < 0) {
+    if (scale <= -editDigits) {
+      io_.GetIoErrorHandler().SignalError(IostatBadScaleFactor,
+          "Scale factor (kP) %d cannot be less than -d (%d)", scale,
+          -editDigits);
+      return false;
+    }
     zeroesAfterPoint = -scale;
     significantDigits = std::max(0, significantDigits - zeroesAfterPoint);
   } else if (scale > 0) {
+    if (scale >= editDigits + 2) {
+      io_.GetIoErrorHandler().SignalError(IostatBadScaleFactor,
+          "Scale factor (kP) %d cannot be greater than d+2 (%d)", scale,
+          editDigits + 2);
+      return false;
+    }
     ++significantDigits;
     scale = std::min(scale, significantDigits + 1);
   }
@@ -284,10 +296,13 @@ bool RealOutputEditing<binaryPrecision>::EditFOutput(const DataEdit &edit) {
       return EmitPrefix(edit, converted.length, editWidth) &&
           io_.Emit(converted.str, converted.length) && EmitSuffix(edit);
     }
-    int scale{IsZero() ? 1 : edit.modes.scale}; // kP
-    int expo{converted.decimalExponent + scale};
+    int expo{converted.decimalExponent + edit.modes.scale /*kP*/};
     int signLength{*converted.str == '-' || *converted.str == '+' ? 1 : 0};
     int convertedDigits{static_cast<int>(converted.length) - signLength};
+    if (IsZero()) { // don't treat converted "0" as significant digit
+      expo = 0;
+      convertedDigits = 0;
+    }
     int trailingOnes{0};
     if (expo > extraDigits && extraDigits >= 0 && canIncrease) {
       extraDigits = expo;
@@ -506,7 +521,7 @@ bool ListDirectedCharacterOutput(IoStatementState &io,
     // Undelimited list-directed output
     ok = ok && list.EmitLeadingSpaceOrAdvance(io, length > 0 ? 1 : 0, true);
     std::size_t put{0};
-    std::size_t oneIfUTF8{connection.isUTF8 ? 1 : length};
+    std::size_t oneIfUTF8{connection.useUTF8<CHAR>() ? 1 : length};
     while (ok && put < length) {
       if (std::size_t chunk{std::min<std::size_t>(
               std::min<std::size_t>(length - put, oneIfUTF8),
