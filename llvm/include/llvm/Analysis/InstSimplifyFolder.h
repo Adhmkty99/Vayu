@@ -48,28 +48,55 @@ public:
   //===--------------------------------------------------------------------===//
   Value *FoldAdd(Value *LHS, Value *RHS, bool HasNUW = false,
                  bool HasNSW = false) const override {
-    return SimplifyAddInst(LHS, RHS, HasNUW, HasNSW, SQ);
+    return simplifyAddInst(LHS, RHS, HasNUW, HasNSW, SQ);
   }
 
   Value *FoldAnd(Value *LHS, Value *RHS) const override {
-    return SimplifyAndInst(LHS, RHS, SQ);
+    return simplifyAndInst(LHS, RHS, SQ);
   }
 
   Value *FoldOr(Value *LHS, Value *RHS) const override {
-    return SimplifyOrInst(LHS, RHS, SQ);
+    return simplifyOrInst(LHS, RHS, SQ);
   }
 
   Value *FoldICmp(CmpInst::Predicate P, Value *LHS, Value *RHS) const override {
-    return SimplifyICmpInst(P, LHS, RHS, SQ);
+    return simplifyICmpInst(P, LHS, RHS, SQ);
   }
 
   Value *FoldGEP(Type *Ty, Value *Ptr, ArrayRef<Value *> IdxList,
                  bool IsInBounds = false) const override {
-    return SimplifyGEPInst(Ty, Ptr, IdxList, IsInBounds, SQ);
+    return simplifyGEPInst(Ty, Ptr, IdxList, IsInBounds, SQ);
   }
 
   Value *FoldSelect(Value *C, Value *True, Value *False) const override {
-    return SimplifySelectInst(C, True, False, SQ);
+    return simplifySelectInst(C, True, False, SQ);
+  }
+
+  Value *FoldExtractValue(Value *Agg,
+                          ArrayRef<unsigned> IdxList) const override {
+    return simplifyExtractValueInst(Agg, IdxList, SQ);
+  };
+
+  Value *FoldInsertValue(Value *Agg, Value *Val,
+                         ArrayRef<unsigned> IdxList) const override {
+    return simplifyInsertValueInst(Agg, Val, IdxList, SQ);
+  }
+
+  Value *FoldExtractElement(Value *Vec, Value *Idx) const override {
+    return simplifyExtractElementInst(Vec, Idx, SQ);
+  }
+
+  Value *FoldInsertElement(Value *Vec, Value *NewElt,
+                           Value *Idx) const override {
+    return simplifyInsertElementInst(Vec, NewElt, Idx, SQ);
+  }
+
+  Value *FoldShuffleVector(Value *V1, Value *V2,
+                           ArrayRef<int> Mask) const override {
+    Type *RetTy = VectorType::get(
+        cast<VectorType>(V1->getType())->getElementType(), Mask.size(),
+        isa<ScalableVectorType>(V1->getType()));
+    return simplifyShuffleVectorInst(V1, V2, Mask, RetTy, SQ);
   }
 
   //===--------------------------------------------------------------------===//
@@ -218,34 +245,6 @@ public:
   Value *CreateFCmp(CmpInst::Predicate P, Constant *LHS,
                     Constant *RHS) const override {
     return ConstFolder.CreateFCmp(P, LHS, RHS);
-  }
-
-  //===--------------------------------------------------------------------===//
-  // Other Instructions
-  //===--------------------------------------------------------------------===//
-
-  Value *CreateExtractElement(Constant *Vec, Constant *Idx) const override {
-    return ConstFolder.CreateExtractElement(Vec, Idx);
-  }
-
-  Value *CreateInsertElement(Constant *Vec, Constant *NewElt,
-                             Constant *Idx) const override {
-    return ConstFolder.CreateInsertElement(Vec, NewElt, Idx);
-  }
-
-  Value *CreateShuffleVector(Constant *V1, Constant *V2,
-                             ArrayRef<int> Mask) const override {
-    return ConstFolder.CreateShuffleVector(V1, V2, Mask);
-  }
-
-  Value *CreateExtractValue(Constant *Agg,
-                            ArrayRef<unsigned> IdxList) const override {
-    return ConstFolder.CreateExtractValue(Agg, IdxList);
-  }
-
-  Value *CreateInsertValue(Constant *Agg, Constant *Val,
-                           ArrayRef<unsigned> IdxList) const override {
-    return ConstFolder.CreateInsertValue(Agg, Val, IdxList);
   }
 };
 
