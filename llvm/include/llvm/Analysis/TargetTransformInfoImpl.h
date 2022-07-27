@@ -256,7 +256,7 @@ public:
     return Alignment >= DataSize && isPowerOf2_32(DataSize);
   }
 
-  bool isLegalBroadcastLoad(Type *ElementTy, unsigned NumElements) const {
+  bool isLegalBroadcastLoad(Type *ElementTy, ElementCount NumElements) const {
     return false;
   }
 
@@ -417,10 +417,7 @@ public:
   Optional<unsigned> getMaxVScale() const { return None; }
   Optional<unsigned> getVScaleForTuning() const { return None; }
 
-  bool
-  shouldMaximizeVectorBandwidth(TargetTransformInfo::RegisterKind K) const {
-    return false;
-  }
+  bool shouldMaximizeVectorBandwidth() const { return false; }
 
   ElementCount getMinimumVF(unsigned ElemWidth, bool IsScalable) const {
     return ElementCount::get(0, IsScalable);
