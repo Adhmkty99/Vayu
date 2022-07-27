@@ -1623,6 +1623,13 @@ Verifier::visitModuleFlag(const MDNode *Op,
     // These behavior types accept any value.
     break;
 
+  case Module::Min: {
+    Check(mdconst::dyn_extract_or_null<ConstantInt>(Op->getOperand(2)),
+          "invalid value for 'min' module flag (expected constant integer)",
+          Op->getOperand(2));
+    break;
+  }
+
   case Module::Max: {
     Check(mdconst::dyn_extract_or_null<ConstantInt>(Op->getOperand(2)),
           "invalid value for 'max' module flag (expected constant integer)",
@@ -2071,6 +2078,25 @@ void Verifier::verifyFunctionAttrs(FunctionType *FT, AttributeList Attrs,
 
     if (Args.second && !CheckParam("number of elements", *Args.second))
       return;
+  }
+
+  if (Attrs.hasFnAttr(Attribute::AllocKind)) {
+    AllocFnKind K = Attrs.getAllocKind();
+    AllocFnKind Type =
+        K & (AllocFnKind::Alloc | AllocFnKind::Realloc | AllocFnKind::Free);
+    if (!is_contained(
+            {AllocFnKind::Alloc, AllocFnKind::Realloc, AllocFnKind::Free},
+            Type))
+      CheckFailed(
+          "'allockind()' requires exactly one of alloc, realloc, and free");
+    if ((Type == AllocFnKind::Free) &&
+        ((K & (AllocFnKind::Uninitialized | AllocFnKind::Zeroed |
+               AllocFnKind::Aligned)) != AllocFnKind::Unknown))
+      CheckFailed("'allockind(\"free\")' doesn't allow uninitialized, zeroed, "
+                  "or aligned modifiers.");
+    AllocFnKind ZeroedUninit = AllocFnKind::Uninitialized | AllocFnKind::Zeroed;
+    if ((K & ZeroedUninit) == ZeroedUninit)
+      CheckFailed("'allockind()' can't be both zeroed and uninitialized");
   }
 
   if (Attrs.hasFnAttr(Attribute::VScaleRange)) {
@@ -3918,7 +3944,8 @@ void Verifier::visitAtomicRMWInst(AtomicRMWInst &RMWI) {
   auto Op = RMWI.getOperation();
   Type *ElTy = RMWI.getOperand(1)->getType();
   if (Op == AtomicRMWInst::Xchg) {
-    Check(ElTy->isIntegerTy() || ElTy->isFloatingPointTy(),
+    Check(ElTy->isIntegerTy() || ElTy->isFloatingPointTy() ||
+              ElTy->isPointerTy(),
           "atomicrmw " + AtomicRMWInst::getOperationName(Op) +
               " operand must have integer or floating point type!",
           &RMWI, ElTy);

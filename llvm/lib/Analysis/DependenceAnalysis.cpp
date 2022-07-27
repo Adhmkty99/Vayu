@@ -106,11 +106,10 @@ STATISTIC(BanerjeeIndependence, "Banerjee independence");
 STATISTIC(BanerjeeSuccesses, "Banerjee successes");
 
 static cl::opt<bool>
-    Delinearize("da-delinearize", cl::init(true), cl::Hidden, cl::ZeroOrMore,
+    Delinearize("da-delinearize", cl::init(true), cl::Hidden,
                 cl::desc("Try to delinearize array references."));
 static cl::opt<bool> DisableDelinearizationChecks(
-    "da-disable-delinearization-checks", cl::init(false), cl::Hidden,
-    cl::ZeroOrMore,
+    "da-disable-delinearization-checks", cl::Hidden,
     cl::desc(
         "Disable checks that try to statically verify validity of "
         "delinearized subscripts. Enabling this option may result in incorrect "
@@ -118,7 +117,7 @@ static cl::opt<bool> DisableDelinearizationChecks(
         "dimension to underflow or overflow into another dimension."));
 
 static cl::opt<unsigned> MIVMaxLevelThreshold(
-    "da-miv-max-level-threshold", cl::init(7), cl::Hidden, cl::ZeroOrMore,
+    "da-miv-max-level-threshold", cl::init(7), cl::Hidden,
     cl::desc("Maximum depth allowed for the recursive algorithm used to "
              "explore MIV direction vectors."));
 
@@ -3349,12 +3348,8 @@ bool DependenceInfo::tryDelinearizeFixedSize(
     return false;
   }
 
-  Value *SrcBasePtr = SrcGEP->getOperand(0);
-  Value *DstBasePtr = DstGEP->getOperand(0);
-  while (auto *PCast = dyn_cast<BitCastInst>(SrcBasePtr))
-    SrcBasePtr = PCast->getOperand(0);
-  while (auto *PCast = dyn_cast<BitCastInst>(DstBasePtr))
-    DstBasePtr = PCast->getOperand(0);
+  Value *SrcBasePtr = SrcGEP->getOperand(0)->stripPointerCasts();
+  Value *DstBasePtr = DstGEP->getOperand(0)->stripPointerCasts();
 
   // Check that for identical base pointers we do not miss index offsets
   // that have been added before this GEP is applied.
