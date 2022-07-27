@@ -634,6 +634,7 @@ void StubHelperSection::setup() {
       make<Defined>("__dyld_private", nullptr, in.imageLoaderCache, 0, 0,
                     /*isWeakDef=*/false,
                     /*isExternal=*/false, /*isPrivateExtern=*/false,
+                    /*includeInSymtab=*/true,
                     /*isThumb=*/false, /*isReferencedDynamically=*/false,
                     /*noDeadStrip=*/false);
   dyldPrivate->used = true;
@@ -703,8 +704,8 @@ uint32_t LazyBindingSection::encode(const Symbol &sym) {
   OutputSegment *dataSeg = in.lazyPointers->parent;
   os << static_cast<uint8_t>(BIND_OPCODE_SET_SEGMENT_AND_OFFSET_ULEB |
                              dataSeg->index);
-  uint64_t offset = in.lazyPointers->addr - dataSeg->addr +
-                    sym.stubsIndex * target->wordSize;
+  uint64_t offset =
+      in.lazyPointers->addr - dataSeg->addr + sym.stubsIndex * target->wordSize;
   encodeULEB128(offset, os);
   encodeDylibOrdinal(ordinalForSymbol(sym), os);
 
@@ -896,6 +897,9 @@ void SymtabSection::emitStabs() {
     assert(sym->isLive() &&
            "dead symbols should not be in localSymbols, externalSymbols");
     if (auto *defined = dyn_cast<Defined>(sym)) {
+      // Excluded symbols should have been filtered out in finalizeContents().
+      assert(defined->includeInSymtab);
+
       if (defined->isAbsolute())
         continue;
 
@@ -908,10 +912,6 @@ void SymtabSection::emitStabs() {
       ObjFile *file = dyn_cast_or_null<ObjFile>(isec->getFile());
       if (!file || !file->compileUnit)
         continue;
-
-      // All symbols that set includeInSymtab to false are synthetic symbols.
-      // Those have `file` set to nullptr and were already skipped due to that.
-      assert(defined->includeInSymtab);
 
       symbolsNeedingStabs.push_back(defined);
     }
@@ -963,16 +963,40 @@ void SymtabSection::finalizeContents() {
     symbols.push_back({sym, strx});
   };
 
+  std::function<void(Symbol *)> localSymbolsHandler;
+  switch (config->localSymbolsPresence) {
+  case SymtabPresence::All:
+    localSymbolsHandler = [&](Symbol *sym) { addSymbol(localSymbols, sym); };
+    break;
+  case SymtabPresence::None:
+    localSymbolsHandler = [&](Symbol *) { /* Do nothing*/ };
+    break;
+  case SymtabPresence::SelectivelyIncluded:
+    localSymbolsHandler = [&](Symbol *sym) {
+      if (config->localSymbolPatterns.match(sym->getName()))
+        addSymbol(localSymbols, sym);
+    };
+    break;
+  case SymtabPresence::SelectivelyExcluded:
+    localSymbolsHandler = [&](Symbol *sym) {
+      if (!config->localSymbolPatterns.match(sym->getName()))
+        addSymbol(localSymbols, sym);
+    };
+    break;
+  }
+
   // Local symbols aren't in the SymbolTable, so we walk the list of object
   // files to gather them.
-  for (const InputFile *file : inputFiles) {
-    if (auto *objFile = dyn_cast<ObjFile>(file)) {
-      for (Symbol *sym : objFile->symbols) {
-        if (auto *defined = dyn_cast_or_null<Defined>(sym)) {
-          if (!defined->isExternal() && defined->isLive()) {
-            StringRef name = defined->getName();
-            if (!name.startswith("l") && !name.startswith("L"))
-              addSymbol(localSymbols, sym);
+  // But if `-x` is set, then we don't need to.
+  if (config->localSymbolsPresence != SymtabPresence::None) {
+    for (const InputFile *file : inputFiles) {
+      if (auto *objFile = dyn_cast<ObjFile>(file)) {
+        for (Symbol *sym : objFile->symbols) {
+          if (auto *defined = dyn_cast_or_null<Defined>(sym)) {
+            if (defined->isExternal() || !defined->isLive() ||
+                !defined->includeInSymtab)
+              continue;
+            localSymbolsHandler(sym);
           }
         }
       }
@@ -982,7 +1006,7 @@ void SymtabSection::finalizeContents() {
   // __dyld_private is a local symbol too. It's linker-created and doesn't
   // exist in any object file.
   if (Defined *dyldPrivate = in.stubHelper->dyldPrivate)
-    addSymbol(localSymbols, dyldPrivate);
+    localSymbolsHandler(dyldPrivate);
 
   for (Symbol *sym : symtab->getSymbols()) {
     if (!sym->isLive())
@@ -992,7 +1016,7 @@ void SymtabSection::finalizeContents() {
         continue;
       assert(defined->isExternal());
       if (defined->privateExtern)
-        addSymbol(localSymbols, defined);
+        localSymbolsHandler(defined);
       else
         addSymbol(externalSymbols, defined);
     } else if (auto *dysym = dyn_cast<DylibSymbol>(sym)) {
