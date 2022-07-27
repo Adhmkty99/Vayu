@@ -614,7 +614,8 @@ static void indirectCopyToAGPR(const SIInstrInfo &TII,
   // Registers in the sequence are allocated contiguously so we can just
   // use register number to pick one of three round-robin temps.
   unsigned RegNo = DestReg % 3;
-  Register Tmp = AMDGPU::VGPR32;
+  Register Tmp =
+      MBB.getParent()->getInfo<SIMachineFunctionInfo>()->getVGPRForAGPRCopy();
   assert(MBB.getParent()->getRegInfo().isReserved(Tmp) &&
          "VGPR used for an intermediate copy should have been reserved.");
 
@@ -4470,7 +4471,7 @@ bool SIInstrInfo::verifyInstruction(const MachineInstr &MI,
     if (MI.mayStore()) {
       // The register offset form of scalar stores may only use m0 as the
       // soffset register.
-      const MachineOperand *Soff = getNamedOperand(MI, AMDGPU::OpName::soff);
+      const MachineOperand *Soff = getNamedOperand(MI, AMDGPU::OpName::soffset);
       if (Soff && Soff->getReg() != AMDGPU::M0) {
         ErrInfo = "scalar stores must use m0 as offset register";
         return false;
@@ -5010,7 +5011,10 @@ bool SIInstrInfo::isOperandLegal(const MachineInstr &MI, unsigned OpIdx,
   }
 
   if (MO->isReg()) {
-    assert(DefinedRC);
+    if (!DefinedRC) {
+      // This operand allows any register.
+      return true;
+    }
     if (!isLegalRegOperand(MRI, OpInfo, *MO))
       return false;
     bool IsAGPR = RI.isAGPR(MRI, MO->getReg());
@@ -5310,7 +5314,7 @@ void SIInstrInfo::legalizeOperandsSMRD(MachineRegisterInfo &MRI,
     Register SGPR = readlaneVGPRToSGPR(SBase->getReg(), MI, MRI);
     SBase->setReg(SGPR);
   }
-  MachineOperand *SOff = getNamedOperand(MI, AMDGPU::OpName::soff);
+  MachineOperand *SOff = getNamedOperand(MI, AMDGPU::OpName::soffset);
   if (SOff && !RI.isSGPRClass(MRI.getRegClass(SOff->getReg()))) {
     Register SGPR = readlaneVGPRToSGPR(SOff->getReg(), MI, MRI);
     SOff->setReg(SGPR);
@@ -8070,7 +8074,7 @@ bool llvm::execMayBeModifiedBeforeAnyUse(const MachineRegisterInfo &MRI,
     auto &UseInst = *Use.getParent();
     // Don't bother searching between blocks, although it is possible this block
     // doesn't modify exec.
-    if (UseInst.getParent() != DefBB)
+    if (UseInst.getParent() != DefBB || UseInst.isPHI())
       return true;
 
     if (++NumUse > MaxUseScan)
