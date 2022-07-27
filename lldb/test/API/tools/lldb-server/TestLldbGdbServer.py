@@ -525,7 +525,6 @@ class LldbGdbServerTestCase(gdbremote_testcase.GdbRemoteTestCaseBase, DwarfOpcod
 
     @expectedFailureDarwin
     @skipIfWindows # no SIGSEGV support
-    @expectedFailureAll(oslist=["freebsd"], bugnumber="llvm.org/pr48419")
     @expectedFailureNetBSD
     def test_Hc_then_Csignal_signals_correct_thread_launch(self):
         self.build()
@@ -812,7 +811,7 @@ class LldbGdbServerTestCase(gdbremote_testcase.GdbRemoteTestCaseBase, DwarfOpcod
         target_arch = self.getArchitecture()
 
         # Set the breakpoint.
-        if (target_arch == "arm") or (target_arch == "aarch64"):
+        if target_arch in ["arm", "arm64", "aarch64"]:
             # TODO: Handle case when setting breakpoint in thumb code
             BREAKPOINT_KIND = 4
         else:
