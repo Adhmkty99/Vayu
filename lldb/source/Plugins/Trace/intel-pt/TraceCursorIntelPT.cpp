@@ -108,18 +108,26 @@ TraceCursorIntelPT::GetCounter(lldb::TraceCounter counter_type) {
   }
 }
 
+lldb::TraceEvents TraceCursorIntelPT::GetEvents() {
+  return m_decoded_thread_sp->GetEvents(m_pos);
+}
+
 TraceInstructionControlFlowType
 TraceCursorIntelPT::GetInstructionControlFlowType() {
   return m_decoded_thread_sp->GetInstructionControlFlowType(m_pos);
 }
 
 bool TraceCursorIntelPT::GoToId(user_id_t id) {
-  if (m_decoded_thread_sp->GetInstructionsCount() <= id)
+  if (!HasId(id))
     return false;
   m_pos = id;
   m_tsc_range = m_decoded_thread_sp->CalculateTscRange(m_pos, m_tsc_range);
 
   return true;
+}
+
+bool TraceCursorIntelPT::HasId(lldb::user_id_t id) const {
+  return id < m_decoded_thread_sp->GetInstructionsCount();
 }
 
 user_id_t TraceCursorIntelPT::GetId() const { return m_pos; }
