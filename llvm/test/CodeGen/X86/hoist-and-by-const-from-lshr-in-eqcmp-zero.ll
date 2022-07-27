@@ -22,8 +22,8 @@
 define i1 @scalar_i8_signbit_eq(i8 %x, i8 %y) nounwind {
 ; X86-LABEL: scalar_i8_signbit_eq:
 ; X86:       # %bb.0:
-; X86-NEXT:    movb {{[0-9]+}}(%esp), %cl
-; X86-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
+; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-NEXT:    shlb %cl, %al
 ; X86-NEXT:    testb $-128, %al
 ; X86-NEXT:    sete %al
@@ -46,8 +46,8 @@ define i1 @scalar_i8_signbit_eq(i8 %x, i8 %y) nounwind {
 define i1 @scalar_i8_lowestbit_eq(i8 %x, i8 %y) nounwind {
 ; X86-LABEL: scalar_i8_lowestbit_eq:
 ; X86:       # %bb.0:
-; X86-NEXT:    movb {{[0-9]+}}(%esp), %cl
-; X86-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
+; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-NEXT:    shlb %cl, %al
 ; X86-NEXT:    testb $1, %al
 ; X86-NEXT:    sete %al
@@ -70,8 +70,8 @@ define i1 @scalar_i8_lowestbit_eq(i8 %x, i8 %y) nounwind {
 define i1 @scalar_i8_bitsinmiddle_eq(i8 %x, i8 %y) nounwind {
 ; X86-LABEL: scalar_i8_bitsinmiddle_eq:
 ; X86:       # %bb.0:
-; X86-NEXT:    movb {{[0-9]+}}(%esp), %cl
-; X86-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
+; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-NEXT:    shlb %cl, %al
 ; X86-NEXT:    testb $24, %al
 ; X86-NEXT:    sete %al
@@ -96,7 +96,7 @@ define i1 @scalar_i8_bitsinmiddle_eq(i8 %x, i8 %y) nounwind {
 define i1 @scalar_i16_signbit_eq(i16 %x, i16 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i16_signbit_eq:
 ; X86-BMI1:       # %bb.0:
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI1-NEXT:    shll %cl, %eax
 ; X86-BMI1-NEXT:    testl $32768, %eax # imm = 0x8000
@@ -105,7 +105,7 @@ define i1 @scalar_i16_signbit_eq(i16 %x, i16 %y) nounwind {
 ;
 ; X86-BMI2-LABEL: scalar_i16_signbit_eq:
 ; X86-BMI2:       # %bb.0:
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    shlxl %eax, {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    testl $32768, %eax # imm = 0x8000
 ; X86-BMI2-NEXT:    sete %al
@@ -135,7 +135,7 @@ define i1 @scalar_i16_signbit_eq(i16 %x, i16 %y) nounwind {
 define i1 @scalar_i16_lowestbit_eq(i16 %x, i16 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i16_lowestbit_eq:
 ; X86-BMI1:       # %bb.0:
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI1-NEXT:    shll %cl, %eax
 ; X86-BMI1-NEXT:    testb $1, %al
@@ -144,7 +144,7 @@ define i1 @scalar_i16_lowestbit_eq(i16 %x, i16 %y) nounwind {
 ;
 ; X86-BMI2-LABEL: scalar_i16_lowestbit_eq:
 ; X86-BMI2:       # %bb.0:
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    shlxl %eax, {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    testb $1, %al
 ; X86-BMI2-NEXT:    sete %al
@@ -174,7 +174,7 @@ define i1 @scalar_i16_lowestbit_eq(i16 %x, i16 %y) nounwind {
 define i1 @scalar_i16_bitsinmiddle_eq(i16 %x, i16 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i16_bitsinmiddle_eq:
 ; X86-BMI1:       # %bb.0:
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI1-NEXT:    shll %cl, %eax
 ; X86-BMI1-NEXT:    testl $4080, %eax # imm = 0xFF0
@@ -183,7 +183,7 @@ define i1 @scalar_i16_bitsinmiddle_eq(i16 %x, i16 %y) nounwind {
 ;
 ; X86-BMI2-LABEL: scalar_i16_bitsinmiddle_eq:
 ; X86-BMI2:       # %bb.0:
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    shlxl %eax, {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    testl $4080, %eax # imm = 0xFF0
 ; X86-BMI2-NEXT:    sete %al
@@ -215,7 +215,7 @@ define i1 @scalar_i16_bitsinmiddle_eq(i16 %x, i16 %y) nounwind {
 define i1 @scalar_i32_signbit_eq(i32 %x, i32 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i32_signbit_eq:
 ; X86-BMI1:       # %bb.0:
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI1-NEXT:    shll %cl, %eax
 ; X86-BMI1-NEXT:    testl $-2147483648, %eax # imm = 0x80000000
@@ -224,7 +224,7 @@ define i1 @scalar_i32_signbit_eq(i32 %x, i32 %y) nounwind {
 ;
 ; X86-BMI2-LABEL: scalar_i32_signbit_eq:
 ; X86-BMI2:       # %bb.0:
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    shlxl %eax, {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    testl $-2147483648, %eax # imm = 0x80000000
 ; X86-BMI2-NEXT:    sete %al
@@ -254,7 +254,7 @@ define i1 @scalar_i32_signbit_eq(i32 %x, i32 %y) nounwind {
 define i1 @scalar_i32_lowestbit_eq(i32 %x, i32 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i32_lowestbit_eq:
 ; X86-BMI1:       # %bb.0:
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI1-NEXT:    shll %cl, %eax
 ; X86-BMI1-NEXT:    testb $1, %al
@@ -263,7 +263,7 @@ define i1 @scalar_i32_lowestbit_eq(i32 %x, i32 %y) nounwind {
 ;
 ; X86-BMI2-LABEL: scalar_i32_lowestbit_eq:
 ; X86-BMI2:       # %bb.0:
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    shlxl %eax, {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    testb $1, %al
 ; X86-BMI2-NEXT:    sete %al
@@ -293,7 +293,7 @@ define i1 @scalar_i32_lowestbit_eq(i32 %x, i32 %y) nounwind {
 define i1 @scalar_i32_bitsinmiddle_eq(i32 %x, i32 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i32_bitsinmiddle_eq:
 ; X86-BMI1:       # %bb.0:
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI1-NEXT:    shll %cl, %eax
 ; X86-BMI1-NEXT:    testl $16776960, %eax # imm = 0xFFFF00
@@ -302,7 +302,7 @@ define i1 @scalar_i32_bitsinmiddle_eq(i32 %x, i32 %y) nounwind {
 ;
 ; X86-BMI2-LABEL: scalar_i32_bitsinmiddle_eq:
 ; X86-BMI2:       # %bb.0:
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    shlxl %eax, {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    testl $16776960, %eax # imm = 0xFFFF00
 ; X86-BMI2-NEXT:    sete %al
@@ -335,7 +335,7 @@ define i1 @scalar_i64_signbit_eq(i64 %x, i64 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i64_signbit_eq:
 ; X86-BMI1:       # %bb.0:
 ; X86-BMI1-NEXT:    pushl %esi
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; X86-BMI1-NEXT:    movl %eax, %esi
@@ -350,7 +350,7 @@ define i1 @scalar_i64_signbit_eq(i64 %x, i64 %y) nounwind {
 ;
 ; X86-BMI2-LABEL: scalar_i64_signbit_eq:
 ; X86-BMI2:       # %bb.0:
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI2-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; X86-BMI2-NEXT:    shldl %cl, %eax, %edx
@@ -385,7 +385,7 @@ define i1 @scalar_i64_signbit_eq(i64 %x, i64 %y) nounwind {
 define i1 @scalar_i64_lowestbit_eq(i64 %x, i64 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i64_lowestbit_eq:
 ; X86-BMI1:       # %bb.0:
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI1-NEXT:    shll %cl, %eax
 ; X86-BMI1-NEXT:    xorl %edx, %edx
@@ -397,7 +397,7 @@ define i1 @scalar_i64_lowestbit_eq(i64 %x, i64 %y) nounwind {
 ;
 ; X86-BMI2-LABEL: scalar_i64_lowestbit_eq:
 ; X86-BMI2:       # %bb.0:
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    shlxl %eax, {{[0-9]+}}(%esp), %ecx
 ; X86-BMI2-NEXT:    xorl %edx, %edx
 ; X86-BMI2-NEXT:    testb $32, %al
@@ -431,7 +431,7 @@ define i1 @scalar_i64_bitsinmiddle_eq(i64 %x, i64 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i64_bitsinmiddle_eq:
 ; X86-BMI1:       # %bb.0:
 ; X86-BMI1-NEXT:    pushl %esi
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI1-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; X86-BMI1-NEXT:    movl %eax, %esi
@@ -451,7 +451,7 @@ define i1 @scalar_i64_bitsinmiddle_eq(i64 %x, i64 %y) nounwind {
 ; X86-BMI2-LABEL: scalar_i64_bitsinmiddle_eq:
 ; X86-BMI2:       # %bb.0:
 ; X86-BMI2-NEXT:    pushl %esi
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI2-NEXT:    movl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    movl {{[0-9]+}}(%esp), %edx
 ; X86-BMI2-NEXT:    shldl %cl, %eax, %edx
@@ -546,23 +546,20 @@ define <4 x i1> @vec_4xi32_splat_eq(<4 x i32> %x, <4 x i32> %y) nounwind {
 define <4 x i1> @vec_4xi32_nonsplat_eq(<4 x i32> %x, <4 x i32> %y) nounwind {
 ; X86-SSE2-LABEL: vec_4xi32_nonsplat_eq:
 ; X86-SSE2:       # %bb.0:
-; X86-SSE2-NEXT:    pshuflw {{.*#+}} xmm3 = xmm1[2,3,3,3,4,5,6,7]
-; X86-SSE2-NEXT:    movdqa {{.*#+}} xmm2 = [0,1,16776960,2147483648]
-; X86-SSE2-NEXT:    movdqa %xmm2, %xmm4
-; X86-SSE2-NEXT:    psrld %xmm3, %xmm4
-; X86-SSE2-NEXT:    pshuflw {{.*#+}} xmm3 = xmm1[0,1,1,1,4,5,6,7]
-; X86-SSE2-NEXT:    movdqa %xmm2, %xmm5
+; X86-SSE2-NEXT:    pshufd {{.*#+}} xmm2 = xmm1[2,3,2,3]
+; X86-SSE2-NEXT:    pshuflw {{.*#+}} xmm3 = xmm2[2,3,3,3,4,5,6,7]
+; X86-SSE2-NEXT:    movdqa {{.*#+}} xmm4 = [0,1,16776960,2147483648]
+; X86-SSE2-NEXT:    movdqa %xmm4, %xmm5
 ; X86-SSE2-NEXT:    psrld %xmm3, %xmm5
-; X86-SSE2-NEXT:    punpcklqdq {{.*#+}} xmm5 = xmm5[0],xmm4[0]
-; X86-SSE2-NEXT:    pshufd {{.*#+}} xmm1 = xmm1[2,3,2,3]
-; X86-SSE2-NEXT:    pshuflw {{.*#+}} xmm3 = xmm1[2,3,3,3,4,5,6,7]
-; X86-SSE2-NEXT:    movdqa %xmm2, %xmm4
-; X86-SSE2-NEXT:    psrld %xmm3, %xmm4
-; X86-SSE2-NEXT:    pshuflw {{.*#+}} xmm1 = xmm1[0,1,1,1,4,5,6,7]
-; X86-SSE2-NEXT:    psrld %xmm1, %xmm2
-; X86-SSE2-NEXT:    punpckhqdq {{.*#+}} xmm2 = xmm2[1],xmm4[1]
-; X86-SSE2-NEXT:    shufps {{.*#+}} xmm5 = xmm5[0,3],xmm2[0,3]
-; X86-SSE2-NEXT:    andps %xmm5, %xmm0
+; X86-SSE2-NEXT:    pshuflw {{.*#+}} xmm2 = xmm2[0,1,1,1,4,5,6,7]
+; X86-SSE2-NEXT:    movdqa %xmm4, %xmm3
+; X86-SSE2-NEXT:    psrld %xmm2, %xmm3
+; X86-SSE2-NEXT:    punpckhqdq {{.*#+}} xmm3 = xmm3[1],xmm5[1]
+; X86-SSE2-NEXT:    pshuflw {{.*#+}} xmm1 = xmm1[2,3,3,3,4,5,6,7]
+; X86-SSE2-NEXT:    psrld %xmm1, %xmm4
+; X86-SSE2-NEXT:    pslldq {{.*#+}} xmm4 = zero,zero,zero,zero,zero,zero,zero,zero,xmm4[0,1,2,3,4,5,6,7]
+; X86-SSE2-NEXT:    shufps {{.*#+}} xmm4 = xmm4[0,3],xmm3[0,3]
+; X86-SSE2-NEXT:    andps %xmm4, %xmm0
 ; X86-SSE2-NEXT:    pxor %xmm1, %xmm1
 ; X86-SSE2-NEXT:    pcmpeqd %xmm1, %xmm0
 ; X86-SSE2-NEXT:    retl
@@ -578,23 +575,20 @@ define <4 x i1> @vec_4xi32_nonsplat_eq(<4 x i32> %x, <4 x i32> %y) nounwind {
 ;
 ; X64-SSE2-LABEL: vec_4xi32_nonsplat_eq:
 ; X64-SSE2:       # %bb.0:
-; X64-SSE2-NEXT:    pshuflw {{.*#+}} xmm2 = xmm1[2,3,3,3,4,5,6,7]
-; X64-SSE2-NEXT:    movdqa {{.*#+}} xmm3 = [0,1,16776960,2147483648]
-; X64-SSE2-NEXT:    movdqa %xmm3, %xmm4
-; X64-SSE2-NEXT:    psrld %xmm2, %xmm4
-; X64-SSE2-NEXT:    pshuflw {{.*#+}} xmm2 = xmm1[0,1,1,1,4,5,6,7]
-; X64-SSE2-NEXT:    movdqa %xmm3, %xmm5
-; X64-SSE2-NEXT:    psrld %xmm2, %xmm5
-; X64-SSE2-NEXT:    punpcklqdq {{.*#+}} xmm5 = xmm5[0],xmm4[0]
-; X64-SSE2-NEXT:    pshufd {{.*#+}} xmm1 = xmm1[2,3,2,3]
-; X64-SSE2-NEXT:    pshuflw {{.*#+}} xmm2 = xmm1[2,3,3,3,4,5,6,7]
-; X64-SSE2-NEXT:    movdqa %xmm3, %xmm4
-; X64-SSE2-NEXT:    psrld %xmm2, %xmm4
-; X64-SSE2-NEXT:    pshuflw {{.*#+}} xmm1 = xmm1[0,1,1,1,4,5,6,7]
-; X64-SSE2-NEXT:    psrld %xmm1, %xmm3
-; X64-SSE2-NEXT:    punpckhqdq {{.*#+}} xmm3 = xmm3[1],xmm4[1]
-; X64-SSE2-NEXT:    shufps {{.*#+}} xmm5 = xmm5[0,3],xmm3[0,3]
-; X64-SSE2-NEXT:    andps %xmm5, %xmm0
+; X64-SSE2-NEXT:    pshufd {{.*#+}} xmm2 = xmm1[2,3,2,3]
+; X64-SSE2-NEXT:    pshuflw {{.*#+}} xmm3 = xmm2[2,3,3,3,4,5,6,7]
+; X64-SSE2-NEXT:    movdqa {{.*#+}} xmm4 = [0,1,16776960,2147483648]
+; X64-SSE2-NEXT:    movdqa %xmm4, %xmm5
+; X64-SSE2-NEXT:    psrld %xmm3, %xmm5
+; X64-SSE2-NEXT:    pshuflw {{.*#+}} xmm2 = xmm2[0,1,1,1,4,5,6,7]
+; X64-SSE2-NEXT:    movdqa %xmm4, %xmm3
+; X64-SSE2-NEXT:    psrld %xmm2, %xmm3
+; X64-SSE2-NEXT:    punpckhqdq {{.*#+}} xmm3 = xmm3[1],xmm5[1]
+; X64-SSE2-NEXT:    pshuflw {{.*#+}} xmm1 = xmm1[2,3,3,3,4,5,6,7]
+; X64-SSE2-NEXT:    psrld %xmm1, %xmm4
+; X64-SSE2-NEXT:    pslldq {{.*#+}} xmm4 = zero,zero,zero,zero,zero,zero,zero,zero,xmm4[0,1,2,3,4,5,6,7]
+; X64-SSE2-NEXT:    shufps {{.*#+}} xmm4 = xmm4[0,3],xmm3[0,3]
+; X64-SSE2-NEXT:    andps %xmm4, %xmm0
 ; X64-SSE2-NEXT:    pxor %xmm1, %xmm1
 ; X64-SSE2-NEXT:    pcmpeqd %xmm1, %xmm0
 ; X64-SSE2-NEXT:    retq
@@ -778,8 +772,8 @@ define <4 x i1> @vec_4xi32_nonsplat_undef2_eq(<4 x i32> %x, <4 x i32> %y) nounwi
 define i1 @scalar_i8_signbit_ne(i8 %x, i8 %y) nounwind {
 ; X86-LABEL: scalar_i8_signbit_ne:
 ; X86:       # %bb.0:
-; X86-NEXT:    movb {{[0-9]+}}(%esp), %cl
-; X86-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
+; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-NEXT:    shlb %cl, %al
 ; X86-NEXT:    shrb $7, %al
 ; X86-NEXT:    retl
@@ -826,7 +820,7 @@ define i1 @scalar_i32_x_is_const_eq(i32 %y) nounwind {
 define i1 @scalar_i32_x_is_const2_eq(i32 %y) nounwind {
 ; X86-BMI1-LABEL: scalar_i32_x_is_const2_eq:
 ; X86-BMI1:       # %bb.0:
-; X86-BMI1-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-BMI1-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-BMI1-NEXT:    movl $1, %eax
 ; X86-BMI1-NEXT:    shrl %cl, %eax
 ; X86-BMI1-NEXT:    testl %eax, %eax
@@ -835,7 +829,7 @@ define i1 @scalar_i32_x_is_const2_eq(i32 %y) nounwind {
 ;
 ; X86-BMI2-LABEL: scalar_i32_x_is_const2_eq:
 ; X86-BMI2:       # %bb.0:
-; X86-BMI2-NEXT:    movb {{[0-9]+}}(%esp), %al
+; X86-BMI2-NEXT:    movzbl {{[0-9]+}}(%esp), %eax
 ; X86-BMI2-NEXT:    movl $1, %ecx
 ; X86-BMI2-NEXT:    shrxl %eax, %ecx, %eax
 ; X86-BMI2-NEXT:    testl %eax, %eax
@@ -883,7 +877,7 @@ define i1 @negative_scalar_i8_bitsinmiddle_slt(i8 %x, i8 %y) nounwind {
 define i1 @scalar_i8_signbit_eq_with_nonzero(i8 %x, i8 %y) nounwind {
 ; X86-LABEL: scalar_i8_signbit_eq_with_nonzero:
 ; X86:       # %bb.0:
-; X86-NEXT:    movb {{[0-9]+}}(%esp), %cl
+; X86-NEXT:    movzbl {{[0-9]+}}(%esp), %ecx
 ; X86-NEXT:    movb $-128, %al
 ; X86-NEXT:    shrb %cl, %al
 ; X86-NEXT:    andb {{[0-9]+}}(%esp), %al
