@@ -186,6 +186,7 @@ unsigned clang::getOpenMPSimpleClauseType(OpenMPClauseKind Kind, StringRef Str,
   case OMPC_use_device_ptr:
   case OMPC_use_device_addr:
   case OMPC_is_device_ptr:
+  case OMPC_has_device_addr:
   case OMPC_unified_address:
   case OMPC_unified_shared_memory:
   case OMPC_reverse_offload:
@@ -452,6 +453,7 @@ const char *clang::getOpenMPSimpleClauseTypeName(OpenMPClauseKind Kind,
   case OMPC_use_device_ptr:
   case OMPC_use_device_addr:
   case OMPC_is_device_ptr:
+  case OMPC_has_device_addr:
   case OMPC_unified_address:
   case OMPC_unified_shared_memory:
   case OMPC_reverse_offload:
@@ -713,6 +715,9 @@ void clang::getOpenMPCaptureRegions(
     break;
   case OMPD_teams_loop:
     CaptureRegions.push_back(OMPD_teams);
+    break;
+  case OMPD_nothing:
+    CaptureRegions.push_back(OMPD_nothing);
     break;
   case OMPD_loop:
     // TODO: 'loop' may require different capture regions depending on the bind
