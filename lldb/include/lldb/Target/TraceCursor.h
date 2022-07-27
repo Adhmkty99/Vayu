@@ -174,6 +174,11 @@ public:
   virtual bool GoToId(lldb::user_id_t id) = 0;
 
   /// \return
+  ///     \b true if and only if there's an instruction item with the given \p
+  ///     id.
+  virtual bool HasId(lldb::user_id_t id) const = 0;
+
+  /// \return
   ///     A unique identifier for the instruction or error this cursor is
   ///     pointing to.
   virtual lldb::user_id_t GetId() const = 0;
@@ -234,8 +239,16 @@ public:
   /// \param[in] counter_type
   ///    The counter type.
   /// \return
-  ///     The value of the counter or \b llvm::None if not available.
+  ///    The value of the counter or \b llvm::None if not available.
   virtual llvm::Optional<uint64_t> GetCounter(lldb::TraceCounter counter_type) = 0;
+
+  /// Get a bitmask with a list of events that happened chronologically right
+  /// before the current instruction or error, but after the previous
+  /// instruction.
+  ///
+  /// \return
+  ///   The bitmask of events.
+  virtual lldb::TraceEvents GetEvents() = 0;
 
   /// \return
   ///     The \a lldb::TraceInstructionControlFlowType categories the
@@ -253,6 +266,29 @@ protected:
   bool m_ignore_errors = false;
   bool m_forwards = false;
 };
+
+namespace trace_event_utils {
+/// Convert an individual event to a display string.
+///
+/// \param[in] event
+///     An individual event.
+///
+/// \return
+///     A display string for that event, or nullptr if wrong data is passed
+///     in.
+const char *EventToDisplayString(lldb::TraceEvents event);
+
+/// Invoke the given callback for each individual event of the given events
+/// bitmask.
+///
+/// \param[in] events
+///     A list of events to inspect.
+///
+/// \param[in] callback
+///     The callback to invoke for each event.
+void ForEachEvent(lldb::TraceEvents events,
+                  std::function<void(lldb::TraceEvents event)> callback);
+} // namespace trace_event_utils
 
 } // namespace lldb_private
 

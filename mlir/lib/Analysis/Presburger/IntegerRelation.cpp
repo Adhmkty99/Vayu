@@ -38,8 +38,21 @@ std::unique_ptr<IntegerPolyhedron> IntegerPolyhedron::clone() const {
   return std::make_unique<IntegerPolyhedron>(*this);
 }
 
+void IntegerRelation::setSpace(const PresburgerSpace &oSpace) {
+  assert(space.getNumIds() == oSpace.getNumIds() && "invalid space!");
+  space = oSpace;
+}
+
+void IntegerRelation::setSpaceExceptLocals(const PresburgerSpace &oSpace) {
+  assert(oSpace.getNumLocalIds() == 0 && "no locals should be present!");
+  assert(oSpace.getNumIds() <= getNumIds() && "invalid space!");
+  unsigned newNumLocals = getNumIds() - oSpace.getNumIds();
+  space = oSpace;
+  space.insertId(IdKind::Local, 0, newNumLocals);
+}
+
 void IntegerRelation::append(const IntegerRelation &other) {
-  assert(isSpaceEqual(other) && "Spaces must be equal.");
+  assert(space.isEqual(other.getSpace()) && "Spaces must be equal.");
 
   inequalities.reserveRows(inequalities.getNumRows() +
                            other.getNumInequalities());
@@ -61,12 +74,12 @@ IntegerRelation IntegerRelation::intersect(IntegerRelation other) const {
 }
 
 bool IntegerRelation::isEqual(const IntegerRelation &other) const {
-  assert(isSpaceEqual(other) && "Spaces must be equal.");
+  assert(space.isCompatible(other.getSpace()) && "Spaces must be compatible.");
   return PresburgerRelation(*this).isEqual(PresburgerRelation(other));
 }
 
 bool IntegerRelation::isSubsetOf(const IntegerRelation &other) const {
-  assert(isSpaceEqual(other) && "Spaces must be equal.");
+  assert(space.isCompatible(other.getSpace()) && "Spaces must be compatible.");
   return PresburgerRelation(*this).isSubsetOf(PresburgerRelation(other));
 }
 
@@ -129,7 +142,13 @@ void removeConstraintsInvolvingIdRange(IntegerRelation &poly, unsigned begin,
 }
 
 IntegerRelation::CountsSnapshot IntegerRelation::getCounts() const {
-  return {PresburgerSpace(*this), getNumInequalities(), getNumEqualities()};
+  return {getSpace(), getNumInequalities(), getNumEqualities()};
+}
+
+void IntegerRelation::truncateIdKind(IdKind kind, unsigned num) {
+  unsigned curNum = getNumIdKind(kind);
+  assert(num <= curNum && "Can't truncate to more ids!");
+  removeIdRange(kind, num, curNum);
 }
 
 void IntegerRelation::truncateIdKind(IdKind kind,
@@ -144,6 +163,67 @@ void IntegerRelation::truncate(const CountsSnapshot &counts) {
   truncateIdKind(IdKind::Local, counts);
   removeInequalityRange(counts.getNumIneqs(), getNumInequalities());
   removeEqualityRange(counts.getNumEqs(), getNumEqualities());
+}
+
+PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
+  // If there are no locals, we're done.
+  if (getNumLocalIds() == 0)
+    return PresburgerSet(*this);
+
+  // Move all the non-div locals to the end, as the current API to
+  // SymbolicLexMin requires these to form a contiguous range.
+  //
+  // Take a copy so we can perform mutations.
+  IntegerPolyhedron copy = *this;
+  std::vector<MaybeLocalRepr> reprs;
+  copy.getLocalReprs(reprs);
+
+  // Iterate through all the locals. The last `numNonDivLocals` are the locals
+  // that have been scanned already and do not have division representations.
+  unsigned numNonDivLocals = 0;
+  unsigned offset = copy.getIdKindOffset(IdKind::Local);
+  for (unsigned i = 0, e = copy.getNumLocalIds(); i < e - numNonDivLocals;) {
+    if (!reprs[i]) {
+      // Whenever we come across a local that does not have a division
+      // representation, we swap it to the `numNonDivLocals`-th last position
+      // and increment `numNonDivLocal`s. `reprs` also needs to be swapped.
+      copy.swapId(offset + i, offset + e - numNonDivLocals - 1);
+      std::swap(reprs[i], reprs[e - numNonDivLocals - 1]);
+      ++numNonDivLocals;
+      continue;
+    }
+    ++i;
+  }
+
+  // If there are no non-div locals, we're done.
+  if (numNonDivLocals == 0)
+    return PresburgerSet(*this);
+
+  // We computeSymbolicIntegerLexMin by considering the non-div locals as
+  // "non-symbols" and considering everything else as "symbols". This will
+  // compute a function mapping assignments to "symbols" to the
+  // lexicographically minimal valid assignment of "non-symbols", when a
+  // satisfying assignment exists. It separately returns the set of assignments
+  // to the "symbols" such that a satisfying assignment to the "non-symbols"
+  // exists but the lexmin is unbounded. We basically want to find the set of
+  // values of the "symbols" such that an assignment to the "non-symbols"
+  // exists, which is the union of the domain of the returned lexmin function
+  // and the returned set of assignments to the "symbols" that makes the lexmin
+  // unbounded.
+  SymbolicLexMin lexminResult =
+      SymbolicLexSimplex(copy, /*symbolOffset*/ 0,
+                         IntegerPolyhedron(PresburgerSpace::getSetSpace(
+                             /*numDims=*/copy.getNumIds() - numNonDivLocals)))
+          .computeSymbolicIntegerLexMin();
+  PresburgerSet result =
+      lexminResult.lexmin.getDomain().unionSet(lexminResult.unboundedDomain);
+
+  // The result set might lie in the wrong space -- all its ids are dims.
+  // Set it to the desired space and return.
+  PresburgerSpace space = getSpace();
+  space.removeIdRange(IdKind::Local, 0, getNumLocalIds());
+  result.setSpace(space);
+  return result;
 }
 
 SymbolicLexMin IntegerPolyhedron::findSymbolicIntegerLexMin() const {
@@ -164,7 +244,7 @@ SymbolicLexMin IntegerPolyhedron::findSymbolicIntegerLexMin() const {
 unsigned IntegerRelation::insertId(IdKind kind, unsigned pos, unsigned num) {
   assert(pos <= getNumIdKind(kind));
 
-  unsigned insertPos = PresburgerSpace::insertId(kind, pos, num);
+  unsigned insertPos = space.insertId(kind, pos, num);
   inequalities.insertColumns(insertPos, num);
   equalities.insertColumns(insertPos, num);
   return insertPos;
@@ -208,7 +288,7 @@ void IntegerRelation::removeIdRange(IdKind kind, unsigned idStart,
   inequalities.removeColumns(offset + idStart, idLimit - idStart);
 
   // Remove eliminated identifiers from the space.
-  PresburgerSpace::removeIdRange(kind, idStart, idLimit);
+  space.removeIdRange(kind, idStart, idLimit);
 }
 
 void IntegerRelation::removeIdRange(unsigned idStart, unsigned idLimit) {
@@ -620,9 +700,7 @@ Matrix IntegerRelation::getBoundedDirections() const {
   return dirs;
 }
 
-bool IntegerRelation::isIntegerEmpty() const {
-  return !findIntegerSample().hasValue();
-}
+bool IntegerRelation::isIntegerEmpty() const { return !findIntegerSample(); }
 
 /// Let this set be S. If S is bounded then we directly call into the GBR
 /// sampling algorithm. Otherwise, there are some unbounded directions, i.e.,
@@ -767,7 +845,7 @@ Optional<SmallVector<int64_t, 8>> IntegerRelation::findIntegerSample() const {
   SmallVector<int64_t, 8> coneSample(llvm::map_range(shrunkenConeSample, ceil));
 
   // 6) Return transform * concat(boundedSample, coneSample).
-  SmallVector<int64_t, 8> &sample = boundedSample.getValue();
+  SmallVector<int64_t, 8> &sample = *boundedSample;
   sample.append(coneSample.begin(), coneSample.end());
   return transform.postMultiplyWithColumn(sample);
 }
@@ -882,7 +960,7 @@ void IntegerRelation::gcdTightenInequalities() {
   unsigned numCols = getNumCols();
   for (unsigned i = 0, e = getNumInequalities(); i < e; ++i) {
     // Normalize the constraint and tighten the constant term by the GCD.
-    uint64_t gcd = inequalities.normalizeRow(i, getNumCols() - 1);
+    int64_t gcd = inequalities.normalizeRow(i, getNumCols() - 1);
     if (gcd > 1)
       atIneq(i, numCols - 1) = mlir::floorDiv(atIneq(i, numCols - 1), gcd);
   }
@@ -949,7 +1027,7 @@ void IntegerRelation::removeRedundantInequalities() {
   for (unsigned r = 0, e = getNumInequalities(); r < e; r++) {
     // Change the inequality to its complement.
     tmpCst.inequalities.negateRow(r);
-    tmpCst.atIneq(r, tmpCst.getNumCols() - 1)--;
+    --tmpCst.atIneq(r, tmpCst.getNumCols() - 1);
     if (tmpCst.isEmpty()) {
       redun[r] = true;
       // Zero fill the redundant inequality.
@@ -957,7 +1035,7 @@ void IntegerRelation::removeRedundantInequalities() {
       tmpCst.inequalities.fillRow(r, /*value=*/0);
     } else {
       // Reverse the change (to avoid recreating tmpCst each time).
-      tmpCst.atIneq(r, tmpCst.getNumCols() - 1)++;
+      ++tmpCst.atIneq(r, tmpCst.getNumCols() - 1);
       tmpCst.inequalities.negateRow(r);
     }
   }
@@ -1076,51 +1154,51 @@ void IntegerRelation::eliminateRedundantLocalId(unsigned posA, unsigned posB) {
 /// of the local ids in each set, without changing the set of points that
 /// lie in `this` and `other`.
 ///
-/// To detect local ids that always take the same in both sets, each local id is
+/// To detect local ids that always take the same value, each local id is
 /// represented as a floordiv with constant denominator in terms of other ids.
-/// After extracting these divisions, local ids with the same division
-/// representation are considered duplicate and are merged. It is possible that
-/// division representation for some local id cannot be obtained, and thus these
-/// local ids are not considered for detecting duplicates.
-void IntegerRelation::mergeLocalIds(IntegerRelation &other) {
-  assert(isSpaceCompatible(other) && "Spaces should be compatible.");
-
+/// After extracting these divisions, local ids in `other` with the same
+/// division representation as some other local id in any set are considered
+/// duplicate and are merged.
+///
+/// It is possible that division representation for some local id cannot be
+/// obtained, and thus these local ids are not considered for detecting
+/// duplicates.
+unsigned IntegerRelation::mergeLocalIds(IntegerRelation &other) {
   IntegerRelation &relA = *this;
   IntegerRelation &relB = other;
 
-  // Merge local ids of relA and relB without using division information,
-  // i.e. append local ids of `relB` to `relA` and insert local ids of `relA`
-  // to `relB` at start of its local ids.
-  unsigned initLocals = relA.getNumLocalIds();
-  insertId(IdKind::Local, relA.getNumLocalIds(), relB.getNumLocalIds());
-  relB.insertId(IdKind::Local, 0, initLocals);
-
-  // Get division representations from each rel.
-  std::vector<SmallVector<int64_t, 8>> divsA, divsB;
-  SmallVector<unsigned, 4> denomsA, denomsB;
-  relA.getLocalReprs(divsA, denomsA);
-  relB.getLocalReprs(divsB, denomsB);
-
-  // Copy division information for relB into `divsA` and `denomsA`, so that
-  // these have the combined division information of both rels. Since newly
-  // added local variables in relA and relB have no constraints, they will not
-  // have any division representation.
-  std::copy(divsB.begin() + initLocals, divsB.end(),
-            divsA.begin() + initLocals);
-  std::copy(denomsB.begin() + initLocals, denomsB.end(),
-            denomsA.begin() + initLocals);
+  unsigned oldALocals = relA.getNumLocalIds();
 
   // Merge function that merges the local variables in both sets by treating
   // them as the same identifier.
-  auto merge = [&relA, &relB](unsigned i, unsigned j) -> bool {
+  auto merge = [&relA, &relB, oldALocals](unsigned i, unsigned j) -> bool {
+    // We only merge from local at pos j to local at pos i, where j > i.
+    if (i >= j)
+      return false;
+
+    // If i < oldALocals, we are trying to merge duplicate divs. Since we do not
+    // want to merge duplicates in A, we ignore this call.
+    if (j < oldALocals)
+      return false;
+
+    // Merge local at pos j into local at position i.
     relA.eliminateRedundantLocalId(i, j);
     relB.eliminateRedundantLocalId(i, j);
     return true;
   };
 
-  // Merge all divisions by removing duplicate divisions.
-  unsigned localOffset = getIdKindOffset(IdKind::Local);
-  presburger::removeDuplicateDivs(divsA, denomsA, localOffset, merge);
+  presburger::mergeLocalIds(*this, other, merge);
+
+  // Since we do not remove duplicate divisions in relA, this is guranteed to be
+  // non-negative.
+  return relA.getNumLocalIds() - oldALocals;
+}
+
+bool IntegerRelation::hasOnlyDivLocals() const {
+  std::vector<MaybeLocalRepr> reprs;
+  getLocalReprs(reprs);
+  return llvm::all_of(reprs,
+                      [](const MaybeLocalRepr &repr) { return bool(repr); });
 }
 
 void IntegerRelation::removeDuplicateDivs() {
@@ -1185,16 +1263,16 @@ void IntegerRelation::removeRedundantLocalVars() {
 }
 
 void IntegerRelation::convertIdKind(IdKind srcKind, unsigned idStart,
-                                    unsigned idLimit, IdKind dstKind) {
+                                    unsigned idLimit, IdKind dstKind,
+                                    unsigned pos) {
   assert(idLimit <= getNumIdKind(srcKind) && "Invalid id range");
 
   if (idStart >= idLimit)
     return;
 
   // Append new local variables corresponding to the dimensions to be converted.
-  unsigned newIdsBegin = getIdKindEnd(dstKind);
   unsigned convertCount = idLimit - idStart;
-  appendId(dstKind, convertCount);
+  unsigned newIdsBegin = insertId(dstKind, pos, convertCount);
 
   // Swap the new local variables with dimensions.
   //
@@ -1424,7 +1502,7 @@ Optional<int64_t> IntegerRelation::getConstantBoundOnDimSize(
       }
     }
   }
-  if (lb && minDiff.hasValue()) {
+  if (lb && minDiff) {
     // Set lb to the symbolic lower bound.
     lb->resize(getNumSymbolIds() + 1);
     if (ub)
@@ -1913,7 +1991,7 @@ static void getCommonConstraints(const IntegerRelation &a,
 // lower bounds and the max of the upper bounds along each of the dimensions.
 LogicalResult
 IntegerRelation::unionBoundingBox(const IntegerRelation &otherCst) {
-  assert(isSpaceEqual(otherCst) && "Spaces should match.");
+  assert(space.isEqual(otherCst.getSpace()) && "Spaces should match.");
   assert(getNumLocalIds() == 0 && "local ids not supported yet here");
 
   // Get the constraints common to both systems; these will be added as is to
@@ -2076,8 +2154,104 @@ void IntegerRelation::removeIndependentConstraints(unsigned pos, unsigned num) {
     removeEquality(nbIndex);
 }
 
+IntegerPolyhedron IntegerRelation::getDomainSet() const {
+  IntegerRelation copyRel = *this;
+
+  // Convert Range variables to Local variables.
+  copyRel.convertIdKind(IdKind::Range, 0, getNumIdKind(IdKind::Range),
+                        IdKind::Local);
+
+  // Convert Domain variables to SetDim(Range) variables.
+  copyRel.convertIdKind(IdKind::Domain, 0, getNumIdKind(IdKind::Domain),
+                        IdKind::SetDim);
+
+  return IntegerPolyhedron(std::move(copyRel));
+}
+
+IntegerPolyhedron IntegerRelation::getRangeSet() const {
+  IntegerRelation copyRel = *this;
+
+  // Convert Domain variables to Local variables.
+  copyRel.convertIdKind(IdKind::Domain, 0, getNumIdKind(IdKind::Domain),
+                        IdKind::Local);
+
+  // We do not need to do anything to Range variables since they are already in
+  // SetDim position.
+
+  return IntegerPolyhedron(std::move(copyRel));
+}
+
+void IntegerRelation::intersectDomain(const IntegerPolyhedron &poly) {
+  assert(getDomainSet().getSpace().isCompatible(poly.getSpace()) &&
+         "Domain set is not compatible with poly");
+
+  // Treating the poly as a relation, convert it from `0 -> R` to `R -> 0`.
+  IntegerRelation rel = poly;
+  rel.inverse();
+
+  // Append dummy range variables to make the spaces compatible.
+  rel.appendId(IdKind::Range, getNumRangeIds());
+
+  // Intersect in place.
+  mergeLocalIds(rel);
+  append(rel);
+}
+
+void IntegerRelation::intersectRange(const IntegerPolyhedron &poly) {
+  assert(getRangeSet().getSpace().isCompatible(poly.getSpace()) &&
+         "Range set is not compatible with poly");
+
+  IntegerRelation rel = poly;
+
+  // Append dummy domain variables to make the spaces compatible.
+  rel.appendId(IdKind::Domain, getNumDomainIds());
+
+  mergeLocalIds(rel);
+  append(rel);
+}
+
+void IntegerRelation::inverse() {
+  unsigned numRangeIds = getNumIdKind(IdKind::Range);
+  convertIdKind(IdKind::Domain, 0, getIdKindEnd(IdKind::Domain), IdKind::Range);
+  convertIdKind(IdKind::Range, 0, numRangeIds, IdKind::Domain);
+}
+
+void IntegerRelation::compose(const IntegerRelation &rel) {
+  assert(getRangeSet().getSpace().isCompatible(rel.getDomainSet().getSpace()) &&
+         "Range of `this` should be compatible with Domain of `rel`");
+
+  IntegerRelation copyRel = rel;
+
+  // Let relation `this` be R1: A -> B, and `rel` be R2: B -> C.
+  // We convert R1 to A -> (B X C), and R2 to B X C then intersect the range of
+  // R1 with R2. After this, we get R1: A -> C, by projecting out B.
+  // TODO: Using nested spaces here would help, since we could directly
+  // intersect the range with another relation.
+  unsigned numBIds = getNumRangeIds();
+
+  // Convert R1 from A -> B to A -> (B X C).
+  appendId(IdKind::Range, copyRel.getNumRangeIds());
+
+  // Convert R2 to B X C.
+  copyRel.convertIdKind(IdKind::Domain, 0, numBIds, IdKind::Range, 0);
+
+  // Intersect R2 to range of R1.
+  intersectRange(IntegerPolyhedron(copyRel));
+
+  // Project out B in R1.
+  convertIdKind(IdKind::Range, 0, numBIds, IdKind::Local);
+}
+
+void IntegerRelation::applyDomain(const IntegerRelation &rel) {
+  inverse();
+  compose(rel);
+  inverse();
+}
+
+void IntegerRelation::applyRange(const IntegerRelation &rel) { compose(rel); }
+
 void IntegerRelation::printSpace(raw_ostream &os) const {
-  PresburgerSpace::print(os);
+  space.print(os);
   os << getNumConstraints() << " constraints\n";
 }
 
