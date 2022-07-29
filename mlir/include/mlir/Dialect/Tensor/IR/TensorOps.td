@@ -27,7 +27,7 @@ class Tensor_OpWithOffsetSizesAndStrides<string mnemonic,
     : Tensor_Op<mnemonic, traits> {
   code extraBaseClassDeclaration = [{
     /// Returns the dynamic sizes for this subview operation if specified.
-    ::mlir::Operation::operand_range getDynamicSizes() { return sizes(); }
+    ::mlir::Operation::operand_range getDynamicSizes() { return getSizes(); }
 
     /// Return the list of Range (i.e. offset, size, stride). Each
     /// Range entry contains either the dynamic value or a ConstantIndexOp
@@ -266,7 +266,7 @@ def Tensor_ExtractSliceOp : Tensor_OpWithOffsetSizesAndStrides<"extract_slice", 
   let extraClassDeclaration = extraBaseClassDeclaration # [{
     /// Returns the type of the base tensor operand.
     RankedTensorType getSourceType() {
-      return source().getType().cast<RankedTensorType>();
+      return getSource().getType().cast<RankedTensorType>();
     }
 
     /// The result of an extract_slice is always a tensor.
@@ -489,7 +489,7 @@ def Tensor_InsertSliceOp : Tensor_OpWithOffsetSizesAndStrides<"insert_slice", [
     * dest: the tensor into which the source tensor is inserted.
     * offsets: tensor-rank number of offsets into the `dest` tensor into which
                the slice is inserted.
-    * sizes: tensor-rank number of sizes which specify the sizes of the result
+    * sizes: tensor-rank number of sizes which specify the sizes of the source
              tensor type.
     * strides: tensor-rank number of strides that specify subsampling in each
                dimension.
@@ -516,7 +516,7 @@ def Tensor_InsertSliceOp : Tensor_OpWithOffsetSizesAndStrides<"insert_slice", [
     Example:
 
     ```
-    // Rank-reducing extract_slice.
+    // Rank-altering insert_slice.
     %1 = tensor.insert_slice %t into %0[0, 0, 0][1, 16, 4][1, 1, 1] :
       tensor<16x4xf32> into tensor<8x16x4xf32>
     %3 = tensor.insert_slice %tt into %2[%o0, 4, %o2][1, %sz1, 1][1, %st1, 1] :
@@ -559,7 +559,7 @@ def Tensor_InsertSliceOp : Tensor_OpWithOffsetSizesAndStrides<"insert_slice", [
   let extraClassDeclaration = extraBaseClassDeclaration # [{
     /// Returns the type of the base tensor operand.
     RankedTensorType getSourceType() {
-      return source().getType().cast<RankedTensorType>();
+      return getSource().getType().cast<RankedTensorType>();
     }
 
     /// The result of a insert_slice is always a tensor.
@@ -678,14 +678,14 @@ class Tensor_ReassociativeReshapeOp<string mnemonic, list<Trait> traits = []> :
     Tensor_Op<mnemonic, !listconcat(traits, [NoSideEffect])>,
     Arguments<(ins AnyTensor:$src, IndexListArrayAttr:$reassociation)>,
     Results<(outs AnyTensor:$result)> {
- 
+
   code commonExtraClassDeclaration = [{
-    static StringRef getReassociationAttrName() { return "reassociation"; }
+    static StringRef getReassociationAttrStrName() { return "reassociation"; }
     SmallVector<AffineMap, 4> getReassociationMaps();
     SmallVector<ReassociationExprs, 4> getReassociationExprs();
     SmallVector<ReassociationIndices, 4> getReassociationIndices() {
       SmallVector<ReassociationIndices, 4> reassociationIndices;
-      for (auto attr : reassociation())
+      for (auto attr : getReassociation())
         reassociationIndices.push_back(llvm::to_vector<2>(
             llvm::map_range(attr.cast<ArrayAttr>(), [&](Attribute indexAttr) {
               return indexAttr.cast<IntegerAttr>().getInt();
@@ -693,10 +693,10 @@ class Tensor_ReassociativeReshapeOp<string mnemonic, list<Trait> traits = []> :
       return reassociationIndices;
     };
     RankedTensorType getSrcType() {
-      return src().getType().cast<RankedTensorType>();
+      return getSrc().getType().cast<RankedTensorType>();
     }
     RankedTensorType getResultType() {
-      return result().getType().cast<RankedTensorType>();
+      return getResult().getType().cast<RankedTensorType>();
     }
   }];
 
@@ -921,16 +921,16 @@ def Tensor_PadOp : Tensor_Op<"pad", [AttrSizedOperandSegments, NoSideEffect,
   }];
 
   let extraClassDeclaration = [{
-    static StringRef getStaticLowAttrName() {
+    static StringRef getStaticLowAttrStrName() {
       return "static_low";
     }
 
-    static StringRef getStaticHighAttrName() {
+    static StringRef getStaticHighAttrStrName() {
       return "static_high";
     }
 
     RankedTensorType getSourceType() {
-      return source().getType().cast<RankedTensorType>();
+      return getSource().getType().cast<RankedTensorType>();
     }
     RankedTensorType getResultType() {
       return getResult().getType().cast<RankedTensorType>();
@@ -965,10 +965,10 @@ def Tensor_PadOp : Tensor_Op<"pad", [AttrSizedOperandSegments, NoSideEffect,
       return res;
     }
     SmallVector<OpFoldResult> getMixedLowPad() {
-      return getMixedPadImpl(static_low(), low());
+      return getMixedPadImpl(getStaticLow(), getLow());
     }
     SmallVector<OpFoldResult> getMixedHighPad() {
-      return getMixedPadImpl(static_high(), high());
+      return getMixedPadImpl(getStaticHigh(), getHigh());
     }
     // Return true if low padding is guaranteed to be 0.
     bool hasZeroLowPad() {
@@ -982,6 +982,8 @@ def Tensor_PadOp : Tensor_Op<"pad", [AttrSizedOperandSegments, NoSideEffect,
         return getConstantIntValue(ofr) == static_cast<int64_t>(0);
       });
     }
+    /// Return the dimensions with a non-zero low or high padding.
+    llvm::SmallBitVector getPaddedDims();
   }];
 
   let builders = [
