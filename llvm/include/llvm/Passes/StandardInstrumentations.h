@@ -133,9 +133,9 @@ public:
     }
 
     bool isPoisoned() const {
-      return BBGuards &&
-             std::any_of(BBGuards->begin(), BBGuards->end(),
-                         [](const auto &BB) { return BB.second.isPoisoned(); });
+      return BBGuards && llvm::any_of(*BBGuards, [](const auto &BB) {
+               return BB.second.isPoisoned();
+             });
     }
 
     static void printDiff(raw_ostream &out, const CFG &Before,
@@ -480,6 +480,25 @@ protected:
   std::unique_ptr<raw_fd_ostream> HTML;
 };
 
+// Print IR on crash.
+class PrintCrashIRInstrumentation {
+public:
+  PrintCrashIRInstrumentation()
+      : SavedIR("*** Dump of IR Before Last Pass Unknown ***") {}
+  ~PrintCrashIRInstrumentation();
+  void registerCallbacks(PassInstrumentationCallbacks &PIC);
+  void reportCrashIR();
+
+protected:
+  std::string SavedIR;
+
+private:
+  // The crash reporter that will report on a crash.
+  static PrintCrashIRInstrumentation *CrashReporter;
+  // Crash handler registered when print-on-crash is specified.
+  static void SignalHandler(void *);
+};
+
 /// This class provides an interface to register all the standard pass
 /// instrumentations and manages their state (if any).
 class StandardInstrumentations {
@@ -493,6 +512,7 @@ class StandardInstrumentations {
   PseudoProbeVerifier PseudoProbeVerification;
   InLineChangePrinter PrintChangedDiff;
   DotCfgChangeReporter WebsiteChangeReporter;
+  PrintCrashIRInstrumentation PrintCrashIR;
   VerifyInstrumentation Verify;
 
   bool VerifyEach;
