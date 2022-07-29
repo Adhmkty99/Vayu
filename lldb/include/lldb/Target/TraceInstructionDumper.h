@@ -8,6 +8,8 @@
 
 #include "lldb/Target/TraceCursor.h"
 
+#include "lldb/Symbol/SymbolContext.h"
+
 #ifndef LLDB_TARGET_TRACE_INSTRUCTION_DUMPER_H
 #define LLDB_TARGET_TRACE_INSTRUCTION_DUMPER_H
 
@@ -23,9 +25,15 @@ struct TraceInstructionDumperOptions {
   /// Dump only instruction addresses without disassembly nor symbol
   /// information.
   bool raw = false;
+  /// Dump in json format.
+  bool json = false;
+  /// When dumping in JSON format, pretty print the output.
+  bool pretty_print_json = false;
   /// For each instruction, print the corresponding timestamp counter if
   /// available.
   bool show_tsc = false;
+  /// Dump the events that happened between instructions.
+  bool show_events = false;
   /// Optional custom id to start traversing from.
   llvm::Optional<uint64_t> id = llvm::None;
   /// Optional number of instructions to skip from the starting position
@@ -37,6 +45,42 @@ struct TraceInstructionDumperOptions {
 /// state and granularity.
 class TraceInstructionDumper {
 public:
+  /// Helper struct that holds symbol, disassembly and address information of an
+  /// instruction.
+  struct SymbolInfo {
+    SymbolContext sc;
+    Address address;
+    lldb::DisassemblerSP disassembler;
+    lldb::InstructionSP instruction;
+    lldb_private::ExecutionContext exe_ctx;
+  };
+
+  /// Helper struct that holds all the information we know about an instruction
+  struct InstructionEntry {
+    lldb::user_id_t id;
+    lldb::addr_t load_address;
+    llvm::Optional<uint64_t> tsc;
+    llvm::Optional<llvm::StringRef> error;
+    llvm::Optional<SymbolInfo> symbol_info;
+    llvm::Optional<SymbolInfo> prev_symbol_info;
+  };
+
+  /// Interface used to abstract away the format in which the instruction
+  /// information will be dumped.
+  class OutputWriter {
+  public:
+    virtual ~OutputWriter() = default;
+
+    /// Indicate a user-level info message. It's not part of the actual trace.
+    virtual void InfoMessage(llvm::StringRef text) {}
+
+    /// Dump a trace event.
+    virtual void Event(llvm::StringRef text) = 0;
+
+    /// Dump an instruction or a trace error.
+    virtual void Instruction(const InstructionEntry &insn) = 0;
+  };
+
   /// Create a instruction dumper for the cursor.
   ///
   /// \param[in] cursor
@@ -64,26 +108,16 @@ public:
   ///     if no instructions were visited.
   llvm::Optional<lldb::user_id_t> DumpInstructions(size_t count);
 
-  /// \return
-  ///     \b true if there's still more data to traverse in the trace.
-  bool HasMoreData();
-
 private:
-  /// Indicate to the dumper that no more data is available in the trace.
-  /// This will prevent further iterations.
-  void SetNoMoreData();
+  /// Create an instruction entry for the current position without symbol
+  /// information.
+  InstructionEntry CreatRawInstructionEntry();
 
-  /// Move the cursor one step.
-  ///
-  /// \return
-  ///     \b true if the cursor moved.
-  bool TryMoveOneStep();
+  void PrintEvents();
 
   lldb::TraceCursorUP m_cursor_up;
   TraceInstructionDumperOptions m_options;
-  Stream &m_s;
-  /// If \b true, all the instructions have been traversed.
-  bool m_no_more_data = false;
+  std::unique_ptr<OutputWriter> m_writer_up;
 };
 
 } // namespace lldb_private
