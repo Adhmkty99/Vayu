@@ -63,6 +63,7 @@ std::string ForestNode::dumpRecursive(const Grammar &G,
       Dump = [&](const ForestNode *P, Token::Index End,
                  llvm::Optional<SymbolID> ElidedParent,
                  LineDecoration LineDec) {
+        bool SharedNode = VisitCounts.find(P)->getSecond() > 1;
         llvm::ArrayRef<const ForestNode *> Children;
         auto EndOfElement = [&](size_t ChildIndex) {
           return ChildIndex + 1 == Children.size()
@@ -74,16 +75,20 @@ std::string ForestNode::dumpRecursive(const Grammar &G,
         } else if (P->kind() == Sequence) {
           Children = P->elements();
           if (Abbreviated) {
-            if (P->startTokenIndex() == End)
-              return;
-            for (size_t I = 0; I < Children.size(); ++I)
-              if (Children[I]->startTokenIndex() == P->startTokenIndex() &&
-                  EndOfElement(I) == End) {
-                return Dump(
-                    Children[I], End,
-                    /*ElidedParent=*/ElidedParent.getValueOr(P->symbol()),
-                    LineDec);
-              }
+            // Abbreviate chains of trivial sequence nodes.
+            //    A := B, B := C, C := D, D := X Y Z
+            // becomes
+            //    A~D := X Y Z
+            //
+            // We can't hide nodes that appear multiple times in the tree,
+            // because we need to call out their identity with IDs.
+            if (Children.size() == 1 && !SharedNode) {
+              assert(Children[0]->startTokenIndex() == P->startTokenIndex() &&
+                     EndOfElement(0) == End);
+              return Dump(Children[0], End,
+                          /*ElidedParent=*/ElidedParent.value_or(P->symbol()),
+                          LineDec);
+            }
           }
         }
 
@@ -93,18 +98,25 @@ std::string ForestNode::dumpRecursive(const Grammar &G,
           Result += llvm::formatv("[{0,3}, {1,3}) ", P->startTokenIndex(), End);
         Result += LineDec.Prefix;
         Result += LineDec.First;
-        if (ElidedParent.hasValue()) {
+        if (ElidedParent) {
           Result += G.symbolName(*ElidedParent);
           Result += "~";
         }
-        Result.append(P->dump(G));
 
-        if (VisitCounts.find(P)->getSecond() > 1 &&
-            P->kind() != ForestNode::Terminal) {
-          // The first time, print as #1. Later, =#1.
+        if (SharedNode && P->kind() != ForestNode::Terminal) {
           auto It = ReferenceIds.try_emplace(P, ReferenceIds.size() + 1);
-          Result +=
-              llvm::formatv(" {0}#{1}", It.second ? "" : "=", It.first->second);
+          bool First = It.second;
+          unsigned ID = It.first->second;
+
+          // The first time, print as #1. Later, =#1.
+          if (First) {
+            Result += llvm::formatv("{0} #{1}", P->dump(G), ID);
+          } else {
+            Result += llvm::formatv("{0} =#{1}", G.symbolName(P->symbol()), ID);
+            Children = {}; // Don't walk the children again.
+          }
+        } else {
+          Result.append(P->dump(G));
         }
         Result.push_back('\n');
 
