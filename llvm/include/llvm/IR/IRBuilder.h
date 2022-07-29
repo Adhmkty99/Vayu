@@ -25,7 +25,6 @@
 #include "llvm/IR/ConstantFolder.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DataLayout.h"
-//#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DebugLoc.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/FPEnv.h"
@@ -301,7 +300,7 @@ public:
   void setDefaultConstrainedExcept(fp::ExceptionBehavior NewExcept) {
 #ifndef NDEBUG
     Optional<StringRef> ExceptStr = convertExceptionBehaviorToStr(NewExcept);
-    assert(ExceptStr.hasValue() && "Garbage strict exception behavior!");
+    assert(ExceptStr && "Garbage strict exception behavior!");
 #endif
     DefaultConstrainedExcept = NewExcept;
   }
@@ -310,7 +309,7 @@ public:
   void setDefaultConstrainedRounding(RoundingMode NewRounding) {
 #ifndef NDEBUG
     Optional<StringRef> RoundingStr = convertRoundingModeToStr(NewRounding);
-    assert(RoundingStr.hasValue() && "Garbage strict rounding mode!");
+    assert(RoundingStr && "Garbage strict rounding mode!");
 #endif
     DefaultConstrainedRounding = NewRounding;
   }
@@ -541,6 +540,11 @@ public:
     return Type::getVoidTy(Context);
   }
 
+  /// Fetch the type representing a pointer.
+  PointerType *getPtrTy(unsigned AddrSpace = 0) {
+    return PointerType::get(Context, AddrSpace);
+  }
+
   /// Fetch the type representing a pointer to an 8-bit integer value.
   PointerType *getInt8PtrTy(unsigned AddrSpace = 0) {
     return Type::getInt8PtrTy(Context, AddrSpace);
@@ -573,6 +577,12 @@ public:
                          bool isVolatile = false, MDNode *TBAATag = nullptr,
                          MDNode *ScopeTag = nullptr,
                          MDNode *NoAliasTag = nullptr);
+
+  CallInst *CreateMemSetInline(Value *Dst, MaybeAlign DstAlign, Value *Val,
+                               Value *Size, bool IsVolatile = false,
+                               MDNode *TBAATag = nullptr,
+                               MDNode *ScopeTag = nullptr,
+                               MDNode *NoAliasTag = nullptr);
 
   /// Create and insert an element unordered-atomic memset of the region of
   /// memory starting at the given pointer to the given value.
@@ -904,18 +914,18 @@ public:
                            Name);
   }
 
-  /// Create a call to the experimental.vector.extract intrinsic.
+  /// Create a call to the vector.extract intrinsic.
   CallInst *CreateExtractVector(Type *DstType, Value *SrcVec, Value *Idx,
                                 const Twine &Name = "") {
-    return CreateIntrinsic(Intrinsic::experimental_vector_extract,
+    return CreateIntrinsic(Intrinsic::vector_extract,
                            {DstType, SrcVec->getType()}, {SrcVec, Idx}, nullptr,
                            Name);
   }
 
-  /// Create a call to the experimental.vector.insert intrinsic.
+  /// Create a call to the vector.insert intrinsic.
   CallInst *CreateInsertVector(Type *DstType, Value *SrcVec, Value *SubVec,
                                Value *Idx, const Twine &Name = "") {
-    return CreateIntrinsic(Intrinsic::experimental_vector_insert,
+    return CreateIntrinsic(Intrinsic::vector_insert,
                            {DstType, SubVec->getType()}, {SrcVec, SubVec, Idx},
                            nullptr, Name);
   }
@@ -1158,11 +1168,11 @@ private:
   Value *getConstrainedFPRounding(Optional<RoundingMode> Rounding) {
     RoundingMode UseRounding = DefaultConstrainedRounding;
 
-    if (Rounding.hasValue())
+    if (Rounding)
       UseRounding = Rounding.getValue();
 
     Optional<StringRef> RoundingStr = convertRoundingModeToStr(UseRounding);
-    assert(RoundingStr.hasValue() && "Garbage strict rounding mode!");
+    assert(RoundingStr && "Garbage strict rounding mode!");
     auto *RoundingMDS = MDString::get(Context, RoundingStr.getValue());
 
     return MetadataAsValue::get(Context, RoundingMDS);
@@ -1171,11 +1181,11 @@ private:
   Value *getConstrainedFPExcept(Optional<fp::ExceptionBehavior> Except) {
     fp::ExceptionBehavior UseExcept = DefaultConstrainedExcept;
 
-    if (Except.hasValue())
+    if (Except)
       UseExcept = Except.getValue();
 
     Optional<StringRef> ExceptStr = convertExceptionBehaviorToStr(UseExcept);
-    assert(ExceptStr.hasValue() && "Garbage strict exception behavior!");
+    assert(ExceptStr && "Garbage strict exception behavior!");
     auto *ExceptMDS = MDString::get(Context, ExceptStr.getValue());
 
     return MetadataAsValue::get(Context, ExceptMDS);
@@ -1246,9 +1256,8 @@ public:
 
   Value *CreateUDiv(Value *LHS, Value *RHS, const Twine &Name = "",
                     bool isExact = false) {
-    if (auto *LC = dyn_cast<Constant>(LHS))
-      if (auto *RC = dyn_cast<Constant>(RHS))
-        return Insert(Folder.CreateUDiv(LC, RC, isExact), Name);
+    if (Value *V = Folder.FoldUDiv(LHS, RHS, isExact))
+      return V;
     if (!isExact)
       return Insert(BinaryOperator::CreateUDiv(LHS, RHS), Name);
     return Insert(BinaryOperator::CreateExactUDiv(LHS, RHS), Name);
@@ -1260,9 +1269,8 @@ public:
 
   Value *CreateSDiv(Value *LHS, Value *RHS, const Twine &Name = "",
                     bool isExact = false) {
-    if (auto *LC = dyn_cast<Constant>(LHS))
-      if (auto *RC = dyn_cast<Constant>(RHS))
-        return Insert(Folder.CreateSDiv(LC, RC, isExact), Name);
+    if (Value *V = Folder.FoldSDiv(LHS, RHS, isExact))
+      return V;
     if (!isExact)
       return Insert(BinaryOperator::CreateSDiv(LHS, RHS), Name);
     return Insert(BinaryOperator::CreateExactSDiv(LHS, RHS), Name);
@@ -1273,12 +1281,14 @@ public:
   }
 
   Value *CreateURem(Value *LHS, Value *RHS, const Twine &Name = "") {
-    if (Value *V = foldConstant(Instruction::URem, LHS, RHS, Name)) return V;
+    if (Value *V = Folder.FoldURem(LHS, RHS))
+      return V;
     return Insert(BinaryOperator::CreateURem(LHS, RHS), Name);
   }
 
   Value *CreateSRem(Value *LHS, Value *RHS, const Twine &Name = "") {
-    if (Value *V = foldConstant(Instruction::SRem, LHS, RHS, Name)) return V;
+    if (Value *V = Folder.FoldSRem(LHS, RHS))
+      return V;
     return Insert(BinaryOperator::CreateSRem(LHS, RHS), Name);
   }
 
@@ -1719,30 +1729,18 @@ public:
   }
 
   Value *CreateGEP(Type *Ty, Value *Ptr, ArrayRef<Value *> IdxList,
-                   const Twine &Name = "") {
-    if (auto *V = Folder.FoldGEP(Ty, Ptr, IdxList, /*IsInBounds=*/false))
+                   const Twine &Name = "", bool IsInBounds = false) {
+    if (auto *V = Folder.FoldGEP(Ty, Ptr, IdxList, IsInBounds))
       return V;
-    return Insert(GetElementPtrInst::Create(Ty, Ptr, IdxList), Name);
+    return Insert(IsInBounds
+                      ? GetElementPtrInst::CreateInBounds(Ty, Ptr, IdxList)
+                      : GetElementPtrInst::Create(Ty, Ptr, IdxList),
+                  Name);
   }
 
   Value *CreateInBoundsGEP(Type *Ty, Value *Ptr, ArrayRef<Value *> IdxList,
                            const Twine &Name = "") {
-    if (auto *V = Folder.FoldGEP(Ty, Ptr, IdxList, /*IsInBounds=*/true))
-      return V;
-    return Insert(GetElementPtrInst::CreateInBounds(Ty, Ptr, IdxList), Name);
-  }
-
-  Value *CreateGEP(Type *Ty, Value *Ptr, Value *Idx, const Twine &Name = "") {
-    if (auto *V = Folder.FoldGEP(Ty, Ptr, {Idx}, /*IsInBounds=*/false))
-      return V;
-    return Insert(GetElementPtrInst::Create(Ty, Ptr, Idx), Name);
-  }
-
-  Value *CreateInBoundsGEP(Type *Ty, Value *Ptr, Value *Idx,
-                           const Twine &Name = "") {
-    if (auto *V = Folder.FoldGEP(Ty, Ptr, {Idx}, /*IsInBounds=*/true))
-      return V;
-    return Insert(GetElementPtrInst::CreateInBounds(Ty, Ptr, Idx), Name);
+    return CreateGEP(Ty, Ptr, IdxList, Name, /* IsInBounds */ true);
   }
 
   Value *CreateConstGEP1_32(Type *Ty, Value *Ptr, unsigned Idx0,
@@ -2283,9 +2281,8 @@ public:
 
   Value *CreateExtractElement(Value *Vec, Value *Idx,
                               const Twine &Name = "") {
-    if (auto *VC = dyn_cast<Constant>(Vec))
-      if (auto *IC = dyn_cast<Constant>(Idx))
-        return Insert(Folder.CreateExtractElement(VC, IC), Name);
+    if (Value *V = Folder.FoldExtractElement(Vec, Idx))
+      return V;
     return Insert(ExtractElementInst::Create(Vec, Idx), Name);
   }
 
@@ -2306,10 +2303,8 @@ public:
 
   Value *CreateInsertElement(Value *Vec, Value *NewElt, Value *Idx,
                              const Twine &Name = "") {
-    if (auto *VC = dyn_cast<Constant>(Vec))
-      if (auto *NC = dyn_cast<Constant>(NewElt))
-        if (auto *IC = dyn_cast<Constant>(Idx))
-          return Insert(Folder.CreateInsertElement(VC, NC, IC), Name);
+    if (Value *V = Folder.FoldInsertElement(Vec, NewElt, Idx))
+      return V;
     return Insert(InsertElementInst::Create(Vec, NewElt, Idx), Name);
   }
 
@@ -2325,21 +2320,11 @@ public:
     return CreateShuffleVector(V1, V2, IntMask, Name);
   }
 
-  LLVM_ATTRIBUTE_DEPRECATED(Value *CreateShuffleVector(Value *V1, Value *V2,
-                                                       ArrayRef<uint32_t> Mask,
-                                                       const Twine &Name = ""),
-                            "Pass indices as 'int' instead") {
-    SmallVector<int, 16> IntMask;
-    IntMask.assign(Mask.begin(), Mask.end());
-    return CreateShuffleVector(V1, V2, IntMask, Name);
-  }
-
   /// See class ShuffleVectorInst for a description of the mask representation.
   Value *CreateShuffleVector(Value *V1, Value *V2, ArrayRef<int> Mask,
                              const Twine &Name = "") {
-    if (auto *V1C = dyn_cast<Constant>(V1))
-      if (auto *V2C = dyn_cast<Constant>(V2))
-        return Insert(Folder.CreateShuffleVector(V1C, V2C, Mask), Name);
+    if (Value *V = Folder.FoldShuffleVector(V1, V2, Mask))
+      return V;
     return Insert(new ShuffleVectorInst(V1, V2, Mask), Name);
   }
 
@@ -2350,20 +2335,17 @@ public:
     return CreateShuffleVector(V, PoisonValue::get(V->getType()), Mask, Name);
   }
 
-  Value *CreateExtractValue(Value *Agg,
-                            ArrayRef<unsigned> Idxs,
+  Value *CreateExtractValue(Value *Agg, ArrayRef<unsigned> Idxs,
                             const Twine &Name = "") {
-    if (auto *AggC = dyn_cast<Constant>(Agg))
-      return Insert(Folder.CreateExtractValue(AggC, Idxs), Name);
+    if (auto *V = Folder.FoldExtractValue(Agg, Idxs))
+      return V;
     return Insert(ExtractValueInst::Create(Agg, Idxs), Name);
   }
 
-  Value *CreateInsertValue(Value *Agg, Value *Val,
-                           ArrayRef<unsigned> Idxs,
+  Value *CreateInsertValue(Value *Agg, Value *Val, ArrayRef<unsigned> Idxs,
                            const Twine &Name = "") {
-    if (auto *AggC = dyn_cast<Constant>(Agg))
-      if (auto *ValC = dyn_cast<Constant>(Val))
-        return Insert(Folder.CreateInsertValue(AggC, ValC, Idxs), Name);
+    if (auto *V = Folder.FoldInsertValue(Agg, Val, Idxs))
+      return V;
     return Insert(InsertValueInst::Create(Agg, Val, Idxs), Name);
   }
 
@@ -2380,16 +2362,25 @@ public:
   // Utility creation methods
   //===--------------------------------------------------------------------===//
 
-  /// Return an i1 value testing if \p Arg is null.
+  /// Return a boolean value testing if \p Arg == 0.
   Value *CreateIsNull(Value *Arg, const Twine &Name = "") {
-    return CreateICmpEQ(Arg, Constant::getNullValue(Arg->getType()),
-                        Name);
+    return CreateICmpEQ(Arg, ConstantInt::getNullValue(Arg->getType()), Name);
   }
 
-  /// Return an i1 value testing if \p Arg is not null.
+  /// Return a boolean value testing if \p Arg != 0.
   Value *CreateIsNotNull(Value *Arg, const Twine &Name = "") {
-    return CreateICmpNE(Arg, Constant::getNullValue(Arg->getType()),
-                        Name);
+    return CreateICmpNE(Arg, ConstantInt::getNullValue(Arg->getType()), Name);
+  }
+
+  /// Return a boolean value testing if \p Arg < 0.
+  Value *CreateIsNeg(Value *Arg, const Twine &Name = "") {
+    return CreateICmpSLT(Arg, ConstantInt::getNullValue(Arg->getType()), Name);
+  }
+
+  /// Return a boolean value testing if \p Arg > -1.
+  Value *CreateIsNotNeg(Value *Arg, const Twine &Name = "") {
+    return CreateICmpSGT(Arg, ConstantInt::getAllOnesValue(Arg->getType()),
+                         Name);
   }
 
   /// Return the i64 difference between two pointer values, dividing out
