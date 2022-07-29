@@ -10,12 +10,14 @@
 //===----------------------------------------------------------------------===/
 
 #include "TreeTransform.h"
+#include "clang/AST/ASTConcept.h"
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/ASTContext.h"
 #include "clang/AST/ASTLambda.h"
 #include "clang/AST/ASTMutationListener.h"
 #include "clang/AST/DeclTemplate.h"
 #include "clang/AST/Expr.h"
+#include "clang/AST/ExprConcepts.h"
 #include "clang/AST/PrettyDeclStackTrace.h"
 #include "clang/AST/TypeVisitor.h"
 #include "clang/Basic/LangOptions.h"
@@ -55,9 +57,18 @@ using namespace sema;
 /// instantiating the definition of the given declaration, \p D. This is
 /// used to determine the proper set of template instantiation arguments for
 /// friend function template specializations.
+///
+/// \param LookBeyondLambda Indicates that this collection of arguments should
+/// continue looking when it encounters a lambda generic call operator.
+///
+/// \param IncludeContainingStructArgs Indicates that this collection of
+/// arguments should include arguments for any class template that this
+/// declaration is included inside of.
+
 MultiLevelTemplateArgumentList Sema::getTemplateInstantiationArgs(
     const NamedDecl *D, const TemplateArgumentList *Innermost,
-    bool RelativeToPrimary, const FunctionDecl *Pattern) {
+    bool RelativeToPrimary, const FunctionDecl *Pattern, bool LookBeyondLambda,
+    bool IncludeContainingStructArgs) {
   // Accumulate the set of template argument lists in this structure.
   MultiLevelTemplateArgumentList Result;
 
@@ -153,11 +164,13 @@ MultiLevelTemplateArgumentList Sema::getTemplateInstantiationArgs(
           break;
 
         // If this function is a generic lambda specialization, we are done.
-        if (isGenericLambdaCallOperatorOrStaticInvokerSpecialization(Function))
+        if (!LookBeyondLambda &&
+            isGenericLambdaCallOperatorOrStaticInvokerSpecialization(Function))
           break;
 
       } else if (Function->getDescribedFunctionTemplate()) {
-        assert(Result.getNumSubstitutedLevels() == 0 &&
+        assert((IncludeContainingStructArgs ||
+                Result.getNumSubstitutedLevels() == 0) &&
                "Outer template not instantiated?");
       }
 
@@ -174,10 +187,18 @@ MultiLevelTemplateArgumentList Sema::getTemplateInstantiationArgs(
       }
     } else if (const auto *Rec = dyn_cast<CXXRecordDecl>(Ctx)) {
       if (ClassTemplateDecl *ClassTemplate = Rec->getDescribedClassTemplate()) {
-        assert(Result.getNumSubstitutedLevels() == 0 &&
+        assert((IncludeContainingStructArgs ||
+                Result.getNumSubstitutedLevels() == 0) &&
                "Outer template not instantiated?");
         if (ClassTemplate->isMemberSpecialization())
           break;
+        if (IncludeContainingStructArgs) {
+          QualType RecordType = Context.getTypeDeclType(Rec);
+          QualType Injected = cast<InjectedClassNameType>(RecordType)
+                                  ->getInjectedSpecializationType();
+          const auto *InjectedType = cast<TemplateSpecializationType>(Injected);
+          Result.addOuterTemplateArguments(InjectedType->template_arguments());
+        }
       }
     }
 
@@ -213,6 +234,7 @@ bool Sema::CodeSynthesisContext::isInstantiationRecord() const {
   case RewritingOperatorAsSpaceship:
   case InitializingStructuredBinding:
   case MarkingClassDllexported:
+  case BuildingBuiltinDumpStructCall:
     return false;
 
   // This function should never be called when Kind's value is Memoization.
@@ -480,6 +502,19 @@ void Sema::InstantiatingTemplate::Clear() {
     SemaRef.popCodeSynthesisContext();
     Invalid = true;
   }
+}
+
+static std::string convertCallArgsToString(Sema &S,
+                                           llvm::ArrayRef<const Expr *> Args) {
+  std::string Result;
+  llvm::raw_string_ostream OS(Result);
+  llvm::ListSeparator Comma;
+  for (const Expr *Arg : Args) {
+    OS << Comma;
+    Arg->IgnoreParens()->printPretty(OS, nullptr,
+                                     S.Context.getPrintingPolicy());
+  }
+  return Result;
 }
 
 bool Sema::InstantiatingTemplate::CheckInstantiationDepth(
@@ -770,6 +805,14 @@ void Sema::PrintInstantiationStack() {
           << cast<CXXRecordDecl>(Active->Entity) << !getLangOpts().CPlusPlus11;
       break;
 
+    case CodeSynthesisContext::BuildingBuiltinDumpStructCall:
+      Diags.Report(Active->PointOfInstantiation,
+                   diag::note_building_builtin_dump_struct_call)
+          << convertCallArgsToString(
+                 *this,
+                 llvm::makeArrayRef(Active->CallArgs, Active->NumCallArgs));
+      break;
+
     case CodeSynthesisContext::Memoization:
       break;
 
@@ -874,6 +917,7 @@ Optional<TemplateDeductionInfo *> Sema::isSFINAEContext() const {
     case CodeSynthesisContext::DefiningSynthesizedFunction:
     case CodeSynthesisContext::InitializingStructuredBinding:
     case CodeSynthesisContext::MarkingClassDllexported:
+    case CodeSynthesisContext::BuildingBuiltinDumpStructCall:
       // This happens in a context unrelated to template instantiation, so
       // there is no SFINAE.
       return None;
@@ -905,16 +949,17 @@ namespace {
     const MultiLevelTemplateArgumentList &TemplateArgs;
     SourceLocation Loc;
     DeclarationName Entity;
+    bool EvaluatingAConstraint = false;
 
   public:
     typedef TreeTransform<TemplateInstantiator> inherited;
 
     TemplateInstantiator(Sema &SemaRef,
                          const MultiLevelTemplateArgumentList &TemplateArgs,
-                         SourceLocation Loc,
-                         DeclarationName Entity)
-      : inherited(SemaRef), TemplateArgs(TemplateArgs), Loc(Loc),
-        Entity(Entity) { }
+                         SourceLocation Loc, DeclarationName Entity,
+                         bool EvaluatingConstraint = false)
+        : inherited(SemaRef), TemplateArgs(TemplateArgs), Loc(Loc),
+          Entity(Entity), EvaluatingAConstraint(EvaluatingConstraint) {}
 
     /// Determine whether the given type \p T has already been
     /// transformed.
@@ -1166,6 +1211,18 @@ namespace {
       DeclContext *Owner = OrigTPL->getParam(0)->getDeclContext();
       TemplateDeclInstantiator  DeclInstantiator(getSema(),
                         /* DeclContext *Owner */ Owner, TemplateArgs);
+      return DeclInstantiator.SubstTemplateParams(OrigTPL);
+    }
+
+    TemplateParameterList *
+    TransformRequiresTemplateParameterList(TemplateParameterList *OrigTPL) {
+      if (!OrigTPL || !OrigTPL->size())
+        return OrigTPL;
+
+      DeclContext *Owner = OrigTPL->getParam(0)->getDeclContext();
+      TemplateDeclInstantiator DeclInstantiator(
+          getSema(),
+          /* DeclContext *Owner */ Owner, TemplateArgs, EvaluatingAConstraint);
       return DeclInstantiator.SubstTemplateParams(OrigTPL);
     }
 
@@ -1961,7 +2018,7 @@ TemplateInstantiator::TransformExprRequirement(concepts::ExprRequirement *Req) {
     if (TPLInst.isInvalid())
       return nullptr;
     TemplateParameterList *TPL =
-        TransformTemplateParameterList(OrigTPL);
+        TransformRequiresTemplateParameterList(OrigTPL);
     if (!TPL)
       TransRetReq.emplace(createSubstDiag(SemaRef, Info,
           [&] (llvm::raw_ostream& OS) {
@@ -1973,8 +2030,7 @@ TemplateInstantiator::TransformExprRequirement(concepts::ExprRequirement *Req) {
       TransRetReq.emplace(TPL);
     }
   }
-  assert(TransRetReq.hasValue() &&
-         "All code paths leading here must set TransRetReq");
+  assert(TransRetReq && "All code paths leading here must set TransRetReq");
   if (Expr *E = TransExpr.dyn_cast<Expr *>())
     return RebuildExprRequirement(E, Req->isSimple(), Req->getNoexceptLoc(),
                                   std::move(*TransRetReq));
@@ -2000,6 +2056,7 @@ TemplateInstantiator::TransformNestedRequirement(
       Req->getConstraintExpr()->getSourceRange());
 
   ExprResult TransConstraint;
+  ConstraintSatisfaction Satisfaction;
   TemplateDeductionInfo Info(Req->getConstraintExpr()->getBeginLoc());
   {
     EnterExpressionEvaluationContext ContextRAII(
@@ -2011,6 +2068,25 @@ TemplateInstantiator::TransformNestedRequirement(
     if (ConstrInst.isInvalid())
       return nullptr;
     TransConstraint = TransformExpr(Req->getConstraintExpr());
+    if (!TransConstraint.isInvalid()) {
+      bool CheckSucceeded =
+          SemaRef.CheckConstraintExpression(TransConstraint.get());
+      (void)CheckSucceeded;
+      assert((CheckSucceeded || Trap.hasErrorOccurred()) &&
+                                   "CheckConstraintExpression failed, but "
+                                   "did not produce a SFINAE error");
+    }
+    // Use version of CheckConstraintSatisfaction that does no substitutions.
+    if (!TransConstraint.isInvalid() &&
+        !TransConstraint.get()->isInstantiationDependent() &&
+        !Trap.hasErrorOccurred()) {
+      bool CheckFailed = SemaRef.CheckConstraintSatisfaction(
+          TransConstraint.get(), Satisfaction);
+      (void)CheckFailed;
+      assert((!CheckFailed || Trap.hasErrorOccurred()) &&
+                                 "CheckConstraintSatisfaction failed, "
+                                 "but did not produce a SFINAE error");
+    }
     if (TransConstraint.isInvalid() || Trap.hasErrorOccurred())
       return RebuildNestedRequirement(createSubstDiag(SemaRef, Info,
           [&] (llvm::raw_ostream& OS) {
@@ -2018,7 +2094,11 @@ TemplateInstantiator::TransformNestedRequirement(
                                                     SemaRef.getPrintingPolicy());
           }));
   }
-  return RebuildNestedRequirement(TransConstraint.get());
+  if (TransConstraint.get()->isInstantiationDependent())
+    return new (SemaRef.Context)
+        concepts::NestedRequirement(TransConstraint.get());
+  return new (SemaRef.Context) concepts::NestedRequirement(
+      SemaRef.Context, TransConstraint.get(), Satisfaction);
 }
 
 
@@ -2301,9 +2381,21 @@ namespace {
 
 bool Sema::SubstTypeConstraint(
     TemplateTypeParmDecl *Inst, const TypeConstraint *TC,
-    const MultiLevelTemplateArgumentList &TemplateArgs) {
+    const MultiLevelTemplateArgumentList &TemplateArgs,
+    bool isEvaluatingAConstraint) {
   const ASTTemplateArgumentListInfo *TemplArgInfo =
       TC->getTemplateArgsAsWritten();
+
+  // If we're not checking a constraint, we shouldn't be instantiating the type
+  // constraint, so we should just create a copy of the previous one.
+  if (!isEvaluatingAConstraint) {
+    Inst->setTypeConstraint(TC->getNestedNameSpecifierLoc(),
+                            TC->getConceptNameInfo(), TC->getNamedConcept(),
+                            TC->getNamedConcept(), TemplArgInfo,
+                            TC->getImmediatelyDeclaredConstraint());
+    return false;
+  }
+
   TemplateArgumentListInfo InstArgs;
 
   if (TemplArgInfo) {
@@ -2384,9 +2476,8 @@ ParmVarDecl *Sema::SubstParmVarDecl(ParmVarDecl *OldParm,
       // template's described function, but we might also get here later.
       // Make sure we do not instantiate the TypeConstraint more than once.
       if (Inst && !Inst->getTypeConstraint()) {
-        // TODO: Concepts: do not instantiate the constraint (delayed constraint
-        // substitution)
-        if (SubstTypeConstraint(Inst, TC, TemplateArgs))
+        if (SubstTypeConstraint(Inst, TC, TemplateArgs,
+                                /*isEvaluatingAConstraint*/ false))
           return nullptr;
       }
     }
@@ -3227,6 +3318,9 @@ Sema::InstantiateClassMembers(SourceLocation PointOfInstantiation,
       if (FunctionDecl *Pattern =
               Function->getInstantiatedFromMemberFunction()) {
 
+        if (Function->isIneligibleOrNotSelected())
+          continue;
+
         if (Function->getTrailingRequiresClause()) {
           ConstraintSatisfaction Satisfaction;
           if (CheckFunctionConstraints(Function, Satisfaction) ||
@@ -3469,10 +3563,10 @@ Sema::SubstStmt(Stmt *S, const MultiLevelTemplateArgumentList &TemplateArgs) {
 bool Sema::SubstTemplateArguments(
     ArrayRef<TemplateArgumentLoc> Args,
     const MultiLevelTemplateArgumentList &TemplateArgs,
-    TemplateArgumentListInfo &Out) {
-  TemplateInstantiator Instantiator(*this, TemplateArgs,
-                                    SourceLocation(),
-                                    DeclarationName());
+    TemplateArgumentListInfo &Out, bool InstantiateConstraints) {
+  TemplateInstantiator Instantiator(
+      *this, TemplateArgs, SourceLocation(), DeclarationName(),
+      InstantiateConstraints);
   return Instantiator.TransformTemplateArguments(Args.begin(), Args.end(),
                                                  Out);
 }
@@ -3485,6 +3579,18 @@ Sema::SubstExpr(Expr *E, const MultiLevelTemplateArgumentList &TemplateArgs) {
   TemplateInstantiator Instantiator(*this, TemplateArgs,
                                     SourceLocation(),
                                     DeclarationName());
+  return Instantiator.TransformExpr(E);
+}
+
+ExprResult
+Sema::SubstConstraintExpr(Expr *E,
+                          const MultiLevelTemplateArgumentList &TemplateArgs) {
+  if (!E)
+    return E;
+
+  TemplateInstantiator Instantiator(*this, TemplateArgs, SourceLocation(),
+                                    DeclarationName(),
+                                    /*EvaluatingConstraint*/ true);
   return Instantiator.TransformExpr(E);
 }
 
