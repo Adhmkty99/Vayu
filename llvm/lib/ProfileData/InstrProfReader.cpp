@@ -1034,12 +1034,24 @@ IndexedInstrProfReader::getInstrProfRecord(StringRef FuncName,
   if (Err)
     return std::move(Err);
   // Found it. Look for counters with the right hash.
+
+  // A flag to indicate if the records are from the same type
+  // of profile (i.e cs vs nocs).
+  bool CSBitMatch = false;
+
   for (const NamedInstrProfRecord &I : Data) {
     // Check for a match and fill the vector if there is one.
     if (I.Hash == FuncHash)
       return std::move(I);
+    if (NamedInstrProfRecord::hasCSFlagInHash(I.Hash) ==
+        NamedInstrProfRecord::hasCSFlagInHash(FuncHash)) {
+      CSBitMatch = true;
+    }
   }
-  return error(instrprof_error::hash_mismatch);
+  if (CSBitMatch) {
+    return error(instrprof_error::hash_mismatch);
+  }
+  return error(instrprof_error::unknown_function);
 }
 
 Expected<memprof::MemProfRecord>
@@ -1050,9 +1062,9 @@ IndexedInstrProfReader::getMemProfRecord(const uint64_t FuncNameHash) {
                                       "no memprof data available in profile");
   auto Iter = MemProfRecordTable->find(FuncNameHash);
   if (Iter == MemProfRecordTable->end())
-    return make_error<InstrProfError>(instrprof_error::hash_mismatch,
-                                      "memprof record not found for hash " +
-                                          Twine(FuncNameHash));
+    return make_error<InstrProfError>(
+        instrprof_error::unknown_function,
+        "memprof record not found for function hash " + Twine(FuncNameHash));
 
   // Setup a callback to convert from frame ids to frame using the on-disk
   // FrameData hash table.

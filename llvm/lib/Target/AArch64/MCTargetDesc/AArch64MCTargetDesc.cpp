@@ -34,6 +34,7 @@ using namespace llvm;
 
 #define GET_INSTRINFO_MC_DESC
 #define GET_INSTRINFO_MC_HELPERS
+#define ENABLE_INSTR_PREDICATE_VERIFIER
 #include "AArch64GenInstrInfo.inc"
 
 #define GET_SUBTARGETINFO_MC_DESC
@@ -52,6 +53,8 @@ static MCSubtargetInfo *
 createAArch64MCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
   if (CPU.empty()) {
     CPU = "generic";
+    if (FS.empty())
+      FS = "+v8a";
 
     if (TT.isArm64e())
       CPU = "apple-a12";

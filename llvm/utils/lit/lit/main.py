@@ -18,6 +18,7 @@ import lit.reports
 import lit.run
 import lit.Test
 import lit.util
+from lit.formats.googletest import GoogleTest
 from lit.TestTimes import record_test_times
 
 
@@ -36,6 +37,7 @@ def main(builtin_params={}):
         noExecute=opts.noExecute,
         debug=opts.debug,
         isWindows=is_windows,
+        order=opts.order,
         params=params,
         config_prefix=opts.configPrefix,
         echo_all_commands=opts.echoAllCommands)
@@ -86,11 +88,9 @@ def main(builtin_params={}):
 
     # When running multiple shards, don't include skipped tests in the xunit
     # output since merging the files will result in duplicates.
-    tests_for_report = discovered_tests
     if opts.shard:
         (run, shards) = opts.shard
         selected_tests = filter_by_shard(selected_tests, run, shards, lit_config)
-        tests_for_report = selected_tests
         if not selected_tests:
             sys.stderr.write('warning: shard does not contain any tests.  '
                              'Consider decreasing the number of shards.\n')
@@ -108,11 +108,15 @@ def main(builtin_params={}):
 
     record_test_times(selected_tests, lit_config)
 
+    selected_tests, discovered_tests, has_failure = GoogleTest.post_process_shard_results(
+        selected_tests, discovered_tests)
+
     if opts.time_tests:
         print_histogram(discovered_tests)
 
     print_results(discovered_tests, elapsed, opts)
 
+    tests_for_report = selected_tests if opts.shard else discovered_tests
     for report in opts.reports:
         report.write_results(tests_for_report, elapsed)
 
@@ -123,7 +127,7 @@ def main(builtin_params={}):
     if lit_config.numWarnings:
         sys.stderr.write('\n%d warning(s) in tests\n' % lit_config.numWarnings)
 
-    has_failure = any(t.isFailure() for t in discovered_tests)
+    has_failure = has_failure or any(t.isFailure() for t in discovered_tests)
     if has_failure:
         if opts.ignoreFail:
             sys.stderr.write("\nExiting with status 0 instead of 1 because "
