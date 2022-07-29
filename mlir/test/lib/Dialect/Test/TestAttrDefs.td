@@ -55,7 +55,7 @@ def CompoundAttrNested : Test_Attr<"CompoundAttrNested"> {
 def AttrWithSelfTypeParam : Test_Attr<"AttrWithSelfTypeParam"> {
   let mnemonic = "attr_with_self_type_param";
   let parameters = (ins AttributeSelfTypeParameter<"">:$type);
-  let hasCustomAssemblyFormat = 1;
+  let assemblyFormat = "";
 }
 
 // An attribute testing AttributeSelfTypeParameter.
@@ -175,11 +175,19 @@ def TestAttrWithFormat : Test_Attr<"TestAttrWithFormat"> {
     TestParamOne:$one,
     TestParamTwo:$two,
     "::mlir::IntegerAttr":$three,
-    TestParamFour:$four
+    TestParamFour:$four,
+    // Array of another attribute.
+    ArrayRefParameter<
+      "AttrWithTypeBuilderAttr", // The parameter C++ type.
+      "An example of an array of another Attribute" // Parameter description.
+      >: $arrayOfAttrWithTypeBuilderAttr
   );
 
   let mnemonic = "attr_with_format";
-  let assemblyFormat = "`<` $one `:` struct($two, $four) `:` $three `>`";
+  let assemblyFormat = [{
+    `<` $one `:` struct($two, $four) `:` $three `,`
+    `[` `` $arrayOfAttrWithTypeBuilderAttr `]` `>`
+  }];
   let genVerifyDecl = 1;
 }
 
@@ -203,6 +211,15 @@ def TestAttrWithTypeParam : Test_Attr<"TestAttrWithTypeParam"> {
                         "::mlir::Type":$any_type);
   let mnemonic = "attr_with_type";
   let assemblyFormat = "`<` $int_type `,` $any_type `>`";
+}
+
+// Test self type parameter with assembly format.
+def TestAttrSelfTypeParameterFormat
+    : Test_Attr<"TestAttrSelfTypeParameterFormat"> {
+  let parameters = (ins "int":$a, AttributeSelfTypeParameter<"">:$type);
+
+  let mnemonic = "attr_self_type_format";
+  let assemblyFormat = "`<` $a `>`";
 }
 
 #endif // TEST_ATTRDEFS
