@@ -29,6 +29,7 @@
 #include "llvm/IR/Mangler.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
+#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCExpr.h"
@@ -70,10 +71,10 @@ bool X86AsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   if (Subtarget->isTargetCOFF()) {
     bool Local = MF.getFunction().hasLocalLinkage();
     OutStreamer->BeginCOFFSymbolDef(CurrentFnSym);
-    OutStreamer->EmitCOFFSymbolStorageClass(
+    OutStreamer->emitCOFFSymbolStorageClass(
         Local ? COFF::IMAGE_SYM_CLASS_STATIC : COFF::IMAGE_SYM_CLASS_EXTERNAL);
-    OutStreamer->EmitCOFFSymbolType(COFF::IMAGE_SYM_DTYPE_FUNCTION
-                                               << COFF::SCT_COMPLEX_TYPE_SHIFT);
+    OutStreamer->emitCOFFSymbolType(COFF::IMAGE_SYM_DTYPE_FUNCTION
+                                    << COFF::SCT_COMPLEX_TYPE_SHIFT);
     OutStreamer->EndCOFFSymbolDef();
   }
 
@@ -678,8 +679,8 @@ void X86AsmPrinter::emitStartOfAsmFile(Module &M) {
     // compiler features bitfield read by link.exe.
     MCSymbol *S = MMI->getContext().getOrCreateSymbol(StringRef("@feat.00"));
     OutStreamer->BeginCOFFSymbolDef(S);
-    OutStreamer->EmitCOFFSymbolStorageClass(COFF::IMAGE_SYM_CLASS_STATIC);
-    OutStreamer->EmitCOFFSymbolType(COFF::IMAGE_SYM_DTYPE_NULL);
+    OutStreamer->emitCOFFSymbolStorageClass(COFF::IMAGE_SYM_CLASS_STATIC);
+    OutStreamer->emitCOFFSymbolType(COFF::IMAGE_SYM_DTYPE_NULL);
     OutStreamer->EndCOFFSymbolDef();
     int64_t Feat00Flags = 0;
 
@@ -802,6 +803,22 @@ void X86AsmPrinter::emitEndOfAsmFile(Module &M) {
   } else if (TT.isOSBinFormatELF()) {
     emitStackMaps(SM);
     FM.serializeToFaultMapSection();
+  }
+
+  // Emit __morestack address if needed for indirect calls.
+  if (TT.getArch() == Triple::x86_64 && TM.getCodeModel() == CodeModel::Large) {
+    if (MCSymbol *AddrSymbol = OutContext.lookupSymbol("__morestack_addr")) {
+      Align Alignment(1);
+      MCSection *ReadOnlySection = getObjFileLowering().getSectionForConstant(
+          getDataLayout(), SectionKind::getReadOnly(),
+          /*C=*/nullptr, Alignment);
+      OutStreamer->SwitchSection(ReadOnlySection);
+      OutStreamer->emitLabel(AddrSymbol);
+
+      unsigned PtrSize = MAI->getCodePointerSize();
+      OutStreamer->emitSymbolValue(GetExternalSymbolSymbol("__morestack"),
+                                   PtrSize);
+    }
   }
 }
 

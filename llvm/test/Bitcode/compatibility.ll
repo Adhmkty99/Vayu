@@ -562,6 +562,8 @@ declare void @f.param.swifterror(i8** swifterror)
 ; CHECK: declare void @f.param.swifterror(i8** swifterror)
 declare void @f.param.allocalign(i32 allocalign)
 ; CHECK: declare void @f.param.allocalign(i32 allocalign)
+declare void @f.param.allocptr(i32* allocptr)
+; CHECK: declare void @f.param.allocptr(i32* allocptr)
 
 ; Functions -- unnamed_addr and local_unnamed_addr
 declare void @f.unnamed_addr() unnamed_addr
@@ -849,6 +851,12 @@ define void @fp_atomics(float* %word) {
 ; CHECK: %atomicrmw.fsub = atomicrmw fsub float* %word, float 1.000000e+00 monotonic
   %atomicrmw.fsub = atomicrmw fsub float* %word, float 1.0 monotonic
 
+  ret void
+}
+
+define void @pointer_atomics(i8** %word) {
+; CHECK: %atomicrmw.xchg = atomicrmw xchg i8** %word, i8* null monotonic
+  %atomicrmw.xchg = atomicrmw xchg i8** %word, i8* null monotonic
   ret void
 }
 
