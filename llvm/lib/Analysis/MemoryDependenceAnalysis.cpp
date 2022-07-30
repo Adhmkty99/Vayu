@@ -502,10 +502,10 @@ MemDepResult MemoryDependenceResults::getSimplePointerDependencyFrom(
       // If we found a pointer, check if it could be the same as our pointer.
       AliasResult R = BatchAA.alias(LoadLoc, MemLoc);
 
-      if (isLoad) {
-        if (R == AliasResult::NoAlias)
-          continue;
+      if (R == AliasResult::NoAlias)
+        continue;
 
+      if (isLoad) {
         // Must aliased loads are defs of each other.
         if (R == AliasResult::MustAlias)
           return MemDepResult::getDef(Inst);
@@ -521,10 +521,6 @@ MemDepResult MemoryDependenceResults::getSimplePointerDependencyFrom(
         // dependence.
         continue;
       }
-
-      // Stores don't depend on other no-aliased accesses.
-      if (R == AliasResult::NoAlias)
-        continue;
 
       // Stores don't alias loads from read-only memory.
       if (BatchAA.pointsToConstantMemory(LoadLoc))
@@ -1199,7 +1195,6 @@ bool MemoryDependenceResults::getNonLocalPointerDepFromBB(
     // If we do process a large number of blocks it becomes very expensive and
     // likely it isn't worth worrying about
     if (Result.size() > NumResultsLimit) {
-      Worklist.clear();
       // Sort it now (if needed) so that recursive invocations of
       // getNonLocalPointerDepFromBB and other routines that could reuse the
       // cache value will only see properly sorted cache arrays.
