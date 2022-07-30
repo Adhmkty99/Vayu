@@ -729,11 +729,13 @@ uint64_t InputSectionBase::getRelocTargetVA(const InputFile *file, RelType type,
     if (expr == R_ARM_PCA)
       // Some PC relative ARM (Thumb) relocations align down the place.
       p = p & 0xfffffffc;
-    if (sym.isUndefWeak()) {
+    if (sym.isUndefined()) {
       // On ARM and AArch64 a branch to an undefined weak resolves to the next
       // instruction, otherwise the place. On RISCV, resolve an undefined weak
       // to the same instruction to cause an infinite loop (making the user
       // aware of the issue) while ensuring no overflow.
+      // Note: if the symbol is hidden, its binding has been converted to local,
+      // so we just check isUndefined() here.
       if (config->emachine == EM_ARM)
         dest = getARMUndefinedRelativeWeakVA(type, a, p);
       else if (config->emachine == EM_AARCH64)
@@ -1374,15 +1376,15 @@ void MergeInputSection::splitStrings(StringRef s, size_t entSize) {
   if (entSize == 1) {
     // Optimize the common case.
     do {
-      size_t size = strlen(p) + 1;
+      size_t size = strlen(p);
       pieces.emplace_back(p - s.begin(), xxHash64(StringRef(p, size)), live);
-      p += size;
+      p += size + 1;
     } while (p != end);
   } else {
     do {
-      size_t size = findNull(StringRef(p, end - p), entSize) + entSize;
+      size_t size = findNull(StringRef(p, end - p), entSize);
       pieces.emplace_back(p - s.begin(), xxHash64(StringRef(p, size)), live);
-      p += size;
+      p += size + entSize;
     } while (p != end);
   }
 }

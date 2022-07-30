@@ -1623,6 +1623,13 @@ Verifier::visitModuleFlag(const MDNode *Op,
     // These behavior types accept any value.
     break;
 
+  case Module::Min: {
+    Check(mdconst::dyn_extract_or_null<ConstantInt>(Op->getOperand(2)),
+          "invalid value for 'min' module flag (expected constant integer)",
+          Op->getOperand(2));
+    break;
+  }
+
   case Module::Max: {
     Check(mdconst::dyn_extract_or_null<ConstantInt>(Op->getOperand(2)),
           "invalid value for 'max' module flag (expected constant integer)",
@@ -3918,7 +3925,8 @@ void Verifier::visitAtomicRMWInst(AtomicRMWInst &RMWI) {
   auto Op = RMWI.getOperation();
   Type *ElTy = RMWI.getOperand(1)->getType();
   if (Op == AtomicRMWInst::Xchg) {
-    Check(ElTy->isIntegerTy() || ElTy->isFloatingPointTy(),
+    Check(ElTy->isIntegerTy() || ElTy->isFloatingPointTy() ||
+              ElTy->isPointerTy(),
           "atomicrmw " + AtomicRMWInst::getOperationName(Op) +
               " operand must have integer or floating point type!",
           &RMWI, ElTy);

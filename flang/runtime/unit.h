@@ -83,7 +83,6 @@ public:
       const char *, std::size_t, std::size_t elementBytes, IoErrorHandler &);
   bool Receive(char *, std::size_t, std::size_t elementBytes, IoErrorHandler &);
   std::size_t GetNextInputBytes(const char *&, IoErrorHandler &);
-  void SetLeftTabLimit();
   bool BeginReadingRecord(IoErrorHandler &);
   void FinishReadingRecord(IoErrorHandler &);
   bool AdvanceRecord(IoErrorHandler &);
@@ -116,6 +115,7 @@ private:
   void DoEndfile(IoErrorHandler &);
   void CommitWrites();
   bool CheckDirectAccess(IoErrorHandler &);
+  void HitEndOnRead(IoErrorHandler &);
 
   int unitNumber_{-1};
   Direction direction_{Direction::Output};
@@ -125,7 +125,8 @@ private:
 
   Lock lock_;
 
-  // When an I/O statement is in progress on this unit, holds its state.
+  // When a synchronous I/O statement is in progress on this unit, holds its
+  // state.
   std::variant<std::monostate, OpenStatementState, CloseStatementState,
       ExternalFormattedIoStatementState<Direction::Output>,
       ExternalFormattedIoStatementState<Direction::Input>,
