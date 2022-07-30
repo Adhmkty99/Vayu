@@ -866,19 +866,19 @@ OMPOrderedDirective *OMPOrderedDirective::CreateEmpty(const ASTContext &C,
 OMPAtomicDirective *
 OMPAtomicDirective::Create(const ASTContext &C, SourceLocation StartLoc,
                            SourceLocation EndLoc, ArrayRef<OMPClause *> Clauses,
-                           Stmt *AssociatedStmt, Expr *X, Expr *V, Expr *E,
-                           Expr *UE, Expr *D, Expr *Cond, bool IsXLHSInRHSPart,
-                           bool IsPostfixUpdate) {
+                           Stmt *AssociatedStmt, Expressions Exprs) {
   auto *Dir = createDirective<OMPAtomicDirective>(
-      C, Clauses, AssociatedStmt, /*NumChildren=*/6, StartLoc, EndLoc);
-  Dir->setX(X);
-  Dir->setV(V);
-  Dir->setExpr(E);
-  Dir->setUpdateExpr(UE);
-  Dir->setD(D);
-  Dir->setCond(Cond);
-  Dir->IsXLHSInRHSPart = IsXLHSInRHSPart;
-  Dir->IsPostfixUpdate = IsPostfixUpdate;
+      C, Clauses, AssociatedStmt, /*NumChildren=*/7, StartLoc, EndLoc);
+  Dir->setX(Exprs.X);
+  Dir->setV(Exprs.V);
+  Dir->setR(Exprs.R);
+  Dir->setExpr(Exprs.E);
+  Dir->setUpdateExpr(Exprs.UE);
+  Dir->setD(Exprs.D);
+  Dir->setCond(Exprs.Cond);
+  Dir->Flags.IsXLHSInRHSPart = Exprs.IsXLHSInRHSPart ? 1 : 0;
+  Dir->Flags.IsPostfixUpdate = Exprs.IsPostfixUpdate ? 1 : 0;
+  Dir->Flags.IsFailOnly = Exprs.IsFailOnly ? 1 : 0;
   return Dir;
 }
 
@@ -886,7 +886,7 @@ OMPAtomicDirective *OMPAtomicDirective::CreateEmpty(const ASTContext &C,
                                                     unsigned NumClauses,
                                                     EmptyShell) {
   return createEmptyDirective<OMPAtomicDirective>(
-      C, NumClauses, /*HasAssociatedStmt=*/true, /*NumChildren=*/6);
+      C, NumClauses, /*HasAssociatedStmt=*/true, /*NumChildren=*/7);
 }
 
 OMPTargetDirective *OMPTargetDirective::Create(const ASTContext &C,

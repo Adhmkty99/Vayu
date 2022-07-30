@@ -10,6 +10,7 @@
 #include "mlir/IR/Operation.h"
 #include "mlir/Interfaces/CallInterfaces.h"
 #include "mlir/Interfaces/ControlFlowInterfaces.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallPtrSet.h"
 
 #include <queue>
@@ -113,6 +114,7 @@ private:
   /// the parent operation results.
   void visitRegionSuccessors(
       Operation *parentOp, ArrayRef<RegionSuccessor> regionSuccessors,
+      ArrayRef<AbstractLatticeElement *> operandLattices,
       function_ref<OperandRange(Optional<unsigned>)> getInputsForRegion);
 
   /// Visit the given terminator operation and compute any necessary lattice
@@ -357,11 +359,20 @@ void ForwardDataFlowSolver::visitOperation(Operation *op) {
     if (auto branch = dyn_cast<RegionBranchOpInterface>(op))
       return visitRegionBranchOperation(branch, operandLattices);
 
-    // If we can't, conservatively mark all regions as executable.
-    // TODO: Let the `visitOperation` method decide how to propagate
-    // information to the block arguments.
-    for (Region &region : op->getRegions())
-      markEntryBlockExecutable(&region, /*markPessimisticFixpoint=*/true);
+    for (Region &region : op->getRegions()) {
+      analysis.visitNonControlFlowArguments(op, RegionSuccessor(&region),
+                                            operandLattices);
+      // `visitNonControlFlowArguments` is required to define all of the region
+      // argument lattices.
+      assert(llvm::none_of(
+                 region.getArguments(),
+                 [&](Value value) {
+                   return analysis.getLatticeElement(value).isUninitialized();
+                 }) &&
+             "expected `visitNonControlFlowArguments` to define all argument "
+             "lattices");
+      markEntryBlockExecutable(&region, /*markPessimisticFixpoint=*/false);
+    }
   }
 
   // If this op produces no results, it can't produce any constants.
@@ -460,7 +471,7 @@ void ForwardDataFlowSolver::visitRegionBranchOperation(
   if (successors.empty())
     return markAllPessimisticFixpoint(branch, branch->getResults());
   return visitRegionSuccessors(
-      branch, successors, [&](Optional<unsigned> index) {
+      branch, successors, operandLattices, [&](Optional<unsigned> index) {
         assert(index && "expected valid region index");
         return branch.getSuccessorEntryOperands(*index);
       });
@@ -468,6 +479,7 @@ void ForwardDataFlowSolver::visitRegionBranchOperation(
 
 void ForwardDataFlowSolver::visitRegionSuccessors(
     Operation *parentOp, ArrayRef<RegionSuccessor> regionSuccessors,
+    ArrayRef<AbstractLatticeElement *> operandLattices,
     function_ref<OperandRange(Optional<unsigned>)> getInputsForRegion) {
   for (const RegionSuccessor &it : regionSuccessors) {
     Region *region = it.getSuccessor();
@@ -514,22 +526,25 @@ void ForwardDataFlowSolver::visitRegionSuccessors(
     if (llvm::all_of(arguments, [&](Value arg) { return isAtFixpoint(arg); }))
       continue;
 
-    // Mark any arguments that do not receive inputs as having reached a
-    // pessimistic fixpoint, we won't be able to discern if they are constant.
-    // TODO: This isn't exactly ideal. There may be situations in which a
-    // region operation can provide information for certain results that
-    // aren't part of the control flow.
     if (succArgs.size() != arguments.size()) {
-      if (succArgs.empty()) {
-        markAllPessimisticFixpoint(arguments);
-        continue;
+      if (analysis.visitNonControlFlowArguments(
+              parentOp, it, operandLattices) == ChangeResult::Change) {
+        unsigned firstArgIdx =
+            succArgs.empty() ? 0
+                             : succArgs[0].cast<BlockArgument>().getArgNumber();
+        for (Value v : arguments.take_front(firstArgIdx)) {
+          assert(!analysis.getLatticeElement(v).isUninitialized() &&
+                 "Non-control flow block arg has no lattice value after "
+                 "analysis callback");
+          visitUsers(v);
+        }
+        for (Value v : arguments.drop_front(firstArgIdx + succArgs.size())) {
+          assert(!analysis.getLatticeElement(v).isUninitialized() &&
+                 "Non-control flow block arg has no lattice value after "
+                 "analysis callback");
+          visitUsers(v);
+        }
       }
-
-      unsigned firstArgIdx = succArgs[0].cast<BlockArgument>().getArgNumber();
-      markAllPessimisticFixpointAndVisitUsers(
-          arguments.take_front(firstArgIdx));
-      markAllPessimisticFixpointAndVisitUsers(
-          arguments.drop_front(firstArgIdx + succArgs.size()));
     }
 
     // Update the lattice of arguments that have inputs from the predecessor.
@@ -561,24 +576,58 @@ void ForwardDataFlowSolver::visitTerminatorOperation(
     if (!regionInterface || !isBlockExecutable(parentOp->getBlock()))
       return;
 
+    // If the branch is a RegionBranchTerminatorOpInterface,
+    // construct the set of operand lattices as the set of non control-flow
+    // arguments of the parent and the values this op returns. This allows
+    // for the correct lattices to be passed to getSuccessorsForOperands()
+    // in cases such as scf.while.
+    ArrayRef<AbstractLatticeElement *> branchOpLattices = operandLattices;
+    SmallVector<AbstractLatticeElement *, 0> parentLattices;
+    if (auto regionTerminator =
+            dyn_cast<RegionBranchTerminatorOpInterface>(op)) {
+      parentLattices.reserve(regionInterface->getNumOperands());
+      for (Value parentOperand : regionInterface->getOperands()) {
+        AbstractLatticeElement *operandLattice =
+            analysis.lookupLatticeElement(parentOperand);
+        if (!operandLattice || operandLattice->isUninitialized())
+          return;
+        parentLattices.push_back(operandLattice);
+      }
+      unsigned regionNumber = parentRegion->getRegionNumber();
+      OperandRange iterArgs =
+          regionInterface.getSuccessorEntryOperands(regionNumber);
+      OperandRange terminatorArgs =
+          regionTerminator.getSuccessorOperands(regionNumber);
+      assert(iterArgs.size() == terminatorArgs.size() &&
+             "Number of iteration arguments for region should equal number of "
+             "those arguments defined by terminator");
+      if (!iterArgs.empty()) {
+        unsigned iterStart = iterArgs.getBeginOperandIndex();
+        unsigned terminatorStart = terminatorArgs.getBeginOperandIndex();
+        for (unsigned i = 0, e = iterArgs.size(); i < e; ++i)
+          parentLattices[iterStart + i] = operandLattices[terminatorStart + i];
+      }
+      branchOpLattices = parentLattices;
+    }
     // Query the set of successors of the current region using the current
     // optimistic lattice state.
     SmallVector<RegionSuccessor, 1> regionSuccessors;
     analysis.getSuccessorsForOperands(regionInterface,
                                       parentRegion->getRegionNumber(),
-                                      operandLattices, regionSuccessors);
+                                      branchOpLattices, regionSuccessors);
     if (regionSuccessors.empty())
       return;
 
     // Try to get "region-like" successor operands if possible in order to
     // propagate the operand states to the successors.
     if (isRegionReturnLike(op)) {
-      return visitRegionSuccessors(
-          parentOp, regionSuccessors, [&](Optional<unsigned> regionIndex) {
-            // Determine the individual region successor operands for the given
-            // region index (if any).
-            return *getRegionBranchSuccessorOperands(op, regionIndex);
-          });
+      auto getOperands = [&](Optional<unsigned> regionIndex) {
+        // Determine the individual region  successor operands for the given
+        // region index (if any).
+        return *getRegionBranchSuccessorOperands(op, regionIndex);
+      };
+      return visitRegionSuccessors(parentOp, regionSuccessors, branchOpLattices,
+                                   getOperands);
     }
 
     // If this terminator is not "region-like", conservatively mark all of the
