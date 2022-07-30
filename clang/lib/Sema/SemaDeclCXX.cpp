@@ -2501,6 +2501,11 @@ Sema::CheckBaseSpecifier(CXXRecordDecl *Class,
                          bool Virtual, AccessSpecifier Access,
                          TypeSourceInfo *TInfo,
                          SourceLocation EllipsisLoc) {
+  // In HLSL, unspecified class access is public rather than private.
+  if (getLangOpts().HLSL && Class->getTagKind() == TTK_Class &&
+      Access == AS_none)
+    Access = AS_public;
+
   QualType BaseType = TInfo->getType();
   if (BaseType->containsErrors()) {
     // Already emitted a diagnostic when parsing the error type.
@@ -3432,7 +3437,7 @@ Sema::ActOnCXXMemberDeclarator(Scope *S, AccessSpecifier AS, Declarator &D,
           << SourceRange(D.getName().TemplateId->LAngleLoc,
                          D.getName().TemplateId->RAngleLoc)
           << D.getName().TemplateId->LAngleLoc;
-      D.SetIdentifier(Name.getAsIdentifierInfo(), Loc);
+      D.SetIdentifier(II, Loc);
     }
 
     if (SS.isSet() && !SS.isInvalid()) {
@@ -4299,6 +4304,15 @@ Sema::BuildMemInitializer(Decl *ConstructorD,
 
           R.clear();
           R.setLookupName(MemberOrBase);
+        }
+      }
+
+      if (getLangOpts().MSVCCompat && !getLangOpts().CPlusPlus20) {
+        auto UnqualifiedBase = R.getAsSingle<ClassTemplateDecl>();
+        if (UnqualifiedBase) {
+          Diag(IdLoc, diag::ext_unqualified_base_class)
+              << SourceRange(IdLoc, Init->getSourceRange().getEnd());
+          BaseType = UnqualifiedBase->getInjectedClassNameSpecialization();
         }
       }
 
@@ -5416,8 +5430,7 @@ static void DiagnoseBaseOrMemInitializerOrder(
     return;
 
   // Sort based on the ideal order, first in the pair.
-  llvm::sort(CorrelatedInitOrder,
-             [](auto &LHS, auto &RHS) { return LHS.first < RHS.first; });
+  llvm::sort(CorrelatedInitOrder, llvm::less_first());
 
   // Introduce a new scope as SemaDiagnosticBuilder needs to be destroyed to
   // emit the diagnostic before we can try adding notes.
@@ -8604,10 +8617,10 @@ bool Sema::CheckExplicitlyDefaultedComparison(Scope *S, FunctionDecl *FD,
                             int(1)))
       return true;
 
-    if (llvm::find_if(RD->friends(), [&](const FriendDecl *F) {
+    if (llvm::none_of(RD->friends(), [&](const FriendDecl *F) {
           return FD->getCanonicalDecl() ==
                  F->getFriendDecl()->getCanonicalDecl();
-        }) == RD->friends().end()) {
+        })) {
       Diag(FD->getLocation(), diag::err_defaulted_comparison_not_friend)
           << int(DCK) << int(0) << RD;
       Diag(RD->getCanonicalDecl()->getLocation(), diag::note_declared_at);
@@ -9199,13 +9212,12 @@ bool SpecialMemberDeletionInfo::shouldDeleteForField(FieldDecl *FD) {
           << !!ICI << MD->getParent() << FD << FieldType << /*Reference*/0;
       return true;
     }
-    // C++11 [class.ctor]p5: any non-variant non-static data member of
-    // const-qualified type (or array thereof) with no
-    // brace-or-equal-initializer does not have a user-provided default
-    // constructor.
+    // C++11 [class.ctor]p5 (modified by DR2394): any non-variant non-static
+    // data member of const-qualified type (or array thereof) with no
+    // brace-or-equal-initializer is not const-default-constructible.
     if (!inUnion() && FieldType.isConstQualified() &&
         !FD->hasInClassInitializer() &&
-        (!FieldRecord || !FieldRecord->hasUserProvidedDefaultConstructor())) {
+        (!FieldRecord || !FieldRecord->allowConstDefaultInit())) {
       if (Diagnose)
         S.Diag(FD->getLocation(), diag::note_deleted_default_ctor_uninit_field)
           << !!ICI << MD->getParent() << FD << FD->getType() << /*Const*/1;
@@ -11023,6 +11035,8 @@ void Sema::CheckDeductionGuideDeclarator(Declarator &D, QualType &R,
       TemplateName SpecifiedName = RetTST.getTypePtr()->getTemplateName();
       bool TemplateMatches =
           Context.hasSameTemplateName(SpecifiedName, GuidedTemplate);
+      // FIXME: We should consider other template kinds (using, qualified),
+      // otherwise we will emit bogus diagnostics.
       if (SpecifiedName.getKind() == TemplateName::Template && TemplateMatches)
         AcceptableReturnType = true;
       else {
@@ -13351,7 +13365,8 @@ void Sema::CheckImplicitSpecialMemberDeclaration(Scope *S, FunctionDecl *FD) {
   R.resolveKind();
   R.suppressDiagnostics();
 
-  CheckFunctionDeclaration(S, FD, R, /*IsMemberSpecialization*/false);
+  CheckFunctionDeclaration(S, FD, R, /*IsMemberSpecialization*/ false,
+                           FD->isThisDeclarationADefinition());
 }
 
 void Sema::setupImplicitSpecialMemberType(CXXMethodDecl *SpecialMem,
@@ -17376,6 +17391,21 @@ void Sema::DiagnoseReturnInConstructorExceptionHandler(CXXTryStmt *TryBlock) {
   for (unsigned I = 0, E = TryBlock->getNumHandlers(); I != E; ++I) {
     CXXCatchStmt *Handler = TryBlock->getHandler(I);
     SearchForReturnInStmt(*this, Handler);
+  }
+}
+
+void Sema::SetFunctionBodyKind(Decl *D, SourceLocation Loc,
+                               FnBodyKind BodyKind) {
+  switch (BodyKind) {
+  case FnBodyKind::Delete:
+    SetDeclDeleted(D, Loc);
+    break;
+  case FnBodyKind::Default:
+    SetDeclDefaulted(D, Loc);
+    break;
+  case FnBodyKind::Other:
+    llvm_unreachable(
+        "Parsed function body should be '= delete;' or '= default;'");
   }
 }
 
