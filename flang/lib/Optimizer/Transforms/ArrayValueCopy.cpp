@@ -7,12 +7,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "flang/Lower/Todo.h"
 #include "flang/Optimizer/Builder/Array.h"
 #include "flang/Optimizer/Builder/BoxValue.h"
 #include "flang/Optimizer/Builder/FIRBuilder.h"
 #include "flang/Optimizer/Builder/Factory.h"
 #include "flang/Optimizer/Builder/Runtime/Derived.h"
+#include "flang/Optimizer/Builder/Todo.h"
 #include "flang/Optimizer/Dialect/FIRDialect.h"
 #include "flang/Optimizer/Dialect/FIROpsSupport.h"
 #include "flang/Optimizer/Support/FIRContext.h"
@@ -684,7 +684,7 @@ conservativeCallConflict(llvm::ArrayRef<mlir::Operation *> reaches) {
               call.getCallableForCallee().dyn_cast<mlir::SymbolRefAttr>()) {
         auto module = op->getParentOfType<mlir::ModuleOp>();
         return hasHostAssociationArgument(
-            module.lookupSymbol<mlir::FuncOp>(callee));
+            module.lookupSymbol<mlir::func::FuncOp>(callee));
       }
     return false;
   });
