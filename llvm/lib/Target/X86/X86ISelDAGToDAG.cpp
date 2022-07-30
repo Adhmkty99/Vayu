@@ -532,7 +532,7 @@ namespace {
 
       unsigned StoreSize = N->getMemoryVT().getStoreSize();
 
-      if (N->getAlignment() < StoreSize)
+      if (N->getAlign().value() < StoreSize)
         return false;
 
       switch (StoreSize) {
@@ -6176,6 +6176,7 @@ SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintID,
   case InlineAsm::Constraint_v: // not offsetable    ??
   case InlineAsm::Constraint_m: // memory
   case InlineAsm::Constraint_X:
+  case InlineAsm::Constraint_p: // address
     if (!selectAddr(nullptr, Op, Op0, Op1, Op2, Op3, Op4))
       return true;
     break;
