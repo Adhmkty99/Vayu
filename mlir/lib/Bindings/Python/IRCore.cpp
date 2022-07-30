@@ -16,10 +16,9 @@
 #include "mlir-c/BuiltinTypes.h"
 #include "mlir-c/Debug.h"
 #include "mlir-c/IR.h"
-#include "mlir-c/Registration.h"
+//#include "mlir-c/Registration.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
-#include <pybind11/stl.h>
 
 #include <utility>
 
@@ -475,7 +474,6 @@ py::object PyMlirContext::createFromCapsule(py::object capsule) {
 
 PyMlirContext *PyMlirContext::createNewContextForInit() {
   MlirContext context = mlirContextCreate();
-  mlirRegisterAllDialects(context);
   return new PyMlirContext(context);
 }
 
@@ -504,6 +502,14 @@ PyMlirContext::LiveContextMap &PyMlirContext::getLiveContexts() {
 size_t PyMlirContext::getLiveCount() { return getLiveContexts().size(); }
 
 size_t PyMlirContext::getLiveOperationCount() { return liveOperations.size(); }
+
+size_t PyMlirContext::clearLiveOperations() {
+  for (auto &op : liveOperations)
+    op.second.second->setInvalid();
+  size_t numInvalidated = liveOperations.size();
+  liveOperations.clear();
+  return numInvalidated;
+}
 
 size_t PyMlirContext::getLiveModuleCount() { return liveModules.size(); }
 
@@ -786,7 +792,7 @@ py::tuple PyDiagnostic::getNotes() {
 }
 
 //------------------------------------------------------------------------------
-// PyDialect, PyDialectDescriptor, PyDialects
+// PyDialect, PyDialectDescriptor, PyDialects, PyDialectRegistry
 //------------------------------------------------------------------------------
 
 MlirDialect PyDialects::getDialectForKey(const std::string &key,
@@ -798,6 +804,19 @@ MlirDialect PyDialects::getDialectForKey(const std::string &key,
                      Twine("Dialect '") + key + "' not found");
   }
   return dialect;
+}
+
+py::object PyDialectRegistry::getCapsule() {
+  return py::reinterpret_steal<py::object>(
+      mlirPythonDialectRegistryToCapsule(*this));
+}
+
+PyDialectRegistry PyDialectRegistry::createFromCapsule(py::object capsule) {
+  MlirDialectRegistry rawRegistry =
+      mlirPythonCapsuleToDialectRegistry(capsule.ptr());
+  if (mlirDialectRegistryIsNull(rawRegistry))
+    throw py::error_already_set();
+  return PyDialectRegistry(rawRegistry);
 }
 
 //------------------------------------------------------------------------------
@@ -995,6 +1014,8 @@ void PyOperationBase::print(py::object fileObject, bool binary,
     mlirOpPrintingFlagsEnableDebugInfo(flags, /*prettyForm=*/prettyDebugInfo);
   if (printGenericOpForm)
     mlirOpPrintingFlagsPrintGenericOpForm(flags);
+  if (useLocalScope)
+    mlirOpPrintingFlagsUseLocalScope(flags);
 
   PyFileAccumulator accum(fileObject, binary);
   mlirOperationPrintWithFlags(operation, flags, accum.getCallback(),
@@ -2198,8 +2219,11 @@ void mlir::python::populateIRCore(py::module &m) {
 
   //----------------------------------------------------------------------------
   // Mapping of MlirContext.
+  // Note that this is exported as _BaseContext. The containing, Python level
+  // __init__.py will subclass it with site-specific functionality and set a
+  // "Context" attribute on this module.
   //----------------------------------------------------------------------------
-  py::class_<PyMlirContext>(m, "Context", py::module_local())
+  py::class_<PyMlirContext>(m, "_BaseContext", py::module_local())
       .def(py::init<>(&PyMlirContext::createNewContextForInit))
       .def_static("_get_live_count", &PyMlirContext::getLiveCount)
       .def("_get_context_again",
@@ -2208,6 +2232,7 @@ void mlir::python::populateIRCore(py::module &m) {
              return ref.releaseObject();
            })
       .def("_get_live_operation_count", &PyMlirContext::getLiveOperationCount)
+      .def("_clear_live_operations", &PyMlirContext::clearLiveOperations)
       .def("_get_live_module_count", &PyMlirContext::getLiveModuleCount)
       .def_property_readonly(MLIR_PYTHON_CAPI_PTR_ATTR,
                              &PyMlirContext::getCapsule)
@@ -2266,7 +2291,16 @@ void mlir::python::populateIRCore(py::module &m) {
             return mlirContextIsRegisteredOperation(
                 self.get(), MlirStringRef{name.data(), name.size()});
           },
-          py::arg("operation_name"));
+          py::arg("operation_name"))
+      .def(
+          "append_dialect_registry",
+          [](PyMlirContext &self, PyDialectRegistry &registry) {
+            mlirContextAppendDialectRegistry(self.get(), registry);
+          },
+          py::arg("registry"))
+      .def("load_all_available_dialects", [](PyMlirContext &self) {
+        mlirContextLoadAllAvailableDialects(self.get());
+      });
 
   //----------------------------------------------------------------------------
   // Mapping of PyDialectDescriptor
@@ -2320,6 +2354,15 @@ void mlir::python::populateIRCore(py::module &m) {
                clazz.attr("__module__") + py::str(".") +
                clazz.attr("__name__") + py::str(")>");
       });
+
+  //----------------------------------------------------------------------------
+  // Mapping of PyDialectRegistry
+  //----------------------------------------------------------------------------
+  py::class_<PyDialectRegistry>(m, "DialectRegistry", py::module_local())
+      .def_property_readonly(MLIR_PYTHON_CAPI_PTR_ATTR,
+                             &PyDialectRegistry::getCapsule)
+      .def(MLIR_PYTHON_CAPI_FACTORY_ATTR, &PyDialectRegistry::createFromCapsule)
+      .def(py::init<>());
 
   //----------------------------------------------------------------------------
   // Mapping of Location
