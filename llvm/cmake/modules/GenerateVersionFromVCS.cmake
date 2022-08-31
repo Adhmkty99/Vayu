@@ -18,10 +18,28 @@ include(VersionFromVCS)
 # Handle strange terminals
 set(ENV{TERM} "dumb")
 
+set(LLVM_GIT_REVISION "" CACHE STRING
+  "manually add revision.")
+set(LLVM_GIT_REPOSITORY "" CACHE STRING
+  "manually add repository.")
+if(LLVM_GIT_REVISION)
+  add_definitions(-DLLVM_GIT_REVISION="${LLVM_GIT_REVISION}")
+endif()
+if(LLVM_GIT_REPOSITORY)
+  add_definitions(-DLLVM_GIT_REPOSITORY="${LLVM_GIT_REPOSITORY}")
+endif()
+
 function(append_info name path)
-  if(path)
-    get_source_info("${path}" revision repository)
+  if(LLVM_GIT_REVISION AND LLVM_GIT_REPOSITORY)
+    set(revision ${LLVM_GIT_REVISION})
+    set(repository ${LLVM_GIT_REPOSITORY})
+  else()
+    if(path)
+      get_source_info("${path}" revision repository)
+    endif()
   endif()
+  #set(revision,"1234")
+  #set(repository,"abcd")
   if(revision)
     file(APPEND "${HEADER_FILE}.tmp"
       "#define ${name}_REVISION \"${revision}\"\n")
