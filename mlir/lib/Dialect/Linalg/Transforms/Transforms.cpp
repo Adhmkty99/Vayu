@@ -59,8 +59,7 @@ mlir::linalg::LinalgTransformationFilter::LinalgTransformationFilter(
 mlir::linalg::LinalgTransformationFilter::LinalgTransformationFilter(
     const FilterFunction &f, ArrayRef<StringAttr> matchDisjunction,
     Optional<StringAttr> replacement)
-    : filters(),
-      matchDisjunction(matchDisjunction.begin(), matchDisjunction.end()),
+    : matchDisjunction(matchDisjunction.begin(), matchDisjunction.end()),
       replacement(replacement), matchByDefault(false) {
   if (f)
     filters.push_back(f);
@@ -142,14 +141,18 @@ LinalgTilingOptions &mlir::linalg::LinalgTilingOptions::scalarizeDynamicDims() {
     if (!linalgOp)
       return tileSizes;
     Location loc = linalgOp.getLoc();
-    auto allShapeSizes = linalgOp.createFlatListOfOperandDims(b, loc);
+    SmallVector<OpFoldResult> allShapeSizes =
+        linalgOp.createFlatListOfOperandDims(b, loc);
     AffineMap map = linalgOp.getShapesToLoopsMap();
     if (!map)
       return tileSizes;
-    auto shapeSizes = applyMapToValues(b, loc, map, allShapeSizes);
+    IRRewriter rewriter(b);
+    SmallVector<OpFoldResult> shapeSizes =
+        makeComposedFoldedMultiResultAffineApply(rewriter, loc, map,
+                                                 allShapeSizes);
     // If the shape size is dynamic, tile by 1. Otherwise, do not tile (tile
     // size 0).
-    for (Value shapeSize : shapeSizes)
+    for (OpFoldResult shapeSize : shapeSizes)
       tileSizes.push_back(getConstantIntValue(shapeSize)
                               ? b.create<arith::ConstantIndexOp>(loc, 0)
                               : b.create<arith::ConstantIndexOp>(loc, 1));
@@ -194,8 +197,11 @@ static FailureOr<Value> padOperandToSmallestStaticBoundingBox(
   if (opOperand->getOperandNumber() >= paddingValues.size())
     return failure();
   Attribute paddingAttr = paddingValues[opOperand->getOperandNumber()];
-  Value paddingValue = b.create<arith::ConstantOp>(
-      opToPad.getLoc(), paddingAttr.getType(), paddingAttr);
+  Type paddingType = b.getType<NoneType>();
+  if (auto typedAttr = paddingAttr.dyn_cast<TypedAttr>())
+    paddingType = typedAttr.getType();
+  Value paddingValue =
+      b.create<arith::ConstantOp>(opToPad.getLoc(), paddingType, paddingAttr);
 
   // Follow the use-def chain if `currOpOperand` is defined by a LinalgOp.
   OpOperand *currOpOperand = opOperand;
@@ -853,9 +859,9 @@ DownscaleSizeOneWindowed2DConvolution::returningMatchAndRewrite(
   if (convOp.hasBufferSemantics())
     return failure(); // To be implemented.
 
-  Value input = convOp.inputs().front();
-  Value kernel = convOp.inputs().back();
-  Value output = convOp.outputs().front();
+  Value input = convOp.getInputs().front();
+  Value kernel = convOp.getInputs().back();
+  Value output = convOp.getOutputs().front();
 
   auto inputType = input.getType().dyn_cast<RankedTensorType>();
   auto kernelType = kernel.getType().dyn_cast<RankedTensorType>();
@@ -894,11 +900,12 @@ DownscaleSizeOneWindowed2DConvolution::returningMatchAndRewrite(
 
   // Rank-reduce strides and dilations too.
   // TODO: dropDim 1-liner helper.
-  auto strides = llvm::to_vector<4>(convOp.strides().getValues<int64_t>());
+  auto strides = llvm::to_vector<4>(convOp.getStrides().getValues<int64_t>());
   strides.erase(strides.begin() + (removeH ? 0 : 1));
   auto stridesAttr = rewriter.getI64VectorAttr(strides);
 
-  auto dilations = llvm::to_vector<4>(convOp.dilations().getValues<int64_t>());
+  auto dilations =
+      llvm::to_vector<4>(convOp.getDilations().getValues<int64_t>());
   dilations.erase(dilations.begin() + (removeH ? 0 : 1));
   auto dilationsAttr = rewriter.getI64VectorAttr(dilations);
 
@@ -923,9 +930,9 @@ DownscaleDepthwiseConv2DNhwcHwcOp::returningMatchAndRewrite(
   if (convOp.hasBufferSemantics())
     return failure(); // To be implemented.
 
-  Value input = convOp.inputs().front();
-  Value kernel = convOp.inputs().back();
-  Value output = convOp.outputs().front();
+  Value input = convOp.getInputs().front();
+  Value kernel = convOp.getInputs().back();
+  Value output = convOp.getOutputs().front();
 
   auto inputType = input.getType().dyn_cast<RankedTensorType>();
   auto kernelType = kernel.getType().dyn_cast<RankedTensorType>();
@@ -964,11 +971,12 @@ DownscaleDepthwiseConv2DNhwcHwcOp::returningMatchAndRewrite(
 
   // Rank-reduce strides and dilations too.
   // TODO: dropDim 1-liner helper.
-  auto strides = llvm::to_vector<4>(convOp.strides().getValues<int64_t>());
+  auto strides = llvm::to_vector<4>(convOp.getStrides().getValues<int64_t>());
   strides.erase(strides.begin() + (removeH ? 0 : 1));
   auto stridesAttr = rewriter.getI64VectorAttr(strides);
 
-  auto dilations = llvm::to_vector<4>(convOp.dilations().getValues<int64_t>());
+  auto dilations =
+      llvm::to_vector<4>(convOp.getDilations().getValues<int64_t>());
   dilations.erase(dilations.begin() + (removeH ? 0 : 1));
   auto dilationsAttr = rewriter.getI64VectorAttr(dilations);
 

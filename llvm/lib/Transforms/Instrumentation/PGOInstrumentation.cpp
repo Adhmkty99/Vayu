@@ -91,6 +91,7 @@
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/IR/ProfDataUtils.h"
 #include "llvm/IR/ProfileSummary.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
@@ -991,7 +992,7 @@ struct UseBBInfo : public BBInfo {
 // Sum up the count values for all the edges.
 static uint64_t sumEdgeCount(const ArrayRef<PGOUseEdge *> Edges) {
   uint64_t Total = 0;
-  for (auto &E : Edges) {
+  for (const auto &E : Edges) {
     if (E->Removed)
       continue;
     Total += E->CountValue;
@@ -1203,7 +1204,7 @@ static void annotateFunctionWithHashMismatch(Function &F,
   auto *Existing = F.getMetadata(LLVMContext::MD_annotation);
   if (Existing) {
     MDTuple *Tuple = cast<MDTuple>(Existing);
-    for (auto &N : Tuple->operands()) {
+    for (const auto &N : Tuple->operands()) {
       if (cast<MDString>(N.get())->getString() ==  MetadataName)
         return;
       Names.push_back(N.get());
@@ -1572,6 +1573,8 @@ static bool InstrumentAllFunctions(
     if (F.isDeclaration())
       continue;
     if (F.hasFnAttribute(llvm::Attribute::NoProfile))
+      continue;
+    if (F.hasFnAttribute(llvm::Attribute::SkipProfile))
       continue;
     auto &TLI = LookupTLI(F);
     auto *BPI = LookupBPI(F);
@@ -2067,7 +2070,7 @@ template <> struct DOTGraphTraits<PGOUseFunc *> : DefaultDOTGraphTraits {
       // Display scaled counts for SELECT instruction:
       OS << "SELECT : { T = ";
       uint64_t TC, FC;
-      bool HasProf = I.extractProfMetadata(TC, FC);
+      bool HasProf = extractBranchWeights(I, TC, FC);
       if (!HasProf)
         OS << "Unknown, F = Unknown }\\l";
       else

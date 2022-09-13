@@ -1614,7 +1614,8 @@ public:
                                    QualType Wrapped);
 
   QualType getSubstTemplateTypeParmType(const TemplateTypeParmType *Replaced,
-                                        QualType Replacement) const;
+                                        QualType Replacement,
+                                        Optional<unsigned> PackIndex) const;
   QualType getSubstTemplateTypeParmPackType(
                                           const TemplateTypeParmType *Replaced,
                                             const TemplateArgument &ArgPack);
@@ -2820,14 +2821,20 @@ public:
   bool typesAreBlockPointerCompatible(QualType, QualType);
 
   bool isObjCIdType(QualType T) const {
+    if (const auto *ET = dyn_cast<ElaboratedType>(T))
+      T = ET->getNamedType();
     return T == getObjCIdType();
   }
 
   bool isObjCClassType(QualType T) const {
+    if (const auto *ET = dyn_cast<ElaboratedType>(T))
+      T = ET->getNamedType();
     return T == getObjCClassType();
   }
 
   bool isObjCSelType(QualType T) const {
+    if (const auto *ET = dyn_cast<ElaboratedType>(T))
+      T = ET->getNamedType();
     return T == getObjCSelType();
   }
 
@@ -3196,11 +3203,11 @@ OPT_LIST(V)
 
 #undef OPT_LIST
 
-    LLVM_NODISCARD ObjCEncOptions keepingOnly(ObjCEncOptions Mask) const {
+    [[nodiscard]] ObjCEncOptions keepingOnly(ObjCEncOptions Mask) const {
       return Bits & Mask.Bits;
     }
 
-    LLVM_NODISCARD ObjCEncOptions forComponentType() const {
+    [[nodiscard]] ObjCEncOptions forComponentType() const {
       ObjCEncOptions Mask = ObjCEncOptions()
                                 .setIsOutermostType()
                                 .setIsStructField();

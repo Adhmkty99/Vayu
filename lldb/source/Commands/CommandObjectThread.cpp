@@ -62,15 +62,13 @@ public:
       const int short_option = m_getopt_table[option_idx].val;
 
       switch (short_option) {
-      case 'c': {
-        int32_t input_count = 0;
-        if (option_arg.getAsInteger(0, m_count)) {
+      case 'c':
+        if (option_arg.getAsInteger(0, m_count) || (m_count < 0)) {
           m_count = UINT32_MAX;
           error.SetErrorStringWithFormat(
               "invalid integer value for option '%c'", short_option);
-        } else if (input_count < 0)
-          m_count = UINT32_MAX;
-      } break;
+        }
+        break;
       case 's':
         if (option_arg.getAsInteger(0, m_start))
           error.SetErrorStringWithFormat(
@@ -1004,8 +1002,15 @@ protected:
 
         AddressRange fun_addr_range = sc.function->GetAddressRange();
         Address fun_start_addr = fun_addr_range.GetBaseAddress();
-        line_table->FindLineEntryByAddress(fun_start_addr, function_start,
-                                           &index_ptr);
+
+        if (!line_table->FindLineEntryByAddress(fun_start_addr, function_start,
+                                                &index_ptr)) {
+          result.AppendErrorWithFormat(
+              "Failed to find line entry by address for "
+              "frame %u of thread id %" PRIu64 ".\n",
+              m_options.m_frame_idx, thread->GetID());
+          return false;
+        }
 
         Address fun_end_addr(fun_start_addr.GetSection(),
                              fun_start_addr.GetOffset() +
@@ -1013,8 +1018,14 @@ protected:
 
         bool all_in_function = true;
 
-        line_table->FindLineEntryByAddress(fun_end_addr, function_start,
-                                           &end_ptr);
+        if (!line_table->FindLineEntryByAddress(fun_end_addr, function_start,
+                                                &end_ptr)) {
+          result.AppendErrorWithFormat(
+              "Failed to find line entry by address for "
+              "frame %u of thread id %" PRIu64 ".\n",
+              m_options.m_frame_idx, thread->GetID());
+          return false;
+        }
 
         // Since not all source lines will contribute code, check if we are
         // setting the breakpoint on the exact line number or the nearest
@@ -2162,7 +2173,7 @@ public:
         break;
       }
       case 't': {
-        m_dumper_options.show_tsc = true;
+        m_dumper_options.show_timestamps = true;
         break;
       }
       case 'e': {
@@ -2176,6 +2187,11 @@ public:
       case 'J': {
         m_dumper_options.pretty_print_json = true;
         m_dumper_options.json = true;
+        break;
+      }
+      case 'E': {
+        m_dumper_options.only_events = true;
+        m_dumper_options.show_events = true;
         break;
       }
       case 'C': {
@@ -2269,17 +2285,17 @@ protected:
       m_options.m_dumper_options.id = m_last_id;
     }
 
-    llvm::Expected<TraceCursorUP> cursor_or_error =
+    llvm::Expected<TraceCursorSP> cursor_or_error =
         m_exe_ctx.GetTargetSP()->GetTrace()->CreateNewCursor(*thread_sp);
 
     if (!cursor_or_error) {
       result.AppendError(llvm::toString(cursor_or_error.takeError()));
       return false;
     }
-    TraceCursorUP &cursor_up = *cursor_or_error;
+    TraceCursorSP &cursor_sp = *cursor_or_error;
 
     if (m_options.m_dumper_options.id &&
-        !cursor_up->HasId(*m_options.m_dumper_options.id)) {
+        !cursor_sp->HasId(*m_options.m_dumper_options.id)) {
       result.AppendError("invalid instruction id\n");
       return false;
     }
@@ -2295,10 +2311,10 @@ protected:
       // We need to stop processing data when we already ran out of instructions
       // in a previous command. We can fake this by setting the cursor past the
       // end of the trace.
-      cursor_up->Seek(1, TraceCursor::SeekType::End);
+      cursor_sp->Seek(1, lldb::eTraceCursorSeekTypeEnd);
     }
 
-    TraceDumper dumper(std::move(cursor_up),
+    TraceDumper dumper(std::move(cursor_sp),
                        out_file ? *out_file : result.GetOutputStream(),
                        m_options.m_dumper_options);
 
