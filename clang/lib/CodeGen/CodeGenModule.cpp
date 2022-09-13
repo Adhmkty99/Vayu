@@ -96,16 +96,18 @@ static CGCXXABI *createCXXABI(CodeGenModule &CGM) {
   llvm_unreachable("invalid C++ ABI kind");
 }
 
-CodeGenModule::CodeGenModule(ASTContext &C, const HeaderSearchOptions &HSO,
+CodeGenModule::CodeGenModule(ASTContext &C,
+                             IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS,
+                             const HeaderSearchOptions &HSO,
                              const PreprocessorOptions &PPO,
                              const CodeGenOptions &CGO, llvm::Module &M,
                              DiagnosticsEngine &diags,
                              CoverageSourceInfo *CoverageInfo)
-    : Context(C), LangOpts(C.getLangOpts()), HeaderSearchOpts(HSO),
-      PreprocessorOpts(PPO), CodeGenOpts(CGO), TheModule(M), Diags(diags),
-      Target(C.getTargetInfo()), ABI(createCXXABI(*this)),
-      VMContext(M.getContext()), Types(*this), VTables(*this),
-      SanitizerMD(new SanitizerMetadata(*this)) {
+    : Context(C), LangOpts(C.getLangOpts()), FS(std::move(FS)),
+      HeaderSearchOpts(HSO), PreprocessorOpts(PPO), CodeGenOpts(CGO),
+      TheModule(M), Diags(diags), Target(C.getTargetInfo()),
+      ABI(createCXXABI(*this)), VMContext(M.getContext()), Types(*this),
+      VTables(*this), SanitizerMD(new SanitizerMetadata(*this)) {
 
   // Initialize the type cache.
   llvm::LLVMContext &LLVMContext = M.getContext();
@@ -519,7 +521,7 @@ static void setVisibilityFromDLLStorageClass(const clang::LangOptions &LO,
 
 void CodeGenModule::Release() {
   Module *Primary = getContext().getModuleForCodeGen();
-  if (CXX20ModuleInits && Primary && !Primary->isModuleMapModule())
+  if (CXX20ModuleInits && Primary && !Primary->isHeaderLikeModule())
     EmitModuleInitializers(Primary);
   EmitDeferred();
   DeferredDecls.insert(EmittedDeferredDecls.begin(),
@@ -773,6 +775,9 @@ void CodeGenModule::Release() {
   if (CodeGenOpts.FunctionReturnThunks)
     getModule().addModuleFlag(llvm::Module::Override, "function_return_thunk_extern", 1);
 
+  if (CodeGenOpts.IndirectBranchCSPrefix)
+    getModule().addModuleFlag(llvm::Module::Override, "indirect_branch_cs_prefix", 1);
+
   // Add module metadata for return address signing (ignoring
   // non-leaf/all) and stack tagging. These are actually turned on by function
   // attributes, but we use module metadata to emit build attributes. This is
@@ -795,18 +800,17 @@ void CodeGenModule::Release() {
       Arch == llvm::Triple::arm || Arch == llvm::Triple::armeb ||
       Arch == llvm::Triple::aarch64 || Arch == llvm::Triple::aarch64_32 ||
       Arch == llvm::Triple::aarch64_be) {
-    getModule().addModuleFlag(llvm::Module::Min, "branch-target-enforcement",
-                              LangOpts.BranchTargetEnforcement);
-
-    getModule().addModuleFlag(llvm::Module::Min, "sign-return-address",
-                              LangOpts.hasSignReturnAddress());
-
-    getModule().addModuleFlag(llvm::Module::Min, "sign-return-address-all",
-                              LangOpts.isSignReturnAddressScopeAll());
-
-    getModule().addModuleFlag(llvm::Module::Min,
-                              "sign-return-address-with-bkey",
-                              !LangOpts.isSignReturnAddressWithAKey());
+    if (LangOpts.BranchTargetEnforcement)
+      getModule().addModuleFlag(llvm::Module::Min, "branch-target-enforcement",
+                                1);
+    if (LangOpts.hasSignReturnAddress())
+      getModule().addModuleFlag(llvm::Module::Min, "sign-return-address", 1);
+    if (LangOpts.isSignReturnAddressScopeAll())
+      getModule().addModuleFlag(llvm::Module::Min, "sign-return-address-all",
+                                1);
+    if (!LangOpts.isSignReturnAddressWithAKey())
+      getModule().addModuleFlag(llvm::Module::Min,
+                                "sign-return-address-with-bkey", 1);
   }
 
   if (!CodeGenOpts.MemoryProfileOutput.empty()) {
@@ -1674,6 +1678,10 @@ void CodeGenModule::SetLLVMFunctionAttributes(GlobalDecl GD,
                          /*AttrOnCallSite=*/false, IsThunk);
   F->setAttributes(PAL);
   F->setCallingConv(static_cast<llvm::CallingConv::ID>(CallingConv));
+  if (getLangOpts().HLSL) {
+    if (const FunctionDecl *FD = dyn_cast_or_null<FunctionDecl>(GD.getDecl()))
+      getHLSLRuntime().setHLSLFunctionAttributes(F, FD);
+  }
 }
 
 static void removeImageAccessQualifier(std::string& TyName) {
@@ -1764,7 +1772,7 @@ void CodeGenModule::GenKernelArgMetadata(llvm::Function *Fn,
       // Get image and pipe access qualifier:
       if (ty->isImageType() || ty->isPipeType()) {
         const Decl *PDecl = parm;
-        if (auto *TD = dyn_cast<TypedefType>(ty))
+        if (const auto *TD = ty->getAs<TypedefType>())
           PDecl = TD->getDecl();
         const OpenCLAccessAttr *A = PDecl->getAttr<OpenCLAccessAttr>();
         if (A && A->isWriteOnly())
@@ -2520,21 +2528,23 @@ void CodeGenModule::EmitModuleInitializers(clang::Module *Primary) {
   // source, first Global Module Fragments, if present.
   if (auto GMF = Primary->getGlobalModuleFragment()) {
     for (Decl *D : getContext().getModuleInitializers(GMF)) {
-      assert(D->getKind() == Decl::Var && "GMF initializer decl is not a var?");
+      if (isa<ImportDecl>(D))
+        continue;
+      assert(isa<VarDecl>(D) && "GMF initializer decl is not a var?");
       EmitTopLevelDecl(D);
     }
   }
   // Second any associated with the module, itself.
   for (Decl *D : getContext().getModuleInitializers(Primary)) {
     // Skip import decls, the inits for those are called explicitly.
-    if (D->getKind() == Decl::Import)
+    if (isa<ImportDecl>(D))
       continue;
     EmitTopLevelDecl(D);
   }
   // Third any associated with the Privat eMOdule Fragment, if present.
   if (auto PMF = Primary->getPrivateModuleFragment()) {
     for (Decl *D : getContext().getModuleInitializers(PMF)) {
-      assert(D->getKind() == Decl::Var && "PMF initializer decl is not a var?");
+      assert(isa<VarDecl>(D) && "PMF initializer decl is not a var?");
       EmitTopLevelDecl(D);
     }
   }
@@ -2889,46 +2899,44 @@ bool CodeGenModule::imbueXRayAttrs(llvm::Function *Fn, SourceLocation Loc,
   return true;
 }
 
-bool CodeGenModule::isFunctionBlockedByProfileList(llvm::Function *Fn,
-                                                   SourceLocation Loc) const {
+ProfileList::ExclusionType
+CodeGenModule::isFunctionBlockedByProfileList(llvm::Function *Fn,
+                                              SourceLocation Loc) const {
   const auto &ProfileList = getContext().getProfileList();
   // If the profile list is empty, then instrument everything.
   if (ProfileList.isEmpty())
-    return false;
+    return ProfileList::Allow;
   CodeGenOptions::ProfileInstrKind Kind = getCodeGenOpts().getProfileInstr();
   // First, check the function name.
-  Optional<bool> V = ProfileList.isFunctionExcluded(Fn->getName(), Kind);
-  if (V)
+  if (auto V = ProfileList.isFunctionExcluded(Fn->getName(), Kind))
     return *V;
   // Next, check the source location.
-  if (Loc.isValid()) {
-    Optional<bool> V = ProfileList.isLocationExcluded(Loc, Kind);
-    if (V)
+  if (Loc.isValid())
+    if (auto V = ProfileList.isLocationExcluded(Loc, Kind))
       return *V;
-  }
   // If location is unknown, this may be a compiler-generated function. Assume
   // it's located in the main file.
   auto &SM = Context.getSourceManager();
-  if (const auto *MainFile = SM.getFileEntryForID(SM.getMainFileID())) {
-    Optional<bool> V = ProfileList.isFileExcluded(MainFile->getName(), Kind);
-    if (V)
+  if (const auto *MainFile = SM.getFileEntryForID(SM.getMainFileID()))
+    if (auto V = ProfileList.isFileExcluded(MainFile->getName(), Kind))
       return *V;
-  }
-  return ProfileList.getDefault();
+  return ProfileList.getDefault(Kind);
 }
 
-bool CodeGenModule::isFunctionBlockedFromProfileInstr(
-    llvm::Function *Fn, SourceLocation Loc) const {
-  if (isFunctionBlockedByProfileList(Fn, Loc))
-    return true;
+ProfileList::ExclusionType
+CodeGenModule::isFunctionBlockedFromProfileInstr(llvm::Function *Fn,
+                                                 SourceLocation Loc) const {
+  auto V = isFunctionBlockedByProfileList(Fn, Loc);
+  if (V != ProfileList::Allow)
+    return V;
 
   auto NumGroups = getCodeGenOpts().ProfileTotalFunctionGroups;
   if (NumGroups > 1) {
     auto Group = llvm::crc32(arrayRefFromStringRef(Fn->getName())) % NumGroups;
     if (Group != getCodeGenOpts().ProfileSelectedFunctionGroup)
-      return true;
+      return ProfileList::Skip;
   }
-  return false;
+  return ProfileList::Allow;
 }
 
 bool CodeGenModule::MustBeEmitted(const ValueDecl *Global) {
@@ -3973,7 +3981,7 @@ llvm::Constant *CodeGenModule::GetOrCreateLLVMFunction(
     // All MSVC dtors other than the base dtor are linkonce_odr and delegate to
     // each other bottoming out with the base dtor.  Therefore we emit non-base
     // dtors on usage, even if there is no dtor definition in the TU.
-    if (D && isa<CXXDestructorDecl>(D) &&
+    if (isa_and_nonnull<CXXDestructorDecl>(D) &&
         getCXXABI().useThunkForDtorVariant(cast<CXXDestructorDecl>(D),
                                            GD.getDtorType()))
       addDeferredDeclToEmit(GD);
@@ -5330,7 +5338,7 @@ void CodeGenModule::EmitAliasDefinition(GlobalDecl GD) {
   // Emit global alias debug information.
   if (isa<VarDecl>(D))
     if (CGDebugInfo *DI = getModuleDebugInfo())
-      DI->EmitGlobalAlias(cast<llvm::GlobalValue>(GA->getAliasee()), GD);
+      DI->EmitGlobalAlias(cast<llvm::GlobalValue>(GA->getAliasee()->stripPointerCasts()), GD);
 }
 
 void CodeGenModule::emitIFuncDefinition(GlobalDecl GD) {
@@ -5467,7 +5475,7 @@ CodeGenModule::GetAddrOfConstantCFString(const StringLiteral *Literal) {
 
     switch (CFRuntime) {
     default: break;
-    case LangOptions::CoreFoundationABI::Swift: LLVM_FALLTHROUGH;
+    case LangOptions::CoreFoundationABI::Swift: [[fallthrough]];
     case LangOptions::CoreFoundationABI::Swift5_0:
       CFConstantStringClassName =
           Triple.isOSDarwin() ? "$s15SwiftFoundation19_NSCFConstantStringCN"
@@ -6124,7 +6132,7 @@ void CodeGenModule::EmitTopLevelDecl(Decl *D) {
               TSK_ExplicitInstantiationDefinition &&
           Spec->hasDefinition())
         DI->completeTemplateDefinition(*Spec);
-  } LLVM_FALLTHROUGH;
+  } [[fallthrough]];
   case Decl::CXXRecord: {
     CXXRecordDecl *CRD = cast<CXXRecordDecl>(D);
     if (CGDebugInfo *DI = getModuleDebugInfo()) {
@@ -7000,4 +7008,6 @@ void CodeGenModule::moveLazyEmissionStates(CodeGenModule *NewBuilder) {
          "Still have (unmerged) EmittedDeferredDecls deferred decls");
 
   NewBuilder->EmittedDeferredDecls = std::move(EmittedDeferredDecls);
+
+  NewBuilder->ABI->MangleCtx = std::move(ABI->MangleCtx);
 }

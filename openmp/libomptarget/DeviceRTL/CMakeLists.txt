@@ -18,6 +18,12 @@ if (NOT LIBOMPTARGET_BUILD_DEVICERTL_BCLIB)
   return()
 endif()
 
+# Check to ensure the host system is a supported host architecture.
+if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL "8")
+  libomptarget_say("Not building DeviceRTL: Runtime does not support 32-bit hosts")
+  return()
+endif()
+
 if (LLVM_DIR)
   # Builds that use pre-installed LLVM have LLVM_DIR set.
   # A standalone or LLVM_ENABLE_RUNTIMES=openmp build takes this route
@@ -84,6 +90,7 @@ set(include_files
   ${include_directory}/Configuration.h
   ${include_directory}/Debug.h
   ${include_directory}/Interface.h
+  ${include_directory}/LibC.h
   ${include_directory}/Mapping.h
   ${include_directory}/State.h
   ${include_directory}/Synchronization.h
@@ -95,6 +102,7 @@ set(src_files
   ${source_directory}/Configuration.cpp
   ${source_directory}/Debug.cpp
   ${source_directory}/Kernel.cpp
+  ${source_directory}/LibC.cpp
   ${source_directory}/Mapping.cpp
   ${source_directory}/Misc.cpp
   ${source_directory}/Parallelism.cpp

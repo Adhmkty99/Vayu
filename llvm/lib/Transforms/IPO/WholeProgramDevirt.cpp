@@ -387,7 +387,7 @@ bool mustBeUnreachableFunction(ValueInfo TheFnVI) {
     return false;
   }
 
-  for (auto &Summary : TheFnVI.getSummaryList()) {
+  for (const auto &Summary : TheFnVI.getSummaryList()) {
     // Conservatively returns false if any non-live functions are seen.
     // In general either all summaries should be live or all should be dead.
     if (!Summary->isLive())
@@ -773,14 +773,13 @@ PreservedAnalyses WholeProgramDevirtPass::run(Module &M,
   return PreservedAnalyses::none();
 }
 
+namespace llvm {
 // Enable whole program visibility if enabled by client (e.g. linker) or
 // internal option, and not force disabled.
-static bool hasWholeProgramVisibility(bool WholeProgramVisibilityEnabledInLTO) {
+bool hasWholeProgramVisibility(bool WholeProgramVisibilityEnabledInLTO) {
   return (WholeProgramVisibilityEnabledInLTO || WholeProgramVisibility) &&
          !DisableWholeProgramVisibility;
 }
-
-namespace llvm {
 
 /// If whole program visibility asserted, then upgrade all public vcall
 /// visibility metadata on vtable definitions to linkage unit visibility in
@@ -790,7 +789,7 @@ void updateVCallVisibilityInModule(
     const DenseSet<GlobalValue::GUID> &DynamicExportSymbols) {
   if (!hasWholeProgramVisibility(WholeProgramVisibilityEnabledInLTO))
     return;
-  for (GlobalVariable &GV : M.globals())
+  for (GlobalVariable &GV : M.globals()) {
     // Add linkage unit visibility to any variable with type metadata, which are
     // the vtable definitions. We won't have an existing vcall_visibility
     // metadata on vtable definitions with public visibility.
@@ -800,6 +799,34 @@ void updateVCallVisibilityInModule(
         // linker, as we have no information on their eventual use.
         !DynamicExportSymbols.count(GV.getGUID()))
       GV.setVCallVisibilityMetadata(GlobalObject::VCallVisibilityLinkageUnit);
+  }
+}
+
+void updatePublicTypeTestCalls(Module &M,
+                               bool WholeProgramVisibilityEnabledInLTO) {
+  Function *PublicTypeTestFunc =
+      M.getFunction(Intrinsic::getName(Intrinsic::public_type_test));
+  if (!PublicTypeTestFunc)
+    return;
+  if (hasWholeProgramVisibility(WholeProgramVisibilityEnabledInLTO)) {
+    Function *TypeTestFunc =
+        Intrinsic::getDeclaration(&M, Intrinsic::type_test);
+    for (Use &U : make_early_inc_range(PublicTypeTestFunc->uses())) {
+      auto *CI = cast<CallInst>(U.getUser());
+      auto *NewCI = CallInst::Create(
+          TypeTestFunc, {CI->getArgOperand(0), CI->getArgOperand(1)}, None, "",
+          CI);
+      CI->replaceAllUsesWith(NewCI);
+      CI->eraseFromParent();
+    }
+  } else {
+    auto *True = ConstantInt::getTrue(M.getContext());
+    for (Use &U : make_early_inc_range(PublicTypeTestFunc->uses())) {
+      auto *CI = cast<CallInst>(U.getUser());
+      CI->replaceAllUsesWith(True);
+      CI->eraseFromParent();
+    }
+  }
 }
 
 /// If whole program visibility asserted, then upgrade all public vcall
@@ -1021,7 +1048,7 @@ bool DevirtIndex::tryFindVirtualCallTargets(
     // conservatively return false early.
     const GlobalVarSummary *VS = nullptr;
     bool LocalFound = false;
-    for (auto &S : P.VTableVI.getSummaryList()) {
+    for (const auto &S : P.VTableVI.getSummaryList()) {
       if (GlobalValue::isLocalLinkage(S->linkage())) {
         if (LocalFound)
           return false;
@@ -1251,7 +1278,7 @@ bool DevirtIndex::trySingleImplDevirt(MutableArrayRef<ValueInfo> TargetsForSlot,
 
   // If the summary list contains multiple summaries where at least one is
   // a local, give up, as we won't know which (possibly promoted) name to use.
-  for (auto &S : TheFn.getSummaryList())
+  for (const auto &S : TheFn.getSummaryList())
     if (GlobalValue::isLocalLinkage(S->linkage()) && Size > 1)
       return false;
 
@@ -2282,7 +2309,7 @@ void DevirtIndex::run() {
     return;
 
   DenseMap<GlobalValue::GUID, std::vector<StringRef>> NameByGUID;
-  for (auto &P : ExportSummary.typeIdCompatibleVtableMap()) {
+  for (const auto &P : ExportSummary.typeIdCompatibleVtableMap()) {
     NameByGUID[GlobalValue::getGUID(P.first)].push_back(P.first);
   }
 

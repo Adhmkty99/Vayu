@@ -84,6 +84,11 @@ class NoUndef<AttrIndex idx> : IntrinsicProperty {
   int ArgNo = idx.Value;
 }
 
+// NonNull - The specified argument is not null.
+class NonNull<AttrIndex idx> : IntrinsicProperty {
+  int ArgNo = idx.Value;
+}
+
 class Align<AttrIndex idx, int align> : IntrinsicProperty {
   int ArgNo = idx.Value;
   int Align = align;
@@ -1287,11 +1292,12 @@ def int_coro_async_context_dealloc : Intrinsic<[],
     []>;
 def int_coro_async_resume : Intrinsic<[llvm_ptr_ty],
     [],
-    []>;
+    [IntrNoMerge]>;
 def int_coro_async_size_replace : Intrinsic<[], [llvm_ptr_ty, llvm_ptr_ty], []>;
 def int_coro_suspend_async
     : Intrinsic<[llvm_any_ty],
-                [llvm_i32_ty, llvm_ptr_ty, llvm_ptr_ty, llvm_vararg_ty], []>;
+                [llvm_i32_ty, llvm_ptr_ty, llvm_ptr_ty, llvm_vararg_ty],
+                [IntrNoMerge]>;
 def int_coro_prepare_async : Intrinsic<[llvm_ptr_ty], [llvm_ptr_ty],
                                        [IntrNoMem]>;
 def int_coro_begin : Intrinsic<[llvm_ptr_ty], [llvm_token_ty, llvm_ptr_ty],
@@ -1403,6 +1409,11 @@ def int_is_constant : DefaultAttrsIntrinsic<[llvm_i1_ty], [llvm_any_ty],
 // Intrinsic to mask out bits of a pointer.
 def int_ptrmask: DefaultAttrsIntrinsic<[llvm_anyptr_ty], [LLVMMatchType<0>, llvm_anyint_ty],
                            [IntrNoMem, IntrSpeculatable, IntrWillReturn]>;
+
+// Intrinsic to wrap a thread local variable.
+def int_threadlocal_address : DefaultAttrsIntrinsic<[llvm_anyptr_ty], [LLVMMatchType<0>],
+                                                    [NonNull<RetIndex>, NonNull<ArgIndex<0>>,
+                                                     IntrNoMem, IntrSpeculatable, IntrWillReturn]>;
 
 def int_experimental_stepvector : DefaultAttrsIntrinsic<[llvm_anyvector_ty],
                                                         [], [IntrNoMem]>;
@@ -1758,6 +1769,12 @@ def int_type_test : DefaultAttrsIntrinsic<[llvm_i1_ty], [llvm_ptr_ty, llvm_metad
 def int_type_checked_load : DefaultAttrsIntrinsic<[llvm_ptr_ty, llvm_i1_ty],
                                       [llvm_ptr_ty, llvm_i32_ty, llvm_metadata_ty],
                                       [IntrNoMem, IntrWillReturn]>;
+
+// Test whether a pointer is associated with a type metadata identifier. Used
+// for public visibility classes that may later be refined to private
+// visibility.
+def int_public_type_test : DefaultAttrsIntrinsic<[llvm_i1_ty], [llvm_ptr_ty, llvm_metadata_ty],
+                              [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
 
 // Create a branch funnel that implements an indirect call to a limited set of
 // callees. This needs to be a musttail call.

@@ -555,7 +555,7 @@ static bool useFramePointerForTargetByDefault(const ArgList &Args,
     case llvm::Triple::thumbeb:
       if (Triple.isAndroid())
         return true;
-      LLVM_FALLTHROUGH;
+      [[fallthrough]];
     case llvm::Triple::mips64:
     case llvm::Triple::mips64el:
     case llvm::Triple::mips:
@@ -2083,6 +2083,14 @@ void Clang::AddMIPSTargetArgs(const ArgList &Args,
 
 void Clang::AddPPCTargetArgs(const ArgList &Args,
                              ArgStringList &CmdArgs) const {
+  if (const Arg *A = Args.getLastArg(options::OPT_mtune_EQ)) {
+    CmdArgs.push_back("-tune-cpu");
+    if (strcmp(A->getValue(), "native") == 0)
+      CmdArgs.push_back(Args.MakeArgString(llvm::sys::getHostCPUName()));
+    else
+      CmdArgs.push_back(A->getValue());
+  }
+
   // Select the ABI to use.
   const char *ABIName = nullptr;
   const llvm::Triple &T = getToolChain().getTriple();
@@ -2204,6 +2212,18 @@ void Clang::AddSparcTargetArgs(const ArgList &Args,
     assert(FloatABI == sparc::FloatABI::Hard && "Invalid float abi!");
     CmdArgs.push_back("-mfloat-abi");
     CmdArgs.push_back("hard");
+  }
+
+  if (const Arg *A = Args.getLastArg(clang::driver::options::OPT_mtune_EQ)) {
+    StringRef Name = A->getValue();
+    std::string TuneCPU;
+    if (Name == "native")
+      TuneCPU = std::string(llvm::sys::getHostCPUName());
+    else
+      TuneCPU = std::string(Name);
+
+    CmdArgs.push_back("-tune-cpu");
+    CmdArgs.push_back(Args.MakeArgString(TuneCPU));
   }
 }
 
@@ -2990,7 +3010,7 @@ static void RenderFloatingPointOptions(const ToolChain &TC, const Driver &D,
       // If -Ofast is the optimization level, then -ffast-math should be enabled
       if (!OFastEnabled)
         continue;
-      LLVM_FALLTHROUGH;
+      [[fallthrough]];
     case options::OPT_ffast_math:
       HonorINFs = false;
       HonorNaNs = false;
@@ -3493,8 +3513,10 @@ static void RenderHLSLOptions(const ArgList &Args, ArgStringList &CmdArgs,
                                          options::OPT_I,
                                          options::OPT_S,
                                          options::OPT_emit_llvm,
+                                         options::OPT_emit_obj,
                                          options::OPT_disable_llvm_passes,
-                                         options::OPT_fnative_half_type};
+                                         options::OPT_fnative_half_type,
+                                         options::OPT_hlsl_entrypoint};
 
   for (const auto &Arg : ForwardedArguments)
     if (const auto *A = Args.getLastArg(Arg))
@@ -5112,6 +5134,13 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
       CmdArgs.push_back("-mabi=vec-default");
   }
 
+  if (Arg *A = Args.getLastArg(options::OPT_mabi_EQ_quadword_atomics)) {
+    if (!Triple.isOSAIX() || Triple.isPPC32())
+      D.Diag(diag::err_drv_unsupported_opt_for_target)
+        << A->getSpelling() << RawTriple.str();
+    CmdArgs.push_back("-mabi=quadword-atomics");
+  }
+
   if (Arg *A = Args.getLastArg(options::OPT_mlong_double_128)) {
     // Emit the unsupported option error until the Clang's library integration
     // support for 128-bit long double is available for AIX.
@@ -5879,9 +5908,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     CmdArgs.push_back(A->getValue());
   }
 
-  if (Args.hasFlag(options::OPT_fstack_size_section,
-                   options::OPT_fno_stack_size_section, RawTriple.isPS4()))
-    CmdArgs.push_back("-fstack-size-section");
+  Args.addOptInFlag(CmdArgs, options::OPT_fstack_size_section,
+                    options::OPT_fno_stack_size_section);
 
   if (Args.hasArg(options::OPT_fstack_usage)) {
     CmdArgs.push_back("-stack-usage-file");
@@ -5960,8 +5988,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     }
   } else if (IsOpenMPDevice) {
     // When compiling for the OpenMP device we want protected visibility by
-    // default. This prevents the device from accidenally preempting code on the
-    // host, makes the system more robust, and improves performance.
+    // default. This prevents the device from accidentally preempting code on
+    // the host, makes the system more robust, and improves performance.
     CmdArgs.push_back("-fvisibility");
     CmdArgs.push_back("protected");
   }
@@ -6242,9 +6270,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
 
   Args.AddLastArg(CmdArgs, options::OPT_pthread);
 
-  if (Args.hasFlag(options::OPT_mspeculative_load_hardening,
-                   options::OPT_mno_speculative_load_hardening, false))
-    CmdArgs.push_back(Args.MakeArgString("-mspeculative-load-hardening"));
+  Args.addOptInFlag(CmdArgs, options::OPT_mspeculative_load_hardening,
+                    options::OPT_mno_speculative_load_hardening);
 
   RenderSSPOptions(D, TC, Args, CmdArgs, KernelOrKext);
   RenderSCPOptions(TC, Args, CmdArgs);
@@ -6252,10 +6279,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
 
   Args.AddLastArg(CmdArgs, options::OPT_fswift_async_fp_EQ);
 
-  // Translate -mstackrealign
-  if (Args.hasFlag(options::OPT_mstackrealign, options::OPT_mno_stackrealign,
-                   false))
-    CmdArgs.push_back(Args.MakeArgString("-mstackrealign"));
+  Args.addOptInFlag(CmdArgs, options::OPT_mstackrealign,
+                    options::OPT_mno_stackrealign);
 
   if (Args.hasArg(options::OPT_mstack_alignment)) {
     StringRef alignment = Args.getLastArgValue(options::OPT_mstack_alignment);
@@ -6332,6 +6357,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   if (Arg *A = Args.getLastArg(options::OPT_mfunction_return_EQ))
     CmdArgs.push_back(
         Args.MakeArgString(Twine("-mfunction-return=") + A->getValue()));
+
+  Args.AddLastArg(CmdArgs, options::OPT_mindirect_branch_cs_prefix);
 
   // Forward -f options with positive and negative forms; we translate these by
   // hand.  Do not propagate PGO options to the GPU-side compilations as the
@@ -6569,7 +6596,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   // support by default, or just assume that all languages do.
   bool HaveModules =
       Std && (Std->containsValue("c++2a") || Std->containsValue("c++20") ||
-              Std->containsValue("c++latest"));
+              Std->containsValue("c++2b") || Std->containsValue("c++latest"));
   RenderModulesOptions(C, D, Args, Input, Output, CmdArgs, HaveModules);
 
   if (Args.hasFlag(options::OPT_fpch_validate_input_files_content,
@@ -6746,10 +6773,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   Args.addOptInFlag(CmdArgs, options::OPT_fasm_blocks,
                     options::OPT_fno_asm_blocks);
 
-  // -fgnu-inline-asm is default.
-  if (!Args.hasFlag(options::OPT_fgnu_inline_asm,
-                    options::OPT_fno_gnu_inline_asm, true))
-    CmdArgs.push_back("-fno-gnu-inline-asm");
+  Args.addOptOutFlag(CmdArgs, options::OPT_fgnu_inline_asm,
+                     options::OPT_fno_gnu_inline_asm);
 
   // Enable vectorization per default according to the optimization level
   // selected. For optimization levels that want vectorization we use the alias
@@ -6801,9 +6826,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   if (RewriteImports)
     CmdArgs.push_back("-frewrite-imports");
 
-  if (Args.hasFlag(options::OPT_fdirectives_only,
-                   options::OPT_fno_directives_only, false))
-    CmdArgs.push_back("-fdirectives-only");
+  Args.addOptInFlag(CmdArgs, options::OPT_fdirectives_only,
+                    options::OPT_fno_directives_only);
 
   // Enable rewrite includes if the user's asked for it or if we're generating
   // diagnostics.
@@ -7161,10 +7185,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
                     options::OPT_fno_keep_static_consts);
   Args.addOptInFlag(CmdArgs, options::OPT_fcomplete_member_pointers,
                     options::OPT_fno_complete_member_pointers);
-
-  if (!Args.hasFlag(options::OPT_fcxx_static_destructors,
-                    options::OPT_fno_cxx_static_destructors, true))
-    CmdArgs.push_back("-fno-c++-static-destructors");
+  Args.addOptOutFlag(CmdArgs, options::OPT_fcxx_static_destructors,
+                     options::OPT_fno_cxx_static_destructors);
 
   addMachineOutlinerArgs(D, Args, CmdArgs, Triple, /*IsLTO=*/false);
 
@@ -8433,7 +8455,7 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
   CmdArgs.push_back(
       Args.MakeArgString("--host-triple=" + TheTriple.getTriple()));
   if (Args.hasArg(options::OPT_v))
-    CmdArgs.push_back("--verbose");
+    CmdArgs.push_back("--wrapper-verbose");
 
   if (const Arg *A = Args.getLastArg(options::OPT_g_Group)) {
     if (!A->getOption().matches(options::OPT_g0))

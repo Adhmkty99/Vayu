@@ -61,9 +61,8 @@ struct CodeGen {
         indices(numTensors, std::vector<Value>(numLoops)),
         highs(numTensors, std::vector<Value>(numLoops)),
         pidxs(numTensors, std::vector<Value>(numLoops)),
-        idxs(numTensors, std::vector<Value>(numLoops)), redVal(), sparseOut(op),
-        outerParNest(nest), lexIdx(), lexVal(), expValues(), expFilled(),
-        expAdded(), expCount(), curVecMask() {}
+        idxs(numTensors, std::vector<Value>(numLoops)), sparseOut(op),
+        outerParNest(nest) {}
   /// Sparsification options.
   SparsificationOptions options;
   /// Universal dense indices and upper bounds (by index). The loops array
@@ -147,8 +146,6 @@ static Dim toDim(const SparseTensorEncodingAttr &enc, unsigned d) {
     SparseTensorEncodingAttr::DimLevelType tp = enc.getDimLevelType()[d];
     if (tp == SparseTensorEncodingAttr::DimLevelType::Compressed)
       return Dim::kSparse;
-    if (tp == SparseTensorEncodingAttr::DimLevelType::Singleton)
-      return Dim::kSingle;
   }
   return Dim::kDense;
 }
@@ -934,7 +931,7 @@ static Value relinkBranch(CodeGen &codegen, RewriterBase &rewriter,
                           Block *block, Value e, unsigned ldx) {
   if (Operation *def = e.getDefiningOp()) {
     if (auto indexOp = dyn_cast<linalg::IndexOp>(def))
-      return genIndexValue(codegen, rewriter, indexOp.dim(), ldx);
+      return genIndexValue(codegen, rewriter, indexOp.getDim(), ldx);
     if (def->getBlock() == block) {
       for (unsigned i = 0, n = def->getNumOperands(); i < n; i++)
         def->setOperand(
