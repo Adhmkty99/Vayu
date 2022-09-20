@@ -1,4 +1,4 @@
 
 #include <Carbon/Carbon.h>
 
-//#import<vecLib/vecLib.h>
+//#export<vecLib/vecLib.h>
