@@ -1,5 +1,23 @@
 {
-  "comments": [],
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b456f2e0_d746b15e",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2022-10-12T18:43:07Z",
+      "side": 1,
+      "message": "Cherry-picking from the gerrit UI caused the changes to be squashed into a single commit instead of a merge commit: https://android.googlesource.com/toolchain/llvm-project/+/8f38a8208f46ffc1bb0f83ebc754aae0a06589da 😞\n\nI\u0027ll file a bug with the build team to get this resolved.",
+      "revId": "8f38a8208f46ffc1bb0f83ebc754aae0a06589da",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ],
   "submitRequirementResults": [
     {
       "submitRequirement": {
