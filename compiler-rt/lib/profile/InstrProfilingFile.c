@@ -216,6 +216,8 @@ static int mmapForContinuousMode(uint64_t CurrentFileOffset, FILE *File) {
   INSTR_PROF_PROFILE_COUNTER_BIAS_VAR =
       (intptr_t)Profile - (uintptr_t)CountersBegin + CountersOffsetInBiasMode;
 
+  PROF_WARN("Counters are mapped at %p\n", Profile);
+
   /* Return the memory allocated for counters to OS. */
   lprofReleaseMemoryPagesToOS((uintptr_t)CountersBegin, (uintptr_t)CountersEnd);
   return 0;

@@ -20,6 +20,11 @@
 #define INSTR_PROF_VALUE_PROF_DATA
 #include "profile/InstrProfData.inc"
 
+#if defined(__ELF__) || defined(_WIN32)
+// Reference to counter_bias variable to be used when resetting counters
+extern intptr_t INSTR_PROF_PROFILE_COUNTER_BIAS_VAR COMPILER_RT_VISIBILITY COMPILER_RT_WEAK;
+#endif
+
 COMPILER_RT_VISIBILITY uint64_t __llvm_profile_get_magic(void) {
   return sizeof(void *) == sizeof(uint64_t) ? (INSTR_PROF_RAW_MAGIC_64)
                                             : (INSTR_PROF_RAW_MAGIC_32);
@@ -45,6 +50,14 @@ COMPILER_RT_VISIBILITY void __llvm_profile_reset_counters(void) {
   char *I = __llvm_profile_begin_counters();
   char *E = __llvm_profile_end_counters();
 
+#if defined(__ELF__) || defined(_WIN32)
+  if (__llvm_profile_is_continuous_mode_enabled()) {
+    I += INSTR_PROF_PROFILE_COUNTER_BIAS_VAR;
+    E += INSTR_PROF_PROFILE_COUNTER_BIAS_VAR;
+  }
+#endif
+
+  PROF_WARN("resetting counters: %p to %p (after adjusting bias: %lld)\n", I, E, INSTR_PROF_PROFILE_COUNTER_BIAS_VAR);
   char ResetValue =
       (__llvm_profile_get_version() & VARIANT_MASK_BYTE_COVERAGE) ? 0xFF : 0;
   memset(I, ResetValue, E - I);
