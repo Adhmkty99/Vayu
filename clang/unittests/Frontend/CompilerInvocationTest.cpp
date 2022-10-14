@@ -23,6 +23,7 @@ using namespace clang;
 using ::testing::Contains;
 using ::testing::HasSubstr;
 using ::testing::StrEq;
+using ::testing::StartsWith;
 
 namespace {
 class CommandLineTest : public ::testing::Test {
@@ -145,6 +146,26 @@ TEST_F(CommandLineTest, BoolOptionDefaultTrueSingleFlagPresent) {
   ASSERT_THAT(GeneratedArgs, Contains(StrEq("-fno-temp-file")));
 }
 
+TEST_F(CommandLineTest, CC1FlagPresentWhenDoingRoundTrip) {
+  const char *Args[] = {"-cc1", "-round-trip-args"};
+
+  ASSERT_TRUE(CompilerInvocation::CreateFromArgs(Invocation, Args, *Diags));
+
+  ASSERT_THAT(std::string(Invocation.getCodeGenOpts().CmdArgs.begin(),
+                          Invocation.getCodeGenOpts().CmdArgs.end()),
+              StartsWith("-cc1"));
+}
+
+TEST_F(CommandLineTest, CC1FlagPresentWhenNotDoingRoundTrip) {
+  const char *Args[] = {"-cc1", "-no-round-trip-args"};
+
+  ASSERT_TRUE(CompilerInvocation::CreateFromArgs(Invocation, Args, *Diags));
+
+  ASSERT_THAT(std::string(Invocation.getCodeGenOpts().CmdArgs.begin(),
+                          Invocation.getCodeGenOpts().CmdArgs.end()),
+              StartsWith("-cc1"));
+}
+
 TEST_F(CommandLineTest, BoolOptionDefaultTrueSingleFlagUnknownPresent) {
   const char *Args[] = {"-ftemp-file"};
 
@@ -263,34 +284,34 @@ TEST_F(CommandLineTest, BoolOptionDefaultArbitraryTwoFlagsPresentNone) {
   const char *Args = {""};
 
   ASSERT_TRUE(CompilerInvocation::CreateFromArgs(Invocation, Args, *Diags));
-  ASSERT_EQ(Invocation.getCodeGenOpts().LegacyPassManager, false);
+  ASSERT_EQ(Invocation.getCodeGenOpts().ClearASTBeforeBackend, false);
 
   Invocation.generateCC1CommandLine(GeneratedArgs, *this);
 
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-fno-legacy-pass-manager"))));
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-flegacy-pass-manager"))));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-no-clear-ast-before-backend"))));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-clear-ast-before-backend"))));
 }
 
 TEST_F(CommandLineTest, BoolOptionDefaultArbitraryTwoFlagsPresentChange) {
-  const char *Args[] = {"-flegacy-pass-manager"};
+  const char *Args[] = {"-clear-ast-before-backend"};
 
   ASSERT_TRUE(CompilerInvocation::CreateFromArgs(Invocation, Args, *Diags));
-  ASSERT_EQ(Invocation.getCodeGenOpts().LegacyPassManager, true);
+  ASSERT_EQ(Invocation.getCodeGenOpts().ClearASTBeforeBackend, true);
 
   Invocation.generateCC1CommandLine(GeneratedArgs, *this);
-  ASSERT_THAT(GeneratedArgs, Contains(StrEq("-flegacy-pass-manager")));
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-fno-legacy-pass-manager"))));
+  ASSERT_THAT(GeneratedArgs, Contains(StrEq("-clear-ast-before-backend")));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-no-clear-ast-before-backend"))));
 }
 
 TEST_F(CommandLineTest, BoolOptionDefaultArbitraryTwoFlagsPresentReset) {
-  const char *Args[] = {"-fno-legacy-pass-manager"};
+  const char *Args[] = {"-no-clear-ast-before-backend"};
 
   ASSERT_TRUE(CompilerInvocation::CreateFromArgs(Invocation, Args, *Diags));
-  ASSERT_EQ(Invocation.getCodeGenOpts().LegacyPassManager, false);
+  ASSERT_EQ(Invocation.getCodeGenOpts().ClearASTBeforeBackend, false);
 
   Invocation.generateCC1CommandLine(GeneratedArgs, *this);
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-fno-legacy-pass-manager"))));
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-flegacy-pass-manager"))));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-no-clear-ast-before-backend"))));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-clear-ast-before-backend"))));
 }
 
 // Boolean option that gets the CC1Option flag from a let statement (which

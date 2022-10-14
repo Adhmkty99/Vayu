@@ -265,16 +265,31 @@ public:
   bool hasOnlyConst() const { return Mask == Const; }
   void removeConst() { Mask &= ~Const; }
   void addConst() { Mask |= Const; }
+  Qualifiers withConst() const {
+    Qualifiers Qs = *this;
+    Qs.addConst();
+    return Qs;
+  }
 
   bool hasVolatile() const { return Mask & Volatile; }
   bool hasOnlyVolatile() const { return Mask == Volatile; }
   void removeVolatile() { Mask &= ~Volatile; }
   void addVolatile() { Mask |= Volatile; }
+  Qualifiers withVolatile() const {
+    Qualifiers Qs = *this;
+    Qs.addVolatile();
+    return Qs;
+  }
 
   bool hasRestrict() const { return Mask & Restrict; }
   bool hasOnlyRestrict() const { return Mask == Restrict; }
   void removeRestrict() { Mask &= ~Restrict; }
   void addRestrict() { Mask |= Restrict; }
+  Qualifiers withRestrict() const {
+    Qualifiers Qs = *this;
+    Qs.addRestrict();
+    return Qs;
+  }
 
   bool hasCVRQualifiers() const { return getCVRQualifiers(); }
   unsigned getCVRQualifiers() const { return Mask & CVRMask; }
@@ -609,6 +624,47 @@ private:
   static const uint32_t AddressSpaceShift = 9;
 };
 
+class QualifiersAndAtomic {
+  Qualifiers Quals;
+  bool HasAtomic;
+
+public:
+  QualifiersAndAtomic() : HasAtomic(false) {}
+  QualifiersAndAtomic(Qualifiers Quals, bool HasAtomic)
+      : Quals(Quals), HasAtomic(HasAtomic) {}
+
+  operator Qualifiers() const { return Quals; }
+
+  bool hasVolatile() const { return Quals.hasVolatile(); }
+  bool hasConst() const { return Quals.hasConst(); }
+  bool hasRestrict() const { return Quals.hasRestrict(); }
+  bool hasAtomic() const { return HasAtomic; }
+
+  void addVolatile() { Quals.addVolatile(); }
+  void addConst() { Quals.addConst(); }
+  void addRestrict() { Quals.addRestrict(); }
+  void addAtomic() { HasAtomic = true; }
+
+  void removeVolatile() { Quals.removeVolatile(); }
+  void removeConst() { Quals.removeConst(); }
+  void removeRestrict() { Quals.removeRestrict(); }
+  void removeAtomic() { HasAtomic = false; }
+
+  QualifiersAndAtomic withVolatile() {
+    return {Quals.withVolatile(), HasAtomic};
+  }
+  QualifiersAndAtomic withConst() { return {Quals.withConst(), HasAtomic}; }
+  QualifiersAndAtomic withRestrict() {
+    return {Quals.withRestrict(), HasAtomic};
+  }
+  QualifiersAndAtomic withAtomic() { return {Quals, true}; }
+
+  QualifiersAndAtomic &operator+=(Qualifiers RHS) {
+    Quals += RHS;
+    return *this;
+  }
+};
+
 /// A std::pair-like structure for storing a qualified type split
 /// into its local qualifiers and its locally-unqualified type.
 struct SplitQualType {
@@ -656,6 +712,12 @@ enum class ObjCSubstitutionContext {
 
   /// The superclass of a type.
   Superclass,
+};
+
+/// The kind of 'typeof' expression we're after.
+enum class TypeOfKind : uint8_t {
+  Qualified,
+  Unqualified,
 };
 
 /// A (possibly-)qualified type.
@@ -740,6 +802,9 @@ public:
   bool isNull() const {
     return Value.getPointer().isNull();
   }
+
+  // Determines if a type can form `T&`.
+  bool isReferenceable() const;
 
   /// Determine whether this particular QualType instance has the
   /// "const" qualifier set, without looking through typedefs that may have
@@ -830,6 +895,8 @@ public:
   /// Return true if this is a trivially copyable type (C++0x [basic.types]p9)
   bool isTriviallyCopyableType(const ASTContext &Context) const;
 
+  /// Return true if this is a trivially relocatable type.
+  bool isTriviallyRelocatableType(const ASTContext &Context) const;
 
   /// Returns true if it is a class and it might be dynamic.
   bool mayBeDynamicClass() const;
@@ -1316,6 +1383,8 @@ private:
   static bool hasNonTrivialToPrimitiveCopyCUnion(const RecordDecl *RD);
 };
 
+raw_ostream &operator<<(raw_ostream &OS, QualType QT);
+
 } // namespace clang
 
 namespace llvm {
@@ -1620,6 +1689,9 @@ protected:
     /// Whether this function has extended parameter information.
     unsigned HasExtParameterInfos : 1;
 
+    /// Whether this function has extra bitfields for the prototype.
+    unsigned HasExtraBitfields : 1;
+
     /// Whether the function is variadic.
     unsigned Variadic : 1;
 
@@ -1727,6 +1799,29 @@ protected:
     unsigned NumArgs;
   };
 
+  class TypeOfBitfields {
+    friend class TypeOfType;
+    friend class TypeOfExprType;
+
+    unsigned : NumTypeBits;
+    unsigned IsUnqual : 1; // If true: typeof_unqual, else: typeof
+  };
+
+  class SubstTemplateTypeParmTypeBitfields {
+    friend class SubstTemplateTypeParmType;
+
+    unsigned : NumTypeBits;
+
+    unsigned HasNonCanonicalUnderlyingType : 1;
+
+    /// Represents the index within a pack if this represents a substitution
+    /// from a pack expansion. This index starts at the end of the pack and
+    /// increments towards the beginning.
+    /// Positive non-zero number represents the index + 1.
+    /// Zero means this is not substituted from an expansion.
+    unsigned PackIndex : 16;
+  };
+
   class SubstTemplateTypeParmPackTypeBitfields {
     friend class SubstTemplateTypeParmPackType;
 
@@ -1801,6 +1896,7 @@ protected:
     ConstantArrayTypeBitfields ConstantArrayTypeBits;
     AttributedTypeBitfields AttributedTypeBits;
     AutoTypeBitfields AutoTypeBits;
+    TypeOfBitfields TypeOfBits;
     BuiltinTypeBitfields BuiltinTypeBits;
     FunctionTypeBitfields FunctionTypeBits;
     ObjCObjectTypeBitfields ObjCObjectTypeBits;
@@ -1808,6 +1904,7 @@ protected:
     TypeWithKeywordBitfields TypeWithKeywordBits;
     ElaboratedTypeBitfields ElaboratedTypeBits;
     VectorTypeBitfields VectorTypeBits;
+    SubstTemplateTypeParmTypeBitfields SubstTemplateTypeParmTypeBits;
     SubstTemplateTypeParmPackTypeBitfields SubstTemplateTypeParmPackTypeBits;
     TemplateSpecializationTypeBitfields TemplateSpecializationTypeBits;
     DependentTemplateSpecializationTypeBitfields
@@ -3794,13 +3891,12 @@ public:
 
   /// A simple holder for various uncommon bits which do not fit in
   /// FunctionTypeBitfields. Aligned to alignof(void *) to maintain the
-  /// alignment of subsequent objects in TrailingObjects. You must update
-  /// hasExtraBitfields in FunctionProtoType after adding extra data here.
+  /// alignment of subsequent objects in TrailingObjects.
   struct alignas(void *) FunctionTypeExtraBitfields {
     /// The number of types in the exception specification.
     /// A whole unsigned is not needed here and according to
     /// [implimits] 8 bits would be enough here.
-    unsigned NumExceptionType;
+    unsigned NumExceptionType = 0;
   };
 
 protected:
@@ -3811,7 +3907,10 @@ protected:
   }
 
   Qualifiers getFastTypeQuals() const {
-    return Qualifiers::fromFastMask(FunctionTypeBits.FastTypeQuals);
+    if (isFunctionProtoType())
+      return Qualifiers::fromFastMask(FunctionTypeBits.FastTypeQuals);
+
+    return Qualifiers();
   }
 
 public:
@@ -3994,6 +4093,10 @@ public:
       Result.ExceptionSpec = ESI;
       return Result;
     }
+
+    bool requiresFunctionProtoTypeExtraBitfields() const {
+      return ExceptionSpec.Type == EST_Dynamic;
+    }
   };
 
 private:
@@ -4085,15 +4188,12 @@ private:
   }
 
   /// Whether the trailing FunctionTypeExtraBitfields is present.
-  static bool hasExtraBitfields(ExceptionSpecificationType EST) {
-    // If the exception spec type is EST_Dynamic then we have > 0 exception
-    // types and the exact number is stored in FunctionTypeExtraBitfields.
-    return EST == EST_Dynamic;
-  }
-
-  /// Whether the trailing FunctionTypeExtraBitfields is present.
   bool hasExtraBitfields() const {
-    return hasExtraBitfields(getExceptionSpecType());
+    assert((getExceptionSpecType() != EST_Dynamic ||
+            FunctionTypeBits.HasExtraBitfields) &&
+           "ExtraBitfields are required for given ExceptionSpecType");
+    return FunctionTypeBits.HasExtraBitfields;
+
   }
 
   bool hasExtQualifiers() const {
@@ -4254,10 +4354,9 @@ public:
   }
 
   using param_type_iterator = const QualType *;
-  using param_type_range = llvm::iterator_range<param_type_iterator>;
 
-  param_type_range param_types() const {
-    return param_type_range(param_type_begin(), param_type_end());
+  ArrayRef<QualType> param_types() const {
+    return llvm::makeArrayRef(param_type_begin(), param_type_end());
   }
 
   param_type_iterator param_type_begin() const {
@@ -4448,17 +4547,21 @@ public:
   }
 };
 
-/// Represents a `typeof` (or __typeof__) expression (a GCC extension).
+/// Represents a `typeof` (or __typeof__) expression (a C2x feature and GCC
+/// extension) or a `typeof_unqual` expression (a C2x feature).
 class TypeOfExprType : public Type {
   Expr *TOExpr;
 
 protected:
   friend class ASTContext; // ASTContext creates these.
 
-  TypeOfExprType(Expr *E, QualType can = QualType());
+  TypeOfExprType(Expr *E, TypeOfKind Kind, QualType Can = QualType());
 
 public:
   Expr *getUnderlyingExpr() const { return TOExpr; }
+
+  /// Returns true if this is a typeof_unqual type.
+  bool isUnqual() const { return TypeOfBits.IsUnqual; }
 
   /// Remove a single level of sugar.
   QualType desugar() const;
@@ -4480,36 +4583,47 @@ class DependentTypeOfExprType
   const ASTContext &Context;
 
 public:
-  DependentTypeOfExprType(const ASTContext &Context, Expr *E)
-      : TypeOfExprType(E), Context(Context) {}
+  DependentTypeOfExprType(const ASTContext &Context, Expr *E, TypeOfKind Kind)
+      : TypeOfExprType(E, Kind), Context(Context) {}
 
   void Profile(llvm::FoldingSetNodeID &ID) {
-    Profile(ID, Context, getUnderlyingExpr());
+    Profile(ID, Context, getUnderlyingExpr(), isUnqual());
   }
 
   static void Profile(llvm::FoldingSetNodeID &ID, const ASTContext &Context,
-                      Expr *E);
+                      Expr *E, bool IsUnqual);
 };
 
-/// Represents `typeof(type)`, a GCC extension.
+/// Represents `typeof(type)`, a C2x feature and GCC extension, or
+/// `typeof_unqual(type), a C2x feature.
 class TypeOfType : public Type {
   friend class ASTContext; // ASTContext creates these.
 
   QualType TOType;
 
-  TypeOfType(QualType T, QualType can)
-      : Type(TypeOf, can, T->getDependence()), TOType(T) {
-    assert(!isa<TypedefType>(can) && "Invalid canonical type");
+  TypeOfType(QualType T, QualType Can, TypeOfKind Kind)
+      : Type(TypeOf,
+             Kind == TypeOfKind::Unqualified ? Can.getAtomicUnqualifiedType()
+                                             : Can,
+             T->getDependence()),
+        TOType(T) {
+    TypeOfBits.IsUnqual = Kind == TypeOfKind::Unqualified;
   }
 
 public:
-  QualType getUnderlyingType() const { return TOType; }
+  QualType getUnmodifiedType() const { return TOType; }
 
   /// Remove a single level of sugar.
-  QualType desugar() const { return getUnderlyingType(); }
+  QualType desugar() const {
+    QualType QT = getUnmodifiedType();
+    return isUnqual() ? QT.getAtomicUnqualifiedType() : QT;
+  }
 
   /// Returns whether this type directly provides sugar.
   bool isSugared() const { return true; }
+
+  /// Returns true if this is a typeof_unqual type.
+  bool isUnqual() const { return TypeOfBits.IsUnqual; }
 
   static bool classof(const Type *T) { return T->getTypeClass() == TypeOf; }
 };
@@ -4561,7 +4675,8 @@ public:
 class UnaryTransformType : public Type {
 public:
   enum UTTKind {
-    EnumUnderlyingType
+#define TRANSFORM_TYPE_TRAIT_DEF(Enum, _) Enum,
+#include "clang/Basic/TransformTypeTraits.def"
   };
 
 private:
@@ -4905,15 +5020,18 @@ public:
 /// been replaced with these.  They are used solely to record that a
 /// type was originally written as a template type parameter;
 /// therefore they are never canonical.
-class SubstTemplateTypeParmType : public Type, public llvm::FoldingSetNode {
+class SubstTemplateTypeParmType final
+    : public Type,
+      public llvm::FoldingSetNode,
+      private llvm::TrailingObjects<SubstTemplateTypeParmType, QualType> {
   friend class ASTContext;
+  friend class llvm::TrailingObjects<SubstTemplateTypeParmType, QualType>;
 
   // The original type parameter.
   const TemplateTypeParmType *Replaced;
 
-  SubstTemplateTypeParmType(const TemplateTypeParmType *Param, QualType Canon)
-      : Type(SubstTemplateTypeParm, Canon, Canon->getDependence()),
-        Replaced(Param) {}
+  SubstTemplateTypeParmType(const TemplateTypeParmType *Param, QualType Canon,
+                            Optional<unsigned> PackIndex);
 
 public:
   /// Gets the template parameter that was substituted for.
@@ -4924,21 +5042,30 @@ public:
   /// Gets the type that was substituted for the template
   /// parameter.
   QualType getReplacementType() const {
-    return getCanonicalTypeInternal();
+    return SubstTemplateTypeParmTypeBits.HasNonCanonicalUnderlyingType
+               ? *getTrailingObjects<QualType>()
+               : getCanonicalTypeInternal();
+  }
+
+  Optional<unsigned> getPackIndex() const {
+    if (SubstTemplateTypeParmTypeBits.PackIndex == 0)
+      return None;
+    return SubstTemplateTypeParmTypeBits.PackIndex - 1;
   }
 
   bool isSugared() const { return true; }
   QualType desugar() const { return getReplacementType(); }
 
   void Profile(llvm::FoldingSetNodeID &ID) {
-    Profile(ID, getReplacedParameter(), getReplacementType());
+    Profile(ID, getReplacedParameter(), getReplacementType(), getPackIndex());
   }
 
   static void Profile(llvm::FoldingSetNodeID &ID,
                       const TemplateTypeParmType *Replaced,
-                      QualType Replacement) {
+                      QualType Replacement, Optional<unsigned> PackIndex) {
     ID.AddPointer(Replaced);
-    ID.AddPointer(Replacement.getAsOpaquePtr());
+    Replacement.Profile(ID);
+    ID.AddInteger(PackIndex ? *PackIndex - 1 : 0);
   }
 
   static bool classof(const Type *T) {
@@ -5506,9 +5633,6 @@ class ElaboratedType final
       ElaboratedTypeBits.HasOwnedTagDecl = true;
       *getTrailingObjects<TagDecl *>() = OwnedTagDecl;
     }
-    assert(!(Keyword == ETK_None && NNS == nullptr) &&
-           "ElaboratedType cannot have elaborated type keyword "
-           "and name qualifier both null.");
   }
 
 public:
@@ -5742,7 +5866,7 @@ public:
   static void Profile(llvm::FoldingSetNodeID &ID, QualType Pattern,
                       Optional<unsigned> NumExpansions) {
     ID.AddPointer(Pattern.getAsOpaquePtr());
-    ID.AddBoolean(NumExpansions.hasValue());
+    ID.AddBoolean(NumExpansions.has_value());
     if (NumExpansions)
       ID.AddInteger(*NumExpansions);
   }
@@ -6499,6 +6623,19 @@ inline const Type *QualType::getTypePtr() const {
 
 inline const Type *QualType::getTypePtrOrNull() const {
   return (isNull() ? nullptr : getCommonPtr()->BaseType);
+}
+
+inline bool QualType::isReferenceable() const {
+  // C++ [defns.referenceable]
+  //   type that is either an object type, a function type that does not have
+  //   cv-qualifiers or a ref-qualifier, or a reference type.
+  const Type &Self = **this;
+  if (Self.isObjectType() || Self.isReferenceType())
+    return true;
+  if (const auto *F = Self.getAs<FunctionProtoType>())
+    return F->getMethodQuals().empty() && F->getRefQualifier() == RQ_None;
+
+  return false;
 }
 
 inline SplitQualType QualType::split() const {

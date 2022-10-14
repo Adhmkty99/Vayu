@@ -790,6 +790,9 @@ void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIDerivedType *DTy) {
   if (Tag == dwarf::DW_TAG_ptr_to_member_type)
     addDIEEntry(Buffer, dwarf::DW_AT_containing_type,
                 *getOrCreateTypeDIE(cast<DIDerivedType>(DTy)->getClassType()));
+
+  addAccess(Buffer, DTy->getFlags());
+
   // Add source line info if available and TyDesc is not a forward declaration.
   if (!DTy->isForwardDecl())
     addSourceLine(Buffer, DTy);
@@ -799,7 +802,7 @@ void DwarfUnit::constructTypeDIE(DIE &Buffer, const DIDerivedType *DTy) {
   // or reference types.
   if (DTy->getDWARFAddressSpace())
     addUInt(Buffer, dwarf::DW_AT_address_class, dwarf::DW_FORM_data4,
-            DTy->getDWARFAddressSpace().getValue());
+            *DTy->getDWARFAddressSpace());
 }
 
 void DwarfUnit::constructSubprogramArguments(DIE &Buffer, DITypeRefArray Args) {
@@ -1343,6 +1346,9 @@ void DwarfUnit::applySubprogramAttributes(const DISubprogram *SP, DIE &SPDie,
     addFlag(SPDie, dwarf::DW_AT_elemental);
   if (SP->isRecursive())
     addFlag(SPDie, dwarf::DW_AT_recursive);
+
+  if (!SP->getTargetFuncName().empty())
+    addString(SPDie, dwarf::DW_AT_trampoline, SP->getTargetFuncName());
 
   if (DD->getDwarfVersion() >= 5 && SP->isDeleted())
     addFlag(SPDie, dwarf::DW_AT_deleted);

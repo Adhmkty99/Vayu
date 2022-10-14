@@ -212,13 +212,7 @@ FileManager::getFileRef(StringRef Filename, bool openFile, bool CacheFailure) {
     if (!SeenFileInsertResult.first->second)
       return llvm::errorCodeToError(
           SeenFileInsertResult.first->second.getError());
-    // Construct and return and FileEntryRef, unless it's a redirect to another
-    // filename.
-    FileEntryRef::MapValue Value = *SeenFileInsertResult.first->second;
-    if (LLVM_LIKELY(Value.V.is<FileEntry *>()))
-      return FileEntryRef(*SeenFileInsertResult.first);
-    return FileEntryRef(*reinterpret_cast<const FileEntryRef::MapEntry *>(
-        Value.V.get<const void *>()));
+    return FileEntryRef(*SeenFileInsertResult.first);
   }
 
   // We've not seen this before. Fill it in.
@@ -274,8 +268,8 @@ FileManager::getFileRef(StringRef Filename, bool openFile, bool CacheFailure) {
   if (!UFE)
     UFE = new (FilesAlloc.Allocate()) FileEntry();
 
-  if (Status.getName() == Filename) {
-    // The name matches. Set the FileEntry.
+  if (!Status.ExposesExternalVFSPath || Status.getName() == Filename) {
+    // Use the requested name. Set the FileEntry.
     NamedFileEnt->second = FileEntryRef::MapValue(*UFE, DirInfo);
   } else {
     // Name mismatch. We need a redirect. First grab the actual entry we want
@@ -287,11 +281,32 @@ FileManager::getFileRef(StringRef Filename, bool openFile, bool CacheFailure) {
     // name to users (in diagnostics) and to tools that don't have access to
     // the VFS (in debug info and dependency '.d' files).
     //
-    // FIXME: This is pretty complicated. It's also inconsistent with how
-    // "real" filesystems behave and confuses parts of clang expect to see the
-    // name-as-accessed on the \a FileEntryRef. Maybe the returned \a
-    // FileEntryRef::getName() could return the accessed name unmodified, but
-    // make the external name available via a separate API.
+    // FIXME: This is pretty complex and has some very complicated interactions
+    // with the rest of clang. It's also inconsistent with how "real"
+    // filesystems behave and confuses parts of clang expect to see the
+    // name-as-accessed on the \a FileEntryRef.
+    //
+    // A potential plan to remove this is as follows -
+    //   - Update callers such as `HeaderSearch::findUsableModuleForHeader()`
+    //     to explicitly use the `getNameAsRequested()` rather than just using
+    //     `getName()`.
+    //   - Add a `FileManager::getExternalPath` API for explicitly getting the
+    //     remapped external filename when there is one available. Adopt it in
+    //     callers like diagnostics/deps reporting instead of calling
+    //     `getName()` directly.
+    //   - Switch the meaning of `FileEntryRef::getName()` to get the requested
+    //     name, not the external name. Once that sticks, revert callers that
+    //     want the requested name back to calling `getName()`.
+    //   - Update the VFS to always return the requested name. This could also
+    //     return the external name, or just have an API to request it
+    //     lazily. The latter has the benefit of making accesses of the
+    //     external path easily tracked, but may also require extra work than
+    //     just returning up front.
+    //   - (Optionally) Add an API to VFS to get the external filename lazily
+    //     and update `FileManager::getExternalPath()` to use it instead. This
+    //     has the benefit of making such accesses easily tracked, though isn't
+    //     necessarily required (and could cause extra work than just adding to
+    //     eg. `vfs::Status` up front).
     auto &Redirection =
         *SeenFileEntries
              .insert({Status.getName(), FileEntryRef::MapValue(*UFE, DirInfo)})
@@ -304,20 +319,19 @@ FileManager::getFileRef(StringRef Filename, bool openFile, bool CacheFailure) {
     // Cache the redirection in the previously-inserted entry, still available
     // in the tentative return value.
     NamedFileEnt->second = FileEntryRef::MapValue(Redirection);
-
-    // Fix the tentative return value.
-    NamedFileEnt = &Redirection;
   }
 
   FileEntryRef ReturnedRef(*NamedFileEnt);
   if (ReusingEntry) { // Already have an entry with this inode, return it.
 
-    // FIXME: this hack ensures that if we look up a file by a virtual path in
-    // the VFS that the getDir() will have the virtual path, even if we found
-    // the file by a 'real' path first. This is required in order to find a
-    // module's structure when its headers/module map are mapped in the VFS.
-    // We should remove this as soon as we can properly support a file having
-    // multiple names.
+    // FIXME: This hack ensures that `getDir()` will use the path that was
+    // used to lookup this file, even if we found a file by different path
+    // first. This is required in order to find a module's structure when its
+    // headers/module map are mapped in the VFS.
+    //
+    // See above for how this will eventually be removed. `IsVFSMapped`
+    // *cannot* be narrowed to `ExposesExternalVFSPath` as crash reproducers
+    // also depend on this logic and they have `use-external-paths: false`.
     if (&DirInfo.getDirEntry() != UFE->Dir && Status.IsVFSMapped)
       UFE->Dir = &DirInfo.getDirEntry();
 

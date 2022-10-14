@@ -1348,7 +1348,7 @@ bool __remove(const path& p, error_code* ec) {
 //
 // The second implementation is used on platforms where `openat()` & friends are available,
 // and it threads file descriptors through recursive calls to avoid such race conditions.
-#if defined(_LIBCPP_WIN32API)
+#if defined(_LIBCPP_WIN32API) || defined (__MVS__)
 # define REMOVE_ALL_USE_DIRECTORY_ITERATOR
 #endif
 
@@ -1884,7 +1884,7 @@ path path::lexically_relative(const path& base) const {
   if (ElemCount == 0 && (PP.atEnd() || *PP == PATHSTR("")))
     return PATHSTR(".");
 
-  // return a path constructed with 'n' dot-dot elements, followed by the the
+  // return a path constructed with 'n' dot-dot elements, followed by the
   // elements of '*this' after the mismatch.
   path Result;
   // FIXME: Reserve enough room in Result that it won't have to re-allocate.

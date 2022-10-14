@@ -67,7 +67,7 @@ static void EncodeDecode(const NameToDIE &object, ByteOrder byte_order) {
   NameToDIE decoded_object;
   offset_t data_offset = 0;
   decoded_object.Decode(data, &data_offset, strtab_reader);
-  EXPECT_TRUE(object == decoded_object);
+  EXPECT_EQ(object, decoded_object);
 }
 
 static void EncodeDecode(const NameToDIE &object) {
@@ -83,6 +83,7 @@ TEST(DWARFIndexCachingTest, NameToDIEEncodeDecode) {
              DIERef(llvm::None, DIERef::Section::DebugInfo, 0x11223344));
   map.Insert(ConstString("workd"),
              DIERef(100, DIERef::Section::DebugInfo, 0x11223344));
+  map.Finalize();
   // Make sure a valid NameToDIE map encodes and decodes correctly.
   EncodeDecode(map);
 }
@@ -230,7 +231,7 @@ TEST(DWARFIndexCachingTest, CacheSignatureTests) {
   EncodeDecode(sig, /*encode_result=*/false);
   sig.Clear();
 
-  sig.m_uuid = UUID::fromData("@\x00\x11\x22\x33\x44\x55\x66\x77", 8);
+  sig.m_uuid = UUID("@\x00\x11\x22\x33\x44\x55\x66\x77", 8);
   EXPECT_TRUE(sig.IsValid());
   EncodeDecode(sig, /*encode_result=*/true);
   sig.m_mod_time = 0x12345678;

@@ -1,8 +1,5 @@
 """Test stepping through ObjC method dispatch in various forms."""
 
-from __future__ import print_function
-
-
 import lldb
 from lldbsuite.test.decorators import *
 from lldbsuite.test.lldbtest import *
@@ -10,8 +7,6 @@ from lldbsuite.test import lldbutil
 
 
 class TestObjCStepping(TestBase):
-
-    mydir = TestBase.compute_mydir(__file__)
 
     def setUp(self):
         # Call super's setUp().
@@ -30,7 +25,6 @@ class TestObjCStepping(TestBase):
             self.main_source, '// Step over nil should stop here.')
 
     @add_test_categories(['pyapi', 'basic_process'])
-    @expectedFailureAll(remote=True)
     def test_with_python_api(self):
         """Test stepping through ObjC method dispatch in various forms."""
         self.build()

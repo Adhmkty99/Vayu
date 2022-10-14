@@ -94,6 +94,7 @@ public:
     OB_gc_live = 5,                // "gc-live"
     OB_clang_arc_attachedcall = 6, // "clang.arc.attachedcall"
     OB_ptrauth = 7,                // "ptrauth"
+    OB_kcfi = 8,                   // "kcfi"
   };
 
   /// getMDKindID - Return a unique non-zero ID for the specified metadata kind.
@@ -201,6 +202,11 @@ public:
   /// Set if a code hotness metric should be included in optimization
   /// diagnostics.
   void setDiagnosticsHotnessRequested(bool Requested);
+
+  bool getMisExpectWarningRequested() const;
+  void setMisExpectWarningRequested(bool Requested);
+  void setDiagnosticsMisExpectTolerance(Optional<uint32_t> Tolerance);
+  uint32_t getDiagnosticsMisExpectTolerance() const;
 
   /// Return the minimum hotness value a diagnostic would need in order
   /// to be included in optimization diagnostics.
