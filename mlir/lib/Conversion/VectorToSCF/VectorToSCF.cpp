@@ -18,7 +18,7 @@
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/Vector/Transforms/VectorTransforms.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/ImplicitLocOpBuilder.h"
@@ -90,12 +90,12 @@ static void getXferIndices(OpBuilder &b, OpTy xferOp, Value iv,
   indices.append(prevIndices.begin(), prevIndices.end());
 
   Location loc = xferOp.getLoc();
-  bool isBroadcast = !dim.has_value();
+  bool isBroadcast = !dim.hasValue();
   if (!isBroadcast) {
     AffineExpr d0, d1;
     bindDims(xferOp.getContext(), d0, d1);
-    Value offset = adaptor.getIndices()[dim.value()];
-    indices[dim.value()] =
+    Value offset = adaptor.getIndices()[dim.getValue()];
+    indices[dim.getValue()] =
         makeComposedAffineApply(b, loc, d0 + d1, {offset, iv});
   }
 }
@@ -163,7 +163,7 @@ static Value generateInBoundsCheck(
   Value cond; // Condition to be built...
 
   // Condition check 1: Access in-bounds?
-  bool isBroadcast = !dim; // No in-bounds check for broadcasts.
+  bool isBroadcast = !dim.hasValue(); // No in-bounds check for broadcasts.
   Location loc = xferOp.getLoc();
   ImplicitLocOpBuilder lb(xferOp.getLoc(), b);
   if (!xferOp.isDimInBounds(0) && !isBroadcast) {
@@ -171,7 +171,7 @@ static Value generateInBoundsCheck(
         vector::createOrFoldDimOp(b, loc, xferOp.getSource(), *dim);
     AffineExpr d0, d1;
     bindDims(xferOp.getContext(), d0, d1);
-    Value base = xferOp.getIndices()[*dim];
+    Value base = xferOp.getIndices()[dim.getValue()];
     Value memrefIdx = makeComposedAffineApply(b, loc, d0 + d1, {base, iv});
     cond = lb.create<arith::CmpIOp>(arith::CmpIPredicate::sgt, memrefDim,
                                     memrefIdx);
@@ -357,7 +357,7 @@ struct Strategy<TransferReadOp> {
   static void getBufferIndices(TransferReadOp xferOp,
                                SmallVector<Value, 8> &indices) {
     auto storeOp = getStoreOp(xferOp);
-    auto prevIndices = memref::StoreOpAdaptor(storeOp).getIndices();
+    auto prevIndices = memref::StoreOpAdaptor(storeOp).indices();
     indices.append(prevIndices.begin(), prevIndices.end());
   }
 
@@ -463,7 +463,7 @@ struct Strategy<TransferWriteOp> {
   static void getBufferIndices(TransferWriteOp xferOp,
                                SmallVector<Value, 8> &indices) {
     auto loadOp = xferOp.getVector().getDefiningOp<memref::LoadOp>();
-    auto prevIndices = memref::LoadOpAdaptor(loadOp).getIndices();
+    auto prevIndices = memref::LoadOpAdaptor(loadOp).indices();
     indices.append(prevIndices.begin(), prevIndices.end());
   }
 
@@ -880,8 +880,9 @@ struct UnrollTransferReadConversion
   void getInsertionIndices(TransferReadOp xferOp,
                            SmallVector<int64_t, 8> &indices) const {
     if (auto insertOp = getInsertOp(xferOp)) {
-      for (Attribute attr : insertOp.getPosition())
+      llvm::for_each(insertOp.getPosition(), [&](Attribute attr) {
         indices.push_back(attr.dyn_cast<IntegerAttr>().getInt());
+      });
     }
   }
 
@@ -1007,8 +1008,9 @@ struct UnrollTransferWriteConversion
   void getExtractionIndices(TransferWriteOp xferOp,
                             SmallVector<int64_t, 8> &indices) const {
     if (auto extractOp = getExtractOp(xferOp)) {
-      for (Attribute attr : extractOp.getPosition())
+      llvm::for_each(extractOp.getPosition(), [&](Attribute attr) {
         indices.push_back(attr.dyn_cast<IntegerAttr>().getInt());
+      });
     }
   }
 

@@ -354,7 +354,8 @@ define i64 @imm64_1() nounwind {
 ;
 ; RV64IZBS-LABEL: imm64_1:
 ; RV64IZBS:       # %bb.0:
-; RV64IZBS-NEXT:    bseti a0, zero, 31
+; RV64IZBS-NEXT:    li a0, 1
+; RV64IZBS-NEXT:    slli a0, a0, 31
 ; RV64IZBS-NEXT:    ret
   ret i64 2147483648 ; 0x8000_0000
 }
@@ -419,7 +420,8 @@ define i64 @imm64_3() nounwind {
 ;
 ; RV64IZBS-LABEL: imm64_3:
 ; RV64IZBS:       # %bb.0:
-; RV64IZBS-NEXT:    bseti a0, zero, 32
+; RV64IZBS-NEXT:    li a0, 1
+; RV64IZBS-NEXT:    slli a0, a0, 32
 ; RV64IZBS-NEXT:    ret
   ret i64 4294967296 ; 0x1_0000_0000
 }
@@ -451,7 +453,8 @@ define i64 @imm64_4() nounwind {
 ;
 ; RV64IZBS-LABEL: imm64_4:
 ; RV64IZBS:       # %bb.0:
-; RV64IZBS-NEXT:    bseti a0, zero, 63
+; RV64IZBS-NEXT:    li a0, -1
+; RV64IZBS-NEXT:    slli a0, a0, 63
 ; RV64IZBS-NEXT:    ret
   ret i64 9223372036854775808 ; 0x8000_0000_0000_0000
 }
@@ -483,7 +486,8 @@ define i64 @imm64_5() nounwind {
 ;
 ; RV64IZBS-LABEL: imm64_5:
 ; RV64IZBS:       # %bb.0:
-; RV64IZBS-NEXT:    bseti a0, zero, 63
+; RV64IZBS-NEXT:    li a0, -1
+; RV64IZBS-NEXT:    slli a0, a0, 63
 ; RV64IZBS-NEXT:    ret
   ret i64 -9223372036854775808 ; 0x8000_0000_0000_0000
 }
@@ -597,13 +601,14 @@ define i64 @imm64_8() nounwind {
 ;
 ; RV64IZBA-LABEL: imm64_8:
 ; RV64IZBA:       # %bb.0:
-; RV64IZBA-NEXT:    lui a0, 596523
-; RV64IZBA-NEXT:    addiw a0, a0, 965
-; RV64IZBA-NEXT:    slli.uw a0, a0, 13
-; RV64IZBA-NEXT:    addi a0, a0, -1347
+; RV64IZBA-NEXT:    lui a0, 583
+; RV64IZBA-NEXT:    addiw a0, a0, -1875
+; RV64IZBA-NEXT:    slli a0, a0, 14
+; RV64IZBA-NEXT:    addi a0, a0, -947
 ; RV64IZBA-NEXT:    slli a0, a0, 12
-; RV64IZBA-NEXT:    addi a0, a0, -529
-; RV64IZBA-NEXT:    slli a0, a0, 4
+; RV64IZBA-NEXT:    addi a0, a0, 1511
+; RV64IZBA-NEXT:    slli a0, a0, 13
+; RV64IZBA-NEXT:    addi a0, a0, -272
 ; RV64IZBA-NEXT:    ret
 ;
 ; RV64IZBB-LABEL: imm64_8:
@@ -1718,30 +1723,32 @@ define i64 @imm_2863311530() {
 ;
 ; RV64I-LABEL: imm_2863311530:
 ; RV64I:       # %bb.0:
-; RV64I-NEXT:    lui a0, 349525
-; RV64I-NEXT:    addiw a0, a0, 1365
-; RV64I-NEXT:    slli a0, a0, 1
+; RV64I-NEXT:    lui a0, 171
+; RV64I-NEXT:    addiw a0, a0, -1365
+; RV64I-NEXT:    slli a0, a0, 12
+; RV64I-NEXT:    addi a0, a0, -1366
 ; RV64I-NEXT:    ret
 ;
 ; RV64IZBA-LABEL: imm_2863311530:
 ; RV64IZBA:       # %bb.0:
-; RV64IZBA-NEXT:    lui a0, 349525
-; RV64IZBA-NEXT:    addiw a0, a0, 1365
-; RV64IZBA-NEXT:    slli a0, a0, 1
+; RV64IZBA-NEXT:    lui a0, 699051
+; RV64IZBA-NEXT:    addiw a0, a0, -1366
+; RV64IZBA-NEXT:    zext.w a0, a0
 ; RV64IZBA-NEXT:    ret
 ;
 ; RV64IZBB-LABEL: imm_2863311530:
 ; RV64IZBB:       # %bb.0:
-; RV64IZBB-NEXT:    lui a0, 349525
-; RV64IZBB-NEXT:    addiw a0, a0, 1365
-; RV64IZBB-NEXT:    slli a0, a0, 1
+; RV64IZBB-NEXT:    lui a0, 171
+; RV64IZBB-NEXT:    addiw a0, a0, -1365
+; RV64IZBB-NEXT:    slli a0, a0, 12
+; RV64IZBB-NEXT:    addi a0, a0, -1366
 ; RV64IZBB-NEXT:    ret
 ;
 ; RV64IZBS-LABEL: imm_2863311530:
 ; RV64IZBS:       # %bb.0:
-; RV64IZBS-NEXT:    lui a0, 349525
-; RV64IZBS-NEXT:    addiw a0, a0, 1365
-; RV64IZBS-NEXT:    slli a0, a0, 1
+; RV64IZBS-NEXT:    lui a0, 174763
+; RV64IZBS-NEXT:    addiw a0, a0, -1366
+; RV64IZBS-NEXT:    bseti a0, a0, 31
 ; RV64IZBS-NEXT:    ret
 	ret i64 2863311530 ; #0xaaaaaaaa
 }
@@ -1756,30 +1763,32 @@ define i64 @imm_neg_2863311530() {
 ;
 ; RV64I-LABEL: imm_neg_2863311530:
 ; RV64I:       # %bb.0:
-; RV64I-NEXT:    lui a0, 699051
-; RV64I-NEXT:    addiw a0, a0, -1365
-; RV64I-NEXT:    slli a0, a0, 1
+; RV64I-NEXT:    lui a0, 1048405
+; RV64I-NEXT:    addiw a0, a0, 1365
+; RV64I-NEXT:    slli a0, a0, 12
+; RV64I-NEXT:    addi a0, a0, 1366
 ; RV64I-NEXT:    ret
 ;
 ; RV64IZBA-LABEL: imm_neg_2863311530:
 ; RV64IZBA:       # %bb.0:
-; RV64IZBA-NEXT:    lui a0, 699051
-; RV64IZBA-NEXT:    addiw a0, a0, -1365
-; RV64IZBA-NEXT:    slli a0, a0, 1
+; RV64IZBA-NEXT:    lui a0, 908766
+; RV64IZBA-NEXT:    addiw a0, a0, -546
+; RV64IZBA-NEXT:    sh2add a0, a0, a0
 ; RV64IZBA-NEXT:    ret
 ;
 ; RV64IZBB-LABEL: imm_neg_2863311530:
 ; RV64IZBB:       # %bb.0:
-; RV64IZBB-NEXT:    lui a0, 699051
-; RV64IZBB-NEXT:    addiw a0, a0, -1365
-; RV64IZBB-NEXT:    slli a0, a0, 1
+; RV64IZBB-NEXT:    lui a0, 1048405
+; RV64IZBB-NEXT:    addiw a0, a0, 1365
+; RV64IZBB-NEXT:    slli a0, a0, 12
+; RV64IZBB-NEXT:    addi a0, a0, 1366
 ; RV64IZBB-NEXT:    ret
 ;
 ; RV64IZBS-LABEL: imm_neg_2863311530:
 ; RV64IZBS:       # %bb.0:
-; RV64IZBS-NEXT:    lui a0, 699051
-; RV64IZBS-NEXT:    addiw a0, a0, -1365
-; RV64IZBS-NEXT:    slli a0, a0, 1
+; RV64IZBS-NEXT:    lui a0, 873813
+; RV64IZBS-NEXT:    addiw a0, a0, 1366
+; RV64IZBS-NEXT:    bclri a0, a0, 31
 ; RV64IZBS-NEXT:    ret
 	ret i64 -2863311530 ; #0xffffffff55555556
 }
@@ -1831,26 +1840,29 @@ define i64 @imm_neg_2147485013() {
 ;
 ; RV64I-LABEL: imm_neg_2147485013:
 ; RV64I:       # %bb.0:
-; RV64I-NEXT:    lui a0, 524288
+; RV64I-NEXT:    li a0, -1
+; RV64I-NEXT:    slli a0, a0, 31
 ; RV64I-NEXT:    addi a0, a0, -1365
 ; RV64I-NEXT:    ret
 ;
 ; RV64IZBA-LABEL: imm_neg_2147485013:
 ; RV64IZBA:       # %bb.0:
-; RV64IZBA-NEXT:    lui a0, 524288
+; RV64IZBA-NEXT:    li a0, -1
+; RV64IZBA-NEXT:    slli a0, a0, 31
 ; RV64IZBA-NEXT:    addi a0, a0, -1365
 ; RV64IZBA-NEXT:    ret
 ;
 ; RV64IZBB-LABEL: imm_neg_2147485013:
 ; RV64IZBB:       # %bb.0:
-; RV64IZBB-NEXT:    lui a0, 524288
+; RV64IZBB-NEXT:    li a0, -1
+; RV64IZBB-NEXT:    slli a0, a0, 31
 ; RV64IZBB-NEXT:    addi a0, a0, -1365
 ; RV64IZBB-NEXT:    ret
 ;
 ; RV64IZBS-LABEL: imm_neg_2147485013:
 ; RV64IZBS:       # %bb.0:
-; RV64IZBS-NEXT:    lui a0, 524288
-; RV64IZBS-NEXT:    addi a0, a0, -1365
+; RV64IZBS-NEXT:    li a0, -1365
+; RV64IZBS-NEXT:    bclri a0, a0, 31
 ; RV64IZBS-NEXT:    ret
   ret i64 -2147485013
 }
@@ -1990,11 +2002,12 @@ define i64 @imm_12900918536874() {
 ;
 ; RV64I-LABEL: imm_12900918536874:
 ; RV64I:       # %bb.0:
-; RV64I-NEXT:    lui a0, 384477
-; RV64I-NEXT:    addiw a0, a0, 1365
+; RV64I-NEXT:    lui a0, 188
+; RV64I-NEXT:    addiw a0, a0, -1093
 ; RV64I-NEXT:    slli a0, a0, 12
-; RV64I-NEXT:    addi a0, a0, 1365
-; RV64I-NEXT:    slli a0, a0, 1
+; RV64I-NEXT:    addi a0, a0, -1365
+; RV64I-NEXT:    slli a0, a0, 12
+; RV64I-NEXT:    addi a0, a0, -1366
 ; RV64I-NEXT:    ret
 ;
 ; RV64IZBA-LABEL: imm_12900918536874:
@@ -2007,20 +2020,22 @@ define i64 @imm_12900918536874() {
 ;
 ; RV64IZBB-LABEL: imm_12900918536874:
 ; RV64IZBB:       # %bb.0:
-; RV64IZBB-NEXT:    lui a0, 384477
-; RV64IZBB-NEXT:    addiw a0, a0, 1365
+; RV64IZBB-NEXT:    lui a0, 188
+; RV64IZBB-NEXT:    addiw a0, a0, -1093
 ; RV64IZBB-NEXT:    slli a0, a0, 12
-; RV64IZBB-NEXT:    addi a0, a0, 1365
-; RV64IZBB-NEXT:    slli a0, a0, 1
+; RV64IZBB-NEXT:    addi a0, a0, -1365
+; RV64IZBB-NEXT:    slli a0, a0, 12
+; RV64IZBB-NEXT:    addi a0, a0, -1366
 ; RV64IZBB-NEXT:    ret
 ;
 ; RV64IZBS-LABEL: imm_12900918536874:
 ; RV64IZBS:       # %bb.0:
-; RV64IZBS-NEXT:    lui a0, 384477
-; RV64IZBS-NEXT:    addiw a0, a0, 1365
+; RV64IZBS-NEXT:    lui a0, 188
+; RV64IZBS-NEXT:    addiw a0, a0, -1093
 ; RV64IZBS-NEXT:    slli a0, a0, 12
-; RV64IZBS-NEXT:    addi a0, a0, 1365
-; RV64IZBS-NEXT:    slli a0, a0, 1
+; RV64IZBS-NEXT:    addi a0, a0, -1365
+; RV64IZBS-NEXT:    slli a0, a0, 12
+; RV64IZBS-NEXT:    addi a0, a0, -1366
 ; RV64IZBS-NEXT:    ret
   ret i64 12900918536874
 }
@@ -2385,40 +2400,4 @@ define i64 @li_rori_3() {
 ; RV64IZBS-NEXT:    addi a0, a0, -1
 ; RV64IZBS-NEXT:    ret
   ret i64 -2281701377
-}
-
-; This used to assert when compiled with Zba.
-define i64 @PR54812() {
-; RV32I-LABEL: PR54812:
-; RV32I:       # %bb.0:
-; RV32I-NEXT:    lui a0, 521599
-; RV32I-NEXT:    li a1, -1
-; RV32I-NEXT:    ret
-;
-; RV64I-LABEL: PR54812:
-; RV64I:       # %bb.0:
-; RV64I-NEXT:    lui a0, 1048447
-; RV64I-NEXT:    addiw a0, a0, 1407
-; RV64I-NEXT:    slli a0, a0, 12
-; RV64I-NEXT:    ret
-;
-; RV64IZBA-LABEL: PR54812:
-; RV64IZBA:       # %bb.0:
-; RV64IZBA-NEXT:    lui a0, 872917
-; RV64IZBA-NEXT:    sh1add a0, a0, a0
-; RV64IZBA-NEXT:    ret
-;
-; RV64IZBB-LABEL: PR54812:
-; RV64IZBB:       # %bb.0:
-; RV64IZBB-NEXT:    lui a0, 1048447
-; RV64IZBB-NEXT:    addiw a0, a0, 1407
-; RV64IZBB-NEXT:    slli a0, a0, 12
-; RV64IZBB-NEXT:    ret
-;
-; RV64IZBS-LABEL: PR54812:
-; RV64IZBS:       # %bb.0:
-; RV64IZBS-NEXT:    lui a0, 1045887
-; RV64IZBS-NEXT:    bclri a0, a0, 31
-; RV64IZBS-NEXT:    ret
-  ret i64 -2158497792;
 }

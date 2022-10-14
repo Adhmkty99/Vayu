@@ -35,10 +35,12 @@ namespace bolt {
 
 void getRegNameFromBitVec(const BinaryContext &BC, const BitVector &RegV,
                           std::set<std::string> *NameVec = nullptr) {
-  for (int RegIdx : RegV.set_bits()) {
+  int RegIdx = RegV.find_first();
+  while (RegIdx != -1) {
     LLVM_DEBUG(dbgs() << BC.MRI->getName(RegIdx) << " ");
     if (NameVec)
       NameVec->insert(std::string(BC.MRI->getName(RegIdx)));
+    RegIdx = RegV.find_next(RegIdx);
   }
   LLVM_DEBUG(dbgs() << "\n");
 }
@@ -46,7 +48,7 @@ void getRegNameFromBitVec(const BinaryContext &BC, const BitVector &RegV,
 void StokeInfo::checkInstr(const BinaryFunction &BF, StokeFuncInfo &FuncInfo) {
   MCPlusBuilder *MIB = BF.getBinaryContext().MIB.get();
   BitVector RegV(NumRegs, false);
-  for (BinaryBasicBlock *BB : BF.getLayout().blocks()) {
+  for (BinaryBasicBlock *BB : BF.layout()) {
     if (BB->empty())
       continue;
 
@@ -81,7 +83,7 @@ void StokeInfo::checkInstr(const BinaryFunction &BF, StokeFuncInfo &FuncInfo) {
       if (IsRipAddr)
         FuncInfo.HasRipAddr = true;
     } // end of for (auto &It : ...)
-  }   // end of for (auto *BB : ...)
+  } // end of for (auto *BB : ...)
 }
 
 bool StokeInfo::checkFunction(BinaryFunction &BF, DataflowInfoManager &DInfo,

@@ -51,7 +51,7 @@ bool relocIs64(uint8_t relocType) {
 }
 
 std::string toString(const wasm::InputChunk *c) {
-  return (toString(c->file) + ":(" + c->name + ")").str();
+  return (toString(c->file) + ":(" + c->getName() + ")").str();
 }
 
 namespace wasm {
@@ -196,14 +196,14 @@ uint64_t InputChunk::getTombstone() const {
 }
 
 void InputFunction::setFunctionIndex(uint32_t index) {
-  LLVM_DEBUG(dbgs() << "InputFunction::setFunctionIndex: " << name << " -> "
-                    << index << "\n");
+  LLVM_DEBUG(dbgs() << "InputFunction::setFunctionIndex: " << getName()
+                    << " -> " << index << "\n");
   assert(!hasFunctionIndex());
   functionIndex = index;
 }
 
 void InputFunction::setTableIndex(uint32_t index) {
-  LLVM_DEBUG(dbgs() << "InputFunction::setTableIndex: " << name << " -> "
+  LLVM_DEBUG(dbgs() << "InputFunction::setTableIndex: " << getName() << " -> "
                     << index << "\n");
   assert(!hasTableIndex());
   tableIndex = index;
@@ -271,7 +271,7 @@ void InputFunction::calculateSize() {
   if (!file || !config->compressRelocations)
     return;
 
-  LLVM_DEBUG(dbgs() << "calculateSize: " << name << "\n");
+  LLVM_DEBUG(dbgs() << "calculateSize: " << getName() << "\n");
 
   const uint8_t *secStart = file->codeSection->Content.data();
   const uint8_t *funcStart = secStart + getInputSectionOffset();
@@ -318,7 +318,7 @@ void InputFunction::writeCompressed(uint8_t *buf) const {
   decodeULEB128(funcStart, &count);
   funcStart += count;
 
-  LLVM_DEBUG(dbgs() << "write func: " << name << "\n");
+  LLVM_DEBUG(dbgs() << "write func: " << getName() << "\n");
   buf += encodeULEB128(compressedFuncSize, buf);
   const uint8_t *lastRelocEnd = funcStart;
   for (const WasmRelocation &rel : relocations) {
@@ -339,7 +339,7 @@ void InputFunction::writeCompressed(uint8_t *buf) const {
 
 uint64_t InputChunk::getChunkOffset(uint64_t offset) const {
   if (const auto *ms = dyn_cast<MergeInputChunk>(this)) {
-    LLVM_DEBUG(dbgs() << "getChunkOffset(merged): " << name << "\n");
+    LLVM_DEBUG(dbgs() << "getChunkOffset(merged): " << getName() << "\n");
     LLVM_DEBUG(dbgs() << "offset: " << offset << "\n");
     LLVM_DEBUG(dbgs() << "parentOffset: " << ms->getParentOffset(offset)
                       << "\n");
@@ -361,10 +361,10 @@ uint64_t InputChunk::getVA(uint64_t offset) const {
 // This is only called when generating shared libraries (PIC) where address are
 // not known at static link time.
 void InputChunk::generateRelocationCode(raw_ostream &os) const {
-  LLVM_DEBUG(dbgs() << "generating runtime relocations: " << name
+  LLVM_DEBUG(dbgs() << "generating runtime relocations: " << getName()
                     << " count=" << relocations.size() << "\n");
 
-  bool is64 = config->is64.value_or(false);
+  bool is64 = config->is64.getValueOr(false);
   unsigned opcode_ptr_const = is64 ? WASM_OPCODE_I64_CONST
                                    : WASM_OPCODE_I32_CONST;
   unsigned opcode_ptr_add = is64 ? WASM_OPCODE_I64_ADD

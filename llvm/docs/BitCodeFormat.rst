@@ -475,8 +475,7 @@ formats.  This wrapper format is useful for accommodating LTO in compilation
 pipelines where intermediate objects must be native object files which contain
 metadata in other sections.
 
-Not all tools support this format.  For example, lld and the gold plugin will
-ignore these sections when linking object files.
+Not all tools support this format.
 
 .. _encoding of LLVM IR:
 

@@ -20,6 +20,7 @@
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/raw_ostream.h"
 #include <string>
 #include <system_error>
@@ -28,12 +29,12 @@ using namespace llvm;
 using namespace sampleprof;
 
 static cl::opt<uint64_t> ProfileSymbolListCutOff(
-    "profile-symbol-list-cutoff", cl::Hidden, cl::init(-1),
+    "profile-symbol-list-cutoff", cl::Hidden, cl::init(-1), cl::ZeroOrMore,
     cl::desc("Cutoff value about how many symbols in profile symbol list "
              "will be used. This is very useful for performance debugging"));
 
 cl::opt<bool> GenerateMergedBaseProfiles(
-    "generate-merged-base-profiles",
+    "generate-merged-base-profiles", cl::init(true), cl::ZeroOrMore,
     cl::desc("When generating nested context-sensitive profiles, always "
              "generate extra base profile for function with all its context "
              "profiles merged into it."));
@@ -41,8 +42,8 @@ cl::opt<bool> GenerateMergedBaseProfiles(
 namespace llvm {
 namespace sampleprof {
 bool FunctionSamples::ProfileIsProbeBased = false;
-bool FunctionSamples::ProfileIsCS = false;
-bool FunctionSamples::ProfileIsPreInlined = false;
+bool FunctionSamples::ProfileIsCSFlat = false;
+bool FunctionSamples::ProfileIsCSNested = false;
 bool FunctionSamples::UseMD5 = false;
 bool FunctionSamples::HasUniqSuffix = true;
 bool FunctionSamples::ProfileIsFS = false;
@@ -97,9 +98,10 @@ class SampleProfErrorCategoryType : public std::error_category {
 
 } // end anonymous namespace
 
+static ManagedStatic<SampleProfErrorCategoryType> ErrorCategory;
+
 const std::error_category &llvm::sampleprof_category() {
-  static SampleProfErrorCategoryType ErrorCategory;
-  return ErrorCategory;
+  return *ErrorCategory;
 }
 
 void LineLocation::print(raw_ostream &OS) const {
@@ -516,12 +518,6 @@ void CSProfileConverter::convertProfiles(CSProfileConverter::FrameNode &Node) {
       auto &SamplesMap = NodeProfile->functionSamplesAt(ChildNode.CallSiteLoc);
       SamplesMap.emplace(OrigChildContext.getName().str(), *ChildProfile);
       NodeProfile->addTotalSamples(ChildProfile->getTotalSamples());
-      // Remove the corresponding body sample for the callsite and update the
-      // total weight.
-      auto Count = NodeProfile->removeCalledTargetAndBodySample(
-          ChildNode.CallSiteLoc.LineOffset, ChildNode.CallSiteLoc.Discriminator,
-          OrigChildContext.getName());
-      NodeProfile->removeTotalSamples(Count);
     }
 
     // Separate child profile to be a standalone profile, if the current parent
@@ -538,6 +534,11 @@ void CSProfileConverter::convertProfiles(CSProfileConverter::FrameNode &Node) {
       SamplesMap[ChildProfile->getName().str()].getContext().setAttribute(
           ContextDuplicatedIntoBase);
     }
+
+    // Contexts coming with a `ContextShouldBeInlined` attribute indicate this
+    // is a preinliner-computed profile.
+    if (OrigChildContext.hasAttribute(ContextShouldBeInlined))
+      FunctionSamples::ProfileIsCSNested = true;
 
     // Remove the original child profile.
     ProfileMap.erase(OrigChildContext);

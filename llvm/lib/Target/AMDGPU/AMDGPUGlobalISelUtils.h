@@ -16,8 +16,6 @@
 namespace llvm {
 
 class MachineRegisterInfo;
-class GCNSubtarget;
-class LLT;
 
 namespace AMDGPU {
 
@@ -26,7 +24,7 @@ std::pair<Register, unsigned>
 getBaseWithConstantOffset(MachineRegisterInfo &MRI, Register Reg);
 
 bool isLegalVOP3PShuffleMask(ArrayRef<int> Mask);
-bool hasAtomicFaddRtnForTy(const GCNSubtarget &Subtarget, const LLT &Ty);
+
 }
 }
 

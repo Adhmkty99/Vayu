@@ -67,13 +67,10 @@ NativeEnumEnumEnumerators::NativeEnumEnumEnumerators(
 
   ContinuationIndex = ClassParent.getEnumRecord().FieldList;
   while (ContinuationIndex) {
-    CVType FieldListCVT = Types.getType(*ContinuationIndex);
-    assert(FieldListCVT.kind() == LF_FIELDLIST);
+    CVType FieldList = Types.getType(*ContinuationIndex);
+    assert(FieldList.kind() == LF_FIELDLIST);
     ContinuationIndex.reset();
-    FieldListRecord FieldList;
-    cantFail(TypeDeserializer::deserializeAs<FieldListRecord>(FieldListCVT,
-                                                              FieldList));
-    cantFail(visitMemberRecordStream(FieldList.Data, *this));
+    cantFail(visitMemberRecordStream(FieldList.data(), *this));
   }
 }
 
@@ -140,7 +137,7 @@ void NativeTypeEnum::dump(raw_ostream &OS, int Indent,
   dumpSymbolField(OS, "name", getName(), Indent);
   dumpSymbolIdField(OS, "typeId", getTypeId(), Indent, Session,
                     PdbSymbolIdField::Type, ShowIdFields, RecurseIdFields);
-  if (Modifiers)
+  if (Modifiers.hasValue())
     dumpSymbolIdField(OS, "unmodifiedTypeId", getUnmodifiedTypeId(), Indent,
                       Session, PdbSymbolIdField::UnmodifiedType, ShowIdFields,
                       RecurseIdFields);

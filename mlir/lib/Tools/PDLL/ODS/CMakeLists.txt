@@ -1,5 +1,4 @@
 add_mlir_library(MLIRPDLLODS
-  Constraint.cpp
   Context.cpp
   Dialect.cpp
   Operation.cpp

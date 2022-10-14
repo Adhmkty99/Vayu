@@ -124,7 +124,7 @@ bool ProfileSummaryInfo::isFunctionHotInCallGraph(
       for (const auto &I : BB)
         if (isa<CallInst>(I) || isa<InvokeInst>(I))
           if (auto CallCount = getProfileCount(cast<CallBase>(I), nullptr))
-            TotalCallCount += *CallCount;
+            TotalCallCount += CallCount.getValue();
     if (isHotCount(TotalCallCount))
       return true;
   }
@@ -153,7 +153,7 @@ bool ProfileSummaryInfo::isFunctionColdInCallGraph(
       for (const auto &I : BB)
         if (isa<CallInst>(I) || isa<InvokeInst>(I))
           if (auto CallCount = getProfileCount(cast<CallBase>(I), nullptr))
-            TotalCallCount += *CallCount;
+            TotalCallCount += CallCount.getValue();
     if (!isColdCount(TotalCallCount))
       return false;
   }
@@ -165,7 +165,7 @@ bool ProfileSummaryInfo::isFunctionColdInCallGraph(
 
 bool ProfileSummaryInfo::isFunctionHotnessUnknown(const Function &F) const {
   assert(hasPartialSampleProfile() && "Expect partial sample profile");
-  return !F.getEntryCount();
+  return !F.getEntryCount().hasValue();
 }
 
 template <bool isHot>
@@ -187,7 +187,7 @@ bool ProfileSummaryInfo::isFunctionHotOrColdInCallGraphNthPercentile(
       for (const auto &I : BB)
         if (isa<CallInst>(I) || isa<InvokeInst>(I))
           if (auto CallCount = getProfileCount(cast<CallBase>(I), nullptr))
-            TotalCallCount += *CallCount;
+            TotalCallCount += CallCount.getValue();
     if (isHot && isHotCountNthPercentile(PercentileCutoff, TotalCallCount))
       return true;
     if (!isHot && !isColdCountNthPercentile(PercentileCutoff, TotalCallCount))
@@ -279,19 +279,19 @@ ProfileSummaryInfo::computeThreshold(int PercentileCutoff) const {
 }
 
 bool ProfileSummaryInfo::hasHugeWorkingSetSize() const {
-  return HasHugeWorkingSetSize && HasHugeWorkingSetSize.value();
+  return HasHugeWorkingSetSize && HasHugeWorkingSetSize.getValue();
 }
 
 bool ProfileSummaryInfo::hasLargeWorkingSetSize() const {
-  return HasLargeWorkingSetSize && HasLargeWorkingSetSize.value();
+  return HasLargeWorkingSetSize && HasLargeWorkingSetSize.getValue();
 }
 
 bool ProfileSummaryInfo::isHotCount(uint64_t C) const {
-  return HotCountThreshold && C >= HotCountThreshold.value();
+  return HotCountThreshold && C >= HotCountThreshold.getValue();
 }
 
 bool ProfileSummaryInfo::isColdCount(uint64_t C) const {
-  return ColdCountThreshold && C <= ColdCountThreshold.value();
+  return ColdCountThreshold && C <= ColdCountThreshold.getValue();
 }
 
 template <bool isHot>
@@ -299,9 +299,9 @@ bool ProfileSummaryInfo::isHotOrColdCountNthPercentile(int PercentileCutoff,
                                                        uint64_t C) const {
   auto CountThreshold = computeThreshold(PercentileCutoff);
   if (isHot)
-    return CountThreshold && C >= CountThreshold.value();
+    return CountThreshold && C >= CountThreshold.getValue();
   else
-    return CountThreshold && C <= CountThreshold.value();
+    return CountThreshold && C <= CountThreshold.getValue();
 }
 
 bool ProfileSummaryInfo::isHotCountNthPercentile(int PercentileCutoff,
@@ -315,11 +315,11 @@ bool ProfileSummaryInfo::isColdCountNthPercentile(int PercentileCutoff,
 }
 
 uint64_t ProfileSummaryInfo::getOrCompHotCountThreshold() const {
-  return HotCountThreshold.value_or(UINT64_MAX);
+  return HotCountThreshold.getValueOr(UINT64_MAX);
 }
 
 uint64_t ProfileSummaryInfo::getOrCompColdCountThreshold() const {
-  return ColdCountThreshold.value_or(0);
+  return ColdCountThreshold.getValueOr(0);
 }
 
 bool ProfileSummaryInfo::isHotBlock(const BasicBlock *BB,

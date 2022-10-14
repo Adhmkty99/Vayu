@@ -44,9 +44,6 @@ struct SparseCompilerOptions
   PassOptions::Option<bool> enableVLAVectorization{
       *this, "enable-vla-vectorization",
       desc("Enable vector length agnostic vectorization"), init(false)};
-  PassOptions::Option<bool> testBufferizationAnalysisOnly{
-      *this, "test-bufferization-analysis-only",
-      desc("Run only the inplacability analysis"), init(false)};
 
   /// Projects out the options for `createSparsificationPass`.
   SparsificationOptions sparsificationOptions() const {

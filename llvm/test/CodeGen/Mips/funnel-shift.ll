@@ -66,8 +66,7 @@ define i37 @fshl_i37(i37 %x, i37 %y, i37 %z) {
 ; CHECK-BE-NEXT:    move $17, $6
 ; CHECK-BE-NEXT:    move $18, $5
 ; CHECK-BE-NEXT:    move $19, $4
-; CHECK-BE-NEXT:    lw $1, 56($sp)
-; CHECK-BE-NEXT:    andi $4, $1, 31
+; CHECK-BE-NEXT:    lw $4, 56($sp)
 ; CHECK-BE-NEXT:    lw $5, 60($sp)
 ; CHECK-BE-NEXT:    addiu $6, $zero, 0
 ; CHECK-BE-NEXT:    jal __umoddi3
@@ -118,9 +117,8 @@ define i37 @fshl_i37(i37 %x, i37 %y, i37 %z) {
 ; CHECK-LE-NEXT:    move $17, $6
 ; CHECK-LE-NEXT:    move $18, $5
 ; CHECK-LE-NEXT:    move $19, $4
-; CHECK-LE-NEXT:    lw $1, 60($sp)
-; CHECK-LE-NEXT:    andi $5, $1, 31
 ; CHECK-LE-NEXT:    lw $4, 56($sp)
+; CHECK-LE-NEXT:    lw $5, 60($sp)
 ; CHECK-LE-NEXT:    addiu $6, $zero, 37
 ; CHECK-LE-NEXT:    jal __umoddi3
 ; CHECK-LE-NEXT:    addiu $7, $zero, 0
@@ -311,8 +309,7 @@ define i37 @fshr_i37(i37 %x, i37 %y, i37 %z) {
 ; CHECK-BE-NEXT:    move $17, $6
 ; CHECK-BE-NEXT:    move $18, $5
 ; CHECK-BE-NEXT:    move $19, $4
-; CHECK-BE-NEXT:    lw $1, 56($sp)
-; CHECK-BE-NEXT:    andi $4, $1, 31
+; CHECK-BE-NEXT:    lw $4, 56($sp)
 ; CHECK-BE-NEXT:    lw $5, 60($sp)
 ; CHECK-BE-NEXT:    addiu $6, $zero, 0
 ; CHECK-BE-NEXT:    jal __umoddi3
@@ -330,9 +327,9 @@ define i37 @fshr_i37(i37 %x, i37 %y, i37 %z) {
 ; CHECK-BE-NEXT:    andi $1, $1, 31
 ; CHECK-BE-NEXT:    sll $6, $19, 1
 ; CHECK-BE-NEXT:    sllv $6, $6, $1
-; CHECK-BE-NEXT:    sll $7, $16, 27
 ; CHECK-BE-NEXT:    or $2, $6, $2
-; CHECK-BE-NEXT:    movz $4, $7, $3
+; CHECK-BE-NEXT:    sll $6, $16, 27
+; CHECK-BE-NEXT:    movz $4, $6, $3
 ; CHECK-BE-NEXT:    srlv $3, $4, $5
 ; CHECK-BE-NEXT:    sll $4, $18, 1
 ; CHECK-BE-NEXT:    sllv $1, $4, $1
@@ -363,9 +360,8 @@ define i37 @fshr_i37(i37 %x, i37 %y, i37 %z) {
 ; CHECK-LE-NEXT:    move $17, $6
 ; CHECK-LE-NEXT:    move $18, $5
 ; CHECK-LE-NEXT:    move $19, $4
-; CHECK-LE-NEXT:    lw $1, 60($sp)
-; CHECK-LE-NEXT:    andi $5, $1, 31
 ; CHECK-LE-NEXT:    lw $4, 56($sp)
+; CHECK-LE-NEXT:    lw $5, 60($sp)
 ; CHECK-LE-NEXT:    addiu $6, $zero, 37
 ; CHECK-LE-NEXT:    jal __umoddi3
 ; CHECK-LE-NEXT:    addiu $7, $zero, 0

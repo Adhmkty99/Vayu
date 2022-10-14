@@ -7,6 +7,7 @@
 // CHECK: "-la"
 
 // GCC driver is used as linker on cygming. It should be aware of LIBRARY_PATH.
+// REQUIRES: clang-driver
 // REQUIRES: native
 
 // Make sure that LIBRARY_PATH works for both i386 and x86_64 on Darwin.

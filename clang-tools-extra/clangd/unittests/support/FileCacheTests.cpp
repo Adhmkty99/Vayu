@@ -42,7 +42,7 @@ public:
         FS, FreshTime,
         [&](llvm::Optional<llvm::StringRef> Data) {
           GotParse = true;
-          Value = Data.value_or("").str();
+          Value = Data.getValueOr("").str();
         },
         [&]() {
           GotRead = true;

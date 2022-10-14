@@ -1,4 +1,4 @@
-// REQUIRES: amdgpu-registered-target
+// REQUIRES: clang-driver, amdgpu-registered-target
 
 // Check bundle ID for code object v2.
 

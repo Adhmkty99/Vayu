@@ -20,6 +20,9 @@
 // iter_type get(iter_type b, iter_type e, bool intl, ios_base& iob,
 //               ios_base::iostate& err, long double& v) const;
 
+// TODO For zh_CN GLIBC puts the negative sign after the currency symbol.
+// XFAIL: target={{.*}}-linux-gnu{{.*}}
+
 #include <locale>
 #include <ios>
 #include <streambuf>
@@ -321,11 +324,7 @@ int main(int, char**)
             std::noshowbase(ios);
         }
         {   // negative one, showbase
-#ifdef TEST_HAS_GLIBC
-            std::string v = "-" + currency_name + "0.01";
-#else
             std::string v = currency_name + "-0.01";
-#endif
             typedef cpp17_input_iterator<const char*> I;
             long double ex;
             std::ios_base::iostate err = std::ios_base::goodbit;
@@ -336,11 +335,7 @@ int main(int, char**)
             assert(ex == -1);
         }
         {   // negative one, showbase
-#ifdef TEST_HAS_GLIBC
-            std::string v = "-" + currency_name + "0.01";
-#else
             std::string v = currency_name + "-0.01";
-#endif
             std::showbase(ios);
             typedef cpp17_input_iterator<const char*> I;
             long double ex;
@@ -377,11 +372,7 @@ int main(int, char**)
             std::noshowbase(ios);
         }
         {   // negative, showbase
-#ifdef TEST_HAS_GLIBC
-            std::string v = "-" + currency_name + "1,234,567.89";
-#else
             std::string v = currency_name + "-1,234,567.89";
-#endif
             std::showbase(ios);
             typedef cpp17_input_iterator<const char*> I;
             long double ex;
@@ -672,11 +663,7 @@ int main(int, char**)
             std::noshowbase(ios);
         }
         {   // negative one, showbase
-#ifdef TEST_HAS_GLIBC
-            std::wstring v = L"-" + w_currency_name + L"0.01";
-#else
             std::wstring v = w_currency_name + L"-0.01";
-#endif
             typedef cpp17_input_iterator<const wchar_t*> I;
             long double ex;
             std::ios_base::iostate err = std::ios_base::goodbit;
@@ -687,11 +674,7 @@ int main(int, char**)
             assert(ex == -1);
         }
         {   // negative one, showbase
-#ifdef TEST_HAS_GLIBC
-            std::wstring v = L"-" + w_currency_name + L"0.01";
-#else
             std::wstring v = w_currency_name + L"-0.01";
-#endif
             std::showbase(ios);
             typedef cpp17_input_iterator<const wchar_t*> I;
             long double ex;
@@ -728,11 +711,7 @@ int main(int, char**)
             std::noshowbase(ios);
         }
         {   // negative, showbase
-#ifdef TEST_HAS_GLIBC
-            std::wstring v = L"-" + w_currency_name + L"1,234,567.89";
-#else
             std::wstring v = w_currency_name + L"-1,234,567.89";
-#endif
             std::showbase(ios);
             typedef cpp17_input_iterator<const wchar_t*> I;
             long double ex;

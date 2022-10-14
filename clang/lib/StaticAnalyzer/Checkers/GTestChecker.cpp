@@ -135,7 +135,7 @@ void GTestChecker::modelAssertionResultBoolConstructor(
   SVal BooleanArgVal = Call->getArgSVal(0);
   if (IsRef) {
     // The argument is a reference, so load from it to get the boolean value.
-    if (!isa<Loc>(BooleanArgVal))
+    if (!BooleanArgVal.getAs<Loc>())
       return;
     BooleanArgVal = C.getState()->getSVal(BooleanArgVal.castAs<Loc>());
   }
@@ -260,7 +260,7 @@ SVal GTestChecker::getAssertionResultSuccessFieldValue(
 
   Optional<Loc> FieldLoc =
       State->getLValue(SuccessField, Instance).getAs<Loc>();
-  if (!FieldLoc)
+  if (!FieldLoc.hasValue())
     return UnknownVal();
 
   return State->getSVal(*FieldLoc);
@@ -270,17 +270,20 @@ SVal GTestChecker::getAssertionResultSuccessFieldValue(
 ProgramStateRef GTestChecker::assumeValuesEqual(SVal Val1, SVal Val2,
                                                 ProgramStateRef State,
                                                 CheckerContext &C) {
-  auto DVal1 = Val1.getAs<DefinedOrUnknownSVal>();
-  auto DVal2 = Val2.getAs<DefinedOrUnknownSVal>();
-  if (!DVal1 || !DVal2)
+  if (!Val1.getAs<DefinedOrUnknownSVal>() ||
+      !Val2.getAs<DefinedOrUnknownSVal>())
     return State;
 
   auto ValuesEqual =
-      C.getSValBuilder().evalEQ(State, *DVal1, *DVal2).getAs<DefinedSVal>();
-  if (!ValuesEqual)
+      C.getSValBuilder().evalEQ(State, Val1.castAs<DefinedOrUnknownSVal>(),
+                                Val2.castAs<DefinedOrUnknownSVal>());
+
+  if (!ValuesEqual.getAs<DefinedSVal>())
     return State;
 
-  State = C.getConstraintManager().assume(State, *ValuesEqual, true);
+  State = C.getConstraintManager().assume(
+      State, ValuesEqual.castAs<DefinedSVal>(), true);
+
   return State;
 }
 

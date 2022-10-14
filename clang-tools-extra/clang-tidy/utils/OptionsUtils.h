@@ -9,9 +9,7 @@
 #ifndef LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_MISC_OPTIONUTILS_H
 #define LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_MISC_OPTIONUTILS_H
 
-#include "clang/Basic/LLVM.h"
-#include <string>
-#include <vector>
+#include "../ClangTidy.h"
 
 namespace clang {
 namespace tidy {
@@ -19,13 +17,11 @@ namespace utils {
 namespace options {
 
 /// Parse a semicolon separated list of strings.
-std::vector<StringRef> parseStringList(StringRef Option);
-
-std::vector<StringRef> parseListPair(StringRef L, StringRef R);
+std::vector<std::string> parseStringList(StringRef Option);
 
 /// Serialize a sequence of names that can be parsed by
 /// ``parseStringList``.
-std::string serializeStringList(ArrayRef<StringRef> Strings);
+std::string serializeStringList(ArrayRef<std::string> Strings);
 
 } // namespace options
 } // namespace utils

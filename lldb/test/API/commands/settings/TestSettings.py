@@ -13,6 +13,8 @@ from lldbsuite.test import lldbutil
 
 
 class SettingsCommandTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def test_apropos_should_also_search_settings_description(self):

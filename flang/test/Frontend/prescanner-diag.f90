@@ -4,6 +4,9 @@
 ! needs to make sure that the diagnostics are indeed issued (rather that relying
 ! on some DiagnosticsEngine).
 
+!-----------
+! RUN LINES
+!-----------
 ! Test with -E (i.e. PrintPreprocessedAction, stops after prescanning)
 ! RUN: %flang -E -I %S/Inputs/ %s 2>&1 | FileCheck %s
 ! RUN: %flang_fc1 -E -I %S/Inputs/ %s 2>&1 | FileCheck %s
@@ -12,9 +15,15 @@
 ! RUN: %flang -fsyntax-only -I %S/Inputs/ %s 2>&1 | FileCheck %s
 ! RUN: %flang_fc1 -fsyntax-only -I %S/Inputs/ %s 2>&1 | FileCheck %s
 
-! CHECK: prescanner-diag.f90:[[#@LINE+3]]:20: portability: #include: extra stuff ignored after file name
-! CHECK: prescanner-diag.f90:[[#@LINE+3]]:20: portability: #include: extra stuff ignored after file name
+!-----------------------
+! EXPECTED OUTPUT
+!-----------------------
+! CHECK: prescanner-diag.f90:27:20: portability: #include: extra stuff ignored after file name
+! CHECK: prescanner-diag.f90:28:20: portability: #include: extra stuff ignored after file name
 
+!-------
+! INPUT
+!-------
 #include <empty.h> comment
 #include "empty.h" comment
 end

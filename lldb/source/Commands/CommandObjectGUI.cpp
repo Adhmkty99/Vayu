@@ -26,18 +26,22 @@ CommandObjectGUI::~CommandObjectGUI() = default;
 
 bool CommandObjectGUI::DoExecute(Args &args, CommandReturnObject &result) {
 #if LLDB_ENABLE_CURSES
-  Debugger &debugger = GetDebugger();
+  if (args.GetArgumentCount() == 0) {
+    Debugger &debugger = GetDebugger();
 
-  File &input = debugger.GetInputFile();
-  File &output = debugger.GetOutputFile();
-  if (input.GetStream() && output.GetStream() && input.GetIsRealTerminal() &&
-      input.GetIsInteractive()) {
-    IOHandlerSP io_handler_sp(new IOHandlerCursesGUI(debugger));
-    if (io_handler_sp)
-      debugger.RunIOHandlerAsync(io_handler_sp);
-    result.SetStatus(eReturnStatusSuccessFinishResult);
+    File &input = debugger.GetInputFile();
+    File &output = debugger.GetOutputFile();
+    if (input.GetStream() && output.GetStream() && input.GetIsRealTerminal() &&
+        input.GetIsInteractive()) {
+      IOHandlerSP io_handler_sp(new IOHandlerCursesGUI(debugger));
+      if (io_handler_sp)
+        debugger.RunIOHandlerAsync(io_handler_sp);
+      result.SetStatus(eReturnStatusSuccessFinishResult);
+    } else {
+      result.AppendError("the gui command requires an interactive terminal.");
+    }
   } else {
-    result.AppendError("the gui command requires an interactive terminal.");
+    result.AppendError("the gui command takes no arguments.");
   }
   return true;
 #else

@@ -43,10 +43,10 @@ class CGBlockInfo;
 /// codegeneration issues, like target-specific attributes, builtins and so
 /// on.
 class TargetCodeGenInfo {
-  std::unique_ptr<ABIInfo> Info;
+  std::unique_ptr<ABIInfo> Info = nullptr;
 
 public:
-  TargetCodeGenInfo(std::unique_ptr<ABIInfo> Info);
+  TargetCodeGenInfo(std::unique_ptr<ABIInfo> Info) : Info(std::move(Info)) {}
   virtual ~TargetCodeGenInfo();
 
   /// getABIInfo() - Returns ABI info helper for the target.

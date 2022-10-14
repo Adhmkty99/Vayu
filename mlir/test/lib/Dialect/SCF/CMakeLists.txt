@@ -8,7 +8,7 @@ add_mlir_library(MLIRSCFTestPasses
 
   LINK_LIBS PUBLIC
   MLIRPass
-  MLIRSCFDialect
+  MLIRSCF
   MLIRSCFTransforms
   MLIRSCFUtils
   MLIRTransformUtils

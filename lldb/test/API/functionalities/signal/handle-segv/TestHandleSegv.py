@@ -11,6 +11,8 @@ from lldbsuite.test import lldbutil
 
 class HandleSegvTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfWindows  # signals do not exist on Windows
     @skipIfDarwin
     @expectedFailureNetBSD
@@ -26,7 +28,7 @@ class HandleSegvTestCase(TestBase):
         process = target.LaunchSimple(
             None, None, self.get_process_working_directory())
         self.assertTrue(process, PROCESS_IS_VALID)
-        self.assertState(process.GetState(), lldb.eStateStopped)
+        self.assertEqual(process.GetState(), lldb.eStateStopped)
         signo = process.GetUnixSignals().GetSignalNumberFromName("SIGSEGV")
 
         thread = lldbutil.get_stopped_thread(process, lldb.eStopReasonSignal)
@@ -41,5 +43,5 @@ class HandleSegvTestCase(TestBase):
 
         # Continue until we exit.
         process.Continue()
-        self.assertState(process.GetState(), lldb.eStateExited)
+        self.assertEqual(process.GetState(), lldb.eStateExited)
         self.assertEqual(process.GetExitStatus(), 0)

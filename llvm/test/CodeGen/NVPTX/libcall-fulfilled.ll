@@ -1,6 +1,4 @@
 ; RUN: llc < %s -march=nvptx 2>&1 | FileCheck %s
-; RUN: %if ptxas %{ llc < %s -march=nvptx | %ptxas-verify %}
-
 ; Allow to make libcalls that are defined in the current module
 
 declare i8* @malloc(i64)

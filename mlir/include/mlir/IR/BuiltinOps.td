@@ -48,7 +48,7 @@ def ModuleOp : Builtin_Op<"module", [
 
     ```mlir
     module {
-      func.func @foo()
+      func @foo()
     }
     ```
   }];

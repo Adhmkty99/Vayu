@@ -41,8 +41,8 @@ add_flang_library(FortranLower
   FortranEvaluate
   FortranSemantics
   MLIRAffineToStandard
-  MLIRFuncDialect
-  MLIRLLVMDialect
+  MLIRFunc
+  MLIRLLVMIR
   MLIRSCFToControlFlow
 
   LINK_COMPONENTS

@@ -37,11 +37,11 @@ public:
          function_ref<void(Operation *, Region *)> moveIntoRegion,
          DominanceInfo &domInfo)
       : shouldMoveIntoRegion(shouldMoveIntoRegion),
-        moveIntoRegion(moveIntoRegion), domInfo(domInfo) {}
+        moveIntoRegion(moveIntoRegion), domInfo(domInfo), numSunk(0) {}
 
   /// Given a list of regions, find operations to sink and sink them. Return the
   /// number of operations sunk.
-  size_t sinkRegions(RegionRange regions);
+  size_t sinkRegions(ArrayRef<Region *> regions);
 
 private:
   /// Given a region and an op which dominates the region, returns true if all
@@ -117,7 +117,7 @@ void Sinker::sinkRegion(Region *region) {
   }
 }
 
-size_t Sinker::sinkRegions(RegionRange regions) {
+size_t Sinker::sinkRegions(ArrayRef<Region *> regions) {
   for (Region *region : regions)
     if (!region->empty())
       sinkRegion(region);
@@ -125,7 +125,7 @@ size_t Sinker::sinkRegions(RegionRange regions) {
 }
 
 size_t mlir::controlFlowSink(
-    RegionRange regions, DominanceInfo &domInfo,
+    ArrayRef<Region *> regions, DominanceInfo &domInfo,
     function_ref<bool(Operation *, Region *)> shouldMoveIntoRegion,
     function_ref<void(Operation *, Region *)> moveIntoRegion) {
   return Sinker(shouldMoveIntoRegion, moveIntoRegion, domInfo)

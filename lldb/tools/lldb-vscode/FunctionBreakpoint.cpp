@@ -25,8 +25,6 @@ void FunctionBreakpoint::SetBreakpoint() {
     SetCondition();
   if (!hitCondition.empty())
     SetHitCondition();
-  if (!logMessage.empty())
-    SetLogMessage();
 }
 
 } // namespace lldb_vscode

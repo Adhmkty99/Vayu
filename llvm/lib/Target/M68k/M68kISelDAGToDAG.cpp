@@ -181,7 +181,6 @@ public:
   }
 
   bool runOnMachineFunction(MachineFunction &MF) override;
-  bool IsProfitableToFold(SDValue N, SDNode *U, SDNode *Root) const override;
 
 private:
   /// Keep a pointer to the M68kSubtarget around so that we can
@@ -312,35 +311,8 @@ private:
 };
 } // namespace
 
-bool M68kDAGToDAGISel::IsProfitableToFold(SDValue N, SDNode *U,
-                                          SDNode *Root) const {
-  if (OptLevel == CodeGenOpt::None)
-    return false;
-
-  if (U == Root) {
-    switch (U->getOpcode()) {
-    default:
-      return true;
-    case M68kISD::SUB:
-    case ISD::SUB:
-      // Prefer NEG instruction when zero subtracts a value.
-      // e.g.
-      //   move.l	#0, %d0
-      //   sub.l	(4,%sp), %d0
-      // vs.
-      //   move.l	(4,%sp), %d0
-      //   neg.l	%d0
-      if (llvm::isNullConstant(U->getOperand(0)))
-        return false;
-      break;
-    }
-  }
-
-  return true;
-}
-
 bool M68kDAGToDAGISel::runOnMachineFunction(MachineFunction &MF) {
-  Subtarget = &MF.getSubtarget<M68kSubtarget>();
+  Subtarget = &static_cast<const M68kSubtarget &>(MF.getSubtarget());
   return SelectionDAGISel::runOnMachineFunction(MF);
 }
 

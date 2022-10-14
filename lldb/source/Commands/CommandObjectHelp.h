@@ -32,7 +32,7 @@ public:
 
   class CommandOptions : public Options {
   public:
-    CommandOptions() = default;
+    CommandOptions() {}
 
     ~CommandOptions() override = default;
 

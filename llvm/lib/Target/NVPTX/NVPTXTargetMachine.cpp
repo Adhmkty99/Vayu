@@ -330,8 +330,6 @@ void NVPTXPassConfig::addIRPasses() {
     addStraightLineScalarOptimizationPasses();
   }
 
-  addPass(createAtomicExpandPass());
-
   // === LSR and other generic IR passes ===
   TargetPassConfig::addIRPasses();
   // EarlyCSE is not always strong enough to clean up what LSR produces. For

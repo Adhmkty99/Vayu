@@ -2,7 +2,7 @@
 ; if their aliases are used across suspension points through PHINode.
 ; RUN: opt < %s -passes='cgscc(coro-split),simplifycfg,early-cse' -S | FileCheck %s
 
-define i8* @f(i1 %n) presplitcoroutine {
+define i8* @f(i1 %n) "coroutine.presplit"="1" {
 entry:
   %x = alloca i64
   %y = alloca i64

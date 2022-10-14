@@ -4,7 +4,7 @@
 declare void @consume.double.ptr(double*)
 declare void @consume.i32.ptr(i32*)
 
-define i8* @f() presplitcoroutine {
+define i8* @f() "coroutine.presplit"="1" {
 entry:
   %prefix = alloca double
   %data = alloca i32, i32 4

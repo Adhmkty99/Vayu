@@ -86,7 +86,6 @@ extern void CFRelease(CFTypeRef cf);
 
 CF_IMPLICIT_BRIDGING_DISABLED
 
-extern CFTypeRef CFAutorelease(CFTypeRef cf);
 extern CFTypeRef CFMakeCollectable(CFTypeRef cf);
 typedef struct {
 }

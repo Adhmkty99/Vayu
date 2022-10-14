@@ -34,7 +34,6 @@ class ChainedOriginDepot {
 
   void LockAll();
   void UnlockAll();
-  void TestOnlyUnmap();
 
  private:
   ChainedOriginDepot(const ChainedOriginDepot &) = delete;

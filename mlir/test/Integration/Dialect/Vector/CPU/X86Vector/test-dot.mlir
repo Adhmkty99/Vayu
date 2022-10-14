@@ -3,7 +3,7 @@
 // RUN: %lli --entry-function=entry --mattr="avx" --dlopen=%mlir_integration_test_dir/libmlir_c_runner_utils%shlibext | \
 // RUN: FileCheck %s
 
-func.func @entry() -> i32 {
+func @entry() -> i32 {
   %i0 = arith.constant 0 : i32
   %i4 = arith.constant 4 : i32
 

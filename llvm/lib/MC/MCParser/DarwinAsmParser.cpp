@@ -480,7 +480,7 @@ bool DarwinAsmParser::parseSectionSwitch(StringRef Segment, StringRef Section,
 
   // FIXME: Arch specific.
   bool isText = TAA & MachO::S_ATTR_PURE_INSTRUCTIONS;
-  getStreamer().switchSection(getContext().getMachOSection(
+  getStreamer().SwitchSection(getContext().getMachOSection(
       Segment, Section, TAA, StubSize,
       isText ? SectionKind::getText() : SectionKind::getData()));
 
@@ -719,7 +719,7 @@ bool DarwinAsmParser::parseDirectiveSection(StringRef, SMLoc) {
 
   // FIXME: Arch specific.
   bool isText = Segment == "__TEXT";  // FIXME: Hack.
-  getStreamer().switchSection(getContext().getMachOSection(
+  getStreamer().SwitchSection(getContext().getMachOSection(
       Segment, Section, TAA, StubSize,
       isText ? SectionKind::getText() : SectionKind::getData()));
   return false;
@@ -728,10 +728,10 @@ bool DarwinAsmParser::parseDirectiveSection(StringRef, SMLoc) {
 /// ParseDirectivePushSection:
 ///   ::= .pushsection identifier (',' identifier)*
 bool DarwinAsmParser::parseDirectivePushSection(StringRef S, SMLoc Loc) {
-  getStreamer().pushSection();
+  getStreamer().PushSection();
 
   if (parseDirectiveSection(S, Loc)) {
-    getStreamer().popSection();
+    getStreamer().PopSection();
     return true;
   }
 
@@ -741,7 +741,7 @@ bool DarwinAsmParser::parseDirectivePushSection(StringRef S, SMLoc Loc) {
 /// ParseDirectivePopSection:
 ///   ::= .popsection
 bool DarwinAsmParser::parseDirectivePopSection(StringRef, SMLoc) {
-  if (!getStreamer().popSection())
+  if (!getStreamer().PopSection())
     return TokError(".popsection without corresponding .pushsection");
   return false;
 }
@@ -752,7 +752,7 @@ bool DarwinAsmParser::parseDirectivePrevious(StringRef DirName, SMLoc) {
   MCSectionSubPair PreviousSection = getStreamer().getPreviousSection();
   if (!PreviousSection.first)
     return TokError(".previous without corresponding .section");
-  getStreamer().switchSection(PreviousSection.first, PreviousSection.second);
+  getStreamer().SwitchSection(PreviousSection.first, PreviousSection.second);
   return false;
 }
 

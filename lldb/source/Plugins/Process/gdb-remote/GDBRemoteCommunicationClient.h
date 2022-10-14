@@ -254,6 +254,8 @@ public:
 
   lldb::addr_t GetShlibInfoAddr();
 
+  bool GetSupportsThreadSuffix();
+
   bool GetProcessInfo(lldb::pid_t pid, ProcessInstanceInfo &process_info);
 
   uint32_t FindProcesses(const ProcessInstanceInfoMatch &process_match_info,
@@ -520,8 +522,6 @@ public:
                          std::chrono::seconds interrupt_timeout);
 
   bool GetSaveCoreSupported() const;
-
-  llvm::Expected<int> KillProcess(lldb::pid_t pid);
 
 protected:
   LazyBool m_supports_not_sending_acks = eLazyBoolCalculate;

@@ -69,9 +69,6 @@ private:
                                   uint64_t ScratchSize,
                                   uint64_t CodeSize,
                                   const AMDGPUMachineFunction* MFI);
-  void emitResourceUsageRemarks(const MachineFunction &MF,
-                                const SIProgramInfo &CurrentProgramInfo,
-                                bool isModuleEntryFunction, bool hasMAIInsts);
 
   uint16_t getAmdhsaKernelCodeProperties(
       const MachineFunction &MF) const;

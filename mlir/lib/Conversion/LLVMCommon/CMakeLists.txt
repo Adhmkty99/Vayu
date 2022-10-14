@@ -12,7 +12,7 @@ add_mlir_conversion_library(MLIRLLVMCommonConversion
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRLLVMDialect
+  MLIRLLVMIR
   MLIRSupport
   MLIRTransforms
   )

@@ -17,6 +17,9 @@
 ! RUN: not %flang_fc1 %t.f90 2>&1  | FileCheck %s --check-prefix=FLANG-FC1-NONEXISTENT-FILE
 ! RUN: not %flang_fc1 %S 2>&1  | FileCheck %s --check-prefix=FLANG-FC1-DIR
 
+!-----------------------
+! EXPECTED OUTPUT
+!-----------------------
 ! FLANG-NO-FILE: flang-new: error: no input files
 
 ! FLANG-NONEXISTENT-FILE: flang-new: error: no such file or directory: {{.*}}

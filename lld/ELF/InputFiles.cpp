@@ -43,6 +43,13 @@ using namespace lld::elf;
 bool InputFile::isInGroup;
 uint32_t InputFile::nextGroupId;
 
+SmallVector<std::unique_ptr<MemoryBuffer>> elf::memoryBuffers;
+SmallVector<BinaryFile *, 0> elf::binaryFiles;
+SmallVector<BitcodeFile *, 0> elf::bitcodeFiles;
+SmallVector<BitcodeFile *, 0> elf::lazyBitcodeFiles;
+SmallVector<ELFFileBase *, 0> elf::objectFiles;
+SmallVector<SharedFile *, 0> elf::sharedFiles;
+
 std::unique_ptr<TarWriter> elf::tar;
 
 // Returns "<internal>", "foo.a(bar.o)" or "baz.o".
@@ -116,7 +123,7 @@ Optional<MemoryBufferRef> elf::readFile(StringRef path) {
   }
 
   MemoryBufferRef mbref = (*mbOrErr)->getMemBufferRef();
-  ctx->memoryBuffers.push_back(std::move(*mbOrErr)); // take MB ownership
+  memoryBuffers.push_back(std::move(*mbOrErr)); // take MB ownership
 
   if (tar)
     tar->append(relativeToRoot(path), mbref.getBuffer());
@@ -145,12 +152,12 @@ static bool isCompatible(InputFile *file) {
   }
 
   InputFile *existing = nullptr;
-  if (!ctx->objectFiles.empty())
-    existing = ctx->objectFiles[0];
-  else if (!ctx->sharedFiles.empty())
-    existing = ctx->sharedFiles[0];
-  else if (!ctx->bitcodeFiles.empty())
-    existing = ctx->bitcodeFiles[0];
+  if (!objectFiles.empty())
+    existing = objectFiles[0];
+  else if (!sharedFiles.empty())
+    existing = sharedFiles[0];
+  else if (!bitcodeFiles.empty())
+    existing = bitcodeFiles[0];
   std::string with;
   if (existing)
     with = " with " + toString(existing);
@@ -164,7 +171,7 @@ template <class ELFT> static void doParseFile(InputFile *file) {
 
   // Binary file
   if (auto *f = dyn_cast<BinaryFile>(file)) {
-    ctx->binaryFiles.push_back(f);
+    binaryFiles.push_back(f);
     f->parse();
     return;
   }
@@ -172,7 +179,7 @@ template <class ELFT> static void doParseFile(InputFile *file) {
   // Lazy object file
   if (file->lazy) {
     if (auto *f = dyn_cast<BitcodeFile>(file)) {
-      ctx->lazyBitcodeFiles.push_back(f);
+      lazyBitcodeFiles.push_back(f);
       f->parseLazy();
     } else {
       cast<ObjFile<ELFT>>(file)->parseLazy();
@@ -191,13 +198,13 @@ template <class ELFT> static void doParseFile(InputFile *file) {
 
   // LLVM bitcode file
   if (auto *f = dyn_cast<BitcodeFile>(file)) {
-    ctx->bitcodeFiles.push_back(f);
+    bitcodeFiles.push_back(f);
     f->parse<ELFT>();
     return;
   }
 
   // Regular object file
-  ctx->objectFiles.push_back(cast<ELFFileBase>(file));
+  objectFiles.push_back(cast<ELFFileBase>(file));
   cast<ObjFile<ELFT>>(file)->parse();
 }
 
@@ -217,11 +224,11 @@ template <class ELFT>
 static std::string getSrcMsgAux(ObjFile<ELFT> &file, const Symbol &sym,
                                 InputSectionBase &sec, uint64_t offset) {
   // In DWARF, functions and variables are stored to different places.
-  // First, look up a function for a given offset.
+  // First, lookup a function for a given offset.
   if (Optional<DILineInfo> info = file.getDILineInfo(&sec, offset))
     return createFileLineMsg(info->FileName, info->Line);
 
-  // If it failed, look up again as a variable.
+  // If it failed, lookup again as a variable.
   if (Optional<std::pair<std::string, unsigned>> fileLine =
           file.getVariableLoc(sym.getName()))
     return createFileLineMsg(fileLine->first, fileLine->second);
@@ -690,7 +697,7 @@ static void updateARMVFPArgs(const ARMAttributeParser &attributes,
                              const InputFile *f) {
   Optional<unsigned> attr =
       attributes.getAttributeValue(ARMBuildAttrs::ABI_VFP_args);
-  if (!attr)
+  if (!attr.hasValue())
     // If an ABI tag isn't present then it is implicitly given the value of 0
     // which maps to ARMBuildAttrs::BaseAAPCS. However many assembler files,
     // including some in glibc that don't use FP args (and should have value 3)
@@ -698,7 +705,7 @@ static void updateARMVFPArgs(const ARMAttributeParser &attributes,
     // as a clash.
     return;
 
-  unsigned vfpArgs = *attr;
+  unsigned vfpArgs = attr.getValue();
   ARMVFPArgKind arg;
   switch (vfpArgs) {
   case ARMBuildAttrs::BaseAAPCS:
@@ -737,9 +744,9 @@ static void updateARMVFPArgs(const ARMAttributeParser &attributes,
 static void updateSupportedARMFeatures(const ARMAttributeParser &attributes) {
   Optional<unsigned> attr =
       attributes.getAttributeValue(ARMBuildAttrs::CPU_arch);
-  if (!attr)
+  if (!attr.hasValue())
     return;
-  auto arch = attr.value();
+  auto arch = attr.getValue();
   switch (arch) {
   case ARMBuildAttrs::Pre_v4:
   case ARMBuildAttrs::v4:
@@ -1390,7 +1397,7 @@ template <class ELFT> void SharedFile::parse() {
   if (!wasInserted)
     return;
 
-  ctx->sharedFiles.push_back(this);
+  sharedFiles.push_back(this);
 
   verdefs = parseVerdefs<ELFT>(obj.base(), verdefSec);
   std::vector<uint32_t> verneeds = parseVerneed<ELFT>(obj, verneedSec);
@@ -1710,27 +1717,34 @@ void BinaryFile::parse() {
                                        data.size(), 0, nullptr});
 }
 
-ELFFileBase *elf::createObjFile(MemoryBufferRef mb, StringRef archiveName,
-                                bool lazy) {
-  ELFFileBase *f;
+InputFile *elf::createObjectFile(MemoryBufferRef mb, StringRef archiveName,
+                                 uint64_t offsetInArchive) {
+  if (isBitcode(mb))
+    return make<BitcodeFile>(mb, archiveName, offsetInArchive, /*lazy=*/false);
+
   switch (getELFKind(mb, archiveName)) {
   case ELF32LEKind:
-    f = make<ObjFile<ELF32LE>>(mb, archiveName);
-    break;
+    return make<ObjFile<ELF32LE>>(mb, archiveName);
   case ELF32BEKind:
-    f = make<ObjFile<ELF32BE>>(mb, archiveName);
-    break;
+    return make<ObjFile<ELF32BE>>(mb, archiveName);
   case ELF64LEKind:
-    f = make<ObjFile<ELF64LE>>(mb, archiveName);
-    break;
+    return make<ObjFile<ELF64LE>>(mb, archiveName);
   case ELF64BEKind:
-    f = make<ObjFile<ELF64BE>>(mb, archiveName);
-    break;
+    return make<ObjFile<ELF64BE>>(mb, archiveName);
   default:
     llvm_unreachable("getELFKind");
   }
-  f->lazy = lazy;
-  return f;
+}
+
+InputFile *elf::createLazyFile(MemoryBufferRef mb, StringRef archiveName,
+                               uint64_t offsetInArchive) {
+  if (isBitcode(mb))
+    return make<BitcodeFile>(mb, archiveName, offsetInArchive, /*lazy=*/true);
+
+  auto *file =
+      cast<ELFFileBase>(createObjectFile(mb, archiveName, offsetInArchive));
+  file->lazy = true;
+  return file;
 }
 
 template <class ELFT> void ObjFile<ELFT>::parseLazy() {
@@ -1756,7 +1770,7 @@ template <class ELFT> void ObjFile<ELFT>::parseLazy() {
 }
 
 bool InputFile::shouldExtractForCommon(StringRef name) {
-  if (isa<BitcodeFile>(this))
+  if (isBitcode(mb))
     return isBitcodeNonCommonDef(mb, name, archiveName);
 
   return isNonCommonDef(mb, name, archiveName);

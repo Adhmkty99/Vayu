@@ -799,7 +799,7 @@ void NotNullTerminatedResultCheck::check(
     Optional<bool> AreSafeFunctionsWanted;
 
     Preprocessor::macro_iterator It = PP->macro_begin();
-    while (It != PP->macro_end() && !AreSafeFunctionsWanted) {
+    while (It != PP->macro_end() && !AreSafeFunctionsWanted.hasValue()) {
       if (It->first->getName() == "__STDC_WANT_LIB_EXT1__") {
         const auto *MI = PP->getMacroInfo(It->first);
         // PP->getMacroInfo() returns nullptr if macro has no definition.
@@ -817,8 +817,8 @@ void NotNullTerminatedResultCheck::check(
       ++It;
     }
 
-    if (AreSafeFunctionsWanted)
-      UseSafeFunctions = AreSafeFunctionsWanted.value();
+    if (AreSafeFunctionsWanted.hasValue())
+      UseSafeFunctions = AreSafeFunctionsWanted.getValue();
   }
 
   StringRef Name = FunctionExpr->getDirectCallee()->getName();

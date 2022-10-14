@@ -24,7 +24,6 @@
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
-#include "llvm/Passes/OptimizationLevel.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ErrorOr.h"
 #include "llvm/Support/FileSystem.h"
@@ -112,8 +111,7 @@ compileFIR(const mlir::PassPipelineCLParser &passPipeline) {
     if (mlir::failed(passPipeline.addToPipeline(pm, errorHandler)))
       return mlir::failure();
   } else {
-    // Run tco with O2 by default.
-    fir::createMLIRToLLVMPassPipeline(pm, llvm::OptimizationLevel::O2);
+    fir::createMLIRToLLVMPassPipeline(pm);
     fir::addLLVMDialectToLLVMPass(pm, out.os());
   }
 
@@ -133,10 +131,6 @@ compileFIR(const mlir::PassPipelineCLParser &passPipeline) {
 }
 
 int main(int argc, char **argv) {
-  // Disable the ExternalNameConversion pass by default until all the tests have
-  // been updated to pass with it enabled.
-  disableExternalNameConversion = true;
-
   [[maybe_unused]] InitLLVM y(argc, argv);
   fir::support::registerMLIRPassesForFortranTools();
   fir::registerOptCodeGenPasses();

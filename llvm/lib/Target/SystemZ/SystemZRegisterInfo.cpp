@@ -290,7 +290,8 @@ SystemZRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
 
   MachineBasicBlock &MBB = *MI->getParent();
   MachineFunction &MF = *MBB.getParent();
-  auto *TII = MF.getSubtarget<SystemZSubtarget>().getInstrInfo();
+  auto *TII =
+      static_cast<const SystemZInstrInfo *>(MF.getSubtarget().getInstrInfo());
   const SystemZFrameLowering *TFI = getFrameLowering(MF);
   DebugLoc DL = MI->getDebugLoc();
 
@@ -320,7 +321,7 @@ SystemZRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator MI,
   // See if the offset is in range, or if an equivalent instruction that
   // accepts the offset exists.
   unsigned Opcode = MI->getOpcode();
-  unsigned OpcodeForOffset = TII->getOpcodeForOffset(Opcode, Offset, &*MI);
+  unsigned OpcodeForOffset = TII->getOpcodeForOffset(Opcode, Offset);
   if (OpcodeForOffset) {
     if (OpcodeForOffset == SystemZ::LE &&
         MF.getSubtarget<SystemZSubtarget>().hasVector()) {

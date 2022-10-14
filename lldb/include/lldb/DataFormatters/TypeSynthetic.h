@@ -266,7 +266,7 @@ public:
   uint32_t &GetRevision() { return m_my_revision; }
 
 protected:
-  uint32_t m_my_revision = 0;
+  uint32_t m_my_revision;
   Flags m_flags;
 
 private:

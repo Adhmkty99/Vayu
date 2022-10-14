@@ -62,13 +62,6 @@ group("AllTargetsAsmParsers") {
   }
 }
 
-group("AllTargetsCodeGens") {
-  deps = []
-  foreach(target, llvm_targets_to_build) {
-    deps += [ "$target:LLVM${target}CodeGen" ]
-  }
-}
-
 group("AllTargetsDescs") {
   deps = []
   foreach(target, llvm_targets_to_build) {

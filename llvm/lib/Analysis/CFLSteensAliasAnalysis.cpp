@@ -165,7 +165,7 @@ CFLSteensAAResult::FunctionInfo::FunctionInfo(
     assert(RetVal != nullptr);
     assert(RetVal->getType()->isPointerTy());
     auto RetInfo = Sets.find(InstantiatedValue{RetVal, 0});
-    if (RetInfo)
+    if (RetInfo.hasValue())
       AddToRetParamRelations(0, RetInfo->Index);
   }
 
@@ -174,7 +174,7 @@ CFLSteensAAResult::FunctionInfo::FunctionInfo(
   for (auto &Param : Fn.args()) {
     if (Param.getType()->isPointerTy()) {
       auto ParamInfo = Sets.find(InstantiatedValue{&Param, 0});
-      if (ParamInfo)
+      if (ParamInfo.hasValue())
         AddToRetParamRelations(I + 1, ParamInfo->Index);
     }
     ++I;
@@ -216,7 +216,7 @@ CFLSteensAAResult::FunctionInfo CFLSteensAAResult::buildSetsFrom(Function *Fn) {
 
     for (unsigned I = 0, E = ValueInfo.getNumLevels(); I < E; ++I) {
       auto Src = InstantiatedValue{Val, I};
-      for (const auto &Edge : ValueInfo.getNodeInfoAtLevel(I).Edges)
+      for (auto &Edge : ValueInfo.getNodeInfoAtLevel(I).Edges)
         SetBuilder.addWith(Src, Edge.Other);
     }
   }
@@ -250,14 +250,14 @@ CFLSteensAAResult::ensureCached(Function *Fn) {
     scan(Fn);
     Iter = Cache.find(Fn);
     assert(Iter != Cache.end());
-    assert(Iter->second);
+    assert(Iter->second.hasValue());
   }
   return Iter->second;
 }
 
 const AliasSummary *CFLSteensAAResult::getAliasSummary(Function &Fn) {
   auto &FunInfo = ensureCached(&Fn);
-  if (FunInfo)
+  if (FunInfo.hasValue())
     return &FunInfo->getAliasSummary();
   else
     return nullptr;
@@ -293,15 +293,15 @@ AliasResult CFLSteensAAResult::query(const MemoryLocation &LocA,
 
   assert(Fn != nullptr);
   auto &MaybeInfo = ensureCached(Fn);
-  assert(MaybeInfo);
+  assert(MaybeInfo.hasValue());
 
   auto &Sets = MaybeInfo->getStratifiedSets();
   auto MaybeA = Sets.find(InstantiatedValue{ValA, 0});
-  if (!MaybeA)
+  if (!MaybeA.hasValue())
     return AliasResult::MayAlias;
 
   auto MaybeB = Sets.find(InstantiatedValue{ValB, 0});
-  if (!MaybeB)
+  if (!MaybeB.hasValue())
     return AliasResult::MayAlias;
 
   auto SetA = *MaybeA;

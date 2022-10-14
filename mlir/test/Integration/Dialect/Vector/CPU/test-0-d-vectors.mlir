@@ -3,32 +3,32 @@
 // RUN:   -shared-libs=%mlir_integration_test_dir/libmlir_c_runner_utils%shlibext | \
 // RUN: FileCheck %s
 
-func.func @extract_element_0d(%a: vector<f32>) {
+func @extract_element_0d(%a: vector<f32>) {
   %1 = vector.extractelement %a[] : vector<f32>
   // CHECK: 42
   vector.print %1: f32
   return
 }
 
-func.func @insert_element_0d(%a: f32, %b: vector<f32>) -> (vector<f32>) {
+func @insert_element_0d(%a: f32, %b: vector<f32>) -> (vector<f32>) {
   %1 = vector.insertelement %a, %b[] : vector<f32>
   return %1: vector<f32>
 }
 
-func.func @print_vector_0d(%a: vector<f32>) {
+func @print_vector_0d(%a: vector<f32>) {
   // CHECK: ( 42 )
   vector.print %a: vector<f32>
   return
 }
 
-func.func @splat_0d(%a: f32) {
+func @splat_0d(%a: f32) {
   %1 = vector.splat %a : vector<f32>
   // CHECK: ( 42 )
   vector.print %1: vector<f32>
   return
 }
 
-func.func @broadcast_0d(%a: f32) {
+func @broadcast_0d(%a: f32) {
   %1 = vector.broadcast %a : f32 to vector<f32>
   // CHECK: ( 42 )
   vector.print %1: vector<f32>
@@ -55,7 +55,7 @@ func.func @broadcast_0d(%a: f32) {
   return
 }
 
-func.func @bitcast_0d() {
+func @bitcast_0d() {
   %0 = arith.constant 42 : i32
   %1 = arith.constant dense<0> : vector<i32>
   %2 = vector.insertelement %0, %1[] : vector<i32>
@@ -67,7 +67,7 @@ func.func @bitcast_0d() {
   return
 }
 
-func.func @constant_mask_0d() {
+func @constant_mask_0d() {
   %1 = vector.constant_mask [0] : vector<i1>
   // CHECK: ( 0 )
   vector.print %1: vector<i1>
@@ -77,7 +77,7 @@ func.func @constant_mask_0d() {
   return
 }
 
-func.func @arith_cmpi_0d(%smaller : vector<i32>, %bigger : vector<i32>) {
+func @arith_cmpi_0d(%smaller : vector<i32>, %bigger : vector<i32>) {
   %0 = arith.cmpi ult, %smaller, %bigger : vector<i32>
   // CHECK: ( 1 )
   vector.print %0: vector<i1>
@@ -93,7 +93,7 @@ func.func @arith_cmpi_0d(%smaller : vector<i32>, %bigger : vector<i32>) {
   return
 }
 
-func.func @create_mask_0d(%zero : index, %one : index) {
+func @create_mask_0d(%zero : index, %one : index) {
   %zero_mask = vector.create_mask %zero : vector<i1>
   // CHECK: ( 0 )
   vector.print %zero_mask : vector<i1>
@@ -105,7 +105,7 @@ func.func @create_mask_0d(%zero : index, %one : index) {
   return
 }
 
-func.func @entry() {
+func @entry() {
   %0 = arith.constant 42.0 : f32
   %1 = arith.constant dense<0.0> : vector<f32>
   %2 = call  @insert_element_0d(%0, %1) : (f32, vector<f32>) -> (vector<f32>)

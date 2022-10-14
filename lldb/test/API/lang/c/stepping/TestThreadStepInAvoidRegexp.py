@@ -12,6 +12,8 @@ from lldbsuite.test.decorators import *
 
 class ThreadStepInAvoidRegexTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         TestBase.setUp(self)
         self.line2 = line_number('main.c', '// assignment to B2')

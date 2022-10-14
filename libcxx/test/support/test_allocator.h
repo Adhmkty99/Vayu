@@ -112,6 +112,7 @@ public:
     }
   }
 
+#if TEST_STD_VER >= 11
   TEST_CONSTEXPR_CXX14 test_allocator(test_allocator&& a) TEST_NOEXCEPT : data_(a.data_), id_(a.id_), stats_(a.stats_) {
     if (stats_ != nullptr) {
       ++stats_->count;
@@ -122,6 +123,7 @@ public:
     a.data_ = test_alloc_base::moved_value;
     a.id_ = test_alloc_base::moved_value;
   }
+#endif
 
   template <class U>
   TEST_CONSTEXPR_CXX14 test_allocator(const test_allocator<U>& a) TEST_NOEXCEPT
@@ -164,11 +166,14 @@ public:
 
   TEST_CONSTEXPR size_type max_size() const TEST_NOEXCEPT { return UINT_MAX / sizeof(T); }
 
+#if TEST_STD_VER < 11
+  void construct(pointer p, const T& val) { ::new (static_cast<void*>(p)) T(val); }
+#else
   template <class U>
   TEST_CONSTEXPR_CXX14 void construct(pointer p, U&& val) {
     ::new (static_cast<void*>(p)) T(std::forward<U>(val));
   }
-
+#endif
   TEST_CONSTEXPR_CXX14 void destroy(pointer p) { p->~T(); }
   TEST_CONSTEXPR friend bool operator==(const test_allocator& x, const test_allocator& y) { return x.data_ == y.data_; }
   TEST_CONSTEXPR friend bool operator!=(const test_allocator& x, const test_allocator& y) { return !(x == y); }
@@ -353,6 +358,8 @@ public:
 #endif
 };
 
+#if TEST_STD_VER >= 11
+
 struct Ctor_Tag {};
 
 template <typename T>
@@ -362,15 +369,15 @@ struct Tag_X {
   // All constructors must be passed the Tag type.
 
   // DefaultInsertable into vector<X, TaggingAllocator<X>>,
-  TEST_CONSTEXPR Tag_X(Ctor_Tag) {}
+  constexpr Tag_X(Ctor_Tag) {}
   // CopyInsertable into vector<X, TaggingAllocator<X>>,
-  TEST_CONSTEXPR Tag_X(Ctor_Tag, const Tag_X&) {}
+  constexpr Tag_X(Ctor_Tag, const Tag_X&) {}
   // MoveInsertable into vector<X, TaggingAllocator<X>>, and
-  TEST_CONSTEXPR Tag_X(Ctor_Tag, Tag_X&&) {}
+  constexpr Tag_X(Ctor_Tag, Tag_X&&) {}
 
   // EmplaceConstructible into vector<X, TaggingAllocator<X>> from args.
   template <typename... Args>
-  TEST_CONSTEXPR Tag_X(Ctor_Tag, Args&&...) {}
+  constexpr Tag_X(Ctor_Tag, Args&&...) {}
 
   // not DefaultConstructible, CopyConstructible or MoveConstructible.
   Tag_X() = delete;
@@ -396,11 +403,11 @@ public:
   TaggingAllocator() = default;
 
   template <typename U>
-  TEST_CONSTEXPR TaggingAllocator(const TaggingAllocator<U>&) {}
+  constexpr TaggingAllocator(const TaggingAllocator<U>&){};
 
   template <typename... Args>
   void construct(Tag_X* p, Args&&... args) {
-    ::new ((void*)p) Tag_X(Ctor_Tag(), std::forward<Args>(args)...);
+    ::new ((void*)p) Tag_X(Ctor_Tag{}, std::forward<Args>(args)...);
   }
 
   template <typename U>
@@ -408,9 +415,10 @@ public:
     p->~U();
   }
 
-  TEST_CONSTEXPR_CXX20 T* allocate(std::size_t n) { return std::allocator<T>().allocate(n); }
-  TEST_CONSTEXPR_CXX20 void deallocate(T* p, std::size_t n) { std::allocator<T>().deallocate(p, n); }
+  TEST_CONSTEXPR_CXX20 T* allocate(std::size_t n) { return std::allocator<T>{}.allocate(n); }
+  TEST_CONSTEXPR_CXX20 void deallocate(T* p, std::size_t n) { std::allocator<T>{}.deallocate(p, n); }
 };
+#endif
 
 template <std::size_t MaxAllocs>
 struct limited_alloc_handle {

@@ -46,7 +46,7 @@ public:
     CK_NumCheckKinds
   };
 
-  bool ChecksEnabled[CK_NumCheckKinds] = {false};
+  DefaultBool ChecksEnabled[CK_NumCheckKinds];
   CheckerNameRef CheckNames[CK_NumCheckKinds];
 
   void checkPreStmt(const VAArgExpr *VAA, CheckerContext &C) const;
@@ -178,7 +178,7 @@ const MemRegion *ValistChecker::getVAListAsRegion(SVal SV, const Expr *E,
     if (isa<ParmVarDecl>(DeclReg->getDecl()))
       Reg = C.getState()->getSVal(SV.castAs<Loc>()).getAsRegion();
   }
-  IsSymbolic = Reg && Reg->getBaseRegion()->getAs<SymbolicRegion>();
+  IsSymbolic = Reg && Reg->getAs<SymbolicRegion>();
   // Some VarRegion based VA lists reach here as ElementRegions.
   const auto *EReg = dyn_cast_or_null<ElementRegion>(Reg);
   return (EReg && VaListModelledAsArray) ? EReg->getSuperRegion() : Reg;

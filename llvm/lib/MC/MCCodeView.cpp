@@ -335,8 +335,8 @@ void CodeViewContext::emitLineTableForFunction(MCObjectStreamer &OS,
   OS.emitInt32(uint32_t(DebugSubsectionKind::Lines));
   OS.emitAbsoluteSymbolDiff(LineEnd, LineBegin, 4);
   OS.emitLabel(LineBegin);
-  OS.emitCOFFSecRel32(FuncBegin, /*Offset=*/0);
-  OS.emitCOFFSectionIndex(FuncBegin);
+  OS.EmitCOFFSecRel32(FuncBegin, /*Offset=*/0);
+  OS.EmitCOFFSectionIndex(FuncBegin);
 
   // Actual line info.
   std::vector<MCCVLoc> Locs = getFunctionLineEntries(FuncId);

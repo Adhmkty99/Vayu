@@ -81,10 +81,25 @@
 // CHECK-NEXT:     ]
 // CHECK-NEXT:   }
 // CHECK-NEXT:   RuntimeFunction {
-// CHECK-NEXT:     Function: notpacked_func5
-// CHECK-NEXT:     ExceptionRecord:
-// CHECK-NEXT:     ExceptionData {
-// CHECK:        RuntimeFunction {
+// CHECK-NEXT:     Function: func5
+// CHECK-NEXT:     Fragment: No
+// CHECK-NEXT:     FunctionLength: 56
+// CHECK-NEXT:     RegF: 0
+// CHECK-NEXT:     RegI: 1
+// CHECK-NEXT:     HomedParameters: Yes
+// CHECK-NEXT:     CR: 0
+// CHECK-NEXT:     FrameSize: 112
+// CHECK-NEXT:     Prologue [
+// CHECK-NEXT:       sub sp, sp, #32
+// CHECK-NEXT:       stp x6, x7, [sp, #56]
+// CHECK-NEXT:       stp x4, x5, [sp, #40]
+// CHECK-NEXT:       stp x2, x3, [sp, #24]
+// CHECK-NEXT:       stp x0, x1, [sp, #8]
+// CHECK-NEXT:       str x19, [sp, #-80]!
+// CHECK-NEXT:       end
+// CHECK-NEXT:     ]
+// CHECK-NEXT:   }
+// CHECK-NEXT:   RuntimeFunction {
 // CHECK-NEXT:     Function: func6
 // CHECK-NEXT:     Fragment: No
 // CHECK-NEXT:     FunctionLength: 24
@@ -426,17 +441,17 @@ func4:
     ret
     .seh_endproc
 
-notpacked_func5:
-    .seh_proc notpacked_func5
+func5:
+    .seh_proc func5
     str x19, [sp, #-80]!
     .seh_save_reg_x x19, 80
-    stp x0,  x1,  [sp, #16]
+    stp x0,  x1,  [sp, #8]
     .seh_nop
-    stp x2,  x3,  [sp, #32]
+    stp x2,  x3,  [sp, #24]
     .seh_nop
-    stp x4,  x5,  [sp, #48]
+    stp x4,  x5,  [sp, #40]
     .seh_nop
-    stp x6,  x7,  [sp, #64]
+    stp x6,  x7,  [sp, #56]
     .seh_nop
     sub sp,  sp,  #32
     .seh_stackalloc 32

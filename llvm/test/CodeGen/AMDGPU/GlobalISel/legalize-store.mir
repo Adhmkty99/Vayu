@@ -17,15 +17,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2
 
     ; SI-LABEL: name: test_store_global_i32
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; SI-NEXT: G_STORE [[COPY1]](s32), [[COPY]](p1) :: (store (s32), addrspace 1)
     ; VI-LABEL: name: test_store_global_i32
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; VI-NEXT: G_STORE [[COPY1]](s32), [[COPY]](p1) :: (store (s32), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -40,15 +36,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_store_global_i64
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; SI-NEXT: G_STORE [[COPY1]](s64), [[COPY]](p1) :: (store (s64), addrspace 1)
     ; VI-LABEL: name: test_store_global_i64
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; VI-NEXT: G_STORE [[COPY1]](s64), [[COPY]](p1) :: (store (s64), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -63,15 +55,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_store_global_p1
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(p1) = COPY $vgpr2_vgpr3
     ; SI-NEXT: G_STORE [[COPY1]](p1), [[COPY]](p1) :: (store (p1), addrspace 1)
     ; VI-LABEL: name: test_store_global_p1
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(p1) = COPY $vgpr2_vgpr3
     ; VI-NEXT: G_STORE [[COPY1]](p1), [[COPY]](p1) :: (store (p1), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -86,15 +74,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_store_global_p4
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(p4) = COPY $vgpr2_vgpr3
     ; SI-NEXT: G_STORE [[COPY1]](p4), [[COPY]](p1) :: (store (p4), addrspace 1)
     ; VI-LABEL: name: test_store_global_p4
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(p4) = COPY $vgpr2_vgpr3
     ; VI-NEXT: G_STORE [[COPY1]](p4), [[COPY]](p1) :: (store (p4), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -109,15 +93,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2
 
     ; SI-LABEL: name: test_store_global_p3
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(p3) = COPY $vgpr2
     ; SI-NEXT: G_STORE [[COPY1]](p3), [[COPY]](p1) :: (store (p3), addrspace 1)
     ; VI-LABEL: name: test_store_global_p3
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(p3) = COPY $vgpr2
     ; VI-NEXT: G_STORE [[COPY1]](p3), [[COPY]](p1) :: (store (p3), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -132,15 +112,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_store_global_v2s32
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<2 x s32>) = COPY $vgpr2_vgpr3
     ; SI-NEXT: G_STORE [[COPY1]](<2 x s32>), [[COPY]](p1) :: (store (<2 x s32>), addrspace 1)
     ; VI-LABEL: name: test_store_global_v2s32
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<2 x s32>) = COPY $vgpr2_vgpr3
     ; VI-NEXT: G_STORE [[COPY1]](<2 x s32>), [[COPY]](p1) :: (store (<2 x s32>), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -155,15 +131,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2
 
     ; SI-LABEL: name: test_store_global_v2s16
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<2 x s16>) = COPY $vgpr2
     ; SI-NEXT: G_STORE [[COPY1]](<2 x s16>), [[COPY]](p1) :: (store (<2 x s16>), addrspace 1)
     ; VI-LABEL: name: test_store_global_v2s16
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<2 x s16>) = COPY $vgpr2
     ; VI-NEXT: G_STORE [[COPY1]](<2 x s16>), [[COPY]](p1) :: (store (<2 x s16>), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -178,9 +150,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
 
     ; SI-LABEL: name: test_store_global_v3s32
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<3 x s32>)
     ; SI-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x s32>) = G_BUILD_VECTOR [[UV]](s32), [[UV1]](s32)
@@ -189,9 +159,7 @@ body: |
     ; SI-NEXT: [[PTR_ADD:%[0-9]+]]:_(p1) = G_PTR_ADD [[COPY]], [[C]](s64)
     ; SI-NEXT: G_STORE [[UV2]](s32), [[PTR_ADD]](p1) :: (store (s32) into unknown-address + 8, addrspace 1)
     ; VI-LABEL: name: test_store_global_v3s32
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; VI-NEXT: G_STORE [[COPY1]](<3 x s32>), [[COPY]](p1) :: (store (<3 x s32>), align 4, addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -206,16 +174,12 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_truncstore_global_s64_to_s8
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; SI-NEXT: G_STORE [[TRUNC]](s32), [[COPY]](p1) :: (store (s8), addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_s64_to_s8
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; VI-NEXT: G_STORE [[TRUNC]](s32), [[COPY]](p1) :: (store (s8), addrspace 1)
@@ -231,16 +195,12 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_truncstore_global_s64_to_s16
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; SI-NEXT: G_STORE [[TRUNC]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_s64_to_s16
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; VI-NEXT: G_STORE [[TRUNC]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
@@ -256,9 +216,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_truncstore_global_s64_to_s16_align1
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; SI-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 8
@@ -270,9 +228,7 @@ body: |
     ; SI-NEXT: G_STORE [[TRUNC]](s32), [[COPY]](p1) :: (store (s8), addrspace 1)
     ; SI-NEXT: G_STORE [[LSHR]](s32), [[PTR_ADD]](p1) :: (store (s8) into unknown-address + 1, addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_s64_to_s16_align1
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; VI-NEXT: [[TRUNC1:%[0-9]+]]:_(s16) = G_TRUNC [[COPY1]](s64)
@@ -295,16 +251,12 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_truncstore_global_s64_to_s32
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; SI-NEXT: G_STORE [[TRUNC]](s32), [[COPY]](p1) :: (store (s32), addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_s64_to_s32
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; VI-NEXT: G_STORE [[TRUNC]](s32), [[COPY]](p1) :: (store (s32), addrspace 1)
@@ -320,9 +272,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_truncstore_global_s64_to_s32_align2
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; SI-NEXT: [[COPY2:%[0-9]+]]:_(s32) = COPY [[TRUNC]](s32)
@@ -333,9 +283,7 @@ body: |
     ; SI-NEXT: G_STORE [[COPY2]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
     ; SI-NEXT: G_STORE [[LSHR]](s32), [[PTR_ADD]](p1) :: (store (s16) into unknown-address + 2, addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_s64_to_s32_align2
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; VI-NEXT: [[COPY2:%[0-9]+]]:_(s32) = COPY [[TRUNC]](s32)
@@ -357,9 +305,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
 
     ; SI-LABEL: name: test_truncstore_global_s64_to_s32_align1
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; SI-NEXT: [[COPY2:%[0-9]+]]:_(s32) = COPY [[TRUNC]](s32)
@@ -382,9 +328,7 @@ body: |
     ; SI-NEXT: G_STORE [[LSHR]](s32), [[PTR_ADD]](p1) :: (store (s8) into unknown-address + 2, addrspace 1)
     ; SI-NEXT: G_STORE [[LSHR2]](s32), [[PTR_ADD2]](p1) :: (store (s8) into unknown-address + 3, addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_s64_to_s32_align1
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s64) = COPY $vgpr2_vgpr3
     ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s64)
     ; VI-NEXT: [[COPY2:%[0-9]+]]:_(s32) = COPY [[TRUNC]](s32)
@@ -418,16 +362,12 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_truncstore_global_s128_to_s16
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s128) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s128)
     ; SI-NEXT: G_STORE [[TRUNC]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_s128_to_s16
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s128) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(s32) = G_TRUNC [[COPY1]](s128)
     ; VI-NEXT: G_STORE [[TRUNC]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
@@ -443,16 +383,12 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_truncstore_global_s128_to_s8
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s128) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; SI-NEXT: [[BITCAST:%[0-9]+]]:_(<4 x s32>) = G_BITCAST [[COPY1]](s128)
     ; SI-NEXT: G_STORE [[BITCAST]](<4 x s32>), [[COPY]](p1) :: (store (<4 x s32>), addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_s128_to_s8
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s128) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; VI-NEXT: [[BITCAST:%[0-9]+]]:_(<4 x s32>) = G_BITCAST [[COPY1]](s128)
     ; VI-NEXT: G_STORE [[BITCAST]](<4 x s32>), [[COPY]](p1) :: (store (<4 x s32>), addrspace 1)
@@ -468,18 +404,14 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2
 
     ; SI-LABEL: name: test_store_global_i1
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; SI-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 1
     ; SI-NEXT: [[AND:%[0-9]+]]:_(s32) = G_AND [[COPY1]], [[C]]
     ; SI-NEXT: [[AND1:%[0-9]+]]:_(s32) = G_AND [[AND]], [[C]]
     ; SI-NEXT: G_STORE [[AND1]](s32), [[COPY]](p1) :: (store (s8), addrspace 1)
     ; VI-LABEL: name: test_store_global_i1
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; VI-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 1
     ; VI-NEXT: [[AND:%[0-9]+]]:_(s32) = G_AND [[COPY1]], [[C]]
@@ -498,15 +430,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2
 
     ; SI-LABEL: name: test_store_global_i8
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; SI-NEXT: G_STORE [[COPY1]](s32), [[COPY]](p1) :: (store (s8), addrspace 1)
     ; VI-LABEL: name: test_store_global_i8
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; VI-NEXT: G_STORE [[COPY1]](s32), [[COPY]](p1) :: (store (s8), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -522,15 +450,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2
 
     ; SI-LABEL: name: test_store_global_i16
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; SI-NEXT: G_STORE [[COPY1]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
     ; VI-LABEL: name: test_store_global_i16
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; VI-NEXT: G_STORE [[COPY1]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -546,9 +470,7 @@ body: |
     liveins: $vgpr0_vgpr1_vgpr2, $vgpr3_vgpr4
 
     ; SI-LABEL: name: test_store_global_96
-    ; SI: liveins: $vgpr0_vgpr1_vgpr2, $vgpr3_vgpr4
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(s96) = COPY $vgpr0_vgpr1_vgpr2
+    ; SI: [[COPY:%[0-9]+]]:_(s96) = COPY $vgpr0_vgpr1_vgpr2
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(p1) = COPY $vgpr3_vgpr4
     ; SI-NEXT: [[BITCAST:%[0-9]+]]:_(<3 x s32>) = G_BITCAST [[COPY]](s96)
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[BITCAST]](<3 x s32>)
@@ -558,9 +480,7 @@ body: |
     ; SI-NEXT: [[PTR_ADD:%[0-9]+]]:_(p1) = G_PTR_ADD [[COPY1]], [[C]](s64)
     ; SI-NEXT: G_STORE [[UV2]](s32), [[PTR_ADD]](p1) :: (store (s32) into unknown-address + 8, align 8, addrspace 1)
     ; VI-LABEL: name: test_store_global_96
-    ; VI: liveins: $vgpr0_vgpr1_vgpr2, $vgpr3_vgpr4
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(s96) = COPY $vgpr0_vgpr1_vgpr2
+    ; VI: [[COPY:%[0-9]+]]:_(s96) = COPY $vgpr0_vgpr1_vgpr2
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(p1) = COPY $vgpr3_vgpr4
     ; VI-NEXT: [[BITCAST:%[0-9]+]]:_(<3 x s32>) = G_BITCAST [[COPY]](s96)
     ; VI-NEXT: G_STORE [[BITCAST]](<3 x s32>), [[COPY1]](p1) :: (store (<3 x s32>), align 16, addrspace 1)
@@ -577,16 +497,12 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_store_global_i128
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(s128) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; SI-NEXT: [[BITCAST:%[0-9]+]]:_(<4 x s32>) = G_BITCAST [[COPY1]](s128)
     ; SI-NEXT: G_STORE [[BITCAST]](<4 x s32>), [[COPY]](p1) :: (store (<4 x s32>), addrspace 1)
     ; VI-LABEL: name: test_store_global_i128
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(s128) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; VI-NEXT: [[BITCAST:%[0-9]+]]:_(<4 x s32>) = G_BITCAST [[COPY1]](s128)
     ; VI-NEXT: G_STORE [[BITCAST]](<4 x s32>), [[COPY]](p1) :: (store (<4 x s32>), addrspace 1)
@@ -602,15 +518,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_store_global_v2s64
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<2 x s64>) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; SI-NEXT: G_STORE [[COPY1]](<2 x s64>), [[COPY]](p1) :: (store (<2 x s64>), addrspace 1)
     ; VI-LABEL: name: test_store_global_v2s64
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<2 x s64>) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; VI-NEXT: G_STORE [[COPY1]](<2 x s64>), [[COPY]](p1) :: (store (<2 x s64>), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -626,9 +538,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_store_global_v2s8_align1
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[DEF:%[0-9]+]]:_(<2 x s32>) = G_IMPLICIT_DEF
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[DEF]](<2 x s32>)
     ; SI-NEXT: [[C:%[0-9]+]]:_(s16) = G_CONSTANT i16 255
@@ -650,9 +560,7 @@ body: |
     ; SI-NEXT: G_STORE [[ANYEXT]](s32), [[COPY]](p1) :: (store (s8), addrspace 1)
     ; SI-NEXT: G_STORE [[LSHR]](s32), [[PTR_ADD]](p1) :: (store (s8) into unknown-address + 1, addrspace 1)
     ; VI-LABEL: name: test_store_global_v2s8_align1
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[DEF:%[0-9]+]]:_(<2 x s32>) = G_IMPLICIT_DEF
     ; VI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[DEF]](<2 x s32>)
     ; VI-NEXT: [[C:%[0-9]+]]:_(s16) = G_CONSTANT i16 255
@@ -684,9 +592,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_store_global_v2s8_align2
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[DEF:%[0-9]+]]:_(<2 x s32>) = G_IMPLICIT_DEF
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[DEF]](<2 x s32>)
     ; SI-NEXT: [[C:%[0-9]+]]:_(s16) = G_CONSTANT i16 255
@@ -701,9 +607,7 @@ body: |
     ; SI-NEXT: [[ANYEXT:%[0-9]+]]:_(s32) = G_ANYEXT [[OR]](s16)
     ; SI-NEXT: G_STORE [[ANYEXT]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
     ; VI-LABEL: name: test_store_global_v2s8_align2
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[DEF:%[0-9]+]]:_(<2 x s32>) = G_IMPLICIT_DEF
     ; VI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[DEF]](<2 x s32>)
     ; VI-NEXT: [[C:%[0-9]+]]:_(s16) = G_CONSTANT i16 255
@@ -729,9 +633,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_store_global_v2s8_align4
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[DEF:%[0-9]+]]:_(<2 x s32>) = G_IMPLICIT_DEF
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[DEF]](<2 x s32>)
     ; SI-NEXT: [[C:%[0-9]+]]:_(s16) = G_CONSTANT i16 255
@@ -746,9 +648,7 @@ body: |
     ; SI-NEXT: [[ANYEXT:%[0-9]+]]:_(s32) = G_ANYEXT [[OR]](s16)
     ; SI-NEXT: G_STORE [[ANYEXT]](s32), [[COPY]](p1) :: (store (s16), align 4, addrspace 1)
     ; VI-LABEL: name: test_store_global_v2s8_align4
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[DEF:%[0-9]+]]:_(<2 x s32>) = G_IMPLICIT_DEF
     ; VI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[DEF]](<2 x s32>)
     ; VI-NEXT: [[C:%[0-9]+]]:_(s16) = G_CONSTANT i16 255
@@ -774,9 +674,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
 
     ; SI-LABEL: name: test_store_global_v3s8_align1
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<3 x s32>)
     ; SI-NEXT: [[DEF:%[0-9]+]]:_(s32) = G_IMPLICIT_DEF
@@ -815,9 +713,7 @@ body: |
     ; SI-NEXT: G_STORE [[LSHR1]](s32), [[PTR_ADD1]](p1) :: (store (s8) into unknown-address + 1, addrspace 1)
     ; SI-NEXT: G_STORE [[LSHR]](s32), [[PTR_ADD]](p1) :: (store (s8) into unknown-address + 2, addrspace 1)
     ; VI-LABEL: name: test_store_global_v3s8_align1
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; VI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<3 x s32>)
     ; VI-NEXT: [[DEF:%[0-9]+]]:_(s32) = G_IMPLICIT_DEF
@@ -865,9 +761,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
 
     ; SI-LABEL: name: test_store_global_v3s8_align2
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<3 x s32>)
     ; SI-NEXT: [[DEF:%[0-9]+]]:_(s32) = G_IMPLICIT_DEF
@@ -899,9 +793,7 @@ body: |
     ; SI-NEXT: G_STORE [[COPY3]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
     ; SI-NEXT: G_STORE [[LSHR]](s32), [[PTR_ADD]](p1) :: (store (s8) into unknown-address + 2, align 2, addrspace 1)
     ; VI-LABEL: name: test_store_global_v3s8_align2
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; VI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<3 x s32>)
     ; VI-NEXT: [[DEF:%[0-9]+]]:_(s32) = G_IMPLICIT_DEF
@@ -944,9 +836,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
 
     ; SI-LABEL: name: test_store_global_v3s8_align4
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<3 x s32>)
     ; SI-NEXT: [[DEF:%[0-9]+]]:_(s32) = G_IMPLICIT_DEF
@@ -978,9 +868,7 @@ body: |
     ; SI-NEXT: G_STORE [[COPY3]](s32), [[COPY]](p1) :: (store (s16), align 4, addrspace 1)
     ; SI-NEXT: G_STORE [[LSHR]](s32), [[PTR_ADD]](p1) :: (store (s8) into unknown-address + 2, align 2, addrspace 1)
     ; VI-LABEL: name: test_store_global_v3s8_align4
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; VI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<3 x s32>)
     ; VI-NEXT: [[DEF:%[0-9]+]]:_(s32) = G_IMPLICIT_DEF
@@ -1023,9 +911,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_store_global_v4s8_align1
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<4 x s32>) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<4 x s32>)
     ; SI-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 255
@@ -1060,9 +946,7 @@ body: |
     ; SI-NEXT: G_STORE [[LSHR]](s32), [[PTR_ADD]](p1) :: (store (s8) into unknown-address + 2, addrspace 1)
     ; SI-NEXT: G_STORE [[LSHR2]](s32), [[PTR_ADD2]](p1) :: (store (s8) into unknown-address + 3, addrspace 1)
     ; VI-LABEL: name: test_store_global_v4s8_align1
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<4 x s32>) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; VI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<4 x s32>)
     ; VI-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 255
@@ -1117,9 +1001,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_store_global_v4s8_align2
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<4 x s32>) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<4 x s32>)
     ; SI-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 255
@@ -1143,9 +1025,7 @@ body: |
     ; SI-NEXT: G_STORE [[COPY2]](s32), [[COPY]](p1) :: (store (s16), addrspace 1)
     ; SI-NEXT: G_STORE [[LSHR]](s32), [[PTR_ADD]](p1) :: (store (s16) into unknown-address + 2, addrspace 1)
     ; VI-LABEL: name: test_store_global_v4s8_align2
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<4 x s32>) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; VI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<4 x s32>)
     ; VI-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 255
@@ -1182,9 +1062,7 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_store_global_v4s8_align4
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<4 x s32>) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; SI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<4 x s32>)
     ; SI-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 255
@@ -1203,9 +1081,7 @@ body: |
     ; SI-NEXT: [[OR2:%[0-9]+]]:_(s32) = G_OR [[OR1]], [[SHL2]]
     ; SI-NEXT: G_STORE [[OR2]](s32), [[COPY]](p1) :: (store (s32), addrspace 1)
     ; VI-LABEL: name: test_store_global_v4s8_align4
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<4 x s32>) = COPY $vgpr2_vgpr3_vgpr4_vgpr5
     ; VI-NEXT: [[UV:%[0-9]+]]:_(s32), [[UV1:%[0-9]+]]:_(s32), [[UV2:%[0-9]+]]:_(s32), [[UV3:%[0-9]+]]:_(s32) = G_UNMERGE_VALUES [[COPY1]](<4 x s32>)
     ; VI-NEXT: [[C:%[0-9]+]]:_(s32) = G_CONSTANT i32 255
@@ -1237,15 +1113,11 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
 
     ; SI-LABEL: name: test_truncstore_global_v2s8_to_1_align1
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[DEF:%[0-9]+]]:_(<2 x s8>) = G_IMPLICIT_DEF
     ; SI-NEXT: G_STORE [[DEF]](<2 x s8>), [[COPY]](p1) :: (store (<2 x s4>), addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_v2s8_to_1_align1
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4_vgpr5
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[DEF:%[0-9]+]]:_(<2 x s8>) = G_IMPLICIT_DEF
     ; VI-NEXT: G_STORE [[DEF]](<2 x s8>), [[COPY]](p1) :: (store (<2 x s4>), addrspace 1)
     %0:_(p1) = COPY $vgpr0_vgpr1
@@ -1261,16 +1133,12 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
 
     ; SI-LABEL: name: test_truncstore_global_v3s8_to_1_align1
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(<3 x s8>) = G_TRUNC [[COPY1]](<3 x s32>)
     ; SI-NEXT: G_STORE [[TRUNC]](<3 x s8>), [[COPY]](p1) :: (store (<3 x s2>), addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_v3s8_to_1_align1
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(<3 x s8>) = G_TRUNC [[COPY1]](<3 x s32>)
     ; VI-NEXT: G_STORE [[TRUNC]](<3 x s8>), [[COPY]](p1) :: (store (<3 x s2>), addrspace 1)
@@ -1288,16 +1156,12 @@ body: |
     liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
 
     ; SI-LABEL: name: test_truncstore_global_v3s8_to_2_align2
-    ; SI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; SI-NEXT: {{  $}}
-    ; SI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; SI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; SI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; SI-NEXT: [[TRUNC:%[0-9]+]]:_(<3 x s8>) = G_TRUNC [[COPY1]](<3 x s32>)
     ; SI-NEXT: G_STORE [[TRUNC]](<3 x s8>), [[COPY]](p1) :: (store (<3 x s4>), addrspace 1)
     ; VI-LABEL: name: test_truncstore_global_v3s8_to_2_align2
-    ; VI: liveins: $vgpr0_vgpr1, $vgpr2_vgpr3_vgpr4
-    ; VI-NEXT: {{  $}}
-    ; VI-NEXT: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
+    ; VI: [[COPY:%[0-9]+]]:_(p1) = COPY $vgpr0_vgpr1
     ; VI-NEXT: [[COPY1:%[0-9]+]]:_(<3 x s32>) = COPY $vgpr2_vgpr3_vgpr4
     ; VI-NEXT: [[TRUNC:%[0-9]+]]:_(<3 x s8>) = G_TRUNC [[COPY1]](<3 x s32>)
     ; VI-NEXT: G_STORE [[TRUNC]](<3 x s8>), [[COPY]](p1) :: (store (<3 x s4>), addrspace 1)

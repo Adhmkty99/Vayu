@@ -474,7 +474,7 @@ int c = BAR 3.0;
   IntLitVisitor Visitor;
   Visitor.OnIntLit = [](IntegerLiteral *Expr, ASTContext *Context) {
     auto Range = CharSourceRange::getTokenRange(Expr->getSourceRange());
-    EXPECT_FALSE(getRangeForEdit(Range, *Context));
+    EXPECT_FALSE(getRangeForEdit(Range, *Context).hasValue());
   };
   Visitor.runOver(Code);
 }

@@ -32,17 +32,3 @@ add_libc_unittest(
     libc.include.stdlib
     libc.src.inttypes.imaxdiv
 )
-
-add_libc_unittest(
-  imaxabs_test
-  SUITE
-    libc_inttypes_unittests
-  SRCS
-    imaxabs_test.cpp
-  HDRS
-    ../stdlib/DivTest.h
-  DEPENDS
-    libc.include.stdlib
-    libc.src.inttypes.imaxabs
-)
-

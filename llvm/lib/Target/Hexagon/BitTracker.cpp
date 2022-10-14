@@ -1056,8 +1056,9 @@ void BT::runEdgeQueue(BitVector &BlockScanned) {
     CFGEdge Edge = FlowQ.front();
     FlowQ.pop();
 
-    if (!EdgeExec.insert(Edge).second)
+    if (EdgeExec.count(Edge))
       return;
+    EdgeExec.insert(Edge);
     ReachedBB.insert(Edge.second);
 
     const MachineBasicBlock &B = *MF.getBlockNumbered(Edge.second);

@@ -47,7 +47,8 @@ enum {
   CCMaskFirst            = (1 << 18),
   CCMaskLast             = (1 << 19),
   IsLogical              = (1 << 20),
-  CCIfNoSignedWrap       = (1 << 21)
+  CCIfNoSignedWrap       = (1 << 21),
+  MemMemOp               = (1 << 22)
 };
 
 static inline unsigned getAccessSize(unsigned int Flags) {
@@ -308,10 +309,8 @@ public:
   // and the caller wants to perform that instruction's operation on an
   // address that has displacement Offset.  Return the opcode of a suitable
   // instruction (which might be Opcode itself) or 0 if no such instruction
-  // exists.  MI may be passed in order to allow examination of physical
-  // register operands (i.e. if a VR32/64 reg ended up as an FP or Vector reg).
-  unsigned getOpcodeForOffset(unsigned Opcode, int64_t Offset,
-                              const MachineInstr *MI = nullptr) const;
+  // exists.
+  unsigned getOpcodeForOffset(unsigned Opcode, int64_t Offset) const;
 
   // Return true if Opcode has a mapping in 12 <-> 20 bit displacements.
   bool hasDisplacementPairInsn(unsigned Opcode) const;

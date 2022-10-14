@@ -430,7 +430,7 @@ public:
   }
 
   void Check(const parser::ForallAssignmentStmt &stmt) {
-    const evaluate::Assignment *assignment{common::visit(
+    const evaluate::Assignment *assignment{std::visit(
         common::visitors{[&](const auto &x) { return GetAssignment(x); }},
         stmt.u)};
     if (assignment) {
@@ -441,24 +441,23 @@ public:
               std::get_if<evaluate::ProcedureRef>(&assignment->u)}) {
         CheckForImpureCall(*proc);
       }
-      common::visit(
-          common::visitors{
-              [](const evaluate::Assignment::Intrinsic &) {},
-              [&](const evaluate::ProcedureRef &proc) {
-                CheckForImpureCall(proc);
-              },
-              [&](const evaluate::Assignment::BoundsSpec &bounds) {
-                for (const auto &bound : bounds) {
-                  CheckForImpureCall(SomeExpr{bound});
-                }
-              },
-              [&](const evaluate::Assignment::BoundsRemapping &bounds) {
-                for (const auto &bound : bounds) {
-                  CheckForImpureCall(SomeExpr{bound.first});
-                  CheckForImpureCall(SomeExpr{bound.second});
-                }
-              },
-          },
+      std::visit(common::visitors{
+                     [](const evaluate::Assignment::Intrinsic &) {},
+                     [&](const evaluate::ProcedureRef &proc) {
+                       CheckForImpureCall(proc);
+                     },
+                     [&](const evaluate::Assignment::BoundsSpec &bounds) {
+                       for (const auto &bound : bounds) {
+                         CheckForImpureCall(SomeExpr{bound});
+                       }
+                     },
+                     [&](const evaluate::Assignment::BoundsRemapping &bounds) {
+                       for (const auto &bound : bounds) {
+                         CheckForImpureCall(SomeExpr{bound.first});
+                         CheckForImpureCall(SomeExpr{bound.second});
+                       }
+                     },
+                 },
           assignment->u);
     }
   }
@@ -502,7 +501,7 @@ private:
 
   // Semantic checks for the limit and step expressions
   void CheckDoExpression(const parser::ScalarExpr &scalarExpression) {
-    if (const SomeExpr * expr{GetExpr(context_, scalarExpression)}) {
+    if (const SomeExpr * expr{GetExpr(scalarExpression)}) {
       if (!ExprHasTypeCategory(*expr, TypeCategory::Integer)) {
         // No warnings or errors for type INTEGER
         const parser::CharBlock &loc{scalarExpression.thing.value().source};
@@ -570,10 +569,10 @@ private:
     return symbols;
   }
 
-  UnorderedSymbolSet GatherSymbolsFromExpression(
-      const parser::Expr &expression) const {
+  static UnorderedSymbolSet GatherSymbolsFromExpression(
+      const parser::Expr &expression) {
     UnorderedSymbolSet result;
-    if (const auto *expr{GetExpr(context_, expression)}) {
+    if (const auto *expr{GetExpr(expression)}) {
       for (const Symbol &symbol : evaluate::CollectSymbols(*expr)) {
         result.insert(ResolveAssociations(symbol));
       }
@@ -738,7 +737,7 @@ private:
     SymbolVector indexVars{context_.GetIndexVars(IndexVarKind::FORALL)};
     if (!indexVars.empty()) {
       UnorderedSymbolSet symbols{evaluate::CollectSymbols(assignment.lhs)};
-      common::visit(
+      std::visit(
           common::visitors{
               [&](const evaluate::Assignment::BoundsSpec &spec) {
                 for (const auto &bound : spec) {
@@ -829,7 +828,7 @@ static parser::CharBlock GetConstructPosition(const A &a) {
 }
 
 static parser::CharBlock GetNodePosition(const ConstructNode &construct) {
-  return common::visit(
+  return std::visit(
       [&](const auto &x) { return GetConstructPosition(*x); }, construct);
 }
 
@@ -860,24 +859,24 @@ static bool ConstructIsDoConcurrent(const ConstructNode &construct) {
 // leave DO CONCURRENT, CRITICAL, or CHANGE TEAM constructs.
 void DoForallChecker::CheckForBadLeave(
     StmtType stmtType, const ConstructNode &construct) const {
-  common::visit(common::visitors{
-                    [&](const parser::DoConstruct *doConstructPtr) {
-                      if (doConstructPtr->IsDoConcurrent()) {
-                        // C1135 and C1167 -- CYCLE and EXIT statements can't
-                        // leave a DO CONCURRENT
-                        SayBadLeave(stmtType, "DO CONCURRENT", construct);
-                      }
-                    },
-                    [&](const parser::CriticalConstruct *) {
-                      // C1135 and C1168 -- similarly, for CRITICAL
-                      SayBadLeave(stmtType, "CRITICAL", construct);
-                    },
-                    [&](const parser::ChangeTeamConstruct *) {
-                      // C1135 and C1168 -- similarly, for CHANGE TEAM
-                      SayBadLeave(stmtType, "CHANGE TEAM", construct);
-                    },
-                    [](const auto *) {},
-                },
+  std::visit(common::visitors{
+                 [&](const parser::DoConstruct *doConstructPtr) {
+                   if (doConstructPtr->IsDoConcurrent()) {
+                     // C1135 and C1167 -- CYCLE and EXIT statements can't leave
+                     // a DO CONCURRENT
+                     SayBadLeave(stmtType, "DO CONCURRENT", construct);
+                   }
+                 },
+                 [&](const parser::CriticalConstruct *) {
+                   // C1135 and C1168 -- similarly, for CRITICAL
+                   SayBadLeave(stmtType, "CRITICAL", construct);
+                 },
+                 [&](const parser::ChangeTeamConstruct *) {
+                   // C1135 and C1168 -- similarly, for CHANGE TEAM
+                   SayBadLeave(stmtType, "CHANGE TEAM", construct);
+                 },
+                 [](const auto *) {},
+             },
       construct);
 }
 
@@ -1023,7 +1022,7 @@ void DoForallChecker::Enter(const parser::Expr &parsedExpr) { ++exprDepth_; }
 void DoForallChecker::Leave(const parser::Expr &parsedExpr) {
   CHECK(exprDepth_ > 0);
   if (--exprDepth_ == 0) { // Only check top level expressions
-    if (const SomeExpr * expr{GetExpr(context_, parsedExpr)}) {
+    if (const SomeExpr * expr{GetExpr(parsedExpr)}) {
       ActualArgumentSet argSet{CollectActualArguments(*expr)};
       for (const evaluate::ActualArgumentRef &argRef : argSet) {
         CheckIfArgIsDoVar(*argRef, parsedExpr.source, context_);

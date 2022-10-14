@@ -30,15 +30,6 @@ tablegen("MipsGenMCPseudoLowering") {
   td_file = "Mips.td"
 }
 
-tablegen("MipsGenPostLegalizeGICombiner") {
-  visibility = [ ":LLVMMipsCodeGen" ]
-  args = [
-    "-gen-global-isel-combiner",
-    "-combiners=MipsPostLegalizerCombinerHelper",
-  ]
-  td_file = "Mips.td"
-}
-
 tablegen("MipsGenRegisterBank") {
   visibility = [ ":LLVMMipsCodeGen" ]
   args = [ "-gen-register-bank" ]
@@ -52,7 +43,6 @@ static_library("LLVMMipsCodeGen") {
     ":MipsGenFastISel",
     ":MipsGenGlobalISel",
     ":MipsGenMCPseudoLowering",
-    ":MipsGenPostLegalizeGICombiner",
     ":MipsGenRegisterBank",
     "MCTargetDesc",
     "TargetInfo",
@@ -98,7 +88,6 @@ static_library("LLVMMipsCodeGen") {
     "MipsMulMulBugPass.cpp",
     "MipsOptimizePICCall.cpp",
     "MipsOs16.cpp",
-    "MipsPostLegalizerCombiner.cpp",
     "MipsPreLegalizerCombiner.cpp",
     "MipsRegisterBankInfo.cpp",
     "MipsRegisterInfo.cpp",
@@ -110,7 +99,6 @@ static_library("LLVMMipsCodeGen") {
     "MipsSubtarget.cpp",
     "MipsTargetMachine.cpp",
     "MipsTargetObjectFile.cpp",
-    "MipsTargetTransformInfo.cpp",
   ]
 }
 

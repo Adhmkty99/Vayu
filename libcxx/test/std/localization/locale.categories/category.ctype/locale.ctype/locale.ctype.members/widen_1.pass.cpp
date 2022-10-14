@@ -12,7 +12,7 @@
 
 // charT widen(char c) const;
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 #include <locale>
 #include <cassert>

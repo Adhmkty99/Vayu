@@ -381,8 +381,6 @@ public:
   }
 };
 
-using BasicBlocksSet = SmallPtrSet<const BasicBlock *, 32>;
-
 class ValueTable {
   DenseMap<Value *, uint32_t> ValueNumbering;
   DenseMap<GVNExpression::Expression *, uint32_t> ExpressionNumbering;
@@ -390,7 +388,6 @@ class ValueTable {
   BumpPtrAllocator Allocator;
   ArrayRecycler<Value *> Recycler;
   uint32_t nextValueNumber = 1;
-  BasicBlocksSet ReachableBBs;
 
   /// Create an expression for I based on its opcode and its uses. If I
   /// touches or reads memory, the expression is also based upon its memory
@@ -422,11 +419,6 @@ class ValueTable {
 public:
   ValueTable() = default;
 
-  /// Set basic blocks reachable from entry block.
-  void setReachableBBs(const BasicBlocksSet &ReachableBBs) {
-    this->ReachableBBs = ReachableBBs;
-  }
-
   /// Returns the value number for the specified value, assigning
   /// it a new number if it did not have one before.
   uint32_t lookupOrAdd(Value *V) {
@@ -440,9 +432,6 @@ public:
     }
 
     Instruction *I = cast<Instruction>(V);
-    if (!ReachableBBs.contains(I->getParent()))
-      return ~0U;
-
     InstructionUseExpr *exp = nullptr;
     switch (I->getOpcode()) {
     case Instruction::Load:
@@ -579,7 +568,6 @@ public:
 
     unsigned NumSunk = 0;
     ReversePostOrderTraversal<Function*> RPOT(&F);
-    VN.setReachableBBs(BasicBlocksSet(RPOT.begin(), RPOT.end()));
     for (auto *N : RPOT)
       NumSunk += sinkBB(N);
 
@@ -658,7 +646,12 @@ Optional<SinkingInstructionCandidate> GVNSink::analyzeInstructionForSinking(
     VNums[N]++;
   }
   unsigned VNumToSink =
-      std::max_element(VNums.begin(), VNums.end(), llvm::less_second())->first;
+      std::max_element(VNums.begin(), VNums.end(),
+                       [](const std::pair<uint32_t, unsigned> &I,
+                          const std::pair<uint32_t, unsigned> &J) {
+                         return I.second < J.second;
+                       })
+          ->first;
 
   if (VNums[VNumToSink] == 1)
     // Can't sink anything!
@@ -781,9 +774,12 @@ unsigned GVNSink::sinkBB(BasicBlock *BBEnd) {
 
   unsigned NumOrigPreds = Preds.size();
   // We can only sink instructions through unconditional branches.
-  llvm::erase_if(Preds, [](BasicBlock *BB) {
-    return BB->getTerminator()->getNumSuccessors() != 1;
-  });
+  for (auto I = Preds.begin(); I != Preds.end();) {
+    if ((*I)->getTerminator()->getNumSuccessors() != 1)
+      I = Preds.erase(I);
+    else
+      ++I;
+  }
 
   LockstepReverseIterator LRI(Preds);
   SmallVector<SinkingInstructionCandidate, 4> Candidates;

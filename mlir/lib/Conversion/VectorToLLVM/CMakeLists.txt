@@ -13,19 +13,19 @@ add_mlir_conversion_library(MLIRVectorToLLVM
   Core
 
   LINK_LIBS PUBLIC
-  MLIRArithmeticDialect
-  MLIRArmNeonDialect
-  MLIRArmSVEDialect
+  MLIRArithmetic
+  MLIRArmNeon
+  MLIRArmSVE
   MLIRArmSVETransforms
-  MLIRAMXDialect
+  MLIRAMX
   MLIRAMXTransforms
   MLIRLLVMCommonConversion
-  MLIRLLVMDialect
-  MLIRMemRefDialect
+  MLIRLLVMIR
+  MLIRMemRef
   MLIRTargetLLVMIRExport
   MLIRTransforms
-  MLIRVectorDialect
+  MLIRVector
   MLIRVectorTransforms
-  MLIRX86VectorDialect
+  MLIRX86Vector
   MLIRX86VectorTransforms
   )

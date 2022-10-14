@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "PassDetail.h"
-#include "flang/Optimizer/Builder/Todo.h"
 #include "flang/Optimizer/Dialect/FIRDialect.h"
 #include "flang/Optimizer/Dialect/FIROps.h"
 #include "flang/Optimizer/Dialect/FIRType.h"
@@ -24,12 +23,27 @@
 namespace fir {
 namespace {
 
+struct AbstractResultOptions {
+  // Always pass result as a fir.box argument.
+  bool boxResult = false;
+  // New function block argument for the result if the current FuncOp had
+  // an abstract result.
+  mlir::Value newArg;
+};
+
+static bool mustConvertCallOrFunc(mlir::FunctionType type) {
+  if (type.getNumResults() == 0)
+    return false;
+  auto resultType = type.getResult(0);
+  return resultType.isa<fir::SequenceType, fir::BoxType, fir::RecordType>();
+}
+
 static mlir::Type getResultArgumentType(mlir::Type resultType,
-                                        bool shouldBoxResult) {
+                                        const AbstractResultOptions &options) {
   return llvm::TypeSwitch<mlir::Type, mlir::Type>(resultType)
       .Case<fir::SequenceType, fir::RecordType>(
           [&](mlir::Type type) -> mlir::Type {
-            if (shouldBoxResult)
+            if (options.boxResult)
               return fir::BoxType::get(type);
             return fir::ReferenceType::get(type);
           })
@@ -41,26 +55,28 @@ static mlir::Type getResultArgumentType(mlir::Type resultType,
       });
 }
 
-static mlir::FunctionType getNewFunctionType(mlir::FunctionType funcTy,
-                                             bool shouldBoxResult) {
+static mlir::FunctionType
+getNewFunctionType(mlir::FunctionType funcTy,
+                   const AbstractResultOptions &options) {
   auto resultType = funcTy.getResult(0);
-  auto argTy = getResultArgumentType(resultType, shouldBoxResult);
+  auto argTy = getResultArgumentType(resultType, options);
   llvm::SmallVector<mlir::Type> newInputTypes = {argTy};
   newInputTypes.append(funcTy.getInputs().begin(), funcTy.getInputs().end());
   return mlir::FunctionType::get(funcTy.getContext(), newInputTypes,
                                  /*resultTypes=*/{});
 }
 
-static bool mustEmboxResult(mlir::Type resultType, bool shouldBoxResult) {
+static bool mustEmboxResult(mlir::Type resultType,
+                            const AbstractResultOptions &options) {
   return resultType.isa<fir::SequenceType, fir::RecordType>() &&
-         shouldBoxResult;
+         options.boxResult;
 }
 
 class CallOpConversion : public mlir::OpRewritePattern<fir::CallOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
-  CallOpConversion(mlir::MLIRContext *context, bool shouldBoxResult)
-      : OpRewritePattern(context), shouldBoxResult{shouldBoxResult} {}
+  CallOpConversion(mlir::MLIRContext *context, const AbstractResultOptions &opt)
+      : OpRewritePattern(context), options{opt} {}
   mlir::LogicalResult
   matchAndRewrite(fir::CallOp callOp,
                   mlir::PatternRewriter &rewriter) const override {
@@ -78,10 +94,10 @@ public:
           loc, "calls with abstract result must be used in fir.save_result");
       return mlir::failure();
     }
-    auto argType = getResultArgumentType(result.getType(), shouldBoxResult);
+    auto argType = getResultArgumentType(result.getType(), options);
     auto buffer = saveResult.getMemref();
     mlir::Value arg = buffer;
-    if (mustEmboxResult(result.getType(), shouldBoxResult))
+    if (mustEmboxResult(result.getType(), options))
       arg = rewriter.create<fir::EmboxOp>(
           loc, argType, buffer, saveResult.getShape(), /*slice*/ mlir::Value{},
           saveResult.getTypeparams());
@@ -91,8 +107,8 @@ public:
       llvm::SmallVector<mlir::Value> newOperands = {arg};
       newOperands.append(callOp.getOperands().begin(),
                          callOp.getOperands().end());
-      rewriter.create<fir::CallOp>(loc, *callOp.getCallee(), newResultTypes,
-                                   newOperands);
+      rewriter.create<fir::CallOp>(loc, callOp.getCallee().getValue(),
+                                   newResultTypes, newOperands);
     } else {
       // Indirect calls.
       llvm::SmallVector<mlir::Type> newInputTypes = {argType};
@@ -116,7 +132,7 @@ public:
   }
 
 private:
-  bool shouldBoxResult;
+  const AbstractResultOptions &options;
 };
 
 class SaveResultOpConversion
@@ -136,8 +152,9 @@ public:
 class ReturnOpConversion : public mlir::OpRewritePattern<mlir::func::ReturnOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
-  ReturnOpConversion(mlir::MLIRContext *context, mlir::Value newArg)
-      : OpRewritePattern(context), newArg{newArg} {}
+  ReturnOpConversion(mlir::MLIRContext *context,
+                     const AbstractResultOptions &opt)
+      : OpRewritePattern(context), options{opt} {}
   mlir::LogicalResult
   matchAndRewrite(mlir::func::ReturnOp ret,
                   mlir::PatternRewriter &rewriter) const override {
@@ -147,7 +164,7 @@ public:
     if (auto *op = returnedValue.getDefiningOp())
       if (auto load = mlir::dyn_cast<fir::LoadOp>(op)) {
         auto resultStorage = load.getMemref();
-        load.getMemref().replaceAllUsesWith(newArg);
+        load.getMemref().replaceAllUsesWith(options.newArg);
         replacedStorage = true;
         if (auto *alloc = resultStorage.getDefiningOp())
           if (alloc->use_empty())
@@ -158,25 +175,27 @@ public:
     // with no length parameters. Simply store the result in the result storage.
     // at the return point.
     if (!replacedStorage)
-      rewriter.create<fir::StoreOp>(ret.getLoc(), returnedValue, newArg);
+      rewriter.create<fir::StoreOp>(ret.getLoc(), returnedValue,
+                                    options.newArg);
     rewriter.replaceOpWithNewOp<mlir::func::ReturnOp>(ret);
     return mlir::success();
   }
 
 private:
-  mlir::Value newArg;
+  const AbstractResultOptions &options;
 };
 
 class AddrOfOpConversion : public mlir::OpRewritePattern<fir::AddrOfOp> {
 public:
   using OpRewritePattern::OpRewritePattern;
-  AddrOfOpConversion(mlir::MLIRContext *context, bool shouldBoxResult)
-      : OpRewritePattern(context), shouldBoxResult{shouldBoxResult} {}
+  AddrOfOpConversion(mlir::MLIRContext *context,
+                     const AbstractResultOptions &opt)
+      : OpRewritePattern(context), options{opt} {}
   mlir::LogicalResult
   matchAndRewrite(fir::AddrOfOp addrOf,
                   mlir::PatternRewriter &rewriter) const override {
     auto oldFuncTy = addrOf.getType().cast<mlir::FunctionType>();
-    auto newFuncTy = getNewFunctionType(oldFuncTy, shouldBoxResult);
+    auto newFuncTy = getNewFunctionType(oldFuncTy, options);
     auto newAddrOf = rewriter.create<fir::AddrOfOp>(addrOf.getLoc(), newFuncTy,
                                                     addrOf.getSymbol());
     // Rather than converting all op a function pointer might transit through
@@ -188,7 +207,7 @@ public:
   }
 
 private:
-  bool shouldBoxResult;
+  const AbstractResultOptions &options;
 };
 
 class AbstractResultOpt : public fir::AbstractResultOptBase<AbstractResultOpt> {
@@ -199,25 +218,27 @@ public:
     auto loc = func.getLoc();
     mlir::RewritePatternSet patterns(context);
     mlir::ConversionTarget target = *context;
-    const bool shouldBoxResult = passResultAsBox.getValue();
+    AbstractResultOptions options{passResultAsBox.getValue(),
+                                  /*newArg=*/{}};
 
     // Convert function type itself if it has an abstract result
     auto funcTy = func.getFunctionType().cast<mlir::FunctionType>();
-    if (hasAbstractResult(funcTy)) {
-      func.setType(getNewFunctionType(funcTy, shouldBoxResult));
+    if (mustConvertCallOrFunc(funcTy)) {
+      func.setType(getNewFunctionType(funcTy, options));
       unsigned zero = 0;
       if (!func.empty()) {
         // Insert new argument
         mlir::OpBuilder rewriter(context);
         auto resultType = funcTy.getResult(0);
-        auto argTy = getResultArgumentType(resultType, shouldBoxResult);
-        mlir::Value newArg = func.front().insertArgument(zero, argTy, loc);
-        if (mustEmboxResult(resultType, shouldBoxResult)) {
+        auto argTy = getResultArgumentType(resultType, options);
+        options.newArg = func.front().insertArgument(zero, argTy, loc);
+        if (mustEmboxResult(resultType, options)) {
           auto bufferType = fir::ReferenceType::get(resultType);
           rewriter.setInsertionPointToStart(&func.front());
-          newArg = rewriter.create<fir::BoxAddrOp>(loc, bufferType, newArg);
+          options.newArg =
+              rewriter.create<fir::BoxAddrOp>(loc, bufferType, options.newArg);
         }
-        patterns.insert<ReturnOpConversion>(context, newArg);
+        patterns.insert<ReturnOpConversion>(context, options);
         target.addDynamicallyLegalOp<mlir::func::ReturnOp>(
             [](mlir::func::ReturnOp ret) { return ret.operands().empty(); });
       }
@@ -231,11 +252,11 @@ public:
                            mlir::func::FuncDialect>();
     target.addIllegalOp<fir::SaveResultOp>();
     target.addDynamicallyLegalOp<fir::CallOp>([](fir::CallOp call) {
-      return !hasAbstractResult(call.getFunctionType());
+      return !mustConvertCallOrFunc(call.getFunctionType());
     });
     target.addDynamicallyLegalOp<fir::AddrOfOp>([](fir::AddrOfOp addrOf) {
       if (auto funTy = addrOf.getType().dyn_cast<mlir::FunctionType>())
-        return !hasAbstractResult(funTy);
+        return !mustConvertCallOrFunc(funTy);
       return true;
     });
     target.addDynamicallyLegalOp<fir::DispatchOp>([](fir::DispatchOp dispatch) {
@@ -243,15 +264,16 @@ public:
         return true;
       auto resultType = dispatch->getResult(0).getType();
       if (resultType.isa<fir::SequenceType, fir::BoxType, fir::RecordType>()) {
-        TODO(dispatch.getLoc(), "dispatchOp with abstract results");
+        mlir::emitError(dispatch.getLoc(),
+                        "TODO: dispatchOp with abstract results");
         return false;
       }
       return true;
     });
 
-    patterns.insert<CallOpConversion>(context, shouldBoxResult);
+    patterns.insert<CallOpConversion>(context, options);
     patterns.insert<SaveResultOpConversion>(context);
-    patterns.insert<AddrOfOpConversion>(context, shouldBoxResult);
+    patterns.insert<AddrOfOpConversion>(context, options);
     if (mlir::failed(
             mlir::applyPartialConversion(func, target, std::move(patterns)))) {
       mlir::emitError(func.getLoc(), "error in converting abstract results\n");

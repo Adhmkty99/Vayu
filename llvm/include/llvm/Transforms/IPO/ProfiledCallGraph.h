@@ -65,7 +65,7 @@ public:
 
   // Constructor for non-CS profile.
   ProfiledCallGraph(SampleProfileMap &ProfileMap) {
-    assert(!FunctionSamples::ProfileIsCS &&
+    assert(!FunctionSamples::ProfileIsCSFlat &&
            "CS flat profile is not handled here");
     for (const auto &Samples : ProfileMap) {
       addProfiledCalls(Samples.second);
@@ -105,7 +105,7 @@ public:
         if (!CalleeSamples || !CallerSamples) {
           Weight = 0;
         } else {
-          uint64_t CalleeEntryCount = CalleeSamples->getHeadSamplesEstimate();
+          uint64_t CalleeEntryCount = CalleeSamples->getEntrySamples();
           uint64_t CallsiteCount = 0;
           LineLocation Callsite = Callee->getCallSiteLoc();
           if (auto CallTargets = CallerSamples->findCallTargetMapAt(Callsite)) {
@@ -169,7 +169,7 @@ private:
       for (const auto &InlinedSamples : CallsiteSamples.second) {
         addProfiledFunction(InlinedSamples.first);
         addProfiledCall(Samples.getFuncName(), InlinedSamples.first,
-                        InlinedSamples.second.getHeadSamplesEstimate());
+                        InlinedSamples.second.getEntrySamples());
         addProfiledCalls(InlinedSamples.second);
       }
     }

@@ -14,7 +14,6 @@
 #define LLVM_CLANG_LIB_BASIC_TARGETS_X86_H
 
 #include "OSTargets.h"
-#include "clang/Basic/BitmaskEnum.h"
 #include "clang/Basic/TargetInfo.h"
 #include "clang/Basic/TargetOptions.h"
 #include "llvm/ADT/Triple.h"
@@ -125,7 +124,6 @@ class LLVM_LIBRARY_VISIBILITY X86TargetInfo : public TargetInfo {
   bool HasMOVBE = false;
   bool HasPREFETCHWT1 = false;
   bool HasRDPID = false;
-  bool HasRDPRU = false;
   bool HasRetpolineExternalThunk = false;
   bool HasLAHFSAHF = false;
   bool HasWBNOINVD = false;
@@ -420,9 +418,9 @@ public:
     RegParmMax = 3;
 
     // Use fpret for all types.
-    RealTypeUsesObjCFPRetMask =
-        (unsigned)(FloatModeKind::Float | FloatModeKind::Double |
-                   FloatModeKind::LongDouble);
+    RealTypeUsesObjCFPRet =
+        ((1 << (int)FloatModeKind::Float) | (1 << (int)FloatModeKind::Double) |
+         (1 << (int)FloatModeKind::LongDouble));
 
     // x86-32 has atomics up to 8 bytes
     MaxAtomicPromoteWidth = 64;
@@ -701,7 +699,7 @@ public:
                                         "64-i64:64-f80:128-n8:16:32:64-S128");
 
     // Use fpret only for long double.
-    RealTypeUsesObjCFPRetMask = (unsigned)FloatModeKind::LongDouble;
+    RealTypeUsesObjCFPRet = (1 << (int)FloatModeKind::LongDouble);
 
     // Use fp2ret for _Complex long double.
     ComplexLongDoubleUsesFP2Ret = true;

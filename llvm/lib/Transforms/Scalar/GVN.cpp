@@ -107,16 +107,16 @@ static cl::opt<bool> GVNEnableLoadInLoopPRE("enable-load-in-loop-pre",
                                             cl::init(true));
 static cl::opt<bool>
 GVNEnableSplitBackedgeInLoadPRE("enable-split-backedge-in-load-pre",
-                                cl::init(false));
+                                cl::init(true));
 static cl::opt<bool> GVNEnableMemDep("enable-gvn-memdep", cl::init(true));
 
 static cl::opt<uint32_t> MaxNumDeps(
-    "gvn-max-num-deps", cl::Hidden, cl::init(100),
+    "gvn-max-num-deps", cl::Hidden, cl::init(100), cl::ZeroOrMore,
     cl::desc("Max number of dependences to attempt Load PRE (default = 100)"));
 
 // This is based on IsValueFullyAvailableInBlockNumSpeculationsMax stat.
 static cl::opt<uint32_t> MaxBBSpeculations(
-    "gvn-max-block-speculations", cl::Hidden, cl::init(600),
+    "gvn-max-block-speculations", cl::Hidden, cl::init(600), cl::ZeroOrMore,
     cl::desc("Max number of blocks we're willing to speculate on (and recurse "
              "into) when deducing if a value is fully available or not in GVN "
              "(default = 600)"));
@@ -307,7 +307,13 @@ struct llvm::gvn::AvailableValueInBlock {
 
 GVNPass::Expression GVNPass::ValueTable::createExpr(Instruction *I) {
   Expression e;
-  e.type = I->getType();
+  // For GEPs, disambiguate based on the source element type, which is not
+  // implied by the result type with opaque pointers. (Conversely, the source
+  // element type together with the operand types does imply the result type.)
+  if (const auto *GEP = dyn_cast<GetElementPtrInst>(I))
+    e.type = GEP->getSourceElementType();
+  else
+    e.type = I->getType();
   e.opcode = I->getOpcode();
   if (const GCRelocateInst *GCR = dyn_cast<GCRelocateInst>(I)) {
     // gc.relocate is 'special' call: its second and third operands are
@@ -396,39 +402,6 @@ GVNPass::ValueTable::createExtractvalueExpr(ExtractValueInst *EI) {
   append_range(e.varargs, EI->indices());
 
   return e;
-}
-
-GVNPass::Expression GVNPass::ValueTable::createGEPExpr(GetElementPtrInst *GEP) {
-  Expression E;
-  Type *PtrTy = GEP->getType()->getScalarType();
-  const DataLayout &DL = GEP->getModule()->getDataLayout();
-  unsigned BitWidth = DL.getIndexTypeSizeInBits(PtrTy);
-  MapVector<Value *, APInt> VariableOffsets;
-  APInt ConstantOffset(BitWidth, 0);
-  if (PtrTy->isOpaquePointerTy() &&
-      GEP->collectOffset(DL, BitWidth, VariableOffsets, ConstantOffset)) {
-    // For opaque pointers, convert into offset representation, to recognize
-    // equivalent address calculations that use different type encoding.
-    LLVMContext &Context = GEP->getContext();
-    E.opcode = GEP->getOpcode();
-    E.type = nullptr;
-    E.varargs.push_back(lookupOrAdd(GEP->getPointerOperand()));
-    for (const auto &Pair : VariableOffsets) {
-      E.varargs.push_back(lookupOrAdd(Pair.first));
-      E.varargs.push_back(lookupOrAdd(ConstantInt::get(Context, Pair.second)));
-    }
-    if (!ConstantOffset.isZero())
-      E.varargs.push_back(
-          lookupOrAdd(ConstantInt::get(Context, ConstantOffset)));
-  } else {
-    // If converting to offset representation fails (for typed pointers and
-    // scalable vectors), fall back to type-based implementation:
-    E.opcode = GEP->getOpcode();
-    E.type = GEP->getSourceElementType();
-    for (Use &Op : GEP->operands())
-      E.varargs.push_back(lookupOrAdd(Op));
-  }
-  return E;
 }
 
 //===----------------------------------------------------------------------===//
@@ -614,10 +587,8 @@ uint32_t GVNPass::ValueTable::lookupOrAdd(Value *V) {
     case Instruction::InsertElement:
     case Instruction::ShuffleVector:
     case Instruction::InsertValue:
-      exp = createExpr(I);
-      break;
     case Instruction::GetElementPtr:
-      exp = createGEPExpr(cast<GetElementPtrInst>(I));
+      exp = createExpr(I);
       break;
     case Instruction::ExtractValue:
       exp = createExtractvalueExpr(cast<ExtractValueInst>(I));
@@ -693,24 +664,24 @@ void GVNPass::ValueTable::verifyRemoved(const Value *V) const {
 //===----------------------------------------------------------------------===//
 
 bool GVNPass::isPREEnabled() const {
-  return Options.AllowPRE.value_or(GVNEnablePRE);
+  return Options.AllowPRE.getValueOr(GVNEnablePRE);
 }
 
 bool GVNPass::isLoadPREEnabled() const {
-  return Options.AllowLoadPRE.value_or(GVNEnableLoadPRE);
+  return Options.AllowLoadPRE.getValueOr(GVNEnableLoadPRE);
 }
 
 bool GVNPass::isLoadInLoopPREEnabled() const {
-  return Options.AllowLoadInLoopPRE.value_or(GVNEnableLoadInLoopPRE);
+  return Options.AllowLoadInLoopPRE.getValueOr(GVNEnableLoadInLoopPRE);
 }
 
 bool GVNPass::isLoadPRESplitBackedgeEnabled() const {
-  return Options.AllowLoadPRESplitBackedge.value_or(
+  return Options.AllowLoadPRESplitBackedge.getValueOr(
       GVNEnableSplitBackedgeInLoadPRE);
 }
 
 bool GVNPass::isMemDepEnabled() const {
-  return Options.AllowMemDep.value_or(GVNEnableMemDep);
+  return Options.AllowMemDep.getValueOr(GVNEnableMemDep);
 }
 
 PreservedAnalyses GVNPass::run(Function &F, FunctionAnalysisManager &AM) {
@@ -748,14 +719,14 @@ void GVNPass::printPipeline(
 
   OS << "<";
   if (Options.AllowPRE != None)
-    OS << (Options.AllowPRE.value() ? "" : "no-") << "pre;";
+    OS << (Options.AllowPRE.getValue() ? "" : "no-") << "pre;";
   if (Options.AllowLoadPRE != None)
-    OS << (Options.AllowLoadPRE.value() ? "" : "no-") << "load-pre;";
+    OS << (Options.AllowLoadPRE.getValue() ? "" : "no-") << "load-pre;";
   if (Options.AllowLoadPRESplitBackedge != None)
-    OS << (Options.AllowLoadPRESplitBackedge.value() ? "" : "no-")
+    OS << (Options.AllowLoadPRESplitBackedge.getValue() ? "" : "no-")
        << "split-backedge-load-pre;";
   if (Options.AllowMemDep != None)
-    OS << (Options.AllowMemDep.value() ? "" : "no-") << "memdep";
+    OS << (Options.AllowMemDep.getValue() ? "" : "no-") << "memdep";
   OS << ">";
 }
 
@@ -1059,8 +1030,8 @@ static void reportMayClobberedLoad(LoadInst *Load, MemDepResult DepInfo,
         if (DT->dominates(cast<Instruction>(OtherAccess), cast<Instruction>(U)))
           OtherAccess = U;
         else
-          assert(U == OtherAccess || DT->dominates(cast<Instruction>(U),
-                                                   cast<Instruction>(OtherAccess)));
+          assert(DT->dominates(cast<Instruction>(U),
+                               cast<Instruction>(OtherAccess)));
       } else
         OtherAccess = U;
     }
@@ -1188,7 +1159,9 @@ bool GVNPass::AnalyzeLoadAvailability(LoadInst *Load, MemDepResult DepInfo,
             canCoerceMustAliasedValueToLoad(DepLoad, LoadType, DL)) {
           const auto ClobberOff = MD->getClobberOffset(DepLoad);
           // GVN has no deal with a negative offset.
-          Offset = (ClobberOff == None || *ClobberOff < 0) ? -1 : *ClobberOff;
+          Offset = (ClobberOff == None || ClobberOff.getValue() < 0)
+                       ? -1
+                       : ClobberOff.getValue();
         }
         if (Offset == -1)
           Offset =
@@ -1232,11 +1205,12 @@ bool GVNPass::AnalyzeLoadAvailability(LoadInst *Load, MemDepResult DepInfo,
     return true;
   }
 
-  if (Constant *InitVal =
-          getInitialValueOfAllocation(DepInst, TLI, Load->getType())) {
-    Res = AvailableValue::get(InitVal);
-    return true;
-  }
+  if (isAllocationFn(DepInst, TLI))
+    if (auto *InitVal = getInitialValueOfAllocation(cast<CallBase>(DepInst),
+                                                    TLI, Load->getType())) {
+      Res = AvailableValue::get(InitVal);
+      return true;
+    }
 
   if (StoreInst *S = dyn_cast<StoreInst>(DepInst)) {
     // Reject loads and stores that are to the same address but are of
@@ -1490,6 +1464,14 @@ bool GVNPass::PerformLoadPRE(LoadInst *Load, AvailValInBlkVect &ValuesPerBlock,
       if (isa<IndirectBrInst>(Pred->getTerminator())) {
         LLVM_DEBUG(
             dbgs() << "COULD NOT PRE LOAD BECAUSE OF INDBR CRITICAL EDGE '"
+                   << Pred->getName() << "': " << *Load << '\n');
+        return false;
+      }
+
+      // FIXME: Can we support the fallthrough edge?
+      if (isa<CallBrInst>(Pred->getTerminator())) {
+        LLVM_DEBUG(
+            dbgs() << "COULD NOT PRE LOAD BECAUSE OF CALLBR CRITICAL EDGE '"
                    << Pred->getName() << "': " << *Load << '\n');
         return false;
       }
@@ -2444,7 +2426,7 @@ bool GVNPass::processInstruction(Instruction *I) {
   // example if it determines that %y is equal to %x then the instruction
   // "%z = and i32 %x, %y" becomes "%z = and i32 %x, %x" which we now simplify.
   const DataLayout &DL = I->getModule()->getDataLayout();
-  if (Value *V = simplifyInstruction(I, {DL, TLI, DT, AC})) {
+  if (Value *V = SimplifyInstruction(I, {DL, TLI, DT, AC})) {
     bool Changed = false;
     if (!I->use_empty()) {
       // Simplification can cause a special instruction to become not special.
@@ -2865,6 +2847,11 @@ bool GVNPass::performScalarPRE(Instruction *CurInst) {
 
     // Don't do PRE across indirect branch.
     if (isa<IndirectBrInst>(PREPred->getTerminator()))
+      return false;
+
+    // Don't do PRE across callbr.
+    // FIXME: Can we do this across the fallthrough edge?
+    if (isa<CallBrInst>(PREPred->getTerminator()))
       return false;
 
     // We can't do PRE safely on a critical edge, so instead we schedule

@@ -13,6 +13,8 @@ class BreakpointHitCountTestCase(TestBase):
 
     NO_DEBUG_INFO_TESTCASE = True
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @add_test_categories(['pyapi'])
     def test_breakpoint_location_hit_count(self):
         """Use Python APIs to check breakpoint hit count."""
@@ -39,7 +41,7 @@ class BreakpointHitCountTestCase(TestBase):
         self.assertTrue(frame0.GetFunctionName() == "a(int)" or frame0.GetFunctionName() == "int a(int)");
 
         process.Continue()
-        self.assertState(process.GetState(), lldb.eStateExited)
+        self.assertEqual(process.GetState(), lldb.eStateExited)
 
     def setUp(self):
         # Call super's setUp().

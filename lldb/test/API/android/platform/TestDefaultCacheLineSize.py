@@ -11,6 +11,8 @@ from lldbsuite.test import lldbutil
 
 
 class DefaultCacheLineSizeTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     @skipUnlessTargetAndroid
@@ -40,4 +42,4 @@ class DefaultCacheLineSizeTestCase(TestBase):
 
         # Run to completion.
         process.Continue()
-        self.assertState(process.GetState(), lldb.eStateExited, PROCESS_EXITED)
+        self.assertEqual(process.GetState(), lldb.eStateExited, PROCESS_EXITED)

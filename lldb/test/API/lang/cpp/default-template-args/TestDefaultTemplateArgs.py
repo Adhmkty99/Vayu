@@ -9,6 +9,8 @@ from lldbsuite.test import lldbutil
 
 class TestDefaultTemplateArgs(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @no_debug_info_test
     def test(self):
         self.build()

@@ -89,7 +89,6 @@ ARMCOFFMCAsmInfoMicrosoft::ARMCOFFMCAsmInfoMicrosoft() {
   AlignmentIsInBytes = false;
   SupportsDebugInformation = true;
   ExceptionsType = ExceptionHandling::WinEH;
-  WinEHEncodingType = WinEH::EncodingType::Itanium;
   PrivateGlobalPrefix = "$M";
   PrivateLabelPrefix = "$M";
   CommentString = "@";
@@ -111,8 +110,7 @@ ARMCOFFMCAsmInfoGNU::ARMCOFFMCAsmInfoGNU() {
   PrivateLabelPrefix = ".L";
 
   SupportsDebugInformation = true;
-  ExceptionsType = ExceptionHandling::WinEH;
-  WinEHEncodingType = WinEH::EncodingType::Itanium;
+  ExceptionsType = ExceptionHandling::DwarfCFI;
   UseParensForSymbolVariant = true;
 
   DwarfRegNumForCFI = false;

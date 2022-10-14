@@ -6,8 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: !stdlib=libc++ && (c++03 || c++11 || c++14)
-
 // <string_view>
 //   The string_views's value type must be the same as the traits's char_type
 

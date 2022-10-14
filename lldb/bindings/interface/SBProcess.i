@@ -398,9 +398,6 @@ public:
     IsInstrumentationRuntimePresent(lldb::InstrumentationRuntimeType type);
 
     lldb::SBError
-    SaveCore(const char *file_name, const char *flavor, lldb::SaveCoreStyle core_style);
-
-    lldb::SBError
     SaveCore(const char *file_name);
 
     lldb::SBError

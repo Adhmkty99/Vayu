@@ -6,8 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: !stdlib=libc++ && (c++03 || c++11 || c++14)
-
 // <string_view>
 
 // constexpr size_type find_first_not_of(charT c, size_type pos = 0) const;

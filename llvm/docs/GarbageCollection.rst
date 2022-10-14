@@ -940,7 +940,7 @@ a realistic example:
     unsigned IntPtrSize = AP.getPointerSize();
 
     // Put this in the data section.
-    OS.switchSection(AP.getObjFileLowering().getDataSection());
+    OS.SwitchSection(AP.getObjFileLowering().getDataSection());
 
     // For each function...
     for (iterator FI = begin(), FE = end(); FI != FE; ++FI) {

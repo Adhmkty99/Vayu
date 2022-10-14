@@ -68,16 +68,17 @@ Register LiveRangeEdit::createFrom(Register OldReg) {
 }
 
 bool LiveRangeEdit::checkRematerializable(VNInfo *VNI,
-                                          const MachineInstr *DefMI) {
+                                          const MachineInstr *DefMI,
+                                          AAResults *aa) {
   assert(DefMI && "Missing instruction");
   ScannedRemattable = true;
-  if (!TII.isTriviallyReMaterializable(*DefMI))
+  if (!TII.isTriviallyReMaterializable(*DefMI, aa))
     return false;
   Remattable.insert(VNI);
   return true;
 }
 
-void LiveRangeEdit::scanRemattable() {
+void LiveRangeEdit::scanRemattable(AAResults *aa) {
   for (VNInfo *VNI : getParent().valnos) {
     if (VNI->isUnused())
       continue;
@@ -89,14 +90,14 @@ void LiveRangeEdit::scanRemattable() {
     MachineInstr *DefMI = LIS.getInstructionFromIndex(OrigVNI->def);
     if (!DefMI)
       continue;
-    checkRematerializable(OrigVNI, DefMI);
+    checkRematerializable(OrigVNI, DefMI, aa);
   }
   ScannedRemattable = true;
 }
 
-bool LiveRangeEdit::anyRematerializable() {
+bool LiveRangeEdit::anyRematerializable(AAResults *aa) {
   if (!ScannedRemattable)
-    scanRemattable();
+    scanRemattable(aa);
   return !Remattable.empty();
 }
 
@@ -273,7 +274,8 @@ bool LiveRangeEdit::useIsKill(const LiveInterval &LI,
 }
 
 /// Find all live intervals that need to shrink, then remove the instruction.
-void LiveRangeEdit::eliminateDeadDef(MachineInstr *MI, ToShrinkSet &ToShrink) {
+void LiveRangeEdit::eliminateDeadDef(MachineInstr *MI, ToShrinkSet &ToShrink,
+                                     AAResults *AA) {
   assert(MI->allDefsAreDead() && "Def isn't really dead");
   SlotIndex Idx = LIS.getInstructionIndex(*MI).getRegSlot();
 
@@ -300,15 +302,13 @@ void LiveRangeEdit::eliminateDeadDef(MachineInstr *MI, ToShrinkSet &ToShrink) {
   SmallVector<unsigned, 8> RegsToErase;
   bool ReadsPhysRegs = false;
   bool isOrigDef = false;
-  Register Dest;
-  unsigned DestSubReg;
+  unsigned Dest;
   // Only optimize rematerialize case when the instruction has one def, since
   // otherwise we could leave some dead defs in the code.  This case is
   // extremely rare.
   if (VRM && MI->getOperand(0).isReg() && MI->getOperand(0).isDef() &&
       MI->getDesc().getNumDefs() == 1) {
     Dest = MI->getOperand(0).getReg();
-    DestSubReg = MI->getOperand(0).getSubReg();
     unsigned Original = VRM->getOriginal(Dest);
     LiveInterval &OrigLI = LIS.getInterval(Original);
     VNInfo *OrigVNI = OrigLI.getVNInfoAt(Idx);
@@ -384,20 +384,10 @@ void LiveRangeEdit::eliminateDeadDef(MachineInstr *MI, ToShrinkSet &ToShrink) {
     // register uses. That may provoke RA to split an interval at the KILL
     // and later result in an invalid live segment end.
     if (isOrigDef && DeadRemats && !HasLiveVRegUses &&
-        TII.isTriviallyReMaterializable(*MI)) {
+        TII.isTriviallyReMaterializable(*MI, AA)) {
       LiveInterval &NewLI = createEmptyIntervalFrom(Dest, false);
-      VNInfo::Allocator &Alloc = LIS.getVNInfoAllocator();
-      VNInfo *VNI = NewLI.getNextValue(Idx, Alloc);
+      VNInfo *VNI = NewLI.getNextValue(Idx, LIS.getVNInfoAllocator());
       NewLI.addSegment(LiveInterval::Segment(Idx, Idx.getDeadSlot(), VNI));
-
-      if (DestSubReg) {
-        const TargetRegisterInfo *TRI = MRI.getTargetRegisterInfo();
-        auto *SR = NewLI.createSubRange(
-            Alloc, TRI->getSubRegIndexLaneMask(DestSubReg));
-        SR->addSegment(LiveInterval::Segment(Idx, Idx.getDeadSlot(),
-                                             SR->getNextValue(Idx, Alloc)));
-      }
-
       pop_back();
       DeadRemats->insert(MI);
       const TargetRegisterInfo &TRI = *MRI.getTargetRegisterInfo();
@@ -424,13 +414,14 @@ void LiveRangeEdit::eliminateDeadDef(MachineInstr *MI, ToShrinkSet &ToShrink) {
 }
 
 void LiveRangeEdit::eliminateDeadDefs(SmallVectorImpl<MachineInstr *> &Dead,
-                                      ArrayRef<Register> RegsBeingSpilled) {
+                                      ArrayRef<Register> RegsBeingSpilled,
+                                      AAResults *AA) {
   ToShrinkSet ToShrink;
 
   for (;;) {
     // Erase all dead defs.
     while (!Dead.empty())
-      eliminateDeadDef(Dead.pop_back_val(), ToShrink);
+      eliminateDeadDef(Dead.pop_back_val(), ToShrink, AA);
 
     if (ToShrink.empty())
       break;

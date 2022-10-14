@@ -15,9 +15,9 @@ using namespace dependencies;
 
 DependencyScanningService::DependencyScanningService(
     ScanningMode Mode, ScanningOutputFormat Format, bool ReuseFileManager,
-    bool OptimizeArgs)
+    bool SkipExcludedPPRanges, bool OptimizeArgs)
     : Mode(Mode), Format(Format), ReuseFileManager(ReuseFileManager),
-      OptimizeArgs(OptimizeArgs) {
+      SkipExcludedPPRanges(SkipExcludedPPRanges), OptimizeArgs(OptimizeArgs) {
   // Initialize targets for object file support.
   llvm::InitializeAllTargets();
   llvm::InitializeAllTargetMCs();

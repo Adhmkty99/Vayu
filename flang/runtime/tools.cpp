@@ -98,7 +98,7 @@ void CheckConformability(const Descriptor &to, const Descriptor &x,
       if (xExtent != toExtent) {
         terminator.Crash("Incompatible array arguments to %s: dimension %d of "
                          "%s has extent %" PRId64 " but %s has extent %" PRId64,
-            funcName, j + 1, toName, toExtent, xName, xExtent);
+            funcName, j, toName, toExtent, xName, xExtent);
       }
     }
   }
@@ -106,8 +106,7 @@ void CheckConformability(const Descriptor &to, const Descriptor &x,
 
 void CheckIntegerKind(Terminator &terminator, int kind, const char *intrinsic) {
   if (kind < 1 || kind > 16 || (kind & (kind - 1)) != 0) {
-    terminator.Crash(
-        "not yet implemented: %s: KIND=%d argument", intrinsic, kind);
+    terminator.Crash("%s: bad KIND=%d argument", intrinsic, kind);
   }
 }
 } // namespace Fortran::runtime

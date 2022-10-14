@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class CModulesTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @expectedFailureAll(
         oslist=["freebsd", "linux"],
         bugnumber="http://llvm.org/pr23456 'fopen' has unknown return type")

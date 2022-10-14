@@ -27,9 +27,6 @@
     },
     {
       "include": "#pattern"
-    },
-    {
-      "include": "#inside_pattern"
     }
   ],
   "repository": {

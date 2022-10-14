@@ -16,7 +16,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/IR/ConstantFold.h"
+#include "ConstantFold.h"
 #include "llvm/ADT/APSInt.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/IR/Constants.h"
@@ -379,7 +379,7 @@ Constant *llvm::ConstantFoldCastInstruction(unsigned opc, Constant *V,
                opc != Instruction::AddrSpaceCast &&
                // Do not fold bitcast (gep) with inrange index, as this loses
                // information.
-               !cast<GEPOperator>(CE)->getInRangeIndex() &&
+               !cast<GEPOperator>(CE)->getInRangeIndex().hasValue() &&
                // Do not fold if the gep type is a vector, as bitcasting
                // operand 0 of a vector gep will result in a bitcast between
                // different sizes.
@@ -435,8 +435,14 @@ Constant *llvm::ConstantFoldCastInstruction(unsigned opc, Constant *V,
     if (ConstantFP *FPC = dyn_cast<ConstantFP>(V)) {
       bool ignored;
       APFloat Val = FPC->getValueAPF();
-      Val.convert(DestTy->getFltSemantics(), APFloat::rmNearestTiesToEven,
-                  &ignored);
+      Val.convert(DestTy->isHalfTy() ? APFloat::IEEEhalf() :
+                  DestTy->isFloatTy() ? APFloat::IEEEsingle() :
+                  DestTy->isDoubleTy() ? APFloat::IEEEdouble() :
+                  DestTy->isX86_FP80Ty() ? APFloat::x87DoubleExtended() :
+                  DestTy->isFP128Ty() ? APFloat::IEEEquad() :
+                  DestTy->isPPC_FP128Ty() ? APFloat::PPCDoubleDouble() :
+                  APFloat::Bogus(),
+                  APFloat::rmNearestTiesToEven, &ignored);
       return ConstantFP::get(V->getContext(), Val);
     }
     return nullptr; // Can't fold.
@@ -676,11 +682,6 @@ Constant *llvm::ConstantFoldInsertElementInstruction(Constant *Val,
                                                      Constant *Idx) {
   if (isa<UndefValue>(Idx))
     return PoisonValue::get(Val->getType());
-
-  // Inserting null into all zeros is still all zeros.
-  // TODO: This is true for undef and poison splats too.
-  if (isa<ConstantAggregateZero>(Val) && Elt->isNullValue())
-    return Val;
 
   ConstantInt *CIdx = dyn_cast<ConstantInt>(Idx);
   if (!CIdx) return nullptr;
@@ -1218,13 +1219,9 @@ Constant *llvm::ConstantFoldBinaryInstruction(unsigned Opcode, Constant *C1,
       if (Instruction::isIntDivRem(Opcode) && C2Splat->isNullValue())
         return PoisonValue::get(VTy);
       if (Constant *C1Splat = C1->getSplatValue()) {
-        Constant *Res =
-            ConstantExpr::isDesirableBinOp(Opcode)
-                ? ConstantExpr::get(Opcode, C1Splat, C2Splat)
-                : ConstantFoldBinaryInstruction(Opcode, C1Splat, C2Splat);
-        if (!Res)
-          return nullptr;
-        return ConstantVector::getSplat(VTy->getElementCount(), Res);
+        return ConstantVector::getSplat(
+            VTy->getElementCount(),
+            ConstantExpr::get(Opcode, C1Splat, C2Splat));
       }
     }
 
@@ -1241,12 +1238,7 @@ Constant *llvm::ConstantFoldBinaryInstruction(unsigned Opcode, Constant *C1,
         if (Instruction::isIntDivRem(Opcode) && RHS->isNullValue())
           return PoisonValue::get(VTy);
 
-        Constant *Res = ConstantExpr::isDesirableBinOp(Opcode)
-                            ? ConstantExpr::get(Opcode, LHS, RHS)
-                            : ConstantFoldBinaryInstruction(Opcode, LHS, RHS);
-        if (!Res)
-          return nullptr;
-        Result.push_back(Res);
+        Result.push_back(ConstantExpr::get(Opcode, LHS, RHS));
       }
 
       return ConstantVector::get(Result);
@@ -2227,15 +2219,9 @@ Constant *llvm::ConstantFoldGetElementPtr(Type *PointeeTy, Constant *C,
               : cast<FixedVectorType>(CurrIdx->getType())->getNumElements(),
           Factor);
 
-    NewIdxs[i] =
-        ConstantFoldBinaryInstruction(Instruction::SRem, CurrIdx, Factor);
+    NewIdxs[i] = ConstantExpr::getSRem(CurrIdx, Factor);
 
-    Constant *Div =
-        ConstantFoldBinaryInstruction(Instruction::SDiv, CurrIdx, Factor);
-
-    // We're working on either ConstantInt or vectors of ConstantInt,
-    // so these should always fold.
-    assert(NewIdxs[i] != nullptr && Div != nullptr && "Should have folded");
+    Constant *Div = ConstantExpr::getSDiv(CurrIdx, Factor);
 
     unsigned CommonExtendedWidth =
         std::max(PrevIdx->getType()->getScalarSizeInBits(),

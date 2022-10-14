@@ -14,7 +14,6 @@
 #include <cstddef>
 #include <cassert>
 #include <climits>
-#include <iterator>
 #include <memory>
 
 #include "test_macros.h"

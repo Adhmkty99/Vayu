@@ -63,11 +63,7 @@ MachineBasicBlock *llvm::PeelSingleBlockLoop(LoopPeelDirection Direction,
           if (Use.getParent()->getParent() != Loop)
             Uses.push_back(&Use);
         for (auto *Use : Uses) {
-          const TargetRegisterClass *ConstrainRegClass =
-              MRI.constrainRegClass(R, MRI.getRegClass(Use->getReg()));
-          assert(ConstrainRegClass &&
-                 "Expected a valid constrained register class!");
-          (void)ConstrainRegClass;
+          MRI.constrainRegClass(R, MRI.getRegClass(Use->getReg()));
           Use->setReg(R);
         }
       }
@@ -107,10 +103,11 @@ MachineBasicBlock *llvm::PeelSingleBlockLoop(LoopPeelDirection Direction,
 
   DebugLoc DL;
   if (Direction == LPD_Front) {
-    Preheader->ReplaceUsesOfBlockWith(Loop, NewBB);
+    Preheader->replaceSuccessor(Loop, NewBB);
     NewBB->addSuccessor(Loop);
     Loop->replacePhiUsesWith(Preheader, NewBB);
-    Preheader->updateTerminator(Loop);
+    if (TII->removeBranch(*Preheader) > 0)
+      TII->insertBranch(*Preheader, NewBB, nullptr, {}, DL);
     TII->removeBranch(*NewBB);
     TII->insertBranch(*NewBB, Loop, nullptr, {}, DL);
   } else {

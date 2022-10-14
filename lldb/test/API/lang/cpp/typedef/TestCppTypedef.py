@@ -10,6 +10,8 @@ from lldbsuite.test import decorators
 
 class TestCppTypedef(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_typedef(self):
         """
         Test that we retrieve typedefed types correctly

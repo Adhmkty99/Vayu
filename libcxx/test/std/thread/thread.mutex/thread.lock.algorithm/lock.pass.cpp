@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// UNSUPPORTED: no-threads
+// UNSUPPORTED: libcpp-has-no-threads
 
 // This test hangs forever when built against libstdc++ (Oct 2016).
 // UNSUPPORTED: stdlib=libstdc++

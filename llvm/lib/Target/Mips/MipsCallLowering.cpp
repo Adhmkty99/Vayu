@@ -541,7 +541,8 @@ bool MipsCallLowering::lowerCall(MachineIRBuilder &MIRBuilder,
   }
   MIRBuilder.insertInstr(MIB);
   if (MIB->getOpcode() == Mips::JALRPseudo) {
-    const MipsSubtarget &STI = MIRBuilder.getMF().getSubtarget<MipsSubtarget>();
+    const MipsSubtarget &STI =
+        static_cast<const MipsSubtarget &>(MIRBuilder.getMF().getSubtarget());
     MIB.constrainAllUses(MIRBuilder.getTII(), *STI.getRegisterInfo(),
                          *STI.getRegBankInfo());
   }

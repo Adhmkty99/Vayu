@@ -133,8 +133,7 @@ class Decoder {
   void decodeOpcodes(ArrayRef<uint8_t> Opcodes, unsigned Offset,
                      bool Prologue);
 
-  void printGPRMask(uint16_t Mask);
-  void printVFPMask(uint32_t Mask);
+  void printRegisters(const std::pair<uint16_t, uint32_t> &RegisterMask);
 
   ErrorOr<object::SectionRef>
   getSectionContaining(const object::COFFObjectFile &COFF, uint64_t Address);

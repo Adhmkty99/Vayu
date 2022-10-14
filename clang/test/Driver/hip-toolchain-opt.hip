@@ -1,3 +1,4 @@
+// REQUIRES: clang-driver
 // REQUIRES: x86-registered-target
 // REQUIRES: amdgpu-registered-target
 
@@ -57,7 +58,7 @@
 // RUN:   %S/Inputs/hip_multiple_inputs/b.hip \
 // RUN: 2>&1 | FileCheck --check-prefixes=ALL,Og %s
 
-// ALL: "-cc1" "-triple" "amdgcn-amd-amdhsa"
+// ALL: "{{.*}}clang{{.*}}" "-cc1" "-triple" "amdgcn-amd-amdhsa"
 // DEFAULT-NOT: "-O{{.}}"
 // O0-SAME: "-O0"
 // O1-SAME: "-O1"
@@ -81,7 +82,7 @@
 // Oz-SAME: "-plugin-opt=O2"
 // Og-SAME: "-plugin-opt=O1"
 
-// ALL: "-cc1" "-triple" "x86_64-unknown-linux-gnu"
+// ALL: "{{.*}}clang{{.*}}" "-cc1" "-triple" "x86_64-unknown-linux-gnu"
 // DEFAULT-NOT: "-O{{.}}"
 // O0-SAME: "-O0"
 // O1-SAME: "-O1"

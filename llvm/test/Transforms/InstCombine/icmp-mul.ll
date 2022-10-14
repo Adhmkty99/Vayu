@@ -7,7 +7,8 @@ declare void @use(i8)
 
 define i1 @slt_positive_multip_rem_zero(i8 %x) {
 ; CHECK-LABEL: @slt_positive_multip_rem_zero(
-; CHECK-NEXT:    [[B:%.*]] = icmp slt i8 [[X:%.*]], 3
+; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X:%.*]], 7
+; CHECK-NEXT:    [[B:%.*]] = icmp slt i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nsw i8 %x, 7
@@ -17,7 +18,8 @@ define i1 @slt_positive_multip_rem_zero(i8 %x) {
 
 define i1 @slt_negative_multip_rem_zero(i8 %x) {
 ; CHECK-LABEL: @slt_negative_multip_rem_zero(
-; CHECK-NEXT:    [[B:%.*]] = icmp sgt i8 [[X:%.*]], -3
+; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X:%.*]], -7
+; CHECK-NEXT:    [[B:%.*]] = icmp slt i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nsw i8 %x, -7
@@ -27,7 +29,8 @@ define i1 @slt_negative_multip_rem_zero(i8 %x) {
 
 define i1 @slt_positive_multip_rem_nz(i8 %x) {
 ; CHECK-LABEL: @slt_positive_multip_rem_nz(
-; CHECK-NEXT:    [[B:%.*]] = icmp slt i8 [[X:%.*]], 5
+; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X:%.*]], 5
+; CHECK-NEXT:    [[B:%.*]] = icmp slt i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nsw i8 %x, 5
@@ -37,7 +40,8 @@ define i1 @slt_positive_multip_rem_nz(i8 %x) {
 
 define i1 @ult_rem_zero(i8 %x) {
 ; CHECK-LABEL: @ult_rem_zero(
-; CHECK-NEXT:    [[B:%.*]] = icmp ult i8 [[X:%.*]], 3
+; CHECK-NEXT:    [[A:%.*]] = mul nuw i8 [[X:%.*]], 7
+; CHECK-NEXT:    [[B:%.*]] = icmp ult i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nuw i8 %x, 7
@@ -47,7 +51,8 @@ define i1 @ult_rem_zero(i8 %x) {
 
 define i1 @ult_rem_nz(i8 %x) {
 ; CHECK-LABEL: @ult_rem_nz(
-; CHECK-NEXT:    [[B:%.*]] = icmp ult i8 [[X:%.*]], 5
+; CHECK-NEXT:    [[A:%.*]] = mul nuw i8 [[X:%.*]], 5
+; CHECK-NEXT:    [[B:%.*]] = icmp ult i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nuw i8 %x, 5
@@ -59,7 +64,8 @@ define i1 @ult_rem_nz(i8 %x) {
 
 define i1 @sgt_positive_multip_rem_zero(i8 %x) {
 ; CHECK-LABEL: @sgt_positive_multip_rem_zero(
-; CHECK-NEXT:    [[B:%.*]] = icmp sgt i8 [[X:%.*]], 3
+; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X:%.*]], 7
+; CHECK-NEXT:    [[B:%.*]] = icmp sgt i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nsw i8 %x, 7
@@ -69,7 +75,8 @@ define i1 @sgt_positive_multip_rem_zero(i8 %x) {
 
 define i1 @sgt_negative_multip_rem_zero(i8 %x) {
 ; CHECK-LABEL: @sgt_negative_multip_rem_zero(
-; CHECK-NEXT:    [[B:%.*]] = icmp slt i8 [[X:%.*]], -3
+; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X:%.*]], -7
+; CHECK-NEXT:    [[B:%.*]] = icmp sgt i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nsw i8 %x, -7
@@ -79,7 +86,8 @@ define i1 @sgt_negative_multip_rem_zero(i8 %x) {
 
 define i1 @sgt_positive_multip_rem_nz(i8 %x) {
 ; CHECK-LABEL: @sgt_positive_multip_rem_nz(
-; CHECK-NEXT:    [[B:%.*]] = icmp sgt i8 [[X:%.*]], 4
+; CHECK-NEXT:    [[A:%.*]] = mul nsw i8 [[X:%.*]], 5
+; CHECK-NEXT:    [[B:%.*]] = icmp sgt i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nsw i8 %x, 5
@@ -89,7 +97,8 @@ define i1 @sgt_positive_multip_rem_nz(i8 %x) {
 
 define i1 @ugt_rem_zero(i8 %x) {
 ; CHECK-LABEL: @ugt_rem_zero(
-; CHECK-NEXT:    [[B:%.*]] = icmp ugt i8 [[X:%.*]], 3
+; CHECK-NEXT:    [[A:%.*]] = mul nuw i8 [[X:%.*]], 7
+; CHECK-NEXT:    [[B:%.*]] = icmp ugt i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nuw i8 %x, 7
@@ -99,7 +108,8 @@ define i1 @ugt_rem_zero(i8 %x) {
 
 define i1 @ugt_rem_nz(i8 %x) {
 ; CHECK-LABEL: @ugt_rem_nz(
-; CHECK-NEXT:    [[B:%.*]] = icmp ugt i8 [[X:%.*]], 4
+; CHECK-NEXT:    [[A:%.*]] = mul nuw i8 [[X:%.*]], 5
+; CHECK-NEXT:    [[B:%.*]] = icmp ugt i8 [[A]], 21
 ; CHECK-NEXT:    ret i1 [[B]]
 ;
   %a = mul nuw i8 %x, 5
@@ -739,11 +749,16 @@ define i1 @not_mul_of_bool_commute(i32 %x, i32 %y) {
   ret i1 %r
 }
 
-; no leading zeros for 's', but we reduce this with other transforms
+; negative test - no leading zeros for 's'
+; TODO: If analysis was generalized for sign bits, we could reduce this to false.
 
 define i1 @mul_of_bool_no_lz_other_op(i32 %x, i8 %y) {
 ; CHECK-LABEL: @mul_of_bool_no_lz_other_op(
-; CHECK-NEXT:    ret i1 false
+; CHECK-NEXT:    [[B:%.*]] = and i32 [[X:%.*]], 1
+; CHECK-NEXT:    [[S:%.*]] = sext i8 [[Y:%.*]] to i32
+; CHECK-NEXT:    [[M:%.*]] = mul nuw nsw i32 [[B]], [[S]]
+; CHECK-NEXT:    [[R:%.*]] = icmp sgt i32 [[M]], 127
+; CHECK-NEXT:    ret i1 [[R]]
 ;
   %b = and i32 %x, 1
   %s = sext i8 %y to i32
@@ -856,11 +871,13 @@ define i1 @splat_mul_known_lz(i32 %x) {
   ret i1 %r
 }
 
-; The 33rd bit can only be set when MSB of x is set.
+; Negative test - the 33rd bit could be set.
 
 define i1 @splat_mul_unknown_lz(i32 %x) {
 ; CHECK-LABEL: @splat_mul_unknown_lz(
-; CHECK-NEXT:    [[R:%.*]] = icmp sgt i32 [[X:%.*]], -1
+; CHECK-NEXT:    [[Z:%.*]] = zext i32 [[X:%.*]] to i128
+; CHECK-NEXT:    [[M:%.*]] = mul nuw nsw i128 [[Z]], 18446744078004518913
+; CHECK-NEXT:    [[R:%.*]] = icmp ult i128 [[M]], 39614081257132168796771975168
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
   %z = zext i32 %x to i128

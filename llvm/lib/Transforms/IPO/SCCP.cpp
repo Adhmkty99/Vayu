@@ -148,7 +148,7 @@ struct FunctionSpecializationLegacyPass : public ModulePass {
     AU.addRequired<TargetTransformInfoWrapperPass>();
   }
 
-  bool runOnModule(Module &M) override {
+  virtual bool runOnModule(Module &M) override {
     if (skipModule(M))
       return false;
 

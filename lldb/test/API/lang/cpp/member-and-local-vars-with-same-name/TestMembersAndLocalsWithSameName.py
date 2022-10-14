@@ -6,6 +6,8 @@ import lldbsuite.test.lldbutil as lldbutil
 
 class TestMembersAndLocalsWithSameName(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_when_stopped_in_method(self):
         self._load_exe()
 

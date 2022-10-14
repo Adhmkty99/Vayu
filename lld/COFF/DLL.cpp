@@ -21,7 +21,6 @@
 #include "COFFLinkerContext.h"
 #include "Chunks.h"
 #include "SymbolTable.h"
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/Object/COFF.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/Path.h"
@@ -151,9 +150,10 @@ binImports(const std::vector<DefinedImportData *> &imports) {
   for (auto &kv : m) {
     // Sort symbols by name for each group.
     std::vector<DefinedImportData *> &syms = kv.second;
-    llvm::sort(syms, [](DefinedImportData *a, DefinedImportData *b) {
-      return a->getName() < b->getName();
-    });
+    std::sort(syms.begin(), syms.end(),
+              [](DefinedImportData *a, DefinedImportData *b) {
+                return a->getName() < b->getName();
+              });
     v.push_back(std::move(syms));
   }
   return v;

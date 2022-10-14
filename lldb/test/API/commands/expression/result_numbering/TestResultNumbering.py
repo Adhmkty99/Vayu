@@ -12,6 +12,8 @@ from lldbsuite.test.lldbtest import *
 
 class TestExpressionResultNumbering(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     NO_DEBUG_INFO_TESTCASE = True
 
     def test_sample_rename_this(self):

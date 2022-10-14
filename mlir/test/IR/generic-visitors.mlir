@@ -3,7 +3,7 @@
 
 // Verify the different configurations of generic IR visitors.
 
-func.func @structured_cfg() {
+func @structured_cfg() {
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
   %c10 = arith.constant 10 : index
@@ -43,7 +43,7 @@ func.func @structured_cfg() {
 // -----
 // Test the specific operation type visitor.
 
-func.func @correct_number_of_regions() {
+func @correct_number_of_regions() {
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
   %c10 = arith.constant 10 : index

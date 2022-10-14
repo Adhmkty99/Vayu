@@ -104,11 +104,6 @@ MATCHER_P4(FrameContains, FunctionName, LineOffset, Column, Inline, "") {
     *result_listener << "Hash mismatch";
     return false;
   }
-  if (F.SymbolName && F.SymbolName.value() != FunctionName) {
-    *result_listener << "SymbolName mismatch\nWant: " << FunctionName
-                     << "\nGot: " << F.SymbolName.value();
-    return false;
-  }
   if (F.LineOffset == LineOffset && F.Column == Column &&
       F.IsInlineFrame == Inline) {
     return true;
@@ -159,8 +154,7 @@ TEST(MemProf, FillsValue) {
 
   auto Seg = makeSegments();
 
-  RawMemProfReader Reader(std::move(Symbolizer), Seg, Prof, CSM,
-                          /*KeepName=*/true);
+  RawMemProfReader Reader(std::move(Symbolizer), Seg, Prof, CSM);
 
   llvm::DenseMap<llvm::GlobalValue::GUID, MemProfRecord> Records;
   for (const auto &Pair : Reader) {

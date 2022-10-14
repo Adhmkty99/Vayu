@@ -81,7 +81,7 @@ Interface::Interface(const llvm::Record *def) : def(def) {
 
 // Return the name of this interface.
 StringRef Interface::getName() const {
-  return def->getValueAsString("cppInterfaceName");
+  return def->getValueAsString("cppClassName");
 }
 
 // Return the C++ namespace of this interface.

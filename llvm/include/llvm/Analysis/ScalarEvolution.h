@@ -535,10 +535,8 @@ public:
 
   /// Parse NSW/NUW flags from add/sub/mul IR binary operation \p Op into
   /// SCEV no-wrap flags, and deduce flag[s] that aren't known yet.
-  /// Does not mutate the original instruction. Returns None if it could not
-  /// deduce more precise flags than the instruction already has, otherwise
-  /// returns proven flags.
-  Optional<SCEV::NoWrapFlags>
+  /// Does not mutate the original instruction.
+  std::pair<SCEV::NoWrapFlags, bool /*Deduced*/>
   getStrengthenedNoWrapFlagsFromBinOp(const OverflowingBinaryOperator *OBO);
 
   /// Notify this ScalarEvolution that \p User directly uses SCEVs in \p Ops.
@@ -546,10 +544,6 @@ public:
 
   /// Return true if the SCEV expression contains an undef value.
   bool containsUndefs(const SCEV *S) const;
-
-  /// Return true if the SCEV expression contains a Value that has been
-  /// optimised out and is now a nullptr.
-  bool containsErasedValue(const SCEV *S) const;
 
   /// Return a SCEV expression for the full generality of the specified
   /// expression.
@@ -1374,11 +1368,11 @@ private:
     /// Expression indicating the least constant maximum backedge-taken count of
     /// the loop that is known, or a SCEVCouldNotCompute. This expression is
     /// only valid if the redicates associated with all loop exits are true.
-    const SCEV *ConstantMax = nullptr;
+    const SCEV *ConstantMax;
 
     /// Indicating if \c ExitNotTaken has an element for every exiting block in
     /// the loop.
-    bool IsComplete = false;
+    bool IsComplete;
 
     /// Expression indicating the least maximum backedge-taken count of the loop
     /// that is known, or a SCEVCouldNotCompute. Lazily computed on first query.
@@ -1391,7 +1385,7 @@ private:
     const SCEV *getConstantMax() const { return ConstantMax; }
 
   public:
-    BackedgeTakenInfo() = default;
+    BackedgeTakenInfo() : ConstantMax(nullptr), IsComplete(false) {}
     BackedgeTakenInfo(BackedgeTakenInfo &&) = default;
     BackedgeTakenInfo &operator=(BackedgeTakenInfo &&) = default;
 
@@ -1577,16 +1571,8 @@ private:
   ConstantRange getRangeForUnknownRecurrence(const SCEVUnknown *U);
 
   /// We know that there is no SCEV for the specified value.  Analyze the
-  /// expression recursively.
+  /// expression.
   const SCEV *createSCEV(Value *V);
-
-  /// We know that there is no SCEV for the specified value. Create a new SCEV
-  /// for \p V iteratively.
-  const SCEV *createSCEVIter(Value *V);
-  /// Collect operands of \p V for which SCEV expressions should be constructed
-  /// first. Returns a SCEV directly if it can be constructed trivially for \p
-  /// V.
-  const SCEV *getOperandsToCreate(Value *V, SmallVectorImpl<Value *> &Ops);
 
   /// Provide the special handling we need to analyze PHI SCEVs.
   const SCEV *createNodeForPHI(PHINode *PN);

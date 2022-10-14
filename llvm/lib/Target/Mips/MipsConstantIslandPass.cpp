@@ -436,7 +436,7 @@ bool MipsConstantIslands::runOnMachineFunction(MachineFunction &mf) {
   // FIXME:
   MF = &mf;
   MCP = mf.getConstantPool();
-  STI = &mf.getSubtarget<MipsSubtarget>();
+  STI = &static_cast<const MipsSubtarget &>(mf.getSubtarget());
   LLVM_DEBUG(dbgs() << "constant island machine function "
                     << "\n");
   if (!STI->inMips16Mode() || !MipsSubtarget::useConstantIslands()) {

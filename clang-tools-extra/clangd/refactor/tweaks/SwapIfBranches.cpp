@@ -31,7 +31,7 @@ namespace {
 ///   if (foo) { continue; } else { return 10; }
 class SwapIfBranches : public Tweak {
 public:
-  const char *id() const final;
+  const char *id() const override final;
 
   bool prepare(const Selection &Inputs) override;
   Expected<Effect> apply(const Selection &Inputs) override;

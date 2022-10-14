@@ -6829,6 +6829,11 @@ tree in terms of conformance to :doc:`ClangFormat` as of: March 06, 2022 17:32:2
      - `1`
      - `0`
      - :good:`100%`
+   * - mlir/include/mlir/Conversion/VectorToROCDL
+     - `1`
+     - `1`
+     - `0`
+     - :good:`100%`
    * - mlir/include/mlir/Conversion/VectorToSCF
      - `1`
      - `1`
@@ -7602,6 +7607,11 @@ tree in terms of conformance to :doc:`ClangFormat` as of: March 06, 2022 17:32:2
    * - mlir/lib/Conversion/VectorToLLVM
      - `2`
      - `2`
+     - `0`
+     - :good:`100%`
+   * - mlir/lib/Conversion/VectorToROCDL
+     - `1`
+     - `1`
      - `0`
      - :good:`100%`
    * - mlir/lib/Conversion/VectorToSCF

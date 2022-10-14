@@ -143,6 +143,4 @@ void ChainedOriginDepot::LockAll() { depot.LockAll(); }
 
 void ChainedOriginDepot::UnlockAll() { depot.UnlockAll(); }
 
-void ChainedOriginDepot::TestOnlyUnmap() { depot.TestOnlyUnmap(); }
-
 }  // namespace __sanitizer

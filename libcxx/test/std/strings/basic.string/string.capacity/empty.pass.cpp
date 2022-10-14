@@ -8,7 +8,7 @@
 
 // <string>
 
-// bool empty() const noexcept; // constexpr since C++20
+// bool empty() const noexcept;
 
 #include <string>
 #include <cassert>
@@ -24,7 +24,7 @@ test(const S& s)
     assert(s.empty() == (s.size() == 0));
 }
 
-TEST_CONSTEXPR_CXX20 bool test() {
+bool test() {
   {
     typedef std::string S;
     test(S());
@@ -47,7 +47,7 @@ int main(int, char**)
 {
   test();
 #if TEST_STD_VER > 17
-  static_assert(test());
+  // static_assert(test());
 #endif
 
   return 0;

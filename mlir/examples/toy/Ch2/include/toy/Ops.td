@@ -276,7 +276,7 @@ def ReturnOp : Toy_Op<"return", [NoSideEffect, HasParent<"FuncOp">,
     the operation. For example:
 
     ```mlir
-      toy.func @foo() -> tensor<2xf64> {
+      func @foo() -> tensor<2xf64> {
         ...
         toy.return %0 : tensor<2xf64>
       }

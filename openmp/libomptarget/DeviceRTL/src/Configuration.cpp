@@ -18,7 +18,7 @@
 
 using namespace _OMP;
 
-#pragma omp begin declare target device_type(nohost)
+#pragma omp declare target
 
 // defined by CGOpenMPRuntimeGPU
 extern uint32_t __omp_rtl_debug_kind;

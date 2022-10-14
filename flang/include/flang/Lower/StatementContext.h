@@ -35,7 +35,7 @@ public:
 
   ~StatementContext() {
     if (!cufs.empty())
-      finalizeAndPop();
+      finalize(/*popScope=*/true);
     assert(cufs.empty() && "invalid StatementContext destructor call");
   }
 
@@ -61,29 +61,15 @@ public:
     }
   }
 
-  /// Make cleanup calls.  Retain the stack top list for a repeat call.
-  void finalizeAndKeep() {
+  /// Make cleanup calls.  Pop or reset the stack top list.
+  void finalize(bool popScope = false) {
     assert(!cufs.empty() && "invalid finalize statement context");
     if (cufs.back())
       (*cufs.back())();
-  }
-
-  /// Make cleanup calls.  Pop the stack top list.
-  void finalizeAndPop() {
-    finalizeAndKeep();
-    cufs.pop_back();
-  }
-
-  /// Make cleanup calls.  Clear the stack top list.
-  void finalize() {
-    finalizeAndKeep();
-    cufs.back().reset();
-  }
-
-  bool workListIsEmpty() const {
-    return cufs.empty() || llvm::all_of(cufs, [](auto &opt) -> bool {
-             return !opt.has_value();
-           });
+    if (popScope)
+      cufs.pop_back();
+    else
+      cufs.back().reset();
   }
 
 private:

@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// UNSUPPORTED: no-threads
+// UNSUPPORTED: libcpp-has-no-threads
 // REQUIRES: libcpp-has-thread-api-pthread
 
 // notify_all_at_thread_exit(...) requires move semantics to transfer the

@@ -490,10 +490,7 @@ private:
 
 Error LeafRecordImpl<FieldListRecord>::fromCodeViewRecord(CVType Type) {
   MemberRecordConversionVisitor V(Members);
-  FieldListRecord FieldList;
-  cantFail(TypeDeserializer::deserializeAs<FieldListRecord>(Type,
-                                                            FieldList));
-  return visitMemberRecordStream(FieldList.Data, V);
+  return visitMemberRecordStream(Type.content(), V);
 }
 
 CVType LeafRecordImpl<FieldListRecord>::toCodeViewRecord(

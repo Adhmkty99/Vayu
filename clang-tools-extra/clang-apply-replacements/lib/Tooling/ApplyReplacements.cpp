@@ -193,7 +193,8 @@ groupReplacements(const TUReplacements &TUs, const TUDiagnostics &TUDs,
   // Sort replacements per file to keep consistent behavior when
   // clang-apply-replacements run on differents machine.
   for (auto &FileAndReplacements : GroupedReplacements) {
-    llvm::sort(FileAndReplacements.second);
+    llvm::sort(FileAndReplacements.second.begin(),
+               FileAndReplacements.second.end());
   }
 
   return GroupedReplacements;
@@ -201,7 +202,7 @@ groupReplacements(const TUReplacements &TUs, const TUDiagnostics &TUDs,
 
 bool mergeAndDeduplicate(const TUReplacements &TUs, const TUDiagnostics &TUDs,
                          FileToChangesMap &FileChanges,
-                         clang::SourceManager &SM, bool IgnoreInsertConflict) {
+                         clang::SourceManager &SM) {
   auto GroupedReplacements = groupReplacements(TUs, TUDs, SM);
   bool ConflictDetected = false;
 
@@ -230,24 +231,7 @@ bool mergeAndDeduplicate(const TUReplacements &TUs, const TUDiagnostics &TUDs,
         // For now, printing directly the error reported by `AtomicChange` is
         // the easiest solution.
         errs() << llvm::toString(std::move(Err)) << "\n";
-        if (IgnoreInsertConflict) {
-          tooling::Replacements &Replacements = FileChange.getReplacements();
-          unsigned NewOffset =
-              Replacements.getShiftedCodePosition(R.getOffset());
-          unsigned NewLength = Replacements.getShiftedCodePosition(
-                                   R.getOffset() + R.getLength()) -
-                               NewOffset;
-          if (NewLength == R.getLength()) {
-            tooling::Replacement RR = tooling::Replacement(
-                R.getFilePath(), NewOffset, NewLength, R.getReplacementText());
-            Replacements = Replacements.merge(tooling::Replacements(RR));
-          } else {
-            llvm::errs()
-                << "Can't resolve conflict, skipping the replacement.\n";
-            ConflictDetected = true;
-          }
-        } else
-          ConflictDetected = true;
+        ConflictDetected = true;
       }
     }
     FileChanges.try_emplace(Entry,

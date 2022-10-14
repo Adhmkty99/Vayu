@@ -14,6 +14,8 @@ from lldbsuite.test import lldbutil
 
 class SteppingSpeedBench(BenchBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         BenchBase.setUp(self)
         self.exe = lldbtest_config.lldbExec

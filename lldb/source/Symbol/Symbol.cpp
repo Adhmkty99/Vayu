@@ -558,9 +558,8 @@ bool Symbol::GetDisassembly(const ExecutionContext &exe_ctx, const char *flavor,
   if (disassembler_sp) {
     const bool show_address = true;
     const bool show_bytes = false;
-    const bool show_control_flow_kind = false;
-    disassembler_sp->GetInstructionList().Dump(
-        &strm, show_address, show_bytes, show_control_flow_kind, &exe_ctx);
+    disassembler_sp->GetInstructionList().Dump(&strm, show_address, show_bytes,
+                                               &exe_ctx);
     return true;
   }
   return false;

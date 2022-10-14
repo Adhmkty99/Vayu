@@ -162,10 +162,9 @@ void BTFTypeInt::emitType(MCStreamer &OS) {
   OS.emitInt32(IntVal);
 }
 
-BTFTypeEnum::BTFTypeEnum(const DICompositeType *ETy, uint32_t VLen,
-    bool IsSigned) : ETy(ETy) {
+BTFTypeEnum::BTFTypeEnum(const DICompositeType *ETy, uint32_t VLen) : ETy(ETy) {
   Kind = BTF::BTF_KIND_ENUM;
-  BTFType.Info = IsSigned << 31 | Kind << 24 | VLen;
+  BTFType.Info = Kind << 24 | VLen;
   BTFType.Size = roundupToBytes(ETy->getSizeInBits());
 }
 
@@ -198,48 +197,6 @@ void BTFTypeEnum::emitType(MCStreamer &OS) {
   for (const auto &Enum : EnumValues) {
     OS.emitInt32(Enum.NameOff);
     OS.emitInt32(Enum.Val);
-  }
-}
-
-BTFTypeEnum64::BTFTypeEnum64(const DICompositeType *ETy, uint32_t VLen,
-    bool IsSigned) : ETy(ETy) {
-  Kind = BTF::BTF_KIND_ENUM64;
-  BTFType.Info = IsSigned << 31 | Kind << 24 | VLen;
-  BTFType.Size = roundupToBytes(ETy->getSizeInBits());
-}
-
-void BTFTypeEnum64::completeType(BTFDebug &BDebug) {
-  if (IsCompleted)
-    return;
-  IsCompleted = true;
-
-  BTFType.NameOff = BDebug.addString(ETy->getName());
-
-  DINodeArray Elements = ETy->getElements();
-  for (const auto Element : Elements) {
-    const auto *Enum = cast<DIEnumerator>(Element);
-
-    struct BTF::BTFEnum64 BTFEnum;
-    BTFEnum.NameOff = BDebug.addString(Enum->getName());
-    uint64_t Value;
-    if (Enum->isUnsigned())
-      Value = static_cast<uint64_t>(Enum->getValue().getZExtValue());
-    else
-      Value = static_cast<uint64_t>(Enum->getValue().getSExtValue());
-    BTFEnum.Val_Lo32 = Value;
-    BTFEnum.Val_Hi32 = Value >> 32;
-    EnumValues.push_back(BTFEnum);
-  }
-}
-
-void BTFTypeEnum64::emitType(MCStreamer &OS) {
-  BTFTypeBase::emitType(OS);
-  for (const auto &Enum : EnumValues) {
-    OS.emitInt32(Enum.NameOff);
-    OS.AddComment("0x" + Twine::utohexstr(Enum.Val_Lo32));
-    OS.emitInt32(Enum.Val_Lo32);
-    OS.AddComment("0x" + Twine::utohexstr(Enum.Val_Hi32));
-    OS.emitInt32(Enum.Val_Hi32);
   }
 }
 
@@ -717,25 +674,8 @@ void BTFDebug::visitEnumType(const DICompositeType *CTy, uint32_t &TypeId) {
   if (VLen > BTF::MAX_VLEN)
     return;
 
-  bool IsSigned = false;
-  unsigned NumBits = 32;
-  // No BaseType implies forward declaration in which case a
-  // BTFTypeEnum with Vlen = 0 is emitted.
-  if (CTy->getBaseType() != nullptr) {
-    const auto *BTy = cast<DIBasicType>(CTy->getBaseType());
-    IsSigned = BTy->getEncoding() == dwarf::DW_ATE_signed ||
-               BTy->getEncoding() == dwarf::DW_ATE_signed_char;
-    NumBits = BTy->getSizeInBits();
-  }
-
-  if (NumBits <= 32) {
-    auto TypeEntry = std::make_unique<BTFTypeEnum>(CTy, VLen, IsSigned);
-    TypeId = addType(std::move(TypeEntry), CTy);
-  } else {
-    assert(NumBits == 64);
-    auto TypeEntry = std::make_unique<BTFTypeEnum64>(CTy, VLen, IsSigned);
-    TypeId = addType(std::move(TypeEntry), CTy);
-  }
+  auto TypeEntry = std::make_unique<BTFTypeEnum>(CTy, VLen);
+  TypeId = addType(std::move(TypeEntry), CTy);
   // No need to visit base type as BTF does not encode it.
 }
 
@@ -998,7 +938,7 @@ void BTFDebug::emitBTFSection() {
   MCContext &Ctx = OS.getContext();
   MCSectionELF *Sec = Ctx.getELFSection(".BTF", ELF::SHT_PROGBITS, 0);
   Sec->setAlignment(Align(4));
-  OS.switchSection(Sec);
+  OS.SwitchSection(Sec);
 
   // Emit header.
   emitCommonHeader();
@@ -1038,7 +978,7 @@ void BTFDebug::emitBTFExtSection() {
   MCContext &Ctx = OS.getContext();
   MCSectionELF *Sec = Ctx.getELFSection(".BTF.ext", ELF::SHT_PROGBITS, 0);
   Sec->setAlignment(Align(4));
-  OS.switchSection(Sec);
+  OS.SwitchSection(Sec);
 
   // Emit header.
   emitCommonHeader();
@@ -1526,8 +1466,9 @@ void BTFDebug::processFuncPrototypes(const Function *F) {
     return;
 
   // Do not emit again if already emitted.
-  if (!ProtoFunctions.insert(F).second)
+  if (ProtoFunctions.find(F) != ProtoFunctions.end())
     return;
+  ProtoFunctions.insert(F);
 
   uint32_t ProtoTypeId;
   const std::unordered_map<uint32_t, StringRef> FuncArgNames;

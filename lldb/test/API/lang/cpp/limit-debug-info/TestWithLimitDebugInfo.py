@@ -6,7 +6,9 @@ from lldbsuite.test import lldbutil
 
 class TestWithLimitDebugInfo(TestBase):
 
-    @add_test_categories(["dwarf", "dwo"])
+    mydir = TestBase.compute_mydir(__file__)
+
+    @skipIf(debug_info=no_match(["dwarf"]))
     def test_limit_debug_info(self):
         self.build()
 
@@ -50,6 +52,6 @@ class TestWithLimitDebugInfo(TestBase):
         self.assertTrue(
             v2.IsValid(),
             "'expr this' results in a valid SBValue object")
-        self.assertSuccess(
-            v2.GetError(),
+        self.assertTrue(
+            v2.GetError().Success(),
             "'expr this' succeeds without an error.")

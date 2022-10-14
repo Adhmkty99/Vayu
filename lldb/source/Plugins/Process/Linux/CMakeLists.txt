@@ -1,9 +1,5 @@
 add_lldb_library(lldbPluginProcessLinux
   IntelPTCollector.cpp
-  IntelPTSingleBufferTrace.cpp
-  IntelPTMultiCoreTrace.cpp
-  IntelPTPerThreadProcessTrace.cpp
-  IntelPTThreadTraceCollection.cpp
   NativeProcessLinux.cpp
   NativeRegisterContextLinux.cpp
   NativeRegisterContextLinux_arm.cpp
@@ -13,7 +9,6 @@ add_lldb_library(lldbPluginProcessLinux
   NativeRegisterContextLinux_x86_64.cpp
   NativeThreadLinux.cpp
   Perf.cpp
-  Procfs.cpp
   SingleStepCheck.cpp
 
   LINK_LIBS

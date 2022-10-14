@@ -304,7 +304,8 @@ macro(darwin_add_builtin_library name suffix)
       "${LIB_OS}" MATCHES "^osx$")
     # Build the macOS builtins with Mac Catalyst support.
     list(APPEND builtin_cflags
-      "SHELL:-target ${LIB_ARCH}-apple-macos${DARWIN_osx_BUILTIN_MIN_VER} -darwin-target-variant ${LIB_ARCH}-apple-ios13.1-macabi")
+      -target ${LIB_ARCH}-apple-macos${DARWIN_osx_BUILTIN_MIN_VER}
+      -darwin-target-variant ${LIB_ARCH}-apple-ios13.1-macabi)
   endif()
 
   set_target_compile_flags(${libname}
@@ -399,12 +400,12 @@ endfunction()
 macro(darwin_add_builtin_libraries)
   set(DARWIN_EXCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Darwin-excludes)
 
-  set(CFLAGS -fPIC -O3 -fvisibility=hidden -DVISIBILITY_HIDDEN -Wall -fomit-frame-pointer)
+  set(CFLAGS "-fPIC -O3 -fvisibility=hidden -DVISIBILITY_HIDDEN -Wall -fomit-frame-pointer")
   set(CMAKE_C_FLAGS "")
   set(CMAKE_CXX_FLAGS "")
   set(CMAKE_ASM_FLAGS "")
 
-  append_list_if(COMPILER_RT_HAS_ASM_LSE -DHAS_ASM_LSE CFLAGS)
+  append_string_if(COMPILER_RT_HAS_ASM_LSE " -DHAS_ASM_LSE" CFLAGS)
 
   set(PROFILE_SOURCES ../profile/InstrProfiling.c
                       ../profile/InstrProfilingBuffer.c
@@ -514,7 +515,7 @@ macro(darwin_add_embedded_builtin_libraries)
 
     set(MACHO_SYM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/macho_embedded)
 
-    set(CFLAGS -Oz -Wall -fomit-frame-pointer -ffreestanding)
+    set(CFLAGS "-Oz -Wall -fomit-frame-pointer -ffreestanding")
     set(CMAKE_C_FLAGS "")
     set(CMAKE_CXX_FLAGS "")
     set(CMAKE_ASM_FLAGS "")
@@ -533,8 +534,8 @@ macro(darwin_add_embedded_builtin_libraries)
     set(DARWIN_macho_embedded_LIBRARY_INSTALL_DIR
       ${COMPILER_RT_INSTALL_LIBRARY_DIR}/macho_embedded)
       
-    set(CFLAGS_armv7 -target thumbv7-apple-darwin-eabi)
-    set(CFLAGS_i386 -march=pentium)
+    set(CFLAGS_armv7 "-target thumbv7-apple-darwin-eabi")
+    set(CFLAGS_i386 "-march=pentium")
 
     darwin_read_list_from_file(common_FUNCTIONS ${MACHO_SYM_DIR}/common.txt)
     darwin_read_list_from_file(thumb2_FUNCTIONS ${MACHO_SYM_DIR}/thumb2.txt)

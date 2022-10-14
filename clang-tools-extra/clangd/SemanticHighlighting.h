@@ -21,7 +21,6 @@
 #define LLVM_CLANG_TOOLS_EXTRA_CLANGD_SEMANTICHIGHLIGHTING_H
 
 #include "Protocol.h"
-#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/raw_ostream.h"
 
 namespace clang {
@@ -102,8 +101,7 @@ bool operator<(const HighlightingToken &L, const HighlightingToken &R);
 // main AST.
 std::vector<HighlightingToken> getSemanticHighlightings(ParsedAST &AST);
 
-std::vector<SemanticToken> toSemanticTokens(llvm::ArrayRef<HighlightingToken>,
-                                            llvm::StringRef Code);
+std::vector<SemanticToken> toSemanticTokens(llvm::ArrayRef<HighlightingToken>);
 llvm::StringRef toSemanticTokenType(HighlightingKind Kind);
 llvm::StringRef toSemanticTokenModifier(HighlightingModifier Modifier);
 std::vector<SemanticTokensEdit> diffTokens(llvm::ArrayRef<SemanticToken> Before,

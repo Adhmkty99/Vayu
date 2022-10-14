@@ -145,7 +145,7 @@ OPTIONS
 
  Show all symbols, even those usually suppressed.
 
-.. option:: --defined-only, -U
+.. option:: --defined-only
 
  Print only symbols defined in this file.
 
@@ -197,7 +197,7 @@ OPTIONS
 
  Show symbols in the order encountered.
 
-.. option:: --no-weak, -W
+.. option:: --no-weak
 
  Don't print weak symbols.
 

@@ -76,8 +76,8 @@ protected:
 
     auto Plan = std::make_unique<VPlan>();
     VPlanHCFGBuilder HCFGBuilder(LI->getLoopFor(LoopHeader), LI.get(), *Plan);
-    VPBasicBlock *EntryVPBB = HCFGBuilder.buildPlainCFG();
-    Plan->setEntry(EntryVPBB);
+    VPRegionBlock *TopRegion = HCFGBuilder.buildPlainCFG();
+    Plan->setEntry(TopRegion);
     return Plan;
   }
 };

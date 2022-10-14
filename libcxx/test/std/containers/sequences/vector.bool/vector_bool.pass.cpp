@@ -10,6 +10,7 @@
 
 // template <class T>
 // struct hash
+//     : public unary_function<T, size_t>
 // {
 //     size_t operator()(T val) const;
 // };
@@ -18,7 +19,6 @@
 
 #include <vector>
 #include <cassert>
-#include <iterator>
 #include <type_traits>
 
 #include "test_macros.h"
@@ -29,10 +29,8 @@ int main(int, char**)
     {
     typedef std::vector<bool> T;
     typedef std::hash<T> H;
-#if TEST_STD_VER <= 14
     static_assert((std::is_same<H::argument_type, T>::value), "" );
     static_assert((std::is_same<H::result_type, std::size_t>::value), "" );
-#endif
     ASSERT_NOEXCEPT(H()(T()));
 
     bool ba[] = {true, false, true, true, false};
@@ -44,10 +42,8 @@ int main(int, char**)
     {
     typedef std::vector<bool, min_allocator<bool>> T;
     typedef std::hash<T> H;
-#if TEST_STD_VER <= 14
     static_assert((std::is_same<H::argument_type, T>::value), "" );
     static_assert((std::is_same<H::result_type, std::size_t>::value), "" );
-#endif
     ASSERT_NOEXCEPT(H()(T()));
     bool ba[] = {true, false, true, true, false};
     T vb(std::begin(ba), std::end(ba));

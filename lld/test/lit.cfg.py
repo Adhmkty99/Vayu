@@ -74,8 +74,7 @@ llvm_config.feature_config(
                           'RISCV': 'riscv',
                           'Sparc': 'sparc',
                           'WebAssembly': 'wasm',
-                          'X86': 'x86'}),
-     ('--assertion-mode', {'ON': 'asserts'}),
+                          'X86': 'x86'})
      ])
 
 # Set a fake constant version so that we get consistent output.
@@ -103,9 +102,6 @@ else:
 if (lit.util.which('cvtres', config.environment['PATH']) or
         config.have_libxml2):
     config.available_features.add('manifest_tool')
-
-if config.enable_backtrace:
-    config.available_features.add('backtrace')
 
 if config.have_libxar:
     config.available_features.add('xar')

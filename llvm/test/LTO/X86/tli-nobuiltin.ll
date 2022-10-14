@@ -11,7 +11,7 @@
 ; RUN: llvm-nm %t.o | FileCheck %s --check-prefix=LTO-FREESTANDING
 ; LTO-FREESTANDING: fprintf
 
-; Test -lto-freestanding option for LTOBackend
+; Test -lto-freestanding option for LTOBackend & legacy PM.
 
 ; RUN: llvm-lto2 run -r %t.bc,_fprintf,px -r %t.bc,_hello_world,px -r %t.bc,_percent_s,px  -r %t.bc,_foo,px %t.bc -o %t1.o 2>&1
 ; RUN: llvm-nm %t1.o.0 | FileCheck %s --check-prefix=LTO
@@ -19,12 +19,20 @@
 ; RUN: llvm-lto2 run -lto-freestanding -r %t.bc,_fprintf,px -r %t.bc,_hello_world,px -r %t.bc,_percent_s,px  -r %t.bc,_foo,px %t.bc -o %t2.o 2>&1
 ; RUN: llvm-nm %t2.o.0 | FileCheck %s --check-prefix=LTO-FREESTANDING
 
-; Test -lto-freestanding option for LTOBackend with custom pipeline.
+; Test -lto-freestanding option for LTOBackend & new PM.
 
-; RUN: llvm-lto2 run -opt-pipeline='default<O3>' -r %t.bc,_fprintf,px -r %t.bc,_hello_world,px -r %t.bc,_percent_s,px  -r %t.bc,_foo,px %t.bc -o %t1.o 2>&1
+; RUN: llvm-lto2 run -use-new-pm -r %t.bc,_fprintf,px -r %t.bc,_hello_world,px -r %t.bc,_percent_s,px  -r %t.bc,_foo,px %t.bc -o %t1.o 2>&1
 ; RUN: llvm-nm %t1.o.0 | FileCheck %s --check-prefix=LTO
 
-; RUN: llvm-lto2 run -opt-pipeline='default<O3>' -lto-freestanding -r %t.bc,_fprintf,px -r %t.bc,_hello_world,px -r %t.bc,_percent_s,px  -r %t.bc,_foo,px %t.bc -o %t2.o 2>&1
+; RUN: llvm-lto2 run -use-new-pm -lto-freestanding -r %t.bc,_fprintf,px -r %t.bc,_hello_world,px -r %t.bc,_percent_s,px  -r %t.bc,_foo,px %t.bc -o %t2.o 2>&1
+; RUN: llvm-nm %t2.o.0 | FileCheck %s --check-prefix=LTO-FREESTANDING
+
+; Test -lto-freestanding option for LTOBackend & new PM with custom pipeline.
+
+; RUN: llvm-lto2 run -use-new-pm -opt-pipeline='default<O3>' -r %t.bc,_fprintf,px -r %t.bc,_hello_world,px -r %t.bc,_percent_s,px  -r %t.bc,_foo,px %t.bc -o %t1.o 2>&1
+; RUN: llvm-nm %t1.o.0 | FileCheck %s --check-prefix=LTO
+
+; RUN: llvm-lto2 run -use-new-pm -opt-pipeline='default<O3>' -lto-freestanding -r %t.bc,_fprintf,px -r %t.bc,_hello_world,px -r %t.bc,_percent_s,px  -r %t.bc,_foo,px %t.bc -o %t2.o 2>&1
 ; RUN: llvm-nm %t2.o.0 | FileCheck %s --check-prefix=LTO-FREESTANDING
 
 

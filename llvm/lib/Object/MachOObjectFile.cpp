@@ -2997,9 +2997,7 @@ void ExportEntry::pushNode(uint64_t offset) {
         return;
       }
       if (O != nullptr) {
-        // Only positive numbers represent library ordinals. Zero and negative
-        // numbers have special meaning (see BindSpecialDylib).
-        if ((int64_t)State.Other > 0 && State.Other > O->getLibraryCount()) {
+        if (State.Other > O->getLibraryCount()) {
           *E = malformedError(
               "bad library ordinal: " + Twine((int)State.Other) + " (max " +
               Twine((int)O->getLibraryCount()) +

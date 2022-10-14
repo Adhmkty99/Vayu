@@ -17,12 +17,13 @@
 using namespace llvm;
 
 static cl::opt<bool> SimplifyDDG(
-    "ddg-simplify", cl::init(true), cl::Hidden,
+    "ddg-simplify", cl::init(true), cl::Hidden, cl::ZeroOrMore,
     cl::desc(
         "Simplify DDG by merging nodes that have less interesting edges."));
 
-static cl::opt<bool> CreatePiBlocks("ddg-pi-blocks", cl::init(true), cl::Hidden,
-                                    cl::desc("Create pi-block nodes."));
+static cl::opt<bool>
+    CreatePiBlocks("ddg-pi-blocks", cl::init(true), cl::Hidden, cl::ZeroOrMore,
+                   cl::desc("Create pi-block nodes."));
 
 #define DEBUG_TYPE "ddg"
 
@@ -95,7 +96,7 @@ raw_ostream &llvm::operator<<(raw_ostream &OS, const DDGNode &N) {
     llvm_unreachable("unimplemented type of node");
 
   OS << (N.getEdges().empty() ? " Edges:none!\n" : " Edges:\n");
-  for (const auto &E : N.getEdges())
+  for (auto &E : N.getEdges())
     OS.indent(2) << *E;
   return OS;
 }
@@ -188,7 +189,7 @@ DataDependenceGraph::DataDependenceGraph(Function &F, DependenceInfo &D)
   // Put the basic blocks in program order for correct dependence
   // directions.
   BasicBlockListType BBList;
-  for (const auto &SCC : make_range(scc_begin(&F), scc_end(&F)))
+  for (auto &SCC : make_range(scc_begin(&F), scc_end(&F)))
     append_range(BBList, SCC);
   std::reverse(BBList.begin(), BBList.end());
   DDGBuilder(*this, D, BBList).populate();

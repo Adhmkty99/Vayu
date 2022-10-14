@@ -30,6 +30,10 @@ AST_MATCHER(CXXRecordDecl, isTriviallyDefaultConstructible) {
 AST_MATCHER(CXXRecordDecl, isTriviallyCopyable) {
   return Node.hasTrivialCopyAssignment() && Node.hasTrivialCopyConstructor();
 }
+AST_MATCHER_P(NamedDecl, hasAnyNameStdString, std::vector<std::string>,
+              String) {
+  return ast_matchers::internal::HasNameMatcher(String).matchesNode(Node);
+}
 } // namespace
 
 static const char BuiltinMemSet[] = "::std::memset;"
@@ -51,6 +55,19 @@ static const char BuiltinMemCmp[] = "::std::memcmp;"
 static constexpr llvm::StringRef ComparisonOperators[] = {
     "operator==", "operator!=", "operator<",
     "operator>",  "operator<=", "operator>="};
+
+static std::vector<std::string> parseStringListPair(StringRef LHS,
+                                                    StringRef RHS) {
+  if (LHS.empty()) {
+    if (RHS.empty())
+      return {};
+    return utils::options::parseStringList(RHS);
+  }
+  if (RHS.empty())
+    return utils::options::parseStringList(LHS);
+  llvm::SmallString<512> Buffer;
+  return utils::options::parseStringList((LHS + RHS).toStringRef(Buffer));
+}
 
 NonTrivialTypesLibcMemoryCallsCheck::NonTrivialTypesLibcMemoryCallsCheck(
     StringRef Name, ClangTidyContext *Context)
@@ -80,27 +97,28 @@ void NonTrivialTypesLibcMemoryCallsCheck::registerMatchers(
   auto IsRecordSizeOf =
       expr(sizeOfExpr(hasArgumentOfType(equalsBoundNode("Record"))));
   auto ArgChecker = [&](Matcher<CXXRecordDecl> RecordConstraint,
-                        BindableMatcher<Stmt> SecondArg = expr()) {
+                        BindableMatcher<Stmt> SecondArg) {
     return allOf(argumentCountIs(3),
                  hasArgument(0, IsStructPointer(RecordConstraint, true)),
                  hasArgument(1, SecondArg), hasArgument(2, IsRecordSizeOf));
   };
 
   Finder->addMatcher(
-      callExpr(callee(namedDecl(hasAnyName(
-                   utils::options::parseListPair(BuiltinMemSet, MemSetNames)))),
-               ArgChecker(unless(isTriviallyDefaultConstructible())))
+      callExpr(callee(namedDecl(hasAnyNameStdString(
+                   parseStringListPair(BuiltinMemSet, MemSetNames)))),
+               ArgChecker(unless(isTriviallyDefaultConstructible()),
+                          expr(integerLiteral(equals(0)))))
           .bind("lazyConstruct"),
       this);
   Finder->addMatcher(
-      callExpr(callee(namedDecl(hasAnyName(
-                   utils::options::parseListPair(BuiltinMemCpy, MemCpyNames)))),
+      callExpr(callee(namedDecl(hasAnyNameStdString(
+                   parseStringListPair(BuiltinMemCpy, MemCpyNames)))),
                ArgChecker(unless(isTriviallyCopyable()), IsStructPointer()))
           .bind("lazyCopy"),
       this);
   Finder->addMatcher(
-      callExpr(callee(namedDecl(hasAnyName(
-                   utils::options::parseListPair(BuiltinMemCmp, MemCmpNames)))),
+      callExpr(callee(namedDecl(hasAnyNameStdString(
+                   parseStringListPair(BuiltinMemCmp, MemCmpNames)))),
                ArgChecker(hasMethod(hasAnyName(ComparisonOperators)),
                           IsStructPointer()))
           .bind("lazyCompare"),

@@ -27,6 +27,9 @@ LLVM_C_EXTERN_C_BEGIN
  * @{
  */
 
+/** See llvm::createArgumentPromotionPass function. */
+void LLVMAddArgumentPromotionPass(LLVMPassManagerRef PM);
+
 /** See llvm::createConstantMergePass function. */
 void LLVMAddConstantMergePass(LLVMPassManagerRef PM);
 

@@ -12,7 +12,6 @@
 
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Dialect/SPIRV/IR/SPIRVDialect.h"
-#include "mlir/Dialect/SPIRV/IR/SPIRVEnums.h"
 #include "mlir/Dialect/SPIRV/IR/SPIRVOps.h"
 #include "mlir/Dialect/SPIRV/Transforms/SPIRVConversion.h"
 #include "llvm/Support/Debug.h"
@@ -86,27 +85,15 @@ static Value shiftValue(Location loc, Value value, Value offset, Value mask,
                                                    offset);
 }
 
-/// Returns true if the allocations of memref `type` generated from `allocOp`
-/// can be lowered to SPIR-V.
-static bool isAllocationSupported(Operation *allocOp, MemRefType type) {
-  if (isa<memref::AllocOp, memref::DeallocOp>(allocOp)) {
-    if (SPIRVTypeConverter::getMemorySpaceForStorageClass(
-            spirv::StorageClass::Workgroup) != type.getMemorySpaceAsInt())
-      return false;
-  } else if (isa<memref::AllocaOp>(allocOp)) {
-    if (SPIRVTypeConverter::getMemorySpaceForStorageClass(
-            spirv::StorageClass::Function) != type.getMemorySpaceAsInt())
-      return false;
-  } else {
+/// Returns true if the allocations of type `t` can be lowered to SPIR-V.
+static bool isAllocationSupported(MemRefType t) {
+  // Currently only support workgroup local memory allocations with static
+  // shape and int or float or vector of int or float element type.
+  if (!(t.hasStaticShape() &&
+        SPIRVTypeConverter::getMemorySpaceForStorageClass(
+            spirv::StorageClass::Workgroup) == t.getMemorySpaceAsInt()))
     return false;
-  }
-
-  // Currently only support static shape and int or float or vector of int or
-  // float element type.
-  if (!type.hasStaticShape())
-    return false;
-
-  Type elementType = type.getElementType();
+  Type elementType = t.getElementType();
   if (auto vecType = elementType.dyn_cast<VectorType>())
     elementType = vecType.getElementType();
   return elementType.isIntOrFloat();
@@ -115,10 +102,10 @@ static bool isAllocationSupported(Operation *allocOp, MemRefType type) {
 /// Returns the scope to use for atomic operations use for emulating store
 /// operations of unsupported integer bitwidths, based on the memref
 /// type. Returns None on failure.
-static Optional<spirv::Scope> getAtomicOpScope(MemRefType type) {
+static Optional<spirv::Scope> getAtomicOpScope(MemRefType t) {
   Optional<spirv::StorageClass> storageClass =
       SPIRVTypeConverter::getStorageClassForMemorySpace(
-          type.getMemorySpaceAsInt());
+          t.getMemorySpaceAsInt());
   if (!storageClass)
     return {};
   switch (*storageClass) {
@@ -161,16 +148,6 @@ static Value castBoolToIntN(Location loc, Value srcBool, Type dstType,
 // normal RewritePattern.
 
 namespace {
-
-/// Converts memref.alloca to SPIR-V Function variables.
-class AllocaOpPattern final : public OpConversionPattern<memref::AllocaOp> {
-public:
-  using OpConversionPattern<memref::AllocaOp>::OpConversionPattern;
-
-  LogicalResult
-  matchAndRewrite(memref::AllocaOp allocaOp, OpAdaptor adaptor,
-                  ConversionPatternRewriter &rewriter) const override;
-};
 
 /// Converts an allocation operation to SPIR-V. Currently only supports lowering
 /// to Workgroup memory when the size is constant.  Note that this pattern needs
@@ -239,25 +216,6 @@ public:
 } // namespace
 
 //===----------------------------------------------------------------------===//
-// AllocaOp
-//===----------------------------------------------------------------------===//
-
-LogicalResult
-AllocaOpPattern::matchAndRewrite(memref::AllocaOp allocaOp, OpAdaptor adaptor,
-                                 ConversionPatternRewriter &rewriter) const {
-  MemRefType allocType = allocaOp.getType();
-  if (!isAllocationSupported(allocaOp, allocType))
-    return rewriter.notifyMatchFailure(allocaOp, "unhandled allocation type");
-
-  // Get the SPIR-V type for the allocation.
-  Type spirvType = getTypeConverter()->convertType(allocType);
-  rewriter.replaceOpWithNewOp<spirv::VariableOp>(allocaOp, spirvType,
-                                                 spirv::StorageClass::Function,
-                                                 /*initializer=*/nullptr);
-  return success();
-}
-
-//===----------------------------------------------------------------------===//
 // AllocOp
 //===----------------------------------------------------------------------===//
 
@@ -265,8 +223,8 @@ LogicalResult
 AllocOpPattern::matchAndRewrite(memref::AllocOp operation, OpAdaptor adaptor,
                                 ConversionPatternRewriter &rewriter) const {
   MemRefType allocType = operation.getType();
-  if (!isAllocationSupported(operation, allocType))
-    return rewriter.notifyMatchFailure(operation, "unhandled allocation type");
+  if (!isAllocationSupported(allocType))
+    return operation.emitError("unhandled allocation type");
 
   // Get the SPIR-V type for the allocation.
   Type spirvType = getTypeConverter()->convertType(allocType);
@@ -303,9 +261,9 @@ LogicalResult
 DeallocOpPattern::matchAndRewrite(memref::DeallocOp operation,
                                   OpAdaptor adaptor,
                                   ConversionPatternRewriter &rewriter) const {
-  MemRefType deallocType = operation.getMemref().getType().cast<MemRefType>();
-  if (!isAllocationSupported(operation, deallocType))
-    return rewriter.notifyMatchFailure(operation, "unhandled allocation type");
+  MemRefType deallocType = operation.memref().getType().cast<MemRefType>();
+  if (!isAllocationSupported(deallocType))
+    return operation.emitError("unhandled deallocation type");
   rewriter.eraseOp(operation);
   return success();
 }
@@ -318,14 +276,14 @@ LogicalResult
 IntLoadOpPattern::matchAndRewrite(memref::LoadOp loadOp, OpAdaptor adaptor,
                                   ConversionPatternRewriter &rewriter) const {
   auto loc = loadOp.getLoc();
-  auto memrefType = loadOp.getMemref().getType().cast<MemRefType>();
+  auto memrefType = loadOp.memref().getType().cast<MemRefType>();
   if (!memrefType.getElementType().isSignlessInteger())
     return failure();
 
   auto &typeConverter = *getTypeConverter<SPIRVTypeConverter>();
   spirv::AccessChainOp accessChainOp =
-      spirv::getElementPtr(typeConverter, memrefType, adaptor.getMemref(),
-                           adaptor.getIndices(), loc, rewriter);
+      spirv::getElementPtr(typeConverter, memrefType, adaptor.memref(),
+                           adaptor.indices(), loc, rewriter);
 
   if (!accessChainOp)
     return failure();
@@ -413,12 +371,12 @@ IntLoadOpPattern::matchAndRewrite(memref::LoadOp loadOp, OpAdaptor adaptor,
 LogicalResult
 LoadOpPattern::matchAndRewrite(memref::LoadOp loadOp, OpAdaptor adaptor,
                                ConversionPatternRewriter &rewriter) const {
-  auto memrefType = loadOp.getMemref().getType().cast<MemRefType>();
+  auto memrefType = loadOp.memref().getType().cast<MemRefType>();
   if (memrefType.getElementType().isSignlessInteger())
     return failure();
   auto loadPtr = spirv::getElementPtr(
-      *getTypeConverter<SPIRVTypeConverter>(), memrefType, adaptor.getMemref(),
-      adaptor.getIndices(), loadOp.getLoc(), rewriter);
+      *getTypeConverter<SPIRVTypeConverter>(), memrefType, adaptor.memref(),
+      adaptor.indices(), loadOp.getLoc(), rewriter);
 
   if (!loadPtr)
     return failure();
@@ -430,15 +388,15 @@ LoadOpPattern::matchAndRewrite(memref::LoadOp loadOp, OpAdaptor adaptor,
 LogicalResult
 IntStoreOpPattern::matchAndRewrite(memref::StoreOp storeOp, OpAdaptor adaptor,
                                    ConversionPatternRewriter &rewriter) const {
-  auto memrefType = storeOp.getMemref().getType().cast<MemRefType>();
+  auto memrefType = storeOp.memref().getType().cast<MemRefType>();
   if (!memrefType.getElementType().isSignlessInteger())
     return failure();
 
   auto loc = storeOp.getLoc();
   auto &typeConverter = *getTypeConverter<SPIRVTypeConverter>();
   spirv::AccessChainOp accessChainOp =
-      spirv::getElementPtr(typeConverter, memrefType, adaptor.getMemref(),
-                           adaptor.getIndices(), loc, rewriter);
+      spirv::getElementPtr(typeConverter, memrefType, adaptor.memref(),
+                           adaptor.indices(), loc, rewriter);
 
   if (!accessChainOp)
     return failure();
@@ -463,7 +421,7 @@ IntStoreOpPattern::matchAndRewrite(memref::StoreOp storeOp, OpAdaptor adaptor,
   assert(dstBits % srcBits == 0);
 
   if (srcBits == dstBits) {
-    Value storeVal = adaptor.getValue();
+    Value storeVal = adaptor.value();
     if (isBool)
       storeVal = castBoolToIntN(loc, storeVal, dstType, rewriter);
     rewriter.replaceOpWithNewOp<spirv::StoreOp>(
@@ -494,7 +452,7 @@ IntStoreOpPattern::matchAndRewrite(memref::StoreOp storeOp, OpAdaptor adaptor,
       rewriter.create<spirv::ShiftLeftLogicalOp>(loc, dstType, mask, offset);
   clearBitsMask = rewriter.create<spirv::NotOp>(loc, dstType, clearBitsMask);
 
-  Value storeVal = adaptor.getValue();
+  Value storeVal = adaptor.value();
   if (isBool)
     storeVal = castBoolToIntN(loc, storeVal, dstType, rewriter);
   storeVal = shiftValue(loc, storeVal, offset, mask, dstBits, rewriter);
@@ -525,18 +483,18 @@ IntStoreOpPattern::matchAndRewrite(memref::StoreOp storeOp, OpAdaptor adaptor,
 LogicalResult
 StoreOpPattern::matchAndRewrite(memref::StoreOp storeOp, OpAdaptor adaptor,
                                 ConversionPatternRewriter &rewriter) const {
-  auto memrefType = storeOp.getMemref().getType().cast<MemRefType>();
+  auto memrefType = storeOp.memref().getType().cast<MemRefType>();
   if (memrefType.getElementType().isSignlessInteger())
     return failure();
   auto storePtr = spirv::getElementPtr(
-      *getTypeConverter<SPIRVTypeConverter>(), memrefType, adaptor.getMemref(),
-      adaptor.getIndices(), storeOp.getLoc(), rewriter);
+      *getTypeConverter<SPIRVTypeConverter>(), memrefType, adaptor.memref(),
+      adaptor.indices(), storeOp.getLoc(), rewriter);
 
   if (!storePtr)
     return failure();
 
   rewriter.replaceOpWithNewOp<spirv::StoreOp>(storeOp, storePtr,
-                                              adaptor.getValue());
+                                              adaptor.value());
   return success();
 }
 
@@ -547,9 +505,8 @@ StoreOpPattern::matchAndRewrite(memref::StoreOp storeOp, OpAdaptor adaptor,
 namespace mlir {
 void populateMemRefToSPIRVPatterns(SPIRVTypeConverter &typeConverter,
                                    RewritePatternSet &patterns) {
-  patterns
-      .add<AllocaOpPattern, AllocOpPattern, DeallocOpPattern, IntLoadOpPattern,
-           IntStoreOpPattern, LoadOpPattern, StoreOpPattern>(
-          typeConverter, patterns.getContext());
+  patterns.add<AllocOpPattern, DeallocOpPattern, IntLoadOpPattern,
+               IntStoreOpPattern, LoadOpPattern, StoreOpPattern>(
+      typeConverter, patterns.getContext());
 }
 } // namespace mlir

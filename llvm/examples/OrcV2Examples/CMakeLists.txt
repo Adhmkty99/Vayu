@@ -1,5 +1,4 @@
 add_subdirectory(LLJITDumpObjects)
-add_subdirectory(LLJITRemovableCode)
 add_subdirectory(LLJITWithCustomObjectLinkingLayer)
 add_subdirectory(LLJITWithExecutorProcessControl)
 add_subdirectory(LLJITWithGDBRegistrationListener)

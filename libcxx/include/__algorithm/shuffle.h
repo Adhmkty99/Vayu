@@ -9,13 +9,10 @@
 #ifndef _LIBCPP___ALGORITHM_SHUFFLE_H
 #define _LIBCPP___ALGORITHM_SHUFFLE_H
 
-#include <__algorithm/iterator_operations.h>
 #include <__config>
-#include <__debug>
 #include <__iterator/iterator_traits.h>
 #include <__random/uniform_int_distribution.h>
-#include <__utility/forward.h>
-#include <__utility/move.h>
+#include <__utility/swap.h>
 #include <cstddef>
 #include <cstdint>
 
@@ -136,15 +133,13 @@ random_shuffle(_RandomAccessIterator __first, _RandomAccessIterator __last,
 }
 #endif
 
-template <class _AlgPolicy, class _RandomAccessIterator, class _Sentinel, class _UniformRandomNumberGenerator>
-_RandomAccessIterator __shuffle(
-    _RandomAccessIterator __first, _Sentinel __last_sentinel, _UniformRandomNumberGenerator&& __g) {
+template<class _RandomAccessIterator, class _UniformRandomNumberGenerator>
+    void shuffle(_RandomAccessIterator __first, _RandomAccessIterator __last,
+                 _UniformRandomNumberGenerator&& __g)
+{
     typedef typename iterator_traits<_RandomAccessIterator>::difference_type difference_type;
     typedef uniform_int_distribution<ptrdiff_t> _Dp;
     typedef typename _Dp::param_type _Pp;
-
-    auto __original_last = _IterOps<_AlgPolicy>::next(__first, __last_sentinel);
-    auto __last = __original_last;
     difference_type __d = __last - __first;
     if (__d > 1)
     {
@@ -153,18 +148,9 @@ _RandomAccessIterator __shuffle(
         {
             difference_type __i = __uid(__g, _Pp(0, __d));
             if (__i != difference_type(0))
-                _IterOps<_AlgPolicy>::iter_swap(__first, __first + __i);
+                swap(*__first, *(__first + __i));
         }
     }
-
-    return __original_last;
-}
-
-template <class _RandomAccessIterator, class _UniformRandomNumberGenerator>
-void shuffle(_RandomAccessIterator __first, _RandomAccessIterator __last,
-             _UniformRandomNumberGenerator&& __g) {
-  (void)std::__shuffle<_ClassicAlgPolicy>(
-      std::move(__first), std::move(__last), std::forward<_UniformRandomNumberGenerator>(__g));
 }
 
 _LIBCPP_END_NAMESPACE_STD

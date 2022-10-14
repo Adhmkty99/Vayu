@@ -50,7 +50,7 @@ public:
 
   PlatformDarwinKernel(LazyBool is_ios_debug_session);
 
-  ~PlatformDarwinKernel() override;
+  virtual ~PlatformDarwinKernel();
 
   llvm::StringRef GetPluginName() override { return GetPluginNameStatic(); }
 

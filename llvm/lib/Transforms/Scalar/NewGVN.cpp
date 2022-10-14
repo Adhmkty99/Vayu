@@ -1074,9 +1074,6 @@ const Expression *NewGVN::createBinaryExpression(unsigned Opcode, Type *T,
                                                  Value *Arg1, Value *Arg2,
                                                  Instruction *I) const {
   auto *E = new (ExpressionAllocator) BasicExpression(2);
-  // TODO: we need to remove context instruction after Value Tracking
-  // can run without context instruction
-  const SimplifyQuery Q = SQ.getWithInstruction(I);
 
   E->setType(T);
   E->setOpcode(Opcode);
@@ -1092,7 +1089,7 @@ const Expression *NewGVN::createBinaryExpression(unsigned Opcode, Type *T,
   E->op_push_back(lookupOperandLeader(Arg1));
   E->op_push_back(lookupOperandLeader(Arg2));
 
-  Value *V = simplifyBinOp(Opcode, E->getOperand(0), E->getOperand(1), Q);
+  Value *V = SimplifyBinOp(Opcode, E->getOperand(0), E->getOperand(1), SQ);
   if (auto Simplified = checkExprResults(E, I, V)) {
     addAdditionalUsers(Simplified, I);
     return Simplified.Expr;
@@ -1148,9 +1145,6 @@ NewGVN::ExprResult NewGVN::checkExprResults(Expression *E, Instruction *I,
 
 NewGVN::ExprResult NewGVN::createExpression(Instruction *I) const {
   auto *E = new (ExpressionAllocator) BasicExpression(I->getNumOperands());
-  // TODO: we need to remove context instruction after Value Tracking
-  // can run without context instruction
-  const SimplifyQuery Q = SQ.getWithInstruction(I);
 
   bool AllConstant = setBasicExpressionInfo(I, E);
 
@@ -1173,13 +1167,13 @@ NewGVN::ExprResult NewGVN::createExpression(Instruction *I) const {
       Predicate = CmpInst::getSwappedPredicate(Predicate);
     }
     E->setOpcode((CI->getOpcode() << 8) | Predicate);
-    // TODO: 25% of our time is spent in simplifyCmpInst with pointer operands
+    // TODO: 25% of our time is spent in SimplifyCmpInst with pointer operands
     assert(I->getOperand(0)->getType() == I->getOperand(1)->getType() &&
            "Wrong types on cmp instruction");
     assert((E->getOperand(0)->getType() == I->getOperand(0)->getType() &&
             E->getOperand(1)->getType() == I->getOperand(1)->getType()));
     Value *V =
-        simplifyCmpInst(Predicate, E->getOperand(0), E->getOperand(1), Q);
+        SimplifyCmpInst(Predicate, E->getOperand(0), E->getOperand(1), SQ);
     if (auto Simplified = checkExprResults(E, I, V))
       return Simplified;
   } else if (isa<SelectInst>(I)) {
@@ -1187,26 +1181,26 @@ NewGVN::ExprResult NewGVN::createExpression(Instruction *I) const {
         E->getOperand(1) == E->getOperand(2)) {
       assert(E->getOperand(1)->getType() == I->getOperand(1)->getType() &&
              E->getOperand(2)->getType() == I->getOperand(2)->getType());
-      Value *V = simplifySelectInst(E->getOperand(0), E->getOperand(1),
-                                    E->getOperand(2), Q);
+      Value *V = SimplifySelectInst(E->getOperand(0), E->getOperand(1),
+                                    E->getOperand(2), SQ);
       if (auto Simplified = checkExprResults(E, I, V))
         return Simplified;
     }
   } else if (I->isBinaryOp()) {
     Value *V =
-        simplifyBinOp(E->getOpcode(), E->getOperand(0), E->getOperand(1), Q);
+        SimplifyBinOp(E->getOpcode(), E->getOperand(0), E->getOperand(1), SQ);
     if (auto Simplified = checkExprResults(E, I, V))
       return Simplified;
   } else if (auto *CI = dyn_cast<CastInst>(I)) {
     Value *V =
-        simplifyCastInst(CI->getOpcode(), E->getOperand(0), CI->getType(), Q);
+        SimplifyCastInst(CI->getOpcode(), E->getOperand(0), CI->getType(), SQ);
     if (auto Simplified = checkExprResults(E, I, V))
       return Simplified;
   } else if (auto *GEPI = dyn_cast<GetElementPtrInst>(I)) {
     Value *V =
-        simplifyGEPInst(GEPI->getSourceElementType(), *E->op_begin(),
+        SimplifyGEPInst(GEPI->getSourceElementType(), *E->op_begin(),
                         makeArrayRef(std::next(E->op_begin()), E->op_end()),
-                        GEPI->isInBounds(), Q);
+                        GEPI->isInBounds(), SQ);
     if (auto Simplified = checkExprResults(E, I, V))
       return Simplified;
   } else if (AllConstant) {
@@ -1457,12 +1451,10 @@ NewGVN::performSymbolicLoadCoercion(Type *LoadType, Value *LoadPtr,
     if (Offset >= 0) {
       if (auto *C = dyn_cast<Constant>(
               lookupOperandLeader(DepSI->getValueOperand()))) {
-        if (Constant *Res =
-                getConstantStoreValueForLoad(C, Offset, LoadType, DL)) {
-          LLVM_DEBUG(dbgs() << "Coercing load from store " << *DepSI
-                            << " to constant " << *Res << "\n");
-          return createConstantExpression(Res);
-        }
+        LLVM_DEBUG(dbgs() << "Coercing load from store " << *DepSI
+                          << " to constant " << *C << "\n");
+        return createConstantExpression(
+            getConstantStoreValueForLoad(C, Offset, LoadType, DL));
       }
     }
   } else if (auto *DepLI = dyn_cast<LoadInst>(DepInst)) {
@@ -1509,8 +1501,9 @@ NewGVN::performSymbolicLoadCoercion(Type *LoadType, Value *LoadPtr,
   else if (auto *II = dyn_cast<IntrinsicInst>(DepInst)) {
     if (II->getIntrinsicID() == Intrinsic::lifetime_start)
       return createConstantExpression(UndefValue::get(LoadType));
-  } else if (auto *InitVal =
-                 getInitialValueOfAllocation(DepInst, TLI, LoadType))
+  } else if (isAllocationFn(DepInst, TLI))
+    if (auto *InitVal = getInitialValueOfAllocation(cast<CallBase>(DepInst),
+                                                    TLI, LoadType))
       return createConstantExpression(InitVal);
 
   return nullptr;
@@ -3147,8 +3140,9 @@ bool NewGVN::singleReachablePHIPath(
   // connected component finding in this routine, and it's probably not worth
   // the complexity for the time being. So, we just keep a set of visited
   // MemoryAccess and return true when we hit a cycle.
-  if (!Visited.insert(First).second)
+  if (Visited.count(First))
     return true;
+  Visited.insert(First);
 
   const auto *EndDef = First;
   for (auto *ChainDef : optimized_def_chain(First)) {
@@ -3357,7 +3351,7 @@ void NewGVN::verifyStoreExpressions() const {
 // instruction set, propagating value numbers, marking things touched, etc,
 // until the set of touched instructions is completely empty.
 void NewGVN::iterateTouchedInstructions() {
-  uint64_t Iterations = 0;
+  unsigned int Iterations = 0;
   // Figure out where touchedinstructions starts
   int FirstInstr = TouchedInstructions.find_first();
   // Nothing set, nothing to iterate, just return.

@@ -43,6 +43,7 @@ namespace {
     }
 
     const PPCInstrInfo *TII;
+    LiveIntervals *LIS;
 
 protected:
     bool processBlock(MachineBasicBlock &MBB) {
@@ -82,8 +83,11 @@ protected:
         Register InReg = PPC::NoRegister;
         Register GPR3 = Is64Bit ? PPC::X3 : PPC::R3;
         Register GPR4 = Is64Bit ? PPC::X4 : PPC::R4;
-        if (!IsPCREL)
+        SmallVector<Register, 3> OrigRegs = {OutReg, GPR3};
+        if (!IsPCREL) {
           InReg = MI.getOperand(1).getReg();
+          OrigRegs.push_back(InReg);
+        }
         DebugLoc DL = MI.getDebugLoc();
 
         unsigned Opc1, Opc2;
@@ -135,6 +139,11 @@ protected:
           BuildMI(MBB, I, DL, TII->get(PPC::ADJCALLSTACKDOWN)).addImm(0)
                                                               .addImm(0);
 
+        // The ADDItls* instruction is the first instruction in the
+        // repair range.
+        MachineBasicBlock::iterator First = I;
+        --First;
+
         if (IsAIX) {
           // The variable offset and region handle are copied in r4 and r3. The
           // copies are followed by GETtlsADDR32AIX/GETtlsADDR64AIX.
@@ -168,10 +177,16 @@ protected:
         BuildMI(MBB, I, DL, TII->get(TargetOpcode::COPY), OutReg)
           .addReg(GPR3);
 
+        // The COPY is the last instruction in the repair range.
+        MachineBasicBlock::iterator Last = I;
+        --Last;
+
         // Move past the original instruction and remove it.
         ++I;
         MI.removeFromParent();
 
+        // Repair the live intervals.
+        LIS->repairIntervalsInRange(&MBB, First, Last, OrigRegs);
         Changed = true;
       }
 
@@ -189,6 +204,7 @@ public:
 
     bool runOnMachineFunction(MachineFunction &MF) override {
       TII = MF.getSubtarget<PPCSubtarget>().getInstrInfo();
+      LIS = &getAnalysis<LiveIntervals>();
 
       bool Changed = false;
 
@@ -201,7 +217,9 @@ public:
 
     void getAnalysisUsage(AnalysisUsage &AU) const override {
       AU.addRequired<LiveIntervals>();
+      AU.addPreserved<LiveIntervals>();
       AU.addRequired<SlotIndexes>();
+      AU.addPreserved<SlotIndexes>();
       MachineFunctionPass::getAnalysisUsage(AU);
     }
   };

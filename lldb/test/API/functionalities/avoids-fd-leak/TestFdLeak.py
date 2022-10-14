@@ -14,6 +14,8 @@ class AvoidsFdLeakTestCase(TestBase):
 
     NO_DEBUG_INFO_TESTCASE = True
 
+    mydir = TestBase.compute_mydir(__file__)
+
     # The check for descriptor leakage needs to be implemented differently
     # here.
     @skipIfWindows

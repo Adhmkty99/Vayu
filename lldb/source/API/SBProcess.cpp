@@ -1138,13 +1138,6 @@ bool SBProcess::IsInstrumentationRuntimePresent(
 
 lldb::SBError SBProcess::SaveCore(const char *file_name) {
   LLDB_INSTRUMENT_VA(this, file_name);
-  return SaveCore(file_name, "", SaveCoreStyle::eSaveCoreFull);
-}
-
-lldb::SBError SBProcess::SaveCore(const char *file_name,
-                                  const char *flavor,
-                                  SaveCoreStyle core_style) {
-  LLDB_INSTRUMENT_VA(this, file_name, flavor, core_style);
 
   lldb::SBError error;
   ProcessSP process_sp(GetSP());
@@ -1162,9 +1155,8 @@ lldb::SBError SBProcess::SaveCore(const char *file_name,
   }
 
   FileSpec core_file(file_name);
-  error.ref() = PluginManager::SaveCore(process_sp, core_file, core_style,
-                                        flavor);
-
+  SaveCoreStyle core_style = SaveCoreStyle::eSaveCoreFull;
+  error.ref() = PluginManager::SaveCore(process_sp, core_file, core_style, "");
   return error;
 }
 

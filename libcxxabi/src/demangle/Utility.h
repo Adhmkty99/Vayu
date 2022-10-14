@@ -171,8 +171,7 @@ public:
   void setCurrentPosition(size_t NewPos) { CurrentPosition = NewPos; }
 
   char back() const {
-    assert(CurrentPosition);
-    return Buffer[CurrentPosition - 1];
+    return CurrentPosition ? Buffer[CurrentPosition - 1] : '\0';
   }
 
   bool empty() const { return CurrentPosition == 0; }

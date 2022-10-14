@@ -1,6 +1,5 @@
 ; RUN: llc -march=amdgcn -mcpu=gfx1030 -verify-machineinstrs -amdgpu-s-branch-bits=7 < %s | FileCheck -enable-var-scope -check-prefixes=GCN,GFX1030 %s
 ; RUN: llc -march=amdgcn -mcpu=gfx1010 -verify-machineinstrs -amdgpu-s-branch-bits=7 < %s | FileCheck -enable-var-scope -check-prefixes=GCN,GFX1010 %s
-; RUN: llc -march=amdgcn -mcpu=gfx1100 -verify-machineinstrs -amdgpu-s-branch-bits=7 < %s | FileCheck -enable-var-scope -check-prefixes=GCN,GFX1030 %s
 
 ; For gfx1010, overestimate the branch size in case we need to insert
 ; a nop for the buggy offset.
@@ -22,7 +21,7 @@
 ; GCN: s_cbranch_scc1
 
 ; GCN: [[ENDBB]]:
-; GCN: global_store_{{dword|b32}}
+; GCN: global_store_dword
 define amdgpu_kernel void @long_forward_scc_branch_3f_offset_bug(i32 addrspace(1)* %arg, i32 %cnd0) #0 {
 bb0:
   %cmp0 = icmp eq i32 %cnd0, 0
@@ -71,7 +70,7 @@ bb3:
 ; GCN: s_cbranch_execz
 
 ; GCN: [[ENDBB]]:
-; GCN: global_store_{{dword|b32}}
+; GCN: global_store_dword
 define void @long_forward_exec_branch_3f_offset_bug(i32 addrspace(1)* %arg, i32 %cnd0) #0 {
 bb0:
   %cmp0 = icmp eq i32 %cnd0, 0

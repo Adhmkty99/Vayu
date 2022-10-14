@@ -12,13 +12,15 @@ from lldbsuite.test import lldbutil
 
 
 class TestMultipleTargets(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     @skipIf(oslist=["linux"], archs=["arm", "aarch64"])
     @skipIfNoSBHeaders
     @skipIfHostIncompatibleWithRemote
     @expectedFailureAll(
-        oslist=["windows"], archs=["i[3-6]86", "x86_64"],
+        oslist=["windows"],
         bugnumber="llvm.org/pr20282")
     @expectedFlakeyNetBSD
     def test_multiple_targets(self):

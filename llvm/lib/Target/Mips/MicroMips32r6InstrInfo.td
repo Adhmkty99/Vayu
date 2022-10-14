@@ -15,7 +15,6 @@ def brtarget21_mm : Operand<OtherVT> {
   let OperandType = "OPERAND_PCREL";
   let DecoderMethod = "DecodeBranchTarget21MM";
   let ParserMatchClass = MipsJumpTargetAsmOperand;
-  let PrintMethod = "printBranchOperand";
 }
 
 def brtarget26_mm : Operand<OtherVT> {
@@ -23,7 +22,6 @@ def brtarget26_mm : Operand<OtherVT> {
   let OperandType = "OPERAND_PCREL";
   let DecoderMethod = "DecodeBranchTarget26MM";
   let ParserMatchClass = MipsJumpTargetAsmOperand;
-  let PrintMethod = "printBranchOperand";
 }
 
 def brtargetr6 : Operand<OtherVT> {
@@ -31,7 +29,6 @@ def brtargetr6 : Operand<OtherVT> {
   let OperandType = "OPERAND_PCREL";
   let DecoderMethod = "DecodeBranchTargetMM";
   let ParserMatchClass = MipsJumpTargetAsmOperand;
-  let PrintMethod = "printBranchOperand";
 }
 
 def brtarget_lsl2_mm : Operand<OtherVT> {
@@ -41,7 +38,6 @@ def brtarget_lsl2_mm : Operand<OtherVT> {
   // set with DecodeDisambiguates
   let DecoderMethod = "";
   let ParserMatchClass = MipsJumpTargetAsmOperand;
-  let PrintMethod = "printBranchOperand";
 }
 
 //===----------------------------------------------------------------------===//

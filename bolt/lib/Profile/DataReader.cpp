@@ -47,8 +47,6 @@ Optional<StringRef> getLTOCommonName(const StringRef Name) {
     return Name.substr(0, LTOSuffixPos + 10);
   if ((LTOSuffixPos = Name.find(".constprop.")) != StringRef::npos)
     return Name.substr(0, LTOSuffixPos + 11);
-  if ((LTOSuffixPos = Name.find(".llvm.")) != StringRef::npos)
-    return Name.substr(0, LTOSuffixPos + 6);
   return NoneType();
 }
 
@@ -56,7 +54,7 @@ namespace {
 
 /// Return true if the function name can change across compilations.
 bool hasVolatileName(const BinaryFunction &BF) {
-  for (const StringRef &Name : BF.getNames())
+  for (const StringRef Name : BF.getNames())
     if (getLTOCommonName(Name))
       return true;
 
@@ -95,7 +93,7 @@ void FuncBranchData::appendFrom(const FuncBranchData &FBD, uint64_t Offset) {
       I->To.Offset += Offset;
     }
   }
-  llvm::stable_sort(Data);
+  std::stable_sort(Data.begin(), Data.end());
   ExecutionCount += FBD.ExecutionCount;
   for (auto I = FBD.EntryData.begin(), E = FBD.EntryData.end(); I != E; ++I) {
     assert(I->To.Name == FBD.Name);
@@ -123,7 +121,7 @@ void SampleInfo::print(raw_ostream &OS) const {
 }
 
 uint64_t FuncSampleData::getSamples(uint64_t Start, uint64_t End) const {
-  assert(llvm::is_sorted(Data));
+  assert(std::is_sorted(Data.begin(), Data.end()));
   struct Compare {
     bool operator()(const SampleInfo &SI, const uint64_t Val) const {
       return SI.Loc.Offset < Val;
@@ -133,8 +131,8 @@ uint64_t FuncSampleData::getSamples(uint64_t Start, uint64_t End) const {
     }
   };
   uint64_t Result = 0;
-  for (auto I = llvm::lower_bound(Data, Start, Compare()),
-            E = llvm::lower_bound(Data, End, Compare());
+  for (auto I = std::lower_bound(Data.begin(), Data.end(), Start, Compare()),
+            E = std::lower_bound(Data.begin(), Data.end(), End, Compare());
        I != E; ++I)
     Result += I->Hits;
   return Result;
@@ -392,6 +390,7 @@ void DataReader::readProfile(BinaryFunction &BF) {
     }
   }
 
+  uint64_t MismatchedBranches = 0;
   for (const BranchInfo &BI : FBD->Data) {
     if (BI.From.Name != BI.To.Name)
       continue;
@@ -400,6 +399,7 @@ void DataReader::readProfile(BinaryFunction &BF) {
                       BI.Mispreds)) {
       LLVM_DEBUG(dbgs() << "bad branch : " << BI.From.Offset << " -> "
                         << BI.To.Offset << '\n');
+      ++MismatchedBranches;
     }
   }
 
@@ -737,9 +737,9 @@ bool DataReader::recordBranch(BinaryFunction &BF, uint64_t From, uint64_t To,
     }
 
     // The real destination is the layout successor of the detected ToBB.
-    if (ToBB == BF.getLayout().block_back())
+    if (ToBB == BF.BasicBlocksLayout.back())
       return false;
-    BinaryBasicBlock *NextBB = BF.getLayout().getBlock(ToBB->getIndex() + 1);
+    BinaryBasicBlock *NextBB = BF.BasicBlocksLayout[ToBB->getIndex() + 1];
     assert((NextBB && NextBB->getOffset() > ToBB->getOffset()) && "bad layout");
     ToBB = NextBB;
   }
@@ -1146,10 +1146,12 @@ std::error_code DataReader::parseInNoLBRMode() {
   }
 
   for (StringMapEntry<FuncSampleData> &FuncSamples : NamesToSamples)
-    llvm::stable_sort(FuncSamples.second.Data);
+    std::stable_sort(FuncSamples.second.Data.begin(),
+                     FuncSamples.second.Data.end());
 
   for (StringMapEntry<FuncMemData> &MemEvents : NamesToMemEvents)
-    llvm::stable_sort(MemEvents.second.Data);
+    std::stable_sort(MemEvents.second.Data.begin(),
+                     MemEvents.second.Data.end());
 
   return std::error_code();
 }
@@ -1245,10 +1247,12 @@ std::error_code DataReader::parse() {
   }
 
   for (StringMapEntry<FuncBranchData> &FuncBranches : NamesToBranches)
-    llvm::stable_sort(FuncBranches.second.Data);
+    std::stable_sort(FuncBranches.second.Data.begin(),
+                     FuncBranches.second.Data.end());
 
   for (StringMapEntry<FuncMemData> &MemEvents : NamesToMemEvents)
-    llvm::stable_sort(MemEvents.second.Data);
+    std::stable_sort(MemEvents.second.Data.begin(),
+                     MemEvents.second.Data.end());
 
   return std::error_code();
 }

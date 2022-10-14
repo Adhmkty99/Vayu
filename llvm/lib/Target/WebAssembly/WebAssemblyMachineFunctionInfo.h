@@ -31,7 +31,7 @@ struct WebAssemblyFunctionInfo;
 /// This class is derived from MachineFunctionInfo and contains private
 /// WebAssembly-specific information for each MachineFunction.
 class WebAssemblyFunctionInfo final : public MachineFunctionInfo {
-  const MachineFunction *MF;
+  const MachineFunction &MF;
 
   std::vector<MVT> Params;
   std::vector<MVT> Results;
@@ -70,16 +70,11 @@ class WebAssemblyFunctionInfo final : public MachineFunctionInfo {
   WasmEHFuncInfo *WasmEHInfo = nullptr;
 
 public:
-  explicit WebAssemblyFunctionInfo(MachineFunction &MF_)
-      : MF(&MF_), WasmEHInfo(MF_.getWasmEHFuncInfo()) {}
+  explicit WebAssemblyFunctionInfo(MachineFunction &MF)
+      : MF(MF), WasmEHInfo(MF.getWasmEHFuncInfo()) {}
   ~WebAssemblyFunctionInfo() override;
 
-  MachineFunctionInfo *
-  clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
-        const DenseMap<MachineBasicBlock *, MachineBasicBlock *> &Src2DstMBB)
-      const override;
-
-  const MachineFunction &getMachineFunction() const { return *MF; }
+  const MachineFunction &getMachineFunction() const { return MF; }
 
   void initializeBaseYamlFields(const yaml::WebAssemblyFunctionInfo &YamlMFI);
 

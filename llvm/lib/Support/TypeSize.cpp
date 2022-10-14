@@ -21,10 +21,11 @@ struct CreateScalableErrorAsWarning {
   /// using the wrong interface on a scalable vector.
   static void *call() {
     return new cl::opt<bool>(
-        "treat-scalable-fixed-error-as-warning", cl::Hidden,
+        "treat-scalable-fixed-error-as-warning", cl::Hidden, cl::init(false),
         cl::desc(
             "Treat issues where a fixed-width property is requested from a "
-            "scalable type as a warning, instead of an error"));
+            "scalable type as a warning, instead of an error."),
+        cl::ZeroOrMore);
   }
 };
 } // namespace

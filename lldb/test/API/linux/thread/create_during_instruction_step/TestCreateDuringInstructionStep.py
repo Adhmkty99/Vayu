@@ -11,6 +11,8 @@ from lldbsuite.test import lldbutil
 
 
 class CreateDuringInstructionStepTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     @skipUnlessPlatform(['linux'])
@@ -74,4 +76,4 @@ class CreateDuringInstructionStepTestCase(TestBase):
         process.Continue()
 
         # At this point, the inferior process should have exited.
-        self.assertState(process.GetState(), lldb.eStateExited, PROCESS_EXITED)
+        self.assertEqual(process.GetState(), lldb.eStateExited, PROCESS_EXITED)

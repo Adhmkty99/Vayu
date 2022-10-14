@@ -5,6 +5,8 @@ from lldbsuite.test import lldbutil
 
 class TestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test(self):
         """
         Tests that running the utility expression that retrieves the Objective-C

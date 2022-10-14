@@ -1,3 +1,4 @@
+// REQUIRES: clang-driver
 
 // RUN: %clang -### -emit-llvm --cuda-device-only \
 // RUN:   -nocudalib -nocudainc --offload=spirv32-unknown-unknown -c %s 2>&1 | FileCheck %s

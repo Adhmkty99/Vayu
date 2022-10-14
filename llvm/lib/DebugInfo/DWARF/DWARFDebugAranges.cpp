@@ -22,15 +22,15 @@ using namespace llvm;
 
 void DWARFDebugAranges::extract(
     DWARFDataExtractor DebugArangesData,
-    function_ref<void(Error)> RecoverableErrorHandler,
-    function_ref<void(Error)> WarningHandler) {
+    function_ref<void(Error)> RecoverableErrorHandler) {
   if (!DebugArangesData.isValidOffset(0))
     return;
   uint64_t Offset = 0;
   DWARFDebugArangeSet Set;
 
   while (DebugArangesData.isValidOffset(Offset)) {
-    if (Error E = Set.extract(DebugArangesData, &Offset, WarningHandler)) {
+    if (Error E =
+            Set.extract(DebugArangesData, &Offset, RecoverableErrorHandler)) {
       RecoverableErrorHandler(std::move(E));
       return;
     }
@@ -52,8 +52,7 @@ void DWARFDebugAranges::generate(DWARFContext *CTX) {
   // Extract aranges from .debug_aranges section.
   DWARFDataExtractor ArangesData(CTX->getDWARFObj().getArangesSection(),
                                  CTX->isLittleEndian(), 0);
-  extract(ArangesData, CTX->getRecoverableErrorHandler(),
-          CTX->getWarningHandler());
+  extract(ArangesData, CTX->getRecoverableErrorHandler());
 
   // Generate aranges from DIEs: even if .debug_aranges section is present,
   // it may describe only a small subset of compilation units, so we need to

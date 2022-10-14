@@ -16,66 +16,32 @@
 #include <chrono>
 
 /// See docs/lldb-gdb-remote.txt for more information.
-///
-/// Do not use system-dependent types, like size_t, because they might cause
-/// issues when compiling on arm.
 namespace lldb_private {
-
-// List of data kinds used by jLLDBGetState and jLLDBGetBinaryData.
-struct IntelPTDataKinds {
-  static const char *kProcFsCpuInfo;
-  static const char *kIptTrace;
-  static const char *kPerfContextSwitchTrace;
-};
 
 /// jLLDBTraceStart gdb-remote packet
 /// \{
 struct TraceIntelPTStartRequest : TraceStartRequest {
   /// Size in bytes to use for each thread's trace buffer.
-  uint64_t ipt_trace_size;
+  int64_t threadBufferSize;
 
   /// Whether to enable TSC
-  bool enable_tsc;
+  bool enableTsc;
 
   /// PSB packet period
-  llvm::Optional<uint64_t> psb_period;
+  llvm::Optional<int64_t> psbPeriod;
 
   /// Required when doing "process tracing".
   ///
   /// Limit in bytes on all the thread traces started by this "process trace"
   /// instance. When a thread is about to be traced and the limit would be hit,
   /// then a "tracing" stop event is triggered.
-  llvm::Optional<uint64_t> process_buffer_size_limit;
-
-  /// Whether to have a trace buffer per thread or per cpu cpu.
-  llvm::Optional<bool> per_cpu_tracing;
-
-  /// Disable the cgroup filtering that is automatically applied in per cpu
-  /// mode.
-  llvm::Optional<bool> disable_cgroup_filtering;
-
-  bool IsPerCpuTracing() const;
+  llvm::Optional<int64_t> processBufferSizeLimit;
 };
 
 bool fromJSON(const llvm::json::Value &value, TraceIntelPTStartRequest &packet,
               llvm::json::Path path);
 
 llvm::json::Value toJSON(const TraceIntelPTStartRequest &packet);
-/// \}
-
-/// Helper structure to help parse long numbers that can't
-/// be easily represented by a JSON number that is compatible with
-/// Javascript (52 bits) or that can also be represented as hex.
-///
-/// \{
-struct JSONUINT64 {
-  uint64_t value;
-};
-
-llvm::json::Value toJSON(const JSONUINT64 &uint64, bool hex);
-
-bool fromJSON(const llvm::json::Value &value, JSONUINT64 &uint64,
-              llvm::json::Path path);
 /// \}
 
 /// jLLDBTraceGetState gdb-remote packet
@@ -86,7 +52,16 @@ bool fromJSON(const llvm::json::Value &value, JSONUINT64 &uint64,
 /// See the documentation of `time_zero` in
 /// https://man7.org/linux/man-pages/man2/perf_event_open.2.html for more
 /// information.
-struct LinuxPerfZeroTscConversion {
+class LinuxPerfZeroTscConversion
+    : public TraceCounterConversion<std::chrono::nanoseconds> {
+public:
+  /// Create new \a LinuxPerfZeroTscConversion object from the conversion values
+  /// defined in the Linux perf_event_open API.
+  LinuxPerfZeroTscConversion(uint32_t time_mult, uint16_t time_shift,
+                             uint64_t time_zero)
+      : m_time_mult(time_mult), m_time_shift(time_shift),
+        m_time_zero(time_zero) {}
+
   /// Convert TSC value to nanosecond wall time. The beginning of time (0
   /// nanoseconds) is defined by the kernel at boot time and has no particularly
   /// useful meaning. On the other hand, this value is constant for an entire
@@ -99,25 +74,23 @@ struct LinuxPerfZeroTscConversion {
   ///
   /// \return
   ///   Nanosecond wall time.
-  uint64_t ToNanos(uint64_t tsc) const;
+  std::chrono::nanoseconds Convert(uint64_t raw_counter_value) override;
 
-  uint64_t ToTSC(uint64_t nanos) const;
+  llvm::json::Value toJSON() override;
 
-  uint32_t time_mult;
-  uint16_t time_shift;
-  JSONUINT64 time_zero;
+private:
+  uint32_t m_time_mult;
+  uint16_t m_time_shift;
+  uint64_t m_time_zero;
 };
 
 struct TraceIntelPTGetStateResponse : TraceGetStateResponse {
   /// The TSC to wall time conversion if it exists, otherwise \b nullptr.
-  llvm::Optional<LinuxPerfZeroTscConversion> tsc_perf_zero_conversion;
-  bool using_cgroup_filtering = false;
+  TraceTscConversionUP tsc_conversion;
 };
 
 bool fromJSON(const llvm::json::Value &value,
-              LinuxPerfZeroTscConversion &packet, llvm::json::Path path);
-
-llvm::json::Value toJSON(const LinuxPerfZeroTscConversion &packet);
+              TraceTscConversionUP &tsc_conversion, llvm::json::Path path);
 
 bool fromJSON(const llvm::json::Value &value,
               TraceIntelPTGetStateResponse &packet, llvm::json::Path path);

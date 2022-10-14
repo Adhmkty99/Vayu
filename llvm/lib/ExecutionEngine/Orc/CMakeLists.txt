@@ -1,7 +1,3 @@
-if( CMAKE_HOST_UNIX AND HAVE_LIBRT )
-  set(rt_lib rt)
-endif()
-
 add_llvm_component_library(LLVMOrcJIT
   CompileOnDemandLayer.cpp
   CompileUtils.cpp
@@ -27,8 +23,6 @@ add_llvm_component_library(LLVMOrcJIT
   LookupAndRecordAddrs.cpp
   LLJIT.cpp
   MachOPlatform.cpp
-  MapperJITLinkMemoryManager.cpp
-  MemoryMapper.cpp
   ELFNixPlatform.cpp
   Mangling.cpp
   ObjectLinkingLayer.cpp
@@ -50,7 +44,6 @@ add_llvm_component_library(LLVMOrcJIT
 
   LINK_LIBS
   ${LLVM_PTHREAD_LIB}
-  ${rt_lib}
 
   LINK_COMPONENTS
   Core

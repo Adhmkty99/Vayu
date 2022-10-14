@@ -61,7 +61,7 @@ static bool shouldReduceOperand(Use &Op) {
 static int classifyReductivePower(Value *V) {
   if (auto *C = dyn_cast<ConstantData>(V)) {
     if (isa<UndefValue>(V))
-      return -2;
+      return 4;
     if (C->isNullValue())
       return 7;
     if (C->isOneValue())

@@ -114,8 +114,7 @@ WalkResult detail::walk(Operation *op,
     }
     for (auto &block : region) {
       for (auto &nestedOp : block)
-        if (walk(&nestedOp, callback, order).wasInterrupted())
-          return WalkResult::interrupt();
+        walk(&nestedOp, callback, order);
     }
     if (order == WalkOrder::PostOrder) {
       if (callback(&region).wasInterrupted())
@@ -141,8 +140,7 @@ WalkResult detail::walk(Operation *op,
           return WalkResult::interrupt();
       }
       for (auto &nestedOp : block)
-        if (walk(&nestedOp, callback, order).wasInterrupted())
-          return WalkResult::interrupt();
+        walk(&nestedOp, callback, order);
       if (order == WalkOrder::PostOrder) {
         if (callback(&block).wasInterrupted())
           return WalkResult::interrupt();

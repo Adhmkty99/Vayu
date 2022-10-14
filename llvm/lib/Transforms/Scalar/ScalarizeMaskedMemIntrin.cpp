@@ -1,5 +1,5 @@
 //===- ScalarizeMaskedMemIntrin.cpp - Scalarize unsupported masked mem ----===//
-//                                    intrinsics
+//                                    instrinsics
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -873,7 +873,7 @@ static bool runImpl(Function &F, const TargetTransformInfo &TTI,
     for (BasicBlock &BB : llvm::make_early_inc_range(F)) {
       bool ModifiedDTOnIteration = false;
       MadeChange |= optimizeBlock(BB, ModifiedDTOnIteration, TTI, DL,
-                                  DTU ? DTU.getPointer() : nullptr);
+                                  DTU.hasValue() ? DTU.getPointer() : nullptr);
 
       // Restart BB iteration if the dominator tree of the Function was changed
       if (ModifiedDTOnIteration)

@@ -40,7 +40,6 @@ public:
   enum ARMProcFamilyEnum : uint8_t {
     Others,
     A64FX,
-    Ampere1,
     AppleA7,
     AppleA10,
     AppleA11,
@@ -205,12 +204,14 @@ public:
   /// Return true if the CPU supports any kind of instruction fusion.
   bool hasFusion() const {
     return hasArithmeticBccFusion() || hasArithmeticCbzFusion() ||
-           hasFuseAES() || hasFuseArithmeticLogic() || hasFuseCCSelect() ||
-           hasFuseAdrpAdd() || hasFuseLiterals();
+           hasFuseAES() || hasFuseArithmeticLogic() ||
+           hasFuseCCSelect() || hasFuseLiterals();
   }
 
   unsigned getMaxInterleaveFactor() const { return MaxInterleaveFactor; }
-  unsigned getVectorInsertExtractBaseCost() const;
+  unsigned getVectorInsertExtractBaseCost() const {
+    return VectorInsertExtractBaseCost;
+  }
   unsigned getCacheLineSize() const override { return CacheLineSize; }
   unsigned getPrefetchDistance() const override { return PrefetchDistance; }
   unsigned getMinPrefetchStride(unsigned NumMemAccesses,

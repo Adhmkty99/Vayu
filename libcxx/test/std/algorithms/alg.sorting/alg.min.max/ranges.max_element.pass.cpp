@@ -22,7 +22,6 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <functional>
 #include <random>
 #include <ranges>
 

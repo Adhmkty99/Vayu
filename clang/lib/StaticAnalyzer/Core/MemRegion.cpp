@@ -162,9 +162,7 @@ const StackFrameContext *VarRegion::getStackFrame() const {
 }
 
 ObjCIvarRegion::ObjCIvarRegion(const ObjCIvarDecl *ivd, const SubRegion *sReg)
-    : DeclRegion(sReg, ObjCIvarRegionKind), IVD(ivd) {
-  assert(IVD);
-}
+    : DeclRegion(sReg, ObjCIvarRegionKind), IVD(ivd) {}
 
 const ObjCIvarDecl *ObjCIvarRegion::getDecl() const { return IVD; }
 
@@ -482,7 +480,7 @@ void CompoundLiteralRegion::dumpToStream(raw_ostream &os) const {
 }
 
 void CXXTempObjectRegion::dumpToStream(raw_ostream &os) const {
-  os << "temp_object{" << getValueType() << ", "
+  os << "temp_object{" << getValueType().getAsString() << ", "
      << "S" << Ex->getID(getContext()) << '}';
 }
 
@@ -499,8 +497,8 @@ void CXXThisRegion::dumpToStream(raw_ostream &os) const {
 }
 
 void ElementRegion::dumpToStream(raw_ostream &os) const {
-  os << "Element{" << superRegion << ',' << Index << ',' << getElementType()
-     << '}';
+  os << "Element{" << superRegion << ','
+     << Index << ',' << getElementType().getAsString() << '}';
 }
 
 void FieldRegion::dumpToStream(raw_ostream &os) const {
@@ -794,11 +792,7 @@ DefinedOrUnknownSVal MemRegionManager::getStaticSize(const MemRegion *MR,
         if (Size.isZero())
           return true;
 
-        if (getContext().getLangOpts().StrictFlexArrays >= 2)
-          return false;
-
         const AnalyzerOptions &Opts = SVB.getAnalyzerOptions();
-        // FIXME: this option is probably redundant with -fstrict-flex-arrays=1.
         if (Opts.ShouldConsiderSingleElementArraysAsFlexibleArrayMembers &&
             Size.isOne())
           return true;
@@ -977,14 +971,26 @@ const VarRegion *MemRegionManager::getVarRegion(const VarDecl *D,
   const MemRegion *sReg = nullptr;
 
   if (D->hasGlobalStorage() && !D->isStaticLocal()) {
-    QualType Ty = D->getType();
-    assert(!Ty.isNull());
-    if (Ty.isConstQualified()) {
-      sReg = getGlobalsRegion(MemRegion::GlobalImmutableSpaceRegionKind);
-    } else if (Ctx.getSourceManager().isInSystemHeader(D->getLocation())) {
-      sReg = getGlobalsRegion(MemRegion::GlobalSystemSpaceRegionKind);
+
+    // First handle the globals defined in system headers.
+    if (Ctx.getSourceManager().isInSystemHeader(D->getLocation())) {
+      //  Allow the system globals which often DO GET modified, assume the
+      // rest are immutable.
+      if (D->getName().contains("errno"))
+        sReg = getGlobalsRegion(MemRegion::GlobalSystemSpaceRegionKind);
+      else
+        sReg = getGlobalsRegion(MemRegion::GlobalImmutableSpaceRegionKind);
+
+    // Treat other globals as GlobalInternal unless they are constants.
     } else {
-      sReg = getGlobalsRegion(MemRegion::GlobalInternalSpaceRegionKind);
+      QualType GQT = D->getType();
+      const Type *GT = GQT.getTypePtrOrNull();
+      // TODO: We could walk the complex types here and see if everything is
+      // constified.
+      if (GT && GQT.isConstQualified() && GT->isArithmeticType())
+        sReg = getGlobalsRegion(MemRegion::GlobalImmutableSpaceRegionKind);
+      else
+        sReg = getGlobalsRegion();
     }
 
   // Finally handle static locals.
@@ -1027,10 +1033,8 @@ const VarRegion *MemRegionManager::getVarRegion(const VarDecl *D,
             T = TSI->getType();
           if (T.isNull())
             T = getContext().VoidTy;
-          if (!T->getAs<FunctionType>()) {
-            FunctionProtoType::ExtProtoInfo Ext;
-            T = getContext().getFunctionType(T, None, Ext);
-          }
+          if (!T->getAs<FunctionType>())
+            T = getContext().getFunctionNoProtoType(T);
           T = getContext().getBlockPointerType(T);
 
           const BlockCodeRegion *BTR =

@@ -21,6 +21,7 @@ using namespace lldb_private;
 class TestPlatform : public PlatformPOSIX {
 public:
   TestPlatform() : PlatformPOSIX(false) {}
+  using Platform::Clear;
 };
 
 class PlatformArm : public TestPlatform {
@@ -74,66 +75,67 @@ public:
 
 class PlatformTest : public ::testing::Test {
   SubsystemRAII<FileSystem, HostInfo> subsystems;
-
-protected:
-  PlatformList list;
-
-  void SetHostPlatform(const PlatformSP &platform_sp) {
-    Platform::SetHostPlatform(platform_sp);
-    ASSERT_EQ(Platform::GetHostPlatform(), platform_sp);
-    list.Append(platform_sp, /*set_selected=*/true);
-  }
+  void SetUp() override { TestPlatform::Clear(); }
 };
 
 TEST_F(PlatformTest, GetPlatformForArchitecturesHost) {
-  SetHostPlatform(std::make_shared<PlatformArm>());
+  const PlatformSP host_platform_sp = std::make_shared<PlatformArm>();
+  Platform::SetHostPlatform(host_platform_sp);
+  ASSERT_EQ(Platform::GetHostPlatform(), host_platform_sp);
 
   const std::vector<ArchSpec> archs = {ArchSpec("arm64-apple-ps4"),
                                        ArchSpec("arm64e-apple-ps4")};
   std::vector<PlatformSP> candidates;
 
   // The host platform matches all architectures.
-  PlatformSP platform_sp = list.GetOrCreate(archs, {}, candidates);
+  PlatformSP platform_sp =
+      Platform::GetPlatformForArchitectures(archs, {}, {}, candidates);
   ASSERT_TRUE(platform_sp);
-  EXPECT_EQ(platform_sp, Platform::GetHostPlatform());
+  EXPECT_EQ(platform_sp, host_platform_sp);
 }
 
 TEST_F(PlatformTest, GetPlatformForArchitecturesSelected) {
-  SetHostPlatform(std::make_shared<PlatformIntel>());
+  const PlatformSP host_platform_sp = std::make_shared<PlatformIntel>();
+  Platform::SetHostPlatform(host_platform_sp);
+  ASSERT_EQ(Platform::GetHostPlatform(), host_platform_sp);
 
   const std::vector<ArchSpec> archs = {ArchSpec("arm64-apple-ps4"),
                                        ArchSpec("arm64e-apple-ps4")};
   std::vector<PlatformSP> candidates;
 
-  // The host platform matches no architectures.
-  PlatformSP platform_sp = list.GetOrCreate(archs, {}, candidates);
+  // The host platform matches no architectures. No selected platform.
+  PlatformSP platform_sp =
+      Platform::GetPlatformForArchitectures(archs, {}, {}, candidates);
   ASSERT_FALSE(platform_sp);
 
   // The selected platform matches all architectures.
   const PlatformSP selected_platform_sp = std::make_shared<PlatformArm>();
-  list.Append(selected_platform_sp, /*set_selected=*/true);
-  platform_sp = list.GetOrCreate(archs, {}, candidates);
+  platform_sp = Platform::GetPlatformForArchitectures(
+      archs, {}, selected_platform_sp, candidates);
   ASSERT_TRUE(platform_sp);
   EXPECT_EQ(platform_sp, selected_platform_sp);
 }
 
 TEST_F(PlatformTest, GetPlatformForArchitecturesSelectedOverHost) {
-  SetHostPlatform(std::make_shared<PlatformIntel>());
+  const PlatformSP host_platform_sp = std::make_shared<PlatformIntel>();
+  Platform::SetHostPlatform(host_platform_sp);
+  ASSERT_EQ(Platform::GetHostPlatform(), host_platform_sp);
 
   const std::vector<ArchSpec> archs = {ArchSpec("arm64-apple-ps4"),
                                        ArchSpec("x86_64-apple-ps4")};
   std::vector<PlatformSP> candidates;
 
-  // The host platform matches one architecture.
-  PlatformSP platform_sp = list.GetOrCreate(archs, {}, candidates);
+  // The host platform matches one architecture. No selected platform.
+  PlatformSP platform_sp =
+      Platform::GetPlatformForArchitectures(archs, {}, {}, candidates);
   ASSERT_TRUE(platform_sp);
-  EXPECT_EQ(platform_sp, Platform::GetHostPlatform());
+  EXPECT_EQ(platform_sp, host_platform_sp);
 
   // The selected and host platform each match one architecture.
   // The selected platform is preferred.
   const PlatformSP selected_platform_sp = std::make_shared<PlatformArm>();
-  list.Append(selected_platform_sp, /*set_selected=*/true);
-  platform_sp = list.GetOrCreate(archs, {}, candidates);
+  platform_sp = Platform::GetPlatformForArchitectures(
+      archs, {}, selected_platform_sp, candidates);
   ASSERT_TRUE(platform_sp);
   EXPECT_EQ(platform_sp, selected_platform_sp);
 }
@@ -141,17 +143,18 @@ TEST_F(PlatformTest, GetPlatformForArchitecturesSelectedOverHost) {
 TEST_F(PlatformTest, GetPlatformForArchitecturesCandidates) {
   PlatformThumb::Initialize();
 
-  SetHostPlatform(std::make_shared<PlatformIntel>());
-
+  const PlatformSP host_platform_sp = std::make_shared<PlatformIntel>();
+  Platform::SetHostPlatform(host_platform_sp);
+  ASSERT_EQ(Platform::GetHostPlatform(), host_platform_sp);
   const PlatformSP selected_platform_sp = std::make_shared<PlatformArm>();
-  list.Append(selected_platform_sp, /*set_selected=*/true);
 
   const std::vector<ArchSpec> archs = {ArchSpec("thumbv7-apple-ps4"),
                                        ArchSpec("thumbv7f-apple-ps4")};
   std::vector<PlatformSP> candidates;
 
-  // The host platform matches one architecture.
-  PlatformSP platform_sp = list.GetOrCreate(archs, {}, candidates);
+  // The host platform matches one architecture. No selected platform.
+  PlatformSP platform_sp = Platform::GetPlatformForArchitectures(
+      archs, {}, selected_platform_sp, candidates);
   ASSERT_TRUE(platform_sp);
   EXPECT_EQ(platform_sp->GetName(), "thumb");
 

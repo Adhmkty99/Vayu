@@ -1,4 +1,4 @@
-add_mlir_dialect_library(MLIRMemRefDialect
+add_mlir_dialect_library(MLIRMemRef
   MemRefDialect.cpp
   MemRefOps.cpp
 
@@ -12,7 +12,7 @@ add_mlir_dialect_library(MLIRMemRefDialect
   Core
 
   LINK_LIBS PUBLIC
-  MLIRArithmeticDialect
+  MLIRArithmetic
   MLIRArithmeticUtils
   MLIRControlFlowInterfaces
   MLIRDialect

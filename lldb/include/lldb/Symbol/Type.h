@@ -314,7 +314,7 @@ private:
 
 class TypeListImpl {
 public:
-  TypeListImpl() = default;
+  TypeListImpl() {}
 
   void Append(const lldb::TypeImplSP &type) { m_content.push_back(type); }
 
@@ -345,7 +345,7 @@ private:
 
 class TypeMemberImpl {
 public:
-  TypeMemberImpl() = default;
+  TypeMemberImpl() {}
 
   TypeMemberImpl(const lldb::TypeImplSP &type_impl_sp, uint64_t bit_offset,
                  ConstString name, uint32_t bitfield_bit_size = 0,
@@ -437,7 +437,7 @@ private:
 
 class TypeMemberFunctionImpl {
 public:
-  TypeMemberFunctionImpl() = default;
+  TypeMemberFunctionImpl() {}
 
   TypeMemberFunctionImpl(const CompilerType &type, const CompilerDecl &decl,
                          const std::string &name,
@@ -502,7 +502,7 @@ protected:
 
 class TypeEnumMemberListImpl {
 public:
-  TypeEnumMemberListImpl() = default;
+  TypeEnumMemberListImpl() {}
 
   void Append(const lldb::TypeEnumMemberImplSP &type) {
     m_content.push_back(type);

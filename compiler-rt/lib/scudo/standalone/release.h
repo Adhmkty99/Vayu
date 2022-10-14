@@ -82,7 +82,7 @@ public:
     } else {
       Buffer = reinterpret_cast<uptr *>(
           map(nullptr, roundUpTo(BufferSize, getPageSizeCached()),
-              "scudo:counters", MAP_ALLOWNOMEM, &MapData));
+              "scudo:counters", MAP_ALLOWNOMEM));
     }
   }
   ~PackedCounterArray() {
@@ -92,7 +92,7 @@ public:
       Mutex.unlock();
     else
       unmap(reinterpret_cast<void *>(Buffer),
-            roundUpTo(BufferSize, getPageSizeCached()), 0, &MapData);
+            roundUpTo(BufferSize, getPageSizeCached()));
   }
 
   bool isAllocated() const { return !!Buffer; }
@@ -138,7 +138,6 @@ private:
   uptr SizePerRegion;
   uptr BufferSize;
   uptr *Buffer;
-  [[no_unique_address]] MapPlatformData MapData = {};
 
   static HybridMutex Mutex;
   static uptr StaticBuffer[StaticBufferCount];

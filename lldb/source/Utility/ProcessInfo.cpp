@@ -144,19 +144,19 @@ void ProcessInstanceInfo::Dump(Stream &s, UserIDResolver &resolver) const {
 
   if (UserIDIsValid()) {
     s.Format("    uid = {0,-5} ({1})\n", GetUserID(),
-             resolver.GetUserName(GetUserID()).value_or(""));
+             resolver.GetUserName(GetUserID()).getValueOr(""));
   }
   if (GroupIDIsValid()) {
     s.Format("    gid = {0,-5} ({1})\n", GetGroupID(),
-             resolver.GetGroupName(GetGroupID()).value_or(""));
+             resolver.GetGroupName(GetGroupID()).getValueOr(""));
   }
   if (EffectiveUserIDIsValid()) {
     s.Format("   euid = {0,-5} ({1})\n", GetEffectiveUserID(),
-             resolver.GetUserName(GetEffectiveUserID()).value_or(""));
+             resolver.GetUserName(GetEffectiveUserID()).getValueOr(""));
   }
   if (EffectiveGroupIDIsValid()) {
     s.Format("   egid = {0,-5} ({1})\n", GetEffectiveGroupID(),
-             resolver.GetGroupName(GetEffectiveGroupID()).value_or(""));
+             resolver.GetGroupName(GetEffectiveGroupID()).getValueOr(""));
   }
 }
 

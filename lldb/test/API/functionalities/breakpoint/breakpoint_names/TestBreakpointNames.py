@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 
 class BreakpointNames(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     @add_test_categories(['pyapi'])

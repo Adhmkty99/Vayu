@@ -26,25 +26,6 @@
 using namespace mlir;
 
 namespace {
-static llvm::omp::ScheduleKind
-convertToScheduleKind(Optional<omp::ClauseScheduleKind> schedKind) {
-  if (!schedKind.has_value())
-    return llvm::omp::OMP_SCHEDULE_Default;
-  switch (schedKind.value()) {
-  case omp::ClauseScheduleKind::Static:
-    return llvm::omp::OMP_SCHEDULE_Static;
-  case omp::ClauseScheduleKind::Dynamic:
-    return llvm::omp::OMP_SCHEDULE_Dynamic;
-  case omp::ClauseScheduleKind::Guided:
-    return llvm::omp::OMP_SCHEDULE_Guided;
-  case omp::ClauseScheduleKind::Auto:
-    return llvm::omp::OMP_SCHEDULE_Auto;
-  case omp::ClauseScheduleKind::Runtime:
-    return llvm::omp::OMP_SCHEDULE_Runtime;
-  }
-  llvm_unreachable("unhandled schedule clause argument");
-}
-
 /// ModuleTranslation stack frame for OpenMP operations. This keeps track of the
 /// insertion points for allocas.
 class OpenMPAllocaStackFrame
@@ -95,8 +76,6 @@ findAllocaInsertPoint(llvm::IRBuilderBase &builder,
   // also be used for alloca insertion which would result in insertion order
   // confusion. Create a new BasicBlock for the Builder and use the entry block
   // for the allocs.
-  // TODO: Create a dedicated alloca BasicBlock at function creation such that
-  // we do not need to move the current InertPoint here.
   if (builder.GetInsertBlock() ==
       &builder.GetInsertBlock()->getParent()->getEntryBlock()) {
     assert(builder.GetInsertPoint() == builder.GetInsertBlock()->end() &&
@@ -119,14 +98,11 @@ findAllocaInsertPoint(llvm::IRBuilderBase &builder,
 /// region, and a branch from any block with an successor-less OpenMP terminator
 /// to `continuationBlock`. Populates `continuationBlockPHIs` with the PHI nodes
 /// of the continuation block if provided.
-static llvm::BasicBlock *convertOmpOpRegions(
-    Region &region, StringRef blockName, llvm::IRBuilderBase &builder,
+static void convertOmpOpRegions(
+    Region &region, StringRef blockName, llvm::BasicBlock &sourceBlock,
+    llvm::BasicBlock &continuationBlock, llvm::IRBuilderBase &builder,
     LLVM::ModuleTranslation &moduleTranslation, LogicalResult &bodyGenStatus,
     SmallVectorImpl<llvm::PHINode *> *continuationBlockPHIs = nullptr) {
-  llvm::BasicBlock *continuationBlock =
-      splitBB(builder, true, "omp.region.cont");
-  llvm::BasicBlock *sourceBlock = builder.GetInsertBlock();
-
   llvm::LLVMContext &llvmContext = builder.getContext();
   for (Block &bb : region) {
     llvm::BasicBlock *llvmBB = llvm::BasicBlock::Create(
@@ -135,7 +111,7 @@ static llvm::BasicBlock *convertOmpOpRegions(
     moduleTranslation.mapBlock(&bb, llvmBB);
   }
 
-  llvm::Instruction *sourceTerminator = sourceBlock->getTerminator();
+  llvm::Instruction *sourceTerminator = sourceBlock.getTerminator();
 
   // Terminators (namely YieldOp) may be forwarding values to the region that
   // need to be available in the continuation block. Collect the types of these
@@ -175,7 +151,7 @@ static llvm::BasicBlock *convertOmpOpRegions(
   if (continuationBlockPHIs) {
     llvm::IRBuilderBase::InsertPointGuard guard(builder);
     continuationBlockPHIs->reserve(continuationBlockPHITypes.size());
-    builder.SetInsertPoint(continuationBlock, continuationBlock->begin());
+    builder.SetInsertPoint(&continuationBlock, continuationBlock.begin());
     for (llvm::Type *ty : continuationBlockPHITypes)
       continuationBlockPHIs->push_back(builder.CreatePHI(ty, numYields));
   }
@@ -191,7 +167,7 @@ static llvm::BasicBlock *convertOmpOpRegions(
     if (bb->isEntryBlock()) {
       assert(sourceTerminator->getNumSuccessors() == 1 &&
              "provided entry block has multiple successors");
-      assert(sourceTerminator->getSuccessor(0) == continuationBlock &&
+      assert(sourceTerminator->getSuccessor(0) == &continuationBlock &&
              "ContinuationBlock is not the successor of the entry block");
       sourceTerminator->setSuccessor(0, llvmBB);
     }
@@ -200,7 +176,7 @@ static llvm::BasicBlock *convertOmpOpRegions(
     if (failed(
             moduleTranslation.convertBlock(*bb, bb->isEntryBlock(), builder))) {
       bodyGenStatus = failure();
-      return continuationBlock;
+      return;
     }
 
     // Special handling for `omp.yield` and `omp.terminator` (we may have more
@@ -212,7 +188,7 @@ static llvm::BasicBlock *convertOmpOpRegions(
     // in the same code that handles the region-owning operation.
     Operation *terminator = bb->getTerminator();
     if (isa<omp::TerminatorOp, omp::YieldOp>(terminator)) {
-      builder.CreateBr(continuationBlock);
+      builder.CreateBr(&continuationBlock);
 
       for (unsigned i = 0, e = terminator->getNumOperands(); i < e; ++i)
         (*continuationBlockPHIs)[i]->addIncoming(
@@ -228,8 +204,6 @@ static llvm::BasicBlock *convertOmpOpRegions(
   // be converted several times, that is cloned, without clashes, and slightly
   // speeds up the lookups.
   moduleTranslation.forgetMapping(region);
-
-  return continuationBlock;
 }
 
 /// Convert ProcBindKind from MLIR-generated enum to LLVM enum.
@@ -256,15 +230,16 @@ convertOmpParallel(omp::ParallelOp opInst, llvm::IRBuilderBase &builder,
   // relying on captured variables.
   LogicalResult bodyGenStatus = success();
 
-  auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP) {
+  auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP,
+                       llvm::BasicBlock &continuationBlock) {
     // Save the alloca insertion point on ModuleTranslation stack for use in
     // nested regions.
     LLVM::ModuleTranslation::SaveStack<OpenMPAllocaStackFrame> frame(
         moduleTranslation, allocaIP);
 
     // ParallelOp has only one region associated with it.
-    builder.restoreIP(codeGenIP);
-    convertOmpOpRegions(opInst.getRegion(), "omp.par.region", builder,
+    convertOmpOpRegions(opInst.getRegion(), "omp.par.region",
+                        *codeGenIP.getBlock(), continuationBlock, builder,
                         moduleTranslation, bodyGenStatus);
   };
 
@@ -314,11 +289,12 @@ convertOmpMaster(Operation &opInst, llvm::IRBuilderBase &builder,
   // relying on captured variables.
   LogicalResult bodyGenStatus = success();
 
-  auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP) {
+  auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP,
+                       llvm::BasicBlock &continuationBlock) {
     // MasterOp has only one region associated with it.
     auto &region = cast<omp::MasterOp>(opInst).getRegion();
-    builder.restoreIP(codeGenIP);
-    convertOmpOpRegions(region, "omp.master.region", builder, moduleTranslation,
+    convertOmpOpRegions(region, "omp.master.region", *codeGenIP.getBlock(),
+                        continuationBlock, builder, moduleTranslation,
                         bodyGenStatus);
   };
 
@@ -342,12 +318,13 @@ convertOmpCritical(Operation &opInst, llvm::IRBuilderBase &builder,
   // relying on captured variables.
   LogicalResult bodyGenStatus = success();
 
-  auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP) {
+  auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP,
+                       llvm::BasicBlock &continuationBlock) {
     // CriticalOp has only one region associated with it.
     auto &region = cast<omp::CriticalOp>(opInst).getRegion();
-    builder.restoreIP(codeGenIP);
-    convertOmpOpRegions(region, "omp.critical.region", builder,
-                        moduleTranslation, bodyGenStatus);
+    convertOmpOpRegions(region, "omp.critical.region", *codeGenIP.getBlock(),
+                        continuationBlock, builder, moduleTranslation,
+                        bodyGenStatus);
   };
 
   // TODO: Perform finalization actions for variables. This has to be
@@ -371,7 +348,7 @@ convertOmpCritical(Operation &opInst, llvm::IRBuilderBase &builder,
                                static_cast<int>(criticalDeclareOp.hint_val()));
   }
   builder.restoreIP(moduleTranslation.getOpenMPBuilder()->createCritical(
-      ompLoc, bodyGenCB, finiCB, criticalOp.name().value_or(""), hint));
+      ompLoc, bodyGenCB, finiCB, criticalOp.name().getValueOr(""), hint));
   return success();
 }
 
@@ -442,10 +419,19 @@ static LogicalResult inlineConvertOmpRegions(
     return success();
   }
 
+  // Create the continuation block manually instead of calling splitBlock
+  // because the current insertion block may not have a terminator.
+  llvm::BasicBlock *continuationBlock =
+      llvm::BasicBlock::Create(builder.getContext(), blockName + ".cont",
+                               builder.GetInsertBlock()->getParent(),
+                               builder.GetInsertBlock()->getNextNode());
+  builder.CreateBr(continuationBlock);
+
   LogicalResult bodyGenStatus = success();
   SmallVector<llvm::PHINode *> phis;
-  llvm::BasicBlock *continuationBlock = convertOmpOpRegions(
-      region, blockName, builder, moduleTranslation, bodyGenStatus, &phis);
+  convertOmpOpRegions(region, blockName, *builder.GetInsertBlock(),
+                      *continuationBlock, builder, moduleTranslation,
+                      bodyGenStatus, &phis);
   if (failed(bodyGenStatus))
     return failure();
   if (continuationBlockArgs)
@@ -536,7 +522,7 @@ convertOmpOrdered(Operation &opInst, llvm::IRBuilderBase &builder,
 
   omp::ClauseDepend dependType = *orderedOp.depend_type_val();
   bool isDependSource = dependType == omp::ClauseDepend::dependsource;
-  unsigned numLoops = *orderedOp.num_loops_val();
+  unsigned numLoops = orderedOp.num_loops_val().getValue();
   SmallVector<llvm::Value *> vecValues =
       moduleTranslation.lookupValues(orderedOp.depend_vec_vars());
 
@@ -573,12 +559,13 @@ convertOmpOrderedRegion(Operation &opInst, llvm::IRBuilderBase &builder,
   // relying on captured variables.
   LogicalResult bodyGenStatus = success();
 
-  auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP) {
+  auto bodyGenCB = [&](InsertPointTy allocaIP, InsertPointTy codeGenIP,
+                       llvm::BasicBlock &continuationBlock) {
     // OrderedOp has only one region associated with it.
     auto &region = cast<omp::OrderedRegionOp>(opInst).getRegion();
-    builder.restoreIP(codeGenIP);
-    convertOmpOpRegions(region, "omp.ordered.region", builder,
-                        moduleTranslation, bodyGenStatus);
+    convertOmpOpRegions(region, "omp.ordered.region", *codeGenIP.getBlock(),
+                        continuationBlock, builder, moduleTranslation,
+                        bodyGenStatus);
   };
 
   // TODO: Perform finalization actions for variables. This has to be
@@ -620,10 +607,12 @@ convertOmpSections(Operation &opInst, llvm::IRBuilderBase &builder,
 
     Region &region = sectionOp.region();
     auto sectionCB = [&region, &builder, &moduleTranslation, &bodyGenStatus](
-                         InsertPointTy allocaIP, InsertPointTy codeGenIP) {
+                         InsertPointTy allocaIP, InsertPointTy codeGenIP,
+                         llvm::BasicBlock &finiBB) {
       builder.restoreIP(codeGenIP);
-      convertOmpOpRegions(region, "omp.section.region", builder,
-                          moduleTranslation, bodyGenStatus);
+      builder.CreateBr(&finiBB);
+      convertOmpOpRegions(region, "omp.section.region", *codeGenIP.getBlock(),
+                          finiBB, builder, moduleTranslation, bodyGenStatus);
     };
     sectionCBs.push_back(sectionCB);
   }
@@ -666,38 +655,15 @@ convertOmpSingle(omp::SingleOp &singleOp, llvm::IRBuilderBase &builder,
   using InsertPointTy = llvm::OpenMPIRBuilder::InsertPointTy;
   llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
   LogicalResult bodyGenStatus = success();
-  auto bodyCB = [&](InsertPointTy allocaIP, InsertPointTy codegenIP) {
-    builder.restoreIP(codegenIP);
-    convertOmpOpRegions(singleOp.region(), "omp.single.region", builder,
+  auto bodyCB = [&](InsertPointTy allocaIP, InsertPointTy codegenIP,
+                    llvm::BasicBlock &continuationBB) {
+    convertOmpOpRegions(singleOp.region(), "omp.single.region",
+                        *codegenIP.getBlock(), continuationBB, builder,
                         moduleTranslation, bodyGenStatus);
   };
   auto finiCB = [&](InsertPointTy codeGenIP) {};
   builder.restoreIP(moduleTranslation.getOpenMPBuilder()->createSingle(
       ompLoc, bodyCB, finiCB, singleOp.nowait(), /*DidIt=*/nullptr));
-  return bodyGenStatus;
-}
-
-/// Converts an OpenMP task construct into LLVM IR using OpenMPIRBuilder.
-static LogicalResult
-convertOmpTaskOp(omp::TaskOp taskOp, llvm::IRBuilderBase &builder,
-                 LLVM::ModuleTranslation &moduleTranslation) {
-  using InsertPointTy = llvm::OpenMPIRBuilder::InsertPointTy;
-  LogicalResult bodyGenStatus = success();
-  if (taskOp.if_expr() || taskOp.final_expr() || taskOp.untiedAttr() ||
-      taskOp.mergeableAttr() || taskOp.in_reductions() || taskOp.priority() ||
-      !taskOp.allocate_vars().empty()) {
-    return taskOp.emitError("unhandled clauses for translation to LLVM IR");
-  }
-  auto bodyCB = [&](InsertPointTy allocaIP, InsertPointTy codegenIP) {
-    builder.restoreIP(codegenIP);
-    convertOmpOpRegions(taskOp.region(), "omp.task.region", builder,
-                        moduleTranslation, bodyGenStatus);
-  };
-  llvm::OpenMPIRBuilder::InsertPointTy allocaIP =
-      findAllocaInsertPoint(builder, moduleTranslation);
-  llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
-  builder.restoreIP(moduleTranslation.getOpenMPBuilder()->createTask(
-      ompLoc, allocaIP, bodyCB, !taskOp.untied()));
   return bodyGenStatus;
 }
 
@@ -711,7 +677,8 @@ convertOmpWsLoop(Operation &opInst, llvm::IRBuilderBase &builder,
     return failure();
 
   // Static is the default.
-  auto schedule = loop.schedule_val().value_or(omp::ClauseScheduleKind::Static);
+  auto schedule =
+      loop.schedule_val().getValueOr(omp::ClauseScheduleKind::Static);
 
   // Find the loop configuration.
   llvm::Value *step = moduleTranslation.lookupValue(loop.step()[0]);
@@ -720,7 +687,15 @@ convertOmpWsLoop(Operation &opInst, llvm::IRBuilderBase &builder,
   if (loop.schedule_chunk_var()) {
     llvm::Value *chunkVar =
         moduleTranslation.lookupValue(loop.schedule_chunk_var());
-    chunk = builder.CreateSExtOrTrunc(chunkVar, ivType);
+    llvm::Type *chunkVarType = chunkVar->getType();
+    assert(chunkVarType->isIntegerTy() &&
+           "chunk size must be one integer expression");
+    if (chunkVarType->getIntegerBitWidth() < ivType->getIntegerBitWidth())
+      chunk = builder.CreateSExt(chunkVar, ivType);
+    else if (chunkVarType->getIntegerBitWidth() > ivType->getIntegerBitWidth())
+      chunk = builder.CreateTrunc(chunkVar, ivType);
+    else
+      chunk = chunkVar;
   }
 
   SmallVector<omp::ReductionDeclareOp> reductionDecls;
@@ -789,9 +764,11 @@ convertOmpWsLoop(Operation &opInst, llvm::IRBuilderBase &builder,
       return;
 
     // Convert the body of the loop.
-    builder.restoreIP(ip);
-    convertOmpOpRegions(loop.region(), "omp.wsloop.region", builder,
-                        moduleTranslation, bodyGenStatus);
+    llvm::BasicBlock *entryBlock = ip.getBlock();
+    llvm::BasicBlock *exitBlock =
+        entryBlock->splitBasicBlock(ip.getPoint(), "omp.wsloop.exit");
+    convertOmpOpRegions(loop.region(), "omp.wsloop.region", *entryBlock,
+                        *exitBlock, builder, moduleTranslation, bodyGenStatus);
   };
 
   // Delegate actual loop construction to the OpenMP IRBuilder.
@@ -831,16 +808,92 @@ convertOmpWsLoop(Operation &opInst, llvm::IRBuilderBase &builder,
 
   allocaIP = findAllocaInsertPoint(builder, moduleTranslation);
 
-  // TODO: Handle doacross loops when the ordered clause has a parameter.
-  bool isOrdered = loop.ordered_val().has_value();
-  Optional<omp::ScheduleModifier> scheduleModifier = loop.schedule_modifier();
   bool isSimd = loop.simd_modifier();
 
-  ompBuilder->applyWorkshareLoop(
-      ompLoc.DL, loopInfo, allocaIP, !loop.nowait(),
-      convertToScheduleKind(schedule), chunk, isSimd,
-      scheduleModifier == omp::ScheduleModifier::monotonic,
-      scheduleModifier == omp::ScheduleModifier::nonmonotonic, isOrdered);
+  // The orderedVal refers to the value obtained from the ordered[(n)] clause.
+  //   orderedVal == -1: No ordered[(n)] clause specified.
+  //   orderedVal == 0: The ordered clause specified without a parameter.
+  //   orderedVal > 0: The ordered clause specified with a parameter (n).
+  // TODO: Handle doacross loop init when orderedVal is greater than 0.
+  int64_t orderedVal =
+      loop.ordered_val().hasValue() ? loop.ordered_val().getValue() : -1;
+  if (schedule == omp::ClauseScheduleKind::Static && orderedVal != 0) {
+    ompBuilder->applyWorkshareLoop(ompLoc.DL, loopInfo, allocaIP,
+                                   !loop.nowait(),
+                                   llvm::omp::OMP_SCHEDULE_Static, chunk);
+  } else {
+    llvm::omp::OMPScheduleType schedType;
+    switch (schedule) {
+    case omp::ClauseScheduleKind::Static:
+      if (loop.schedule_chunk_var())
+        schedType = llvm::omp::OMPScheduleType::OrderedStaticChunked;
+      else
+        schedType = llvm::omp::OMPScheduleType::OrderedStatic;
+      break;
+    case omp::ClauseScheduleKind::Dynamic:
+      if (orderedVal == 0)
+        schedType = llvm::omp::OMPScheduleType::OrderedDynamicChunked;
+      else
+        schedType = llvm::omp::OMPScheduleType::DynamicChunked;
+      break;
+    case omp::ClauseScheduleKind::Guided:
+      if (orderedVal == 0) {
+        schedType = llvm::omp::OMPScheduleType::OrderedGuidedChunked;
+      } else {
+        if (isSimd)
+          schedType = llvm::omp::OMPScheduleType::GuidedSimd;
+        else
+          schedType = llvm::omp::OMPScheduleType::GuidedChunked;
+      }
+      break;
+    case omp::ClauseScheduleKind::Auto:
+      if (orderedVal == 0)
+        schedType = llvm::omp::OMPScheduleType::OrderedAuto;
+      else
+        schedType = llvm::omp::OMPScheduleType::Auto;
+      break;
+    case omp::ClauseScheduleKind::Runtime:
+      if (orderedVal == 0) {
+        schedType = llvm::omp::OMPScheduleType::OrderedRuntime;
+      } else {
+        if (isSimd)
+          schedType = llvm::omp::OMPScheduleType::RuntimeSimd;
+        else
+          schedType = llvm::omp::OMPScheduleType::Runtime;
+      }
+      break;
+    }
+
+    if (Optional<omp::ScheduleModifier> modifier = loop.schedule_modifier()) {
+      switch (*modifier) {
+      case omp::ScheduleModifier::monotonic:
+        schedType |= llvm::omp::OMPScheduleType::ModifierMonotonic;
+        break;
+      case omp::ScheduleModifier::nonmonotonic:
+        schedType |= llvm::omp::OMPScheduleType::ModifierNonmonotonic;
+        break;
+      default:
+        // Nothing to do here.
+        break;
+      }
+    } else {
+      // OpenMP 5.1, 2.11.4 Worksharing-Loop Construct, Description.
+      // If the static schedule kind is specified or if the ordered clause is
+      // specified, and if the nonmonotonic modifier is not specified, the
+      // effect is as if the monotonic modifier is specified. Otherwise, unless
+      // the monotonic modifier is specified, the effect is as if the
+      // nonmonotonic modifier is specified.
+      // The monotonic is used by default in openmp runtime library, so no need
+      // to set it.
+      if (!(schedType == llvm::omp::OMPScheduleType::OrderedStatic ||
+            schedType == llvm::omp::OMPScheduleType::OrderedStaticChunked))
+        schedType |= llvm::omp::OMPScheduleType::ModifierNonmonotonic;
+    }
+
+    ompBuilder->applyDynamicWorkshareLoop(ompLoc.DL, loopInfo, allocaIP,
+                                          schedType, !loop.nowait(), chunk,
+                                          /*ordered*/ orderedVal == 0);
+  }
 
   // Continue building IR after the loop. Note that the LoopInfo returned by
   // `collapseLoops` points inside the outermost loop and is intended for
@@ -912,11 +965,6 @@ convertOmpSimdLoop(Operation &opInst, llvm::IRBuilderBase &builder,
   SmallVector<llvm::CanonicalLoopInfo *> loopInfos;
   SmallVector<llvm::OpenMPIRBuilder::InsertPointTy> bodyInsertPoints;
   LogicalResult bodyGenStatus = success();
-
-  // TODO: The code generation for if clause is not supported yet.
-  if (loop.if_expr())
-    return failure();
-
   auto bodyGen = [&](llvm::OpenMPIRBuilder::InsertPointTy ip, llvm::Value *iv) {
     // Make sure further conversions know about the induction variable.
     moduleTranslation.mapValue(
@@ -931,9 +979,11 @@ convertOmpSimdLoop(Operation &opInst, llvm::IRBuilderBase &builder,
       return;
 
     // Convert the body of the loop.
-    builder.restoreIP(ip);
-    convertOmpOpRegions(loop.region(), "omp.simdloop.region", builder,
-                        moduleTranslation, bodyGenStatus);
+    llvm::BasicBlock *entryBlock = ip.getBlock();
+    llvm::BasicBlock *exitBlock =
+        entryBlock->splitBasicBlock(ip.getPoint(), "omp.simdloop.exit");
+    convertOmpOpRegions(loop.region(), "omp.simdloop.region", *entryBlock,
+                        *exitBlock, builder, moduleTranslation, bodyGenStatus);
   };
 
   // Delegate actual loop construction to the OpenMP IRBuilder.
@@ -971,7 +1021,7 @@ convertOmpSimdLoop(Operation &opInst, llvm::IRBuilderBase &builder,
   llvm::CanonicalLoopInfo *loopInfo =
       ompBuilder->collapseLoops(ompLoc.DL, loopInfos, {});
 
-  ompBuilder->applySimd(loopInfo, nullptr);
+  ompBuilder->applySimd(ompLoc.DL, loopInfo);
 
   builder.restoreIP(afterIP);
   return success();
@@ -1269,40 +1319,6 @@ convertOmpReductionOp(omp::ReductionOp reductionOp,
   return success();
 }
 
-/// Converts an OpenMP Threadprivate operation into LLVM IR using
-/// OpenMPIRBuilder.
-static LogicalResult
-convertOmpThreadprivate(Operation &opInst, llvm::IRBuilderBase &builder,
-                        LLVM::ModuleTranslation &moduleTranslation) {
-  llvm::OpenMPIRBuilder::LocationDescription ompLoc(builder);
-  auto threadprivateOp = cast<omp::ThreadprivateOp>(opInst);
-
-  Value symAddr = threadprivateOp.sym_addr();
-  auto *symOp = symAddr.getDefiningOp();
-  if (!isa<LLVM::AddressOfOp>(symOp))
-    return opInst.emitError("Addressing symbol not found");
-  LLVM::AddressOfOp addressOfOp = dyn_cast<LLVM::AddressOfOp>(symOp);
-
-  LLVM::GlobalOp global = addressOfOp.getGlobal();
-  llvm::GlobalValue *globalValue = moduleTranslation.lookupGlobal(global);
-  llvm::Value *data =
-      builder.CreateBitCast(globalValue, builder.getInt8PtrTy());
-  llvm::Type *type = globalValue->getValueType();
-  llvm::TypeSize typeSize =
-      builder.GetInsertBlock()->getModule()->getDataLayout().getTypeStoreSize(
-          type);
-  llvm::ConstantInt *size = builder.getInt64(typeSize.getFixedSize());
-  llvm::StringRef suffix = llvm::StringRef(".cache", 6);
-  std::string cacheName = (Twine(global.getSymName()).concat(suffix)).str();
-  // Emit runtime function and bitcast its type (i8*) to real data type.
-  llvm::Value *callInst =
-      moduleTranslation.getOpenMPBuilder()->createCachedThreadPrivate(
-          ompLoc, data, size, cacheName);
-  llvm::Value *result = builder.CreateBitCast(callInst, globalValue->getType());
-  moduleTranslation.mapValue(opInst.getResult(0), result);
-  return success();
-}
-
 namespace {
 
 /// Implementation of the dialect interface that converts operations belonging
@@ -1396,9 +1412,6 @@ LogicalResult OpenMPDialectLLVMIRTranslationInterface::convertOperation(
       .Case([&](omp::SingleOp op) {
         return convertOmpSingle(op, builder, moduleTranslation);
       })
-      .Case([&](omp::TaskOp op) {
-        return convertOmpTaskOp(op, builder, moduleTranslation);
-      })
       .Case<omp::YieldOp, omp::TerminatorOp, omp::ReductionDeclareOp,
             omp::CriticalDeclareOp>([](auto op) {
         // `yield` and `terminator` can be just omitted. The block structure
@@ -1410,9 +1423,6 @@ LogicalResult OpenMPDialectLLVMIRTranslationInterface::convertOperation(
         // ignored for lowering. The OpenMP IRBuilder will create unique
         // name for critical section names.
         return success();
-      })
-      .Case([&](omp::ThreadprivateOp) {
-        return convertOmpThreadprivate(*op, builder, moduleTranslation);
       })
       .Default([&](Operation *inst) {
         return inst->emitError("unsupported OpenMP operation: ")

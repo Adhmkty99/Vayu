@@ -35,9 +35,11 @@ void PDLDialect::registerTypes() {
 
 static Type parsePDLType(AsmParser &parser) {
   StringRef typeTag;
+  if (parser.parseKeyword(&typeTag))
+    return Type();
   {
     Type genType;
-    auto parseResult = generatedTypeParser(parser, &typeTag, genType);
+    auto parseResult = generatedTypeParser(parser, typeTag, genType);
     if (parseResult.hasValue())
       return genType;
   }

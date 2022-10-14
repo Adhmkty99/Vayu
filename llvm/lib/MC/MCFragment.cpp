@@ -376,7 +376,7 @@ LLVM_DUMP_METHOD void MCFragment::dump() const {
     if (AF->hasEmitNops())
       OS << " (emit nops)";
     OS << "\n       ";
-    OS << " Alignment:" << AF->getAlignment().value()
+    OS << " Alignment:" << AF->getAlignment()
        << " Value:" << AF->getValue() << " ValueSize:" << AF->getValueSize()
        << " MaxBytesToEmit:" << AF->getMaxBytesToEmit() << ">";
     break;

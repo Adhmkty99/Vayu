@@ -24,7 +24,6 @@
 
 namespace llvm {
 
-class Any;
 class DiagnosticInfo;
 enum DiagnosticSeverity : char;
 class Function;
@@ -203,11 +202,6 @@ public:
   /// diagnostics.
   void setDiagnosticsHotnessRequested(bool Requested);
 
-  bool getMisExpectWarningRequested() const;
-  void setMisExpectWarningRequested(bool Requested);
-  void setDiagnosticsMisExpectTolerance(Optional<uint64_t> Tolerance);
-  uint64_t getDiagnosticsMisExpectTolerance() const;
-
   /// Return the minimum hotness value a diagnostic would need in order
   /// to be included in optimization diagnostics.
   ///
@@ -322,10 +316,6 @@ public:
 
   /// Whether typed pointers are supported. If false, all pointers are opaque.
   bool supportsTypedPointers() const;
-
-  /// Optionally target-spcific data can be attached to the context for lifetime
-  /// management and bypassing layering restrictions.
-  llvm::Any &getTargetData() const;
 
 private:
   // Module needs access to the add/removeModule methods.

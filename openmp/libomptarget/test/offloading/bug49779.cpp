@@ -2,8 +2,7 @@
 // RUN:   env LIBOMPTARGET_STACK_SIZE=2048 %libomptarget-run-generic
 
 // UNSUPPORTED: amdgcn-amd-amdhsa
-// UNSUPPORTED: amdgcn-amd-amdhsa-oldDriver
-// UNSUPPORTED: amdgcn-amd-amdhsa-LTO
+// UNSUPPORTED: amdgcn-amd-amdhsa-newDriver
 
 #include <cassert>
 #include <iostream>

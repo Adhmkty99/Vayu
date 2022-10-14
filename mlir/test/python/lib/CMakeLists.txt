@@ -27,6 +27,7 @@ add_mlir_public_c_api_library(MLIRCAPIPythonTestDialect
   LINK_LIBS PUBLIC
   MLIRCAPIInterfaces
   MLIRCAPIIR
+  MLIRCAPIRegistration
   MLIRPythonTestDialect
 )
 

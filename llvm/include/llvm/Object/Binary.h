@@ -50,8 +50,6 @@ protected:
 
     ID_WinRes, // Windows resource (.res) file.
 
-    ID_Offload, // Offloading binary file.
-
     // Object and children.
     ID_StartObjects,
     ID_COFF,
@@ -134,8 +132,6 @@ public:
   bool isXCOFF() const { return TypeID == ID_XCOFF32 || TypeID == ID_XCOFF64; }
 
   bool isWasm() const { return TypeID == ID_Wasm; }
-
-  bool isOffloadFile() const { return TypeID == ID_Offload; }
 
   bool isCOFFImportFile() const {
     return TypeID == ID_COFFImportFile;

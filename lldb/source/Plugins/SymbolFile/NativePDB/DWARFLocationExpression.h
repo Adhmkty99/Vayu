@@ -12,7 +12,6 @@
 #include "lldb/lldb-forward.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/DebugInfo/CodeView/CodeView.h"
-#include <map>
 
 namespace llvm {
 class APSInt;
@@ -42,7 +41,7 @@ DWARFExpression MakeConstantLocationExpression(
     llvm::codeview::TypeIndex underlying_ti, llvm::pdb::TpiStream &tpi,
     const llvm::APSInt &constant, lldb::ModuleSP module);
 DWARFExpression MakeEnregisteredLocationExpressionForClass(
-    std::map<uint64_t, std::pair<llvm::codeview::RegisterId, uint32_t>>
+    llvm::ArrayRef<std::pair<llvm::codeview::RegisterId, uint32_t>>
         &members_info,
     lldb::ModuleSP module);
 } // namespace npdb

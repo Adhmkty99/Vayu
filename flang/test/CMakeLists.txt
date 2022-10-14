@@ -55,12 +55,8 @@ set(FLANG_TEST_DEPENDS
   fir-opt
   tco
   bbc
-  llvm-dis
   llvm-objdump
   split-file
-  FortranRuntime
-  Fortran_main
-  FortranDecimal
 )
 
 if (FLANG_INCLUDE_TESTS)

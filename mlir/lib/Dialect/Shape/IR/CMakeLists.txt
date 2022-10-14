@@ -2,7 +2,7 @@ set(LLVM_TARGET_DEFINITIONS ShapeCanonicalization.td)
 mlir_tablegen(ShapeCanonicalization.inc -gen-rewriters)
 add_public_tablegen_target(MLIRShapeCanonicalizationIncGen)
 
-add_mlir_dialect_library(MLIRShapeDialect
+add_mlir_dialect_library(MLIRShape
   Shape.cpp
 
   ADDITIONAL_HEADER_DIRS
@@ -12,14 +12,13 @@ add_mlir_dialect_library(MLIRShapeDialect
   MLIRShapeOpsIncGen
 
   LINK_LIBS PUBLIC
-  MLIRArithmeticDialect
-  MLIRCallInterfaces
+  MLIRArithmetic
   MLIRCastInterfaces
   MLIRControlFlowInterfaces
   MLIRDialect
-  MLIRFuncDialect
+  MLIRFunc
   MLIRInferTypeOpInterface
   MLIRIR
   MLIRSideEffectInterfaces
-  MLIRTensorDialect
+  MLIRTensor
   )

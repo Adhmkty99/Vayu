@@ -351,7 +351,8 @@ SetVector<Block *> getTopologicallySortedBlocks(Region &region);
 /// report it to `loc` and return nullptr.
 llvm::Constant *getLLVMConstant(llvm::Type *llvmType, Attribute attr,
                                 Location loc,
-                                const ModuleTranslation &moduleTranslation);
+                                const ModuleTranslation &moduleTranslation,
+                                bool isTopLevel = true);
 
 /// Creates a call to an LLVM IR intrinsic function with the given arguments.
 llvm::Value *createIntrinsicCall(llvm::IRBuilderBase &builder,

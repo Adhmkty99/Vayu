@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "sanitizer_common/sanitizer_platform.h"
-#if SANITIZER_APPLE
+#if SANITIZER_MAC
 
 #include "asan_interceptors.h"
 #include "asan_report.h"

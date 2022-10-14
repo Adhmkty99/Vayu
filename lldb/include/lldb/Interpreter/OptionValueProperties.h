@@ -152,10 +152,6 @@ public:
   GetPropertyAtIndexAsOptionValueSInt64(const ExecutionContext *exe_ctx,
                                         uint32_t idx) const;
 
-  OptionValueUInt64 *
-  GetPropertyAtIndexAsOptionValueUInt64(const ExecutionContext *exe_ctx,
-                                        uint32_t idx) const;
-
   int64_t GetPropertyAtIndexAsSInt64(const ExecutionContext *exe_ctx,
                                      uint32_t idx, int64_t fail_value) const;
 

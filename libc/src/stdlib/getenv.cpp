@@ -32,10 +32,8 @@ LLVM_LIBC_FUNCTION(char *, getenv, (const char *name)) {
     if (cur[env_var_name.size()] != '=')
       continue;
 
-    // Remove the name and the equals sign.
-    cur.remove_prefix(env_var_name.size() + 1);
-    // We know that data is null terminated, so this is safe.
-    return const_cast<char *>(cur.data());
+    return const_cast<char *>(
+        cur.remove_prefix(env_var_name.size() + 1).data());
   }
 
   return nullptr;

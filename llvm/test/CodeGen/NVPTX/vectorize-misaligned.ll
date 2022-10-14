@@ -1,6 +1,4 @@
 ; RUN: llc < %s | FileCheck %s
-; RUN: %if ptxas %{ llc < %s | %ptxas-verify %}
-
 target triple = "nvptx64-nvidia-cuda"
 
 ; CHECK-LABEL: test1

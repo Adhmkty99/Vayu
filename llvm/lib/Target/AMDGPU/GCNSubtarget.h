@@ -58,143 +58,137 @@ protected:
   // Basic subtarget description.
   Triple TargetTriple;
   AMDGPU::IsaInfo::AMDGPUTargetID TargetID;
-  unsigned Gen = INVALID;
+  unsigned Gen;
   InstrItineraryData InstrItins;
-  int LDSBankCount = 0;
-  unsigned MaxPrivateElementSize = 0;
+  int LDSBankCount;
+  unsigned MaxPrivateElementSize;
 
   // Possibly statically set by tablegen, but may want to be overridden.
-  bool FastFMAF32 = false;
-  bool FastDenormalF32 = false;
-  bool HalfRate64Ops = false;
-  bool FullRate64Ops = false;
+  bool FastFMAF32;
+  bool FastDenormalF32;
+  bool HalfRate64Ops;
+  bool FullRate64Ops;
 
   // Dynamically set bits that enable features.
-  bool FlatForGlobal = false;
-  bool AutoWaitcntBeforeBarrier = false;
-  bool UnalignedScratchAccess = false;
-  bool UnalignedAccessMode = false;
-  bool HasApertureRegs = false;
-  bool SupportsXNACK = false;
+  bool FlatForGlobal;
+  bool AutoWaitcntBeforeBarrier;
+  bool BackOffBarrier;
+  bool UnalignedScratchAccess;
+  bool UnalignedAccessMode;
+  bool HasApertureRegs;
+  bool SupportsXNACK;
 
   // This should not be used directly. 'TargetID' tracks the dynamic settings
   // for XNACK.
-  bool EnableXNACK = false;
+  bool EnableXNACK;
 
-  bool EnableTgSplit = false;
-  bool EnableCuMode = false;
-  bool TrapHandler = false;
+  bool EnableTgSplit;
+  bool EnableCuMode;
+  bool TrapHandler;
 
   // Used as options.
-  bool EnableLoadStoreOpt = false;
-  bool EnableUnsafeDSOffsetFolding = false;
-  bool EnableSIScheduler = false;
-  bool EnableDS128 = false;
-  bool EnablePRTStrictNull = false;
-  bool DumpCode = false;
+  bool EnableLoadStoreOpt;
+  bool EnableUnsafeDSOffsetFolding;
+  bool EnableSIScheduler;
+  bool EnableDS128;
+  bool EnablePRTStrictNull;
+  bool DumpCode;
 
   // Subtarget statically properties set by tablegen
-  bool FP64 = false;
-  bool FMA = false;
-  bool MIMG_R128 = false;
-  bool CIInsts = false;
-  bool GFX8Insts = false;
-  bool GFX9Insts = false;
-  bool GFX90AInsts = false;
-  bool GFX940Insts = false;
-  bool GFX10Insts = false;
-  bool GFX11Insts = false;
-  bool GFX10_3Insts = false;
-  bool GFX7GFX8GFX9Insts = false;
-  bool SGPRInitBug = false;
-  bool UserSGPRInit16Bug = false;
-  bool NegativeScratchOffsetBug = false;
-  bool NegativeUnalignedScratchOffsetBug = false;
-  bool HasSMemRealTime = false;
-  bool HasIntClamp = false;
-  bool HasFmaMixInsts = false;
-  bool HasMovrel = false;
-  bool HasVGPRIndexMode = false;
-  bool HasScalarStores = false;
-  bool HasScalarAtomics = false;
-  bool HasSDWAOmod = false;
-  bool HasSDWAScalar = false;
-  bool HasSDWASdst = false;
-  bool HasSDWAMac = false;
-  bool HasSDWAOutModsVOPC = false;
-  bool HasDPP = false;
-  bool HasDPP8 = false;
-  bool Has64BitDPP = false;
-  bool HasPackedFP32Ops = false;
-  bool HasImageInsts = false;
-  bool HasExtendedImageInsts = false;
-  bool HasR128A16 = false;
-  bool HasGFX10A16 = false;
-  bool HasG16 = false;
-  bool HasNSAEncoding = false;
-  unsigned NSAMaxSize = 0;
-  bool GFX10_AEncoding = false;
-  bool GFX10_BEncoding = false;
-  bool HasDLInsts = false;
-  bool HasDot1Insts = false;
-  bool HasDot2Insts = false;
-  bool HasDot3Insts = false;
-  bool HasDot4Insts = false;
-  bool HasDot5Insts = false;
-  bool HasDot6Insts = false;
-  bool HasDot7Insts = false;
-  bool HasDot8Insts = false;
-  bool HasMAIInsts = false;
-  bool HasFP8Insts = false;
-  bool HasPkFmacF16Inst = false;
-  bool HasAtomicFaddRtnInsts = false;
-  bool HasAtomicFaddNoRtnInsts = false;
-  bool HasAtomicPkFaddNoRtnInsts = false;
-  bool SupportsSRAMECC = false;
+  bool FP64;
+  bool FMA;
+  bool MIMG_R128;
+  bool CIInsts;
+  bool GFX8Insts;
+  bool GFX9Insts;
+  bool GFX90AInsts;
+  bool GFX940Insts;
+  bool GFX10Insts;
+  bool GFX10_3Insts;
+  bool GFX7GFX8GFX9Insts;
+  bool SGPRInitBug;
+  bool NegativeScratchOffsetBug;
+  bool NegativeUnalignedScratchOffsetBug;
+  bool HasSMemRealTime;
+  bool HasIntClamp;
+  bool HasFmaMixInsts;
+  bool HasMovrel;
+  bool HasVGPRIndexMode;
+  bool HasScalarStores;
+  bool HasScalarAtomics;
+  bool HasSDWAOmod;
+  bool HasSDWAScalar;
+  bool HasSDWASdst;
+  bool HasSDWAMac;
+  bool HasSDWAOutModsVOPC;
+  bool HasDPP;
+  bool HasDPP8;
+  bool Has64BitDPP;
+  bool HasPackedFP32Ops;
+  bool HasImageInsts;
+  bool HasExtendedImageInsts;
+  bool HasR128A16;
+  bool HasGFX10A16;
+  bool HasG16;
+  bool HasNSAEncoding;
+  unsigned NSAMaxSize;
+  bool GFX10_AEncoding;
+  bool GFX10_BEncoding;
+  bool HasDLInsts;
+  bool HasDot1Insts;
+  bool HasDot2Insts;
+  bool HasDot3Insts;
+  bool HasDot4Insts;
+  bool HasDot5Insts;
+  bool HasDot6Insts;
+  bool HasDot7Insts;
+  bool HasMAIInsts;
+  bool HasPkFmacF16Inst;
+  bool HasAtomicFaddInsts;
+  bool SupportsSRAMECC;
 
   // This should not be used directly. 'TargetID' tracks the dynamic settings
   // for SRAMECC.
-  bool EnableSRAMECC = false;
+  bool EnableSRAMECC;
 
-  bool HasNoSdstCMPX = false;
-  bool HasVscnt = false;
-  bool HasGetWaveIdInst = false;
-  bool HasSMemTimeInst = false;
-  bool HasShaderCyclesRegister = false;
-  bool HasVOP3Literal = false;
-  bool HasNoDataDepHazard = false;
-  bool FlatAddressSpace = false;
-  bool FlatInstOffsets = false;
-  bool FlatGlobalInsts = false;
-  bool FlatScratchInsts = false;
-  bool ScalarFlatScratchInsts = false;
-  bool HasArchitectedFlatScratch = false;
-  bool EnableFlatScratch = false;
-  bool AddNoCarryInsts = false;
-  bool HasUnpackedD16VMem = false;
-  bool LDSMisalignedBug = false;
-  bool HasMFMAInlineLiteralBug = false;
-  bool UnalignedBufferAccess = false;
-  bool UnalignedDSAccess = false;
-  bool HasPackedTID = false;
-  bool ScalarizeGlobal = false;
+  bool HasNoSdstCMPX;
+  bool HasVscnt;
+  bool HasGetWaveIdInst;
+  bool HasSMemTimeInst;
+  bool HasShaderCyclesRegister;
+  bool HasVOP3Literal;
+  bool HasNoDataDepHazard;
+  bool FlatAddressSpace;
+  bool FlatInstOffsets;
+  bool FlatGlobalInsts;
+  bool FlatScratchInsts;
+  bool ScalarFlatScratchInsts;
+  bool HasArchitectedFlatScratch;
+  bool EnableFlatScratch;
+  bool AddNoCarryInsts;
+  bool HasUnpackedD16VMem;
+  bool LDSMisalignedBug;
+  bool HasMFMAInlineLiteralBug;
+  bool UnalignedBufferAccess;
+  bool UnalignedDSAccess;
+  bool HasPackedTID;
+  bool ScalarizeGlobal;
 
-  bool HasVcmpxPermlaneHazard = false;
-  bool HasVMEMtoScalarWriteHazard = false;
-  bool HasSMEMtoVectorWriteHazard = false;
-  bool HasInstFwdPrefetchBug = false;
-  bool HasVcmpxExecWARHazard = false;
-  bool HasLdsBranchVmemWARHazard = false;
-  bool HasNSAtoVMEMBug = false;
-  bool HasNSAClauseBug = false;
-  bool HasOffset3fBug = false;
-  bool HasFlatSegmentOffsetBug = false;
-  bool HasImageStoreD16Bug = false;
-  bool HasImageGather4D16Bug = false;
-  bool HasVOPDInsts = false;
+  bool HasVcmpxPermlaneHazard;
+  bool HasVMEMtoScalarWriteHazard;
+  bool HasSMEMtoVectorWriteHazard;
+  bool HasInstFwdPrefetchBug;
+  bool HasVcmpxExecWARHazard;
+  bool HasLdsBranchVmemWARHazard;
+  bool HasNSAtoVMEMBug;
+  bool HasNSAClauseBug;
+  bool HasOffset3fBug;
+  bool HasFlatSegmentOffsetBug;
+  bool HasImageStoreD16Bug;
+  bool HasImageGather4D16Bug;
 
   // Dummy feature to use for assembler in tablegen.
-  bool FeatureDisable = false;
+  bool FeatureDisable;
 
   SelectionDAGTargetInfo TSInfo;
 private:
@@ -203,6 +197,9 @@ private:
   SIFrameLowering FrameLowering;
 
 public:
+  // See COMPUTE_TMPRING_SIZE.WAVESIZE, 13-bit field in units of 256-dword.
+  static const unsigned MaxWaveScratchSize = (256 * 4) * ((1 << 13) - 1);
+
   GCNSubtarget(const Triple &TT, StringRef GPU, StringRef FS,
                const GCNTargetMachine &TM);
   ~GCNSubtarget() override;
@@ -265,19 +262,9 @@ public:
     return (Generation)Gen;
   }
 
-  unsigned getMaxWaveScratchSize() const {
-    // See COMPUTE_TMPRING_SIZE.WAVESIZE.
-    if (getGeneration() < GFX11) {
-      // 13-bit field in units of 256-dword.
-      return (256 * 4) * ((1 << 13) - 1);
-    }
-    // 15-bit field in units of 64-dword.
-    return (64 * 4) * ((1 << 15) - 1);
-  }
-
   /// Return the number of high bits known to be zero for a frame index.
   unsigned getKnownHighZeroBitsForFrameIndex() const {
-    return countLeadingZeros(getMaxWaveScratchSize()) + getWavefrontSizeLog2();
+    return countLeadingZeros(MaxWaveScratchSize) + getWavefrontSizeLog2();
   }
 
   int getLDSBankCount() const {
@@ -507,6 +494,12 @@ public:
     return AutoWaitcntBeforeBarrier;
   }
 
+  /// \returns true if the target supports backing off of s_barrier instructions
+  /// when an exception is raised.
+  bool supportsBackOffBarrier() const {
+    return BackOffBarrier;
+  }
+
   bool hasUnalignedBufferAccess() const {
     return UnalignedBufferAccess;
   }
@@ -578,7 +571,7 @@ public:
     return hasFlatScratchInsts() && (hasGFX10_3Insts() || hasGFX940Insts());
   }
 
-  bool hasFlatScratchSVSMode() const { return GFX940Insts || GFX11Insts; }
+  bool hasFlatScratchSVSMode() const { return GFX940Insts; }
 
   bool hasScalarFlatScratchInsts() const {
     return ScalarFlatScratchInsts;
@@ -714,16 +707,8 @@ public:
     return HasDot7Insts;
   }
 
-  bool hasDot8Insts() const {
-    return HasDot8Insts;
-  }
-
   bool hasMAIInsts() const {
     return HasMAIInsts;
-  }
-
-  bool hasFP8Insts() const {
-    return HasFP8Insts;
   }
 
   bool hasPkFmacF16Inst() const {
@@ -731,14 +716,8 @@ public:
   }
 
   bool hasAtomicFaddInsts() const {
-    return HasAtomicFaddRtnInsts || HasAtomicFaddNoRtnInsts;
+    return HasAtomicFaddInsts;
   }
-
-  bool hasAtomicFaddRtnInsts() const { return HasAtomicFaddRtnInsts; }
-
-  bool hasAtomicFaddNoRtnInsts() const { return HasAtomicFaddNoRtnInsts; }
-
-  bool hasAtomicPkFaddNoRtnInsts() const { return HasAtomicPkFaddNoRtnInsts; }
 
   bool hasNoSdstCMPX() const {
     return HasNoSdstCMPX;
@@ -841,9 +820,6 @@ public:
   /// \returns true if the subtarget has the v_permlanex16_b32 instruction.
   bool hasPermLaneX16() const { return getGeneration() >= GFX10; }
 
-  /// \returns true if the subtarget has the v_permlane64_b32 instruction.
-  bool hasPermLane64() const { return getGeneration() >= GFX11; }
-
   bool hasDPP() const {
     return HasDPP;
   }
@@ -934,10 +910,6 @@ public:
     return SGPRInitBug;
   }
 
-  bool hasUserSGPRInit16Bug() const {
-    return UserSGPRInit16Bug && isWave32();
-  }
-
   bool hasNegativeScratchOffsetBug() const { return NegativeScratchOffsetBug; }
 
   bool hasNegativeUnalignedScratchOffsetBug() const {
@@ -964,14 +936,6 @@ public:
   bool hasReadM0SendMsgHazard() const {
     return getGeneration() >= AMDGPUSubtarget::VOLCANIC_ISLANDS &&
            getGeneration() <= AMDGPUSubtarget::GFX9;
-  }
-
-  bool hasReadM0LdsDmaHazard() const {
-    return getGeneration() == AMDGPUSubtarget::GFX9;
-  }
-
-  bool hasReadM0LdsDirectHazard() const {
-    return getGeneration() == AMDGPUSubtarget::GFX9;
   }
 
   bool hasVcmpxPermlaneHazard() const {
@@ -1028,36 +992,8 @@ public:
 
   bool hasGFX90AInsts() const { return GFX90AInsts; }
 
-  bool hasVOP3DPP() const { return getGeneration() >= GFX11; }
-
-  bool hasLdsDirect() const { return getGeneration() >= GFX11; }
-
-  bool hasVALUPartialForwardingHazard() const {
-    return getGeneration() >= GFX11;
-  }
-
-  bool hasVALUTransUseHazard() const { return getGeneration() >= GFX11; }
-
   /// Return if operations acting on VGPR tuples require even alignment.
   bool needsAlignedVGPRs() const { return GFX90AInsts; }
-
-  /// Return true if the target has the S_PACK_HL_B32_B16 instruction.
-  bool hasSPackHL() const { return GFX11Insts; }
-
-  /// Return true if the target's EXP instruction has the COMPR flag, which
-  /// affects the meaning of the EN (enable) bits.
-  bool hasCompressedExport() const { return !GFX11Insts; }
-
-  /// Return true if the target's EXP instruction supports the NULL export
-  /// target.
-  bool hasNullExportTarget() const { return !GFX11Insts; }
-
-  bool hasVOPDInsts() const { return HasVOPDInsts; }
-
-  bool hasFlatScratchSVSSwizzleBug() const { return getGeneration() == GFX11; }
-
-  /// Return true if the target has the S_DELAY_ALU instruction.
-  bool hasDelayAlu() const { return GFX11Insts; }
 
   bool hasPackedTID() const { return HasPackedTID; }
 
@@ -1095,9 +1031,6 @@ public:
   bool hasMergedShaders() const {
     return getGeneration() >= GFX9;
   }
-
-  // \returns true if the target supports the pre-NGG legacy geometry path.
-  bool hasLegacyGeometry() const { return getGeneration() < GFX11; }
 
   /// \returns SGPR allocation granularity supported by the subtarget.
   unsigned getSGPRAllocGranule() const {
@@ -1279,10 +1212,6 @@ public:
 
   void adjustSchedDependency(SUnit *Def, int DefOpIdx, SUnit *Use, int UseOpIdx,
                              SDep &Dep) const override;
-
-  // \returns true if it's beneficial on this subtarget for the scheduler to
-  // cluster stores as well as loads.
-  bool shouldClusterStores() const { return getGeneration() >= GFX11; }
 };
 
 } // end namespace llvm

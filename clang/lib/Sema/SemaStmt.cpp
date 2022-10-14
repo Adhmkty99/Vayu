@@ -341,7 +341,7 @@ void Sema::DiagnoseUnusedExprResult(const Stmt *S, unsigned DiagID) {
       return DiagnoseUnusedExprResult(POE->getSemanticExpr(0), DiagID);
     if (isa<ObjCSubscriptRefExpr>(Source))
       DiagID = diag::warn_unused_container_subscript_expr;
-    else if (isa<ObjCPropertyRefExpr>(Source))
+    else
       DiagID = diag::warn_unused_property_expr;
   } else if (const CXXFunctionalCastExpr *FC
                                        = dyn_cast<CXXFunctionalCastExpr>(E)) {
@@ -442,16 +442,7 @@ StmtResult Sema::ActOnCompoundStmt(SourceLocation L, SourceLocation R,
       DiagnoseEmptyLoopBody(Elts[i], Elts[i + 1]);
   }
 
-  // Calculate difference between FP options in this compound statement and in
-  // the enclosing one. If this is a function body, take the difference against
-  // default options. In this case the difference will indicate options that are
-  // changed upon entry to the statement.
-  FPOptions FPO = (getCurFunction()->CompoundScopes.size() == 1)
-                      ? FPOptions(getLangOpts())
-                      : getCurCompoundScope().InitialFPFeatures;
-  FPOptionsOverride FPDiff = getCurFPFeatures().getChangesFrom(FPO);
-
-  return CompoundStmt::Create(Context, Elts, FPDiff, L, R);
+  return CompoundStmt::Create(Context, Elts, L, R);
 }
 
 ExprResult
@@ -897,7 +888,8 @@ StmtResult Sema::ActOnIfStmt(SourceLocation IfLoc,
     CommaVisitor(*this).Visit(CondExpr);
 
   if (!ConstevalOrNegatedConsteval && !elseStmt)
-    DiagnoseEmptyStmtBody(RParenLoc, thenStmt, diag::warn_empty_if_body);
+    DiagnoseEmptyStmtBody(CondExpr->getEndLoc(), thenStmt,
+                          diag::warn_empty_if_body);
 
   if (ConstevalOrNegatedConsteval ||
       StatementKind == IfStatementKind::Constexpr) {
@@ -3320,7 +3312,7 @@ Sema::ActOnContinueStmt(SourceLocation ContinueLoc, Scope *CurScope) {
     // C99 6.8.6.2p1: A break shall appear only in or as a loop body.
     return StmtError(Diag(ContinueLoc, diag::err_continue_not_in_loop));
   }
-  if (S->isConditionVarScope()) {
+  if (S->getFlags() & Scope::ConditionVarScope) {
     // We cannot 'continue;' from within a statement expression in the
     // initializer of a condition variable because we would jump past the
     // initialization of that variable.

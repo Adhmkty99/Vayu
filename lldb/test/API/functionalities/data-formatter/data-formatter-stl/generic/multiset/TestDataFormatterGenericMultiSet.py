@@ -14,6 +14,8 @@ USE_LIBCPP = "USE_LIBCPP"
 
 class GenericMultiSetDataFormatterTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         TestBase.setUp(self)
         self.namespace = 'std'

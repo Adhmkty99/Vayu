@@ -206,7 +206,7 @@ template <typename CalleeTy> struct FunctionInfo {
 
     O << "    allocas uses:\n";
     if (F) {
-      for (const auto &I : instructions(F)) {
+      for (auto &I : instructions(F)) {
         if (const AllocaInst *AI = dyn_cast<AllocaInst>(&I)) {
           auto &AS = Allocas.find(AI)->second;
           O << "      " << AI->getName() << "["
@@ -383,9 +383,9 @@ bool StackSafetyLocalAnalysis::isSafeAccess(const Use &U, AllocaInst *AI,
   const SCEV *Max = SE.getMinusSCEV(ToDiffTy(SE.getConstant(Size.getUpper())),
                                     ToDiffTy(AccessSize));
   return SE.evaluatePredicateAt(ICmpInst::Predicate::ICMP_SGE, Diff, Min, I)
-             .value_or(false) &&
+             .getValueOr(false) &&
          SE.evaluatePredicateAt(ICmpInst::Predicate::ICMP_SLE, Diff, Max, I)
-             .value_or(false);
+             .getValueOr(false);
 }
 
 /// The function analyzes all local uses of Ptr (alloca or argument) and
@@ -763,7 +763,7 @@ const ConstantRange *findParamAccess(const FunctionSummary &FS,
                                      uint32_t ParamNo) {
   assert(FS.isLive());
   assert(FS.isDSOLocal());
-  for (const auto &PS : FS.paramAccesses())
+  for (auto &PS : FS.paramAccesses())
     if (ParamNo == PS.ParamNo)
       return &PS.Use;
   return nullptr;
@@ -823,7 +823,7 @@ GVToSSI createGlobalStackSafetyInfo(
       Copy.begin()->first->getParent()->getDataLayout().getPointerSizeInBits();
   StackSafetyDataFlowAnalysis<GlobalValue> SSDFA(PointerSize, std::move(Copy));
 
-  for (const auto &F : SSDFA.run()) {
+  for (auto &F : SSDFA.run()) {
     auto FI = F.second;
     auto &SrcF = Functions[F.first];
     for (auto &KV : FI.Allocas) {
@@ -922,7 +922,7 @@ StackSafetyInfo::getParamAccesses(ModuleSummaryIndex &Index) const {
     FunctionSummary::ParamAccess &Param = ParamAccesses.back();
 
     Param.Calls.reserve(PS.Calls.size());
-    for (const auto &C : PS.Calls) {
+    for (auto &C : PS.Calls) {
       // Parameter forwarded into another function by any or unknown offset
       // will make ParamAccess::Range as FullSet anyway. So we can drop the
       // entire parameter like we did above.
@@ -978,7 +978,7 @@ void StackSafetyGlobalInfo::print(raw_ostream &O) const {
   if (SSI.empty())
     return;
   const Module &M = *SSI.begin()->first->getParent();
-  for (const auto &F : M.functions()) {
+  for (auto &F : M.functions()) {
     if (!F.isDeclaration()) {
       SSI.find(&F)->second.print(O, F.getName(), &F);
       O << "    safe accesses:"
@@ -1094,7 +1094,7 @@ bool StackSafetyGlobalInfoWrapperPass::runOnModule(Module &M) {
 bool llvm::needsParamAccessSummary(const Module &M) {
   if (StackSafetyRun)
     return true;
-  for (const auto &F : M.functions())
+  for (auto &F : M.functions())
     if (F.hasFnAttribute(Attribute::SanitizeMemTag))
       return true;
   return false;
@@ -1126,13 +1126,13 @@ void llvm::generateParamAccessSummary(ModuleSummaryIndex &Index) {
         continue;
       if (FS->isLive() && FS->isDSOLocal()) {
         FunctionInfo<FunctionSummary> FI;
-        for (const auto &PS : FS->paramAccesses()) {
+        for (auto &PS : FS->paramAccesses()) {
           auto &US =
               FI.Params
                   .emplace(PS.ParamNo, FunctionSummary::ParamAccess::RangeWidth)
                   .first->second;
           US.Range = PS.Use;
-          for (const auto &Call : PS.Calls) {
+          for (auto &Call : PS.Calls) {
             assert(!Call.Offsets.isFullSet());
             FunctionSummary *S =
                 findCalleeFunctionSummary(Call.Callee, FS->modulePath());
@@ -1158,10 +1158,10 @@ void llvm::generateParamAccessSummary(ModuleSummaryIndex &Index) {
   NumCombinedDataFlowNodes += Functions.size();
   StackSafetyDataFlowAnalysis<FunctionSummary> SSDFA(
       FunctionSummary::ParamAccess::RangeWidth, std::move(Functions));
-  for (const auto &KV : SSDFA.run()) {
+  for (auto &KV : SSDFA.run()) {
     std::vector<FunctionSummary::ParamAccess> NewParams;
     NewParams.reserve(KV.second.Params.size());
-    for (const auto &Param : KV.second.Params) {
+    for (auto &Param : KV.second.Params) {
       // It's not needed as FullSet is processed the same as a missing value.
       if (Param.second.Range.isFullSet())
         continue;

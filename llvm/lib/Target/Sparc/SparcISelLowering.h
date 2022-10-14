@@ -48,9 +48,7 @@ namespace llvm {
 
       TLS_ADD,     // For Thread Local Storage (TLS).
       TLS_LD,
-      TLS_CALL,
-
-      LOAD_GDOP,   // Load operation w/ gdop relocation.
+      TLS_CALL
     };
   }
 

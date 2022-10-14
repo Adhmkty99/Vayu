@@ -44,7 +44,7 @@ bool containsEscapedCharacters(const MatchFinder::MatchResult &Result,
                                const StringLiteral *Literal,
                                const CharsBitSet &DisallowedChars) {
   // FIXME: Handle L"", u8"", u"" and U"" literals.
-  if (!Literal->isOrdinary())
+  if (!Literal->isAscii())
     return false;
 
   for (const unsigned char C : Literal->getBytes())

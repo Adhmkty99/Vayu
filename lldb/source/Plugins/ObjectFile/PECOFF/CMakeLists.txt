@@ -5,14 +5,6 @@ else()
   set(DBGHELP_LINK_FILES "")
 endif()
 
-lldb_tablegen(ObjectFilePECOFFProperties.inc -gen-lldb-property-defs
-  SOURCE ObjectFilePECOFFProperties.td
-  TARGET LLDBPluginObjectFilePECOFFPropertiesGen)
-
-lldb_tablegen(ObjectFilePECOFFPropertiesEnum.inc -gen-lldb-property-enum-defs
-  SOURCE ObjectFilePECOFFProperties.td
-  TARGET LLDBPluginObjectFilePECOFFPropertiesEnumGen)
-
 add_lldb_library(lldbPluginObjectFilePECOFF PLUGIN
   ObjectFilePECOFF.cpp
   PECallFrameInfo.cpp
@@ -28,7 +20,3 @@ add_lldb_library(lldbPluginObjectFilePECOFF PLUGIN
     BinaryFormat
     Support
   )
-
-add_dependencies(lldbPluginObjectFilePECOFF
-  LLDBPluginObjectFilePECOFFPropertiesGen
-  LLDBPluginObjectFilePECOFFPropertiesEnumGen)

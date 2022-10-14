@@ -23,7 +23,7 @@ public:
     // Set up a Module with a dummy function operation inside.
     // Set the insertion point in the function entry block.
     mlir::ModuleOp mod = builder.create<mlir::ModuleOp>(loc);
-    mlir::func::FuncOp func = mlir::func::FuncOp::create(
+    mlir::FuncOp func = mlir::FuncOp::create(
         loc, "func1", builder.getFunctionType(llvm::None, llvm::None));
     auto *entryBlock = func.addEntryBlock();
     mod.push_back(mod);

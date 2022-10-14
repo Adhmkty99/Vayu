@@ -25,7 +25,6 @@ namespace mlir {
 class AffineApplyOp;
 class AffineBound;
 class AffineValueMap;
-class RewriterBase;
 
 /// TODO: These should be renamed if they are on the mlir namespace.
 ///       Ideally, they should go in a mlir::affine:: namespace.
@@ -89,7 +88,7 @@ Region *getAffineScope(Operation *op);
 // of striding).
 class AffineDmaStartOp
     : public Op<AffineDmaStartOp, OpTrait::MemRefsNormalizable,
-                OpTrait::VariadicOperands, OpTrait::ZeroResults,
+                OpTrait::VariadicOperands, OpTrait::ZeroResult,
                 OpTrait::OpInvariants, AffineMapAccessInterface::Trait> {
 public:
   using Op::Op;
@@ -116,7 +115,7 @@ public:
   /// Returns the affine map used to access the source memref.
   AffineMap getSrcMap() { return getSrcMapAttr().getValue(); }
   AffineMapAttr getSrcMapAttr() {
-    return (*this)->getAttr(getSrcMapAttrStrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getSrcMapAttrName()).cast<AffineMapAttr>();
   }
 
   /// Returns the source memref affine map indices for this DMA operation.
@@ -155,7 +154,7 @@ public:
   /// Returns the affine map used to access the destination memref.
   AffineMap getDstMap() { return getDstMapAttr().getValue(); }
   AffineMapAttr getDstMapAttr() {
-    return (*this)->getAttr(getDstMapAttrStrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getDstMapAttrName()).cast<AffineMapAttr>();
   }
 
   /// Returns the destination memref indices for this DMA operation.
@@ -184,7 +183,7 @@ public:
   /// Returns the affine map used to access the tag memref.
   AffineMap getTagMap() { return getTagMapAttr().getValue(); }
   AffineMapAttr getTagMapAttr() {
-    return (*this)->getAttr(getTagMapAttrStrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getTagMapAttrName()).cast<AffineMapAttr>();
   }
 
   /// Returns the tag memref indices for this DMA operation.
@@ -204,14 +203,14 @@ public:
   /// Returns the AffineMapAttr associated with 'memref'.
   NamedAttribute getAffineMapAttrForMemRef(Value memref) {
     if (memref == getSrcMemRef())
-      return {StringAttr::get(getContext(), getSrcMapAttrStrName()),
+      return {StringAttr::get(getContext(), getSrcMapAttrName()),
               getSrcMapAttr()};
     if (memref == getDstMemRef())
-      return {StringAttr::get(getContext(), getDstMapAttrStrName()),
+      return {StringAttr::get(getContext(), getDstMapAttrName()),
               getDstMapAttr()};
     assert(memref == getTagMemRef() &&
            "DmaStartOp expected source, destination or tag memref");
-    return {StringAttr::get(getContext(), getTagMapAttrStrName()),
+    return {StringAttr::get(getContext(), getTagMapAttrName()),
             getTagMapAttr()};
   }
 
@@ -234,9 +233,9 @@ public:
     return isSrcMemorySpaceFaster() ? 0 : getDstMemRefOperandIndex();
   }
 
-  static StringRef getSrcMapAttrStrName() { return "src_map"; }
-  static StringRef getDstMapAttrStrName() { return "dst_map"; }
-  static StringRef getTagMapAttrStrName() { return "tag_map"; }
+  static StringRef getSrcMapAttrName() { return "src_map"; }
+  static StringRef getDstMapAttrName() { return "dst_map"; }
+  static StringRef getTagMapAttrName() { return "tag_map"; }
 
   static StringRef getOperationName() { return "affine.dma_start"; }
   static ParseResult parse(OpAsmParser &parser, OperationState &result);
@@ -282,7 +281,7 @@ public:
 //
 class AffineDmaWaitOp
     : public Op<AffineDmaWaitOp, OpTrait::MemRefsNormalizable,
-                OpTrait::VariadicOperands, OpTrait::ZeroResults,
+                OpTrait::VariadicOperands, OpTrait::ZeroResult,
                 OpTrait::OpInvariants, AffineMapAccessInterface::Trait> {
 public:
   using Op::Op;
@@ -302,7 +301,7 @@ public:
   /// Returns the affine map used to access the tag memref.
   AffineMap getTagMap() { return getTagMapAttr().getValue(); }
   AffineMapAttr getTagMapAttr() {
-    return (*this)->getAttr(getTagMapAttrStrName()).cast<AffineMapAttr>();
+    return (*this)->getAttr(getTagMapAttrName()).cast<AffineMapAttr>();
   }
 
   /// Returns the tag memref index for this DMA operation.
@@ -320,14 +319,14 @@ public:
   /// associated with 'memref'.
   NamedAttribute getAffineMapAttrForMemRef(Value memref) {
     assert(memref == getTagMemRef());
-    return {StringAttr::get(getContext(), getTagMapAttrStrName()),
+    return {StringAttr::get(getContext(), getTagMapAttrName()),
             getTagMapAttr()};
   }
 
   /// Returns the number of elements transferred by the associated DMA op.
   Value getNumElements() { return getOperand(1 + getTagMap().getNumInputs()); }
 
-  static StringRef getTagMapAttrStrName() { return "tag_map"; }
+  static StringRef getTagMapAttrName() { return "tag_map"; }
   static ParseResult parse(OpAsmParser &parser, OperationState &result);
   void print(OpAsmPrinter &p);
   LogicalResult verifyInvariantsImpl();
@@ -381,39 +380,9 @@ AffineApplyOp makeComposedAffineApply(OpBuilder &b, Location loc, AffineMap map,
 AffineApplyOp makeComposedAffineApply(OpBuilder &b, Location loc, AffineExpr e,
                                       ValueRange values);
 
-/// Constructs an AffineApplyOp that applies `map` to `operands` after composing
-/// the map with the maps of any other AffineApplyOp supplying the operands,
-/// then immediately attempts to fold it. If folding results in a constant
-/// value, erases all created ops. The `map` must be a single-result affine map.
-OpFoldResult makeComposedFoldedAffineApply(RewriterBase &b, Location loc,
-                                           AffineMap map,
-                                           ArrayRef<OpFoldResult> operands);
-/// Variant of `makeComposedFoldedAffineApply` that applies to an expression.
-OpFoldResult makeComposedFoldedAffineApply(RewriterBase &b, Location loc,
-                                           AffineExpr expr,
-                                           ArrayRef<OpFoldResult> operands);
-
-/// Returns an AffineMinOp obtained by composing `map` and `operands` with
-/// AffineApplyOps supplying those operands.
-Value makeComposedAffineMin(OpBuilder &b, Location loc, AffineMap map,
-                            ValueRange operands);
-
-/// Constructs an AffineMinOp that computes a minimum across the results of
-/// applying `map` to `operands`, then immediately attempts to fold it. If
-/// folding results in a constant value, erases all created ops.
-OpFoldResult makeComposedFoldedAffineMin(RewriterBase &b, Location loc,
-                                         AffineMap map,
-                                         ArrayRef<OpFoldResult> operands);
-
 /// Returns the values obtained by applying `map` to the list of values.
 SmallVector<Value, 4> applyMapToValues(OpBuilder &b, Location loc,
                                        AffineMap map, ValueRange values);
-
-/// Returns the values obtained by applying `map` to the list of values, which
-/// may be known constants.
-SmallVector<OpFoldResult> applyMapToValues(RewriterBase &b, Location loc,
-                                           AffineMap map,
-                                           ArrayRef<OpFoldResult> values);
 
 /// Given an affine map `map` and its input `operands`, this method composes
 /// into `map`, maps of AffineApplyOps whose results are the values in

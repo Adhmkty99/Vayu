@@ -775,7 +775,7 @@ bool PPCFastISel::SelectBranch(const Instruction *I) {
       if (!OptPPCPred)
         return false;
 
-      PPC::Predicate PPCPred = *OptPPCPred;
+      PPC::Predicate PPCPred = OptPPCPred.getValue();
 
       // Take advantage of fall-through opportunities.
       if (FuncInfo.MBB->isLayoutSuccessor(TBB)) {

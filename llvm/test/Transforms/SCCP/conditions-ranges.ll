@@ -85,6 +85,7 @@ false: ;%b in [0, 276)
   ret void
 }
 
+; TODO: Use information %a != 0 in false branch.
 define void @f2_ptr(i8* %a, i8* %b) {
 ; CHECK-LABEL: @f2_ptr(
 ; CHECK-NEXT:  entry:
@@ -97,8 +98,10 @@ define void @f2_ptr(i8* %a, i8* %b) {
 ; CHECK-NEXT:    call void @use(i1 [[C_1]])
 ; CHECK-NEXT:    ret void
 ; CHECK:       false:
-; CHECK-NEXT:    call void @use(i1 false)
-; CHECK-NEXT:    call void @use(i1 true)
+; CHECK-NEXT:    [[F_2:%.*]] = icmp eq i8* [[A]], null
+; CHECK-NEXT:    call void @use(i1 [[F_2]])
+; CHECK-NEXT:    [[T_2:%.*]] = icmp ne i8* [[A]], null
+; CHECK-NEXT:    call void @use(i1 [[T_2]])
 ; CHECK-NEXT:    [[C_2:%.*]] = icmp eq i8* [[A]], [[B]]
 ; CHECK-NEXT:    call void @use(i1 [[C_2]])
 ; CHECK-NEXT:    ret void

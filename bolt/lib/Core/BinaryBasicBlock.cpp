@@ -328,7 +328,6 @@ void BinaryBasicBlock::removePredecessor(BinaryBasicBlock *Pred,
     }
   }
   assert(Erased && "Pred is not a predecessor of this block!");
-  (void)Erased;
 }
 
 void BinaryBasicBlock::removeDuplicateConditionalSuccessor(MCInst *CondBranch) {
@@ -544,7 +543,7 @@ BinaryBasicBlock::getBranchStats(const BinaryBasicBlock *Succ) const {
     }
 
     if (TotalCount > 0) {
-      auto Itr = llvm::find(Successors, Succ);
+      auto Itr = std::find(Successors.begin(), Successors.end(), Succ);
       assert(Itr != Successors.end());
       const BinaryBranchInfo &BI = BranchInfo[Itr - Successors.begin()];
       if (BI.Count && BI.Count != COUNT_NO_PROFILE) {
@@ -563,7 +562,7 @@ void BinaryBasicBlock::dump() const {
   if (Label)
     outs() << Label->getName() << ":\n";
   BC.printInstructions(outs(), Instructions.begin(), Instructions.end(),
-                       getOffset(), Function);
+                       getOffset());
   outs() << "preds:";
   for (auto itr = pred_begin(); itr != pred_end(); ++itr) {
     outs() << " " << (*itr)->getName();
@@ -608,7 +607,7 @@ BinaryBasicBlock::getBranchInfo(const MCSymbol *Label) {
 BinaryBasicBlock *BinaryBasicBlock::splitAt(iterator II) {
   assert(II != end() && "expected iterator pointing to instruction");
 
-  BinaryBasicBlock *NewBlock = getFunction()->addBasicBlock();
+  BinaryBasicBlock *NewBlock = getFunction()->addBasicBlock(0);
 
   // Adjust successors/predecessors and propagate the execution count.
   moveAllSuccessorsTo(NewBlock);

@@ -13,6 +13,8 @@ from lldbsuite.test import lldbutil
 
 class ObjCExceptionsTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_objc_exceptions_at_throw(self):
         self.build()
 

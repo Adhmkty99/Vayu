@@ -31,8 +31,10 @@ static IntegerType parseStorageType(DialectAsmParser &parser, bool &isSigned) {
   unsigned storageTypeWidth = 0;
   OptionalParseResult result = parser.parseOptionalType(type);
   if (result.hasValue()) {
-    if (!succeeded(*result))
+    if (!succeeded(*result)) {
+      parser.parseType(type);
       return nullptr;
+    }
     isSigned = !type.isUnsigned();
     storageTypeWidth = type.getWidth();
   } else if (succeeded(parser.parseKeyword(&identifier))) {

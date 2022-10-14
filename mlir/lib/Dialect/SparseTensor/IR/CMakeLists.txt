@@ -1,4 +1,4 @@
-add_mlir_dialect_library(MLIRSparseTensorDialect
+add_mlir_dialect_library(MLIRSparseTensor
   SparseTensorDialect.cpp
 
   ADDITIONAL_HEADER_DIRS
@@ -11,6 +11,5 @@ add_mlir_dialect_library(MLIRSparseTensorDialect
   LINK_LIBS PUBLIC
   MLIRDialect
   MLIRIR
-  MLIRInferTypeOpInterface
   MLIRSupport
   )

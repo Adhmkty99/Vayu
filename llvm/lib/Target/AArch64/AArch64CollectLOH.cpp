@@ -528,8 +528,10 @@ static void handleNormalInst(const MachineInstr &MI, LOHInfo *LOHInfos) {
     // count as MultiUser or block optimization. This is especially important on
     // arm64_32, where any memory operation is likely to be an explicit use of
     // xN and an implicit use of wN (the base address register).
-    if (UsesSeen.insert(Idx).second)
+    if (!UsesSeen.count(Idx)) {
       handleUse(MI, MO, LOHInfos[Idx]);
+      UsesSeen.insert(Idx);
+    }
   }
 }
 
@@ -557,7 +559,7 @@ bool AArch64CollectLOH::runOnMachineFunction(MachineFunction &MF) {
     // Walk the basic block backwards and update the per register state machine
     // in the process.
     for (const MachineInstr &MI :
-         instructionsWithoutDebug(MBB.instr_rbegin(), MBB.instr_rend())) {
+         instructionsWithoutDebug(MBB.rbegin(), MBB.rend())) {
       unsigned Opcode = MI.getOpcode();
       switch (Opcode) {
       case AArch64::ADDXri:

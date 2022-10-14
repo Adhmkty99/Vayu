@@ -12,7 +12,7 @@
 
 // int length(stateT& state, const externT* from, const externT* from_end, size_t max) const;
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 #include <locale>
 #include <cassert>

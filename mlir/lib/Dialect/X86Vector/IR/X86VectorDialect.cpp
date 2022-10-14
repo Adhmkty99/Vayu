@@ -29,13 +29,13 @@ void x86vector::X86VectorDialect::initialize() {
 }
 
 LogicalResult x86vector::MaskCompressOp::verify() {
-  if (getSrc() && getConstantSrc())
+  if (src() && constant_src())
     return emitError("cannot use both src and constant_src");
 
-  if (getSrc() && (getSrc().getType() != getDst().getType()))
+  if (src() && (src().getType() != dst().getType()))
     return emitError("failed to verify that src and dst have same type");
 
-  if (getConstantSrc() && (getConstantSrc()->getType() != getDst().getType()))
+  if (constant_src() && (constant_src()->getType() != dst().getType()))
     return emitError(
         "failed to verify that constant_src and dst have same type");
 

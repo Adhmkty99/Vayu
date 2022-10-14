@@ -815,7 +815,6 @@ void TextDiagnostic::emitDiagnosticLoc(FullSourceLoc Loc, PresumedLoc PLoc,
 
   emitFilename(PLoc.getFilename(), Loc.getManager());
   switch (DiagOpts->getFormat()) {
-  case DiagnosticOptions::SARIF:
   case DiagnosticOptions::Clang:
     if (DiagOpts->ShowLine)
       OS << ':' << LineNo;
@@ -838,7 +837,6 @@ void TextDiagnostic::emitDiagnosticLoc(FullSourceLoc Loc, PresumedLoc PLoc,
       OS << ColNo;
     }
   switch (DiagOpts->getFormat()) {
-  case DiagnosticOptions::SARIF:
   case DiagnosticOptions::Clang:
   case DiagnosticOptions::Vi:    OS << ':';    break;
   case DiagnosticOptions::MSVC:

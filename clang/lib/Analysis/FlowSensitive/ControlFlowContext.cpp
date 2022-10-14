@@ -33,10 +33,10 @@ buildStmtToBasicBlockMap(const CFG &Cfg) {
 
     for (const CFGElement &Element : *Block) {
       auto Stmt = Element.getAs<CFGStmt>();
-      if (!Stmt)
+      if (!Stmt.hasValue())
         continue;
 
-      StmtToBlock[Stmt.value().getStmt()] = Block;
+      StmtToBlock[Stmt.getValue().getStmt()] = Block;
     }
     if (const Stmt *TerminatorStmt = Block->getTerminatorStmt())
       StmtToBlock[TerminatorStmt] = Block;

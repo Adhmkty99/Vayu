@@ -345,13 +345,13 @@ static unsigned scanFromBlock(const CFGBlock *Start,
         if (!UB)
           break;
 
-        if (!TreatAllSuccessorsAsReachable) {
+        if (!TreatAllSuccessorsAsReachable.hasValue()) {
           assert(PP);
           TreatAllSuccessorsAsReachable =
             shouldTreatSuccessorsAsReachable(item, *PP);
         }
 
-        if (*TreatAllSuccessorsAsReachable) {
+        if (TreatAllSuccessorsAsReachable.getValue()) {
           B = UB;
           break;
         }

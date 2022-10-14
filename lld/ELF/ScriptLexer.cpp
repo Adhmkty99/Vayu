@@ -134,14 +134,10 @@ void ScriptLexer::tokenize(MemoryBufferRef mb) {
       continue;
     }
 
-    // Some operators form separate tokens.
-    if (s.startswith("<<=") || s.startswith(">>=")) {
-      vec.push_back(s.substr(0, 3));
-      s = s.substr(3);
-      continue;
-    }
-    if (s.size() > 1 && ((s[1] == '=' && strchr("*/+-<>&|", s[0])) ||
-                         (s[0] == s[1] && strchr("<>&|", s[0])))) {
+    // ">foo" is parsed to ">" and "foo", but ">>" is parsed to ">>".
+    // "|", "||", "&" and "&&" are different operators.
+    if (s.startswith("<<") || s.startswith("<=") || s.startswith(">>") ||
+        s.startswith(">=") || s.startswith("||") || s.startswith("&&")) {
       vec.push_back(s.substr(0, 2));
       s = s.substr(2);
       continue;
@@ -196,7 +192,7 @@ bool ScriptLexer::atEOF() { return errorCount() || tokens.size() == pos; }
 // Split a given string as an expression.
 // This function returns "3", "*" and "5" for "3*5" for example.
 static std::vector<StringRef> tokenizeExpr(StringRef s) {
-  StringRef ops = "!~*/+-<>?:="; // List of operators
+  StringRef ops = "+-*/:!~=<>"; // List of operators
 
   // Quoted strings are literal strings, so we don't want to split it.
   if (s.startswith("\""))

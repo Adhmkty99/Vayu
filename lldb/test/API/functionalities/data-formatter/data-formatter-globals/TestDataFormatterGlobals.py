@@ -12,6 +12,8 @@ import lldbsuite.test.lldbutil as lldbutil
 
 class GlobalsDataFormatterTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         # Call super's setUp().
         TestBase.setUp(self)

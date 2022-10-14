@@ -1,4 +1,4 @@
-//===- TosaDecomposeConv2D.cpp --------------------------------------------===//
+//===- TosaDecomposeConv2D.cpp ------------------------------------------===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -13,6 +13,7 @@
 
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
 #include "mlir/Dialect/Tosa/Transforms/Passes.h"
+#include "mlir/Pass/Pass.h"
 
 using namespace mlir;
 using namespace mlir::tosa;
@@ -25,39 +26,36 @@ struct Conv2DIsFullyConnected : public OpRewritePattern<tosa::Conv2DOp> {
 
   LogicalResult matchAndRewrite(tosa::Conv2DOp op,
                                 PatternRewriter &rewriter) const override {
-    Value input = op.getInput();
-    Value weight = op.getWeight();
+    Value input = op.input();
+    Value weight = op.weight();
     ShapedType inputType = input.getType().cast<ShapedType>();
     ShapedType weightType = weight.getType().cast<ShapedType>();
     ShapedType resultType = op.getType().cast<ShapedType>();
 
-    auto numDynamic =
-        llvm::count_if(inputType.getShape(), ShapedType::isDynamic);
-    if (numDynamic > 1)
-      return rewriter.notifyMatchFailure(
-          op, "at most one dim in input may be dynamic");
-    if (!weightType.hasRank())
-      return rewriter.notifyMatchFailure(op, "unranked weight input");
+    if (!inputType.hasStaticShape() || !weightType.hasRank()) {
+      return failure();
+    }
 
     // Stride must be 1 for this optimization.
-    for (APInt stride : op.getStride().getAsValueRange<IntegerAttr>()) {
-      if (!stride.isOne())
+    for (Attribute stride : op.stride().getValue()) {
+      if (!stride.cast<IntegerAttr>().getValue().isOne()) {
         return failure();
+      }
     }
 
     // Only works for a 1x1 kernel.
     ArrayRef<int64_t> weightShape = weightType.getShape();
-    if (weightShape[1] != 1 || weightShape[2] != 1)
+    if (weightShape[1] != 1 || weightShape[2] != 1) {
       return failure();
+    }
 
     // Reshape input to [N,IH,IW,IC] -> [N * IH * IW, IC].
     ArrayRef<int64_t> inputShape = inputType.getShape();
-    int64_t combined = inputShape[0] * inputShape[1] * inputShape[2];
-    if (combined < 0)
-      combined = ShapedType::kDynamicSize;
-    llvm::SmallVector<int64_t, 2> revisedInputShape{combined, inputShape[3]};
-    auto revisedInputShapeType =
-        RankedTensorType::get(revisedInputShape, inputType.getElementType());
+    llvm::SmallVector<int64_t, 2> revisedInputShape{
+        inputShape[0] * inputShape[1] * inputShape[2], inputShape[3]};
+    auto revisedInputShapeType = RankedTensorType::get(
+        revisedInputShape,
+        input.getType().dyn_cast<RankedTensorType>().getElementType());
     auto reshapedInput = rewriter
                              .create<tosa::ReshapeOp>(
                                  op.getLoc(), revisedInputShapeType, input,
@@ -77,23 +75,25 @@ struct Conv2DIsFullyConnected : public OpRewritePattern<tosa::Conv2DOp> {
                               .getResult();
 
     // Perform a fully connected network over the reshaped input and weight.
-    llvm::SmallVector<int64_t, 2> fullyConnectedShape{combined, weightShape[0]};
-    auto fullyConnectedShapeType =
-        RankedTensorType::get(fullyConnectedShape, resultType.getElementType());
+    llvm::SmallVector<int64_t, 2> fullyConnectedShape{
+        inputShape[0] * inputShape[1] * inputShape[2], weightShape[0]};
+    auto fullyConnectedShapeType = RankedTensorType::get(
+        fullyConnectedShape,
+        resultType.dyn_cast<ShapedType>().getElementType());
 
     Value fullyConnectedValue;
-    if (op.getQuantizationInfo()) {
+    if (op.quantization_info()) {
       fullyConnectedValue =
           rewriter
               .create<tosa::FullyConnectedOp>(
                   op.getLoc(), fullyConnectedShapeType, reshapedInput,
-                  reshapedWeight, op.getBias(), *op.getQuantizationInfo())
+                  reshapedWeight, op.bias(), op.quantization_info().getValue())
               .getResult();
     } else {
       fullyConnectedValue = rewriter
                                 .create<tosa::FullyConnectedOp>(
                                     op.getLoc(), fullyConnectedShapeType,
-                                    reshapedInput, reshapedWeight, op.getBias())
+                                    reshapedInput, reshapedWeight, op.bias())
                                 .getResult();
     }
 

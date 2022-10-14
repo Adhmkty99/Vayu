@@ -220,19 +220,19 @@ void DivergenceAnalysisImpl::analyzeLoopExitDivergence(
     // phi nodes at the fringes of the dominance region
     if (!DT.dominates(&LoopHeader, UserBlock)) {
       // all PHI nodes of UserBlock become divergent
-      for (const auto &Phi : UserBlock->phis()) {
+      for (auto &Phi : UserBlock->phis()) {
         analyzeTemporalDivergence(Phi, OuterDivLoop);
       }
       continue;
     }
 
     // Taint outside users of values carried by OuterDivLoop.
-    for (const auto &I : *UserBlock) {
+    for (auto &I : *UserBlock) {
       analyzeTemporalDivergence(I, OuterDivLoop);
     }
 
     // visit all blocks in the dominance region
-    for (const auto *SuccBlock : successors(UserBlock)) {
+    for (auto *SuccBlock : successors(UserBlock)) {
       if (!Visited.insert(SuccBlock).second) {
         continue;
       }
@@ -399,7 +399,7 @@ DivergenceAnalysisPrinterPass::run(Function &F, FunctionAnalysisManager &FAM) {
     }
     for (const BasicBlock &BB : F) {
       OS << "\n           " << BB.getName() << ":\n";
-      for (const auto &I : BB.instructionsWithoutDebug()) {
+      for (auto &I : BB.instructionsWithoutDebug()) {
         OS << (DI.isDivergent(I) ? "DIVERGENT:     " : "               ");
         OS << I << "\n";
       }

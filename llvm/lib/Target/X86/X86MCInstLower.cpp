@@ -501,7 +501,7 @@ void X86MCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
 
   for (const MachineOperand &MO : MI->operands())
     if (auto MaybeMCOp = LowerMachineOperand(MI, MO))
-      OutMI.addOperand(*MaybeMCOp);
+      OutMI.addOperand(MaybeMCOp.getValue());
 
   // Handle a few special cases to eliminate operand modifiers.
   switch (OutMI.getOpcode()) {
@@ -962,12 +962,6 @@ void X86MCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
     // These are not truly commutable so hide them from the default case.
     break;
 
-  case X86::MASKMOVDQU:
-  case X86::VMASKMOVDQU:
-    if (AsmPrinter.getSubtarget().is64Bit())
-      OutMI.setFlags(X86::IP_HAS_AD_SIZE);
-    break;
-
   default: {
     // If the instruction is a commutable arithmetic instruction we might be
     // able to commute the operands to get a 2 byte VEX prefix.
@@ -1317,7 +1311,7 @@ void X86AsmPrinter::LowerFAULTING_OP(const MachineInstr &FaultingMI,
             E = FaultingMI.operands_end();
        I != E; ++I)
     if (auto MaybeOperand = MCIL.LowerMachineOperand(&FaultingMI, *I))
-      MI.addOperand(*MaybeOperand);
+      MI.addOperand(MaybeOperand.getValue());
 
   OutStreamer->AddComment("on-fault: " + HandlerLabel->getName());
   OutStreamer->emitInstruction(MI, getSubtargetInfo());
@@ -1382,7 +1376,7 @@ void X86AsmPrinter::LowerPATCHABLE_OP(const MachineInstr &MI,
   MCI.setOpcode(Opcode);
   for (auto &MO : drop_begin(MI.operands(), 2))
     if (auto MaybeOperand = MCIL.LowerMachineOperand(&MI, MO))
-      MCI.addOperand(*MaybeOperand);
+      MCI.addOperand(MaybeOperand.getValue());
 
   SmallString<256> Code;
   SmallVector<MCFixup, 4> Fixups;
@@ -1758,7 +1752,7 @@ void X86AsmPrinter::LowerPATCHABLE_RET(const MachineInstr &MI,
   Ret.setOpcode(OpCode);
   for (auto &MO : drop_begin(MI.operands()))
     if (auto MaybeOperand = MCIL.LowerMachineOperand(&MI, MO))
-      Ret.addOperand(*MaybeOperand);
+      Ret.addOperand(MaybeOperand.getValue());
   OutStreamer->emitInstruction(Ret, getSubtargetInfo());
   emitX86Nops(*OutStreamer, 10, Subtarget);
   recordSled(CurSled, MI, SledKind::FUNCTION_EXIT, 2);
@@ -1797,7 +1791,7 @@ void X86AsmPrinter::LowerPATCHABLE_TAIL_CALL(const MachineInstr &MI,
   OutStreamer->AddComment("TAILCALL");
   for (auto &MO : drop_begin(MI.operands()))
     if (auto MaybeOperand = MCIL.LowerMachineOperand(&MI, MO))
-      TC.addOperand(*MaybeOperand);
+      TC.addOperand(MaybeOperand.getValue());
   OutStreamer->emitInstruction(TC, getSubtargetInfo());
 }
 
@@ -1992,34 +1986,34 @@ void X86AsmPrinter::EmitSEHInstruction(const MachineInstr *MI) {
   // Otherwise, use the .seh_ directives for all other Windows platforms.
   switch (MI->getOpcode()) {
   case X86::SEH_PushReg:
-    OutStreamer->emitWinCFIPushReg(MI->getOperand(0).getImm());
+    OutStreamer->EmitWinCFIPushReg(MI->getOperand(0).getImm());
     break;
 
   case X86::SEH_SaveReg:
-    OutStreamer->emitWinCFISaveReg(MI->getOperand(0).getImm(),
+    OutStreamer->EmitWinCFISaveReg(MI->getOperand(0).getImm(),
                                    MI->getOperand(1).getImm());
     break;
 
   case X86::SEH_SaveXMM:
-    OutStreamer->emitWinCFISaveXMM(MI->getOperand(0).getImm(),
+    OutStreamer->EmitWinCFISaveXMM(MI->getOperand(0).getImm(),
                                    MI->getOperand(1).getImm());
     break;
 
   case X86::SEH_StackAlloc:
-    OutStreamer->emitWinCFIAllocStack(MI->getOperand(0).getImm());
+    OutStreamer->EmitWinCFIAllocStack(MI->getOperand(0).getImm());
     break;
 
   case X86::SEH_SetFrame:
-    OutStreamer->emitWinCFISetFrame(MI->getOperand(0).getImm(),
+    OutStreamer->EmitWinCFISetFrame(MI->getOperand(0).getImm(),
                                     MI->getOperand(1).getImm());
     break;
 
   case X86::SEH_PushFrame:
-    OutStreamer->emitWinCFIPushFrame(MI->getOperand(0).getImm());
+    OutStreamer->EmitWinCFIPushFrame(MI->getOperand(0).getImm());
     break;
 
   case X86::SEH_EndPrologue:
-    OutStreamer->emitWinCFIEndProlog();
+    OutStreamer->EmitWinCFIEndProlog();
     break;
 
   default:
@@ -2413,10 +2407,6 @@ static void addConstantComments(const MachineInstr *MI,
 }
 
 void X86AsmPrinter::emitInstruction(const MachineInstr *MI) {
-  // FIXME: Enable feature predicate checks once all the test pass.
-  // X86_MC::verifyInstructionPredicates(MI->getOpcode(),
-  //                                     Subtarget->getFeatureBits());
-
   X86MCInstLower MCInstLowering(*MF, *this);
   const X86RegisterInfo *RI =
       MF->getSubtarget<X86Subtarget>().getRegisterInfo();

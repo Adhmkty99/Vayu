@@ -22,7 +22,4 @@ add_tablegen(clang-tblgen CLANG
   SveEmitter.cpp
   TableGen.cpp
   )
-
-target_link_libraries(clang-tblgen PRIVATE clangSupport)
-
 set_target_properties(clang-tblgen PROPERTIES FOLDER "Clang tablegenning")

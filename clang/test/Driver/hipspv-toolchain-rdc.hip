@@ -1,3 +1,4 @@
+// REQUIRES: clang-driver
 // REQUIRES: x86-registered-target
 // UNSUPPORTED: system-windows
 

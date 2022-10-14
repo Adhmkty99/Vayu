@@ -63,8 +63,7 @@ public:
 
   /// Lookup a mapped value within the map. This asserts the provided value
   /// exists within the map.
-  template <typename T>
-  T lookup(T from) const {
+  template <typename T> T lookup(T from) const {
     auto result = lookupOrNull(from);
     assert(result && "expected 'from' to be contained within the map");
     return result;

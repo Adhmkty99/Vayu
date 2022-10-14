@@ -19,6 +19,7 @@
 #include "clang/AST/DeclBase.h"
 #include "clang/AST/Expr.h"
 #include "clang/AST/Type.h"
+#include "clang/AST/TypeOrdering.h"
 #include "clang/Analysis/FlowSensitive/DataflowAnalysisContext.h"
 #include "clang/Analysis/FlowSensitive/DataflowLattice.h"
 #include "clang/Analysis/FlowSensitive/StorageLocation.h"
@@ -76,11 +77,7 @@ public:
                                    const Environment &Env2) {
       // FIXME: Consider adding QualType to StructValue and removing the Type
       // argument here.
-      //
-      // FIXME: default to a sound comparison and/or expand the comparison logic
-      // built into the framework to support broader forms of equivalence than
-      // strict pointer equality.
-      return true;
+      return false;
     }
 
     /// Modifies `MergedVal` to approximate both `Val1` and `Val2`. This could
@@ -104,19 +101,13 @@ public:
                        const Environment &Env1, const Value &Val2,
                        const Environment &Env2, Value &MergedVal,
                        Environment &MergedEnv) {
-      return true;
+      return false;
     }
   };
 
   /// Creates an environment that uses `DACtx` to store objects that encompass
   /// the state of a program.
-  explicit Environment(DataflowAnalysisContext &DACtx);
-
-  Environment(const Environment &Other);
-  Environment &operator=(const Environment &Other);
-
-  Environment(Environment &&Other) = default;
-  Environment &operator=(Environment &&Other) = default;
+  explicit Environment(DataflowAnalysisContext &DACtx) : DACtx(&DACtx) {}
 
   /// Creates an environment that uses `DACtx` to store objects that encompass
   /// the state of a program.
@@ -202,10 +193,6 @@ public:
   /// in the environment.
   StorageLocation *getThisPointeeStorageLocation() const;
 
-  /// Returns a pointer value that represents a null pointer. Calls with
-  /// `PointeeType` that are canonically equivalent will return the same result.
-  PointerValue &getOrCreateNullPointerValue(QualType PointeeType);
-
   /// Creates a value appropriate for `Type`, if `Type` is supported, otherwise
   /// return null. If `Type` is a pointer or reference type, creates all the
   /// necessary storage locations and values for indirections until it finds a
@@ -271,7 +258,7 @@ public:
   /// order, will return the same result. If the given boolean values represent
   /// the same value, the result will be the value itself.
   BoolValue &makeAnd(BoolValue &LHS, BoolValue &RHS) const {
-    return DACtx->getOrCreateConjunction(LHS, RHS);
+    return DACtx->getOrCreateConjunctionValue(LHS, RHS);
   }
 
   /// Returns a boolean value that represents the disjunction of `LHS` and
@@ -279,21 +266,21 @@ public:
   /// order, will return the same result. If the given boolean values represent
   /// the same value, the result will be the value itself.
   BoolValue &makeOr(BoolValue &LHS, BoolValue &RHS) const {
-    return DACtx->getOrCreateDisjunction(LHS, RHS);
+    return DACtx->getOrCreateDisjunctionValue(LHS, RHS);
   }
 
   /// Returns a boolean value that represents the negation of `Val`. Subsequent
   /// calls with the same argument will return the same result.
   BoolValue &makeNot(BoolValue &Val) const {
-    return DACtx->getOrCreateNegation(Val);
+    return DACtx->getOrCreateNegationValue(Val);
   }
 
   /// Returns a boolean value represents `LHS` => `RHS`. Subsequent calls with
-  /// the same arguments, will return the same result. If the given boolean
-  /// values represent the same value, the result will be a value that
-  /// represents the true boolean literal.
+  /// the same arguments, regardless of their order, will return the same
+  /// result. If the given boolean values represent the same value, the result
+  /// will be a value that represents the true boolean literal.
   BoolValue &makeImplication(BoolValue &LHS, BoolValue &RHS) const {
-    return DACtx->getOrCreateImplication(LHS, RHS);
+    return &LHS == &RHS ? getBoolLiteralValue(true) : makeOr(makeNot(LHS), RHS);
   }
 
   /// Returns a boolean value represents `LHS` <=> `RHS`. Subsequent calls with
@@ -301,20 +288,13 @@ public:
   /// result. If the given boolean values represent the same value, the result
   /// will be a value that represents the true boolean literal.
   BoolValue &makeIff(BoolValue &LHS, BoolValue &RHS) const {
-    return DACtx->getOrCreateIff(LHS, RHS);
+    return &LHS == &RHS
+               ? getBoolLiteralValue(true)
+               : makeAnd(makeImplication(LHS, RHS), makeImplication(RHS, LHS));
   }
 
-  /// Returns the token that identifies the flow condition of the environment.
-  AtomicBoolValue &getFlowConditionToken() const { return *FlowConditionToken; }
-
-  /// Builds and returns the logical formula defining the flow condition
-  /// identified by `Token`. If a value in the formula is present as a key in
-  /// `Substitutions`, it will be substituted with the value it maps to.
-  BoolValue &buildAndSubstituteFlowCondition(
-      AtomicBoolValue &Token,
-      llvm::DenseMap<AtomicBoolValue *, BoolValue *> Substitutions) {
-    return DACtx->buildAndSubstituteFlowCondition(Token,
-                                                  std::move(Substitutions));
+  const llvm::DenseSet<BoolValue *> &getFlowConditionConstraints() const {
+    return FlowConditionConstraints;
   }
 
   /// Adds `Val` to the set of clauses that constitute the flow condition.
@@ -323,8 +303,6 @@ public:
   /// Returns true if and only if the clauses that constitute the flow condition
   /// imply that `Val` is true.
   bool flowConditionImplies(BoolValue &Val) const;
-
-  LLVM_DUMP_METHOD void dump() const;
 
 private:
   /// Creates a value appropriate for `Type`, if `Type` is supported, otherwise
@@ -363,7 +341,7 @@ private:
                  std::pair<StructValue *, const ValueDecl *>>
       MemberLocToStruct;
 
-  AtomicBoolValue *FlowConditionToken;
+  llvm::DenseSet<BoolValue *> FlowConditionConstraints;
 };
 
 } // namespace dataflow

@@ -6,6 +6,8 @@ from lldbsuite.test import lldbutil
 
 @skipUnlessDarwin
 class AddDsymDownload(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     dwarfdump_uuid_regex = re.compile('UUID: ([-0-9a-fA-F]+) \(([^\(]+)\) .*')
 
     def get_uuid(self):
@@ -77,8 +79,8 @@ class AddDsymDownload(TestBase):
         self.assertTrue(self.process, PROCESS_IS_VALID)
 
         # The stop reason of the thread should be breakpoint.
-        self.assertState(self.process.GetState(), lldb.eStateStopped,
-                         STOPPED_DUE_TO_BREAKPOINT)
+        self.assertEquals(self.process.GetState(), lldb.eStateStopped,
+                          STOPPED_DUE_TO_BREAKPOINT)
 
         self.runCmd(command)
         self.expect("frame select", substrs=['a.out`main at main.c'])

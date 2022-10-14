@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 
 class TestGdbRemoteTargetXmlPacket(gdbremote_testcase.GdbRemoteTestCaseBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @llgs_test
     def test_g_target_xml_returns_correct_data(self):
         self.build()

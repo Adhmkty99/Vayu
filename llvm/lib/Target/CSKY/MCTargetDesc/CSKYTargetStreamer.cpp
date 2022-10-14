@@ -25,7 +25,7 @@ void CSKYConstantPool::emitAll(MCStreamer &Streamer) {
     return;
 
   if (CurrentSection != nullptr)
-    Streamer.switchSection(CurrentSection);
+    Streamer.SwitchSection(CurrentSection);
 
   Streamer.emitDataRegion(MCDR_DataRegion);
   for (const ConstantPoolEntry &Entry : Entries) {

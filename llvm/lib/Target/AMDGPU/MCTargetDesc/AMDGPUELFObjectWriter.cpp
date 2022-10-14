@@ -65,10 +65,7 @@ unsigned AMDGPUELFObjectWriter::getRelocType(MCContext &Ctx,
     return ELF::R_AMDGPU_REL64;
   }
 
-  MCFixupKind Kind = Fixup.getKind();
-  if (Kind >= FirstLiteralRelocationKind)
-    return Kind - FirstLiteralRelocationKind;
-  switch (Kind) {
+  switch (Fixup.getKind()) {
   default: break;
   case FK_PCRel_4:
     return ELF::R_AMDGPU_REL32;

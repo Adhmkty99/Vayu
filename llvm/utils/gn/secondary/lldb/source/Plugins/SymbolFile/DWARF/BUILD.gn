@@ -42,7 +42,6 @@ static_library("DWARF") {
   sources = [
     "AppleDWARFIndex.cpp",
     "DIERef.cpp",
-    "DWARFASTParser.cpp",
     "DWARFASTParserClang.cpp",
     "DWARFAbbreviationDeclaration.cpp",
     "DWARFAttribute.cpp",

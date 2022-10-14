@@ -10,6 +10,8 @@ from lldbsuite.test.lldbtest import *
 
 
 class CmdPythonTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def test(self):
@@ -113,7 +115,7 @@ class CmdPythonTestCase(TestBase):
         self.expect("longwait",
                     substrs=['Done; if you saw the delays I am doing OK'])
 
-        self.runCmd("break set -f main.cpp -l 48")
+        self.runCmd("b main")
         self.runCmd("run")
         self.runCmd("mysto 3")
         self.expect("frame variable array",

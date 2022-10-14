@@ -9,8 +9,6 @@
 #ifndef LIBCXX_TEST_SUPPORT_BOOLEAN_TESTABLE_H
 #define LIBCXX_TEST_SUPPORT_BOOLEAN_TESTABLE_H
 
-#include "test_macros.h"
-
 #if TEST_STD_VER > 17
 
 class BooleanTestable {

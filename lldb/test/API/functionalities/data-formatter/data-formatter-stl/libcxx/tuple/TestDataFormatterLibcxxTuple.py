@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class TestDataFormatterLibcxxTuple(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         TestBase.setUp(self)
         self.line = line_number('main.cpp', '// break here')

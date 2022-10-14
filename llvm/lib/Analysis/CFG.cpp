@@ -127,7 +127,11 @@ bool llvm::isCriticalEdge(const Instruction *TI, const BasicBlock *Dest,
 // the outermost loop in the loop nest that contains BB.
 static const Loop *getOutermostLoop(const LoopInfo *LI, const BasicBlock *BB) {
   const Loop *L = LI->getLoopFor(BB);
-  return L ? L->getOutermostLoop() : nullptr;
+  if (L) {
+    while (const Loop *Parent = L->getParentLoop())
+      L = Parent;
+  }
+  return L;
 }
 
 bool llvm::isPotentiallyReachableFromMany(
@@ -149,7 +153,7 @@ bool llvm::isPotentiallyReachableFromMany(
   // untrue.
   SmallPtrSet<const Loop *, 8> LoopsWithHoles;
   if (LI && ExclusionSet) {
-    for (auto *BB : *ExclusionSet) {
+    for (auto BB : *ExclusionSet) {
       if (const Loop *L = getOutermostLoop(LI, BB))
         LoopsWithHoles.insert(L);
     }

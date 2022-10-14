@@ -1,5 +1,8 @@
 ! Test the `-emit-mlir` option
 
+!-------------
+! RUN COMMANDS
+!-------------
 ! RUN: %flang_fc1 -emit-mlir %s -o - | FileCheck %s
 ! RUN: %flang_fc1 -emit-fir %s -o - | FileCheck %s
 
@@ -9,10 +12,16 @@
 ! RUN: cp %s .
 ! RUN: %flang_fc1 -emit-mlir emit-mlir.f90 && ls emit-mlir.mlir
 
+!----------------
+! EXPECTED OUTPUT
+!----------------
 ! CHECK: module attributes {
 ! CHECK-LABEL: func @_QQmain() {
 ! CHECK-NEXT:  return
 ! CHECK-NEXT: }
 ! CHECK-NEXT: }
 
+!------
+! INPUT
+!------
 end program

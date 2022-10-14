@@ -53,8 +53,8 @@ static bool isArrayIndexOutOfBounds(CheckerContext &C, const Expr *Ex) {
   DefinedOrUnknownSVal Idx = ER->getIndex().castAs<DefinedOrUnknownSVal>();
   DefinedOrUnknownSVal ElementCount = getDynamicElementCount(
       state, ER->getSuperRegion(), C.getSValBuilder(), ER->getValueType());
-  ProgramStateRef StInBound, StOutBound;
-  std::tie(StInBound, StOutBound) = state->assumeInBoundDual(Idx, ElementCount);
+  ProgramStateRef StInBound = state->assumeInBound(Idx, ElementCount, true);
+  ProgramStateRef StOutBound = state->assumeInBound(Idx, ElementCount, false);
   return StOutBound && !StInBound;
 }
 
@@ -145,7 +145,7 @@ void UndefResultChecker::checkPostStmt(const BinaryOperator *B,
           OS << '\'' << I->getSExtValue() << "\', which is";
 
         OS << " greater or equal to the width of type '"
-           << B->getLHS()->getType() << "'.";
+           << B->getLHS()->getType().getAsString() << "'.";
       } else if (B->getOpcode() == BinaryOperatorKind::BO_Shl &&
                  C.isNegative(B->getLHS())) {
         OS << "The result of the left shift is undefined because the left "
@@ -162,7 +162,8 @@ void UndefResultChecker::checkPostStmt(const BinaryOperator *B,
         OS << "The result of the left shift is undefined due to shifting \'"
            << LHS->getSExtValue() << "\' by \'" << RHS->getZExtValue()
            << "\', which is unrepresentable in the unsigned version of "
-           << "the return type \'" << B->getLHS()->getType() << "\'";
+           << "the return type \'" << B->getLHS()->getType().getAsString()
+           << "\'";
         Ex = B->getLHS();
       } else {
         OS << "The result of the '"

@@ -15,7 +15,6 @@
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/Analysis/ConstantFolding.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
@@ -415,7 +414,8 @@ bool BranchProbabilityInfo::calcMetadataWeights(const BasicBlock *BB) {
     const LoopBlock DstLoopBB = getLoopBlock(TI->getSuccessor(I - 1));
     auto EstimatedWeight = getEstimatedEdgeWeight({SrcLoopBB, DstLoopBB});
     if (EstimatedWeight &&
-        *EstimatedWeight <= static_cast<uint32_t>(BlockExecWeight::UNREACHABLE))
+        EstimatedWeight.getValue() <=
+            static_cast<uint32_t>(BlockExecWeight::UNREACHABLE))
       UnreachableIdxs.push_back(I - 1);
     else
       ReachableIdxs.push_back(I - 1);
@@ -630,10 +630,9 @@ computeUnlikelySuccessors(const BasicBlock *BB, Loop *L,
       if (!CmpLHSConst || !llvm::is_contained(successors(BB), B))
         continue;
       // First collapse InstChain
-      const DataLayout &DL = BB->getModule()->getDataLayout();
       for (Instruction *I : llvm::reverse(InstChain)) {
-        CmpLHSConst = ConstantFoldBinaryOpOperands(
-            I->getOpcode(), CmpLHSConst, cast<Constant>(I->getOperand(1)), DL);
+        CmpLHSConst = ConstantExpr::get(I->getOpcode(), CmpLHSConst,
+                                        cast<Constant>(I->getOperand(1)), true);
         if (!CmpLHSConst)
           break;
       }
@@ -689,7 +688,7 @@ Optional<uint32_t> BranchProbabilityInfo::getMaxEstimatedEdgeWeight(
     if (!Weight)
       return None;
 
-    if (!MaxWeight || *MaxWeight < *Weight)
+    if (!MaxWeight || MaxWeight.getValue() < Weight.getValue())
       MaxWeight = Weight;
   }
 
@@ -828,8 +827,9 @@ void BranchProbabilityInfo::computeEestimateBlockWeight(
     if (auto BBWeight = getInitialEstimatedBlockWeight(BB))
       // If we were able to find estimated weight for the block set it to this
       // block and propagate up the IR.
-      propagateEstimatedBlockWeight(getLoopBlock(BB), DT, PDT, BBWeight.value(),
-                                    BlockWorkList, LoopWorkList);
+      propagateEstimatedBlockWeight(getLoopBlock(BB), DT, PDT,
+                                    BBWeight.getValue(), BlockWorkList,
+                                    LoopWorkList);
 
   // BlockWorklist/LoopWorkList contains blocks/loops with at least one
   // successor/exit having estimated weight. Try to propagate weight to such
@@ -852,7 +852,8 @@ void BranchProbabilityInfo::computeEestimateBlockWeight(
         if (LoopWeight <= static_cast<uint32_t>(BlockExecWeight::UNREACHABLE))
           LoopWeight = static_cast<uint32_t>(BlockExecWeight::LOWEST_NON_ZERO);
 
-        EstimatedLoopWeight.insert({LoopBB.getLoopData(), *LoopWeight});
+        EstimatedLoopWeight.insert(
+            {LoopBB.getLoopData(), LoopWeight.getValue()});
         // Add all blocks entering the loop into working list.
         getLoopEnterBlocks(LoopBB, BlockWorkList);
       }
@@ -874,7 +875,7 @@ void BranchProbabilityInfo::computeEestimateBlockWeight(
       auto MaxWeight = getMaxEstimatedEdgeWeight(LoopBB, successors(BB));
 
       if (MaxWeight)
-        propagateEstimatedBlockWeight(LoopBB, DT, PDT, *MaxWeight,
+        propagateEstimatedBlockWeight(LoopBB, DT, PDT, MaxWeight.getValue(),
                                       BlockWorkList, LoopWorkList);
     }
   } while (!BlockWorkList.empty() || !LoopWorkList.empty());
@@ -912,7 +913,7 @@ bool BranchProbabilityInfo::calcEstimatedHeuristics(const BasicBlock *BB) {
       // Scale down loop exiting weight by trip count.
       Weight = std::max(
           static_cast<uint32_t>(BlockExecWeight::LOWEST_NON_ZERO),
-          Weight.value_or(static_cast<uint32_t>(BlockExecWeight::DEFAULT)) /
+          Weight.getValueOr(static_cast<uint32_t>(BlockExecWeight::DEFAULT)) /
               TC);
     }
     bool IsUnlikelyEdge = LoopBB.getLoop() && UnlikelyBlocks.contains(SuccBB);
@@ -922,14 +923,15 @@ bool BranchProbabilityInfo::calcEstimatedHeuristics(const BasicBlock *BB) {
       // 'Unlikely' blocks have twice lower weight.
       Weight = std::max(
           static_cast<uint32_t>(BlockExecWeight::LOWEST_NON_ZERO),
-          Weight.value_or(static_cast<uint32_t>(BlockExecWeight::DEFAULT)) / 2);
+          Weight.getValueOr(static_cast<uint32_t>(BlockExecWeight::DEFAULT)) /
+              2);
     }
 
     if (Weight)
       FoundEstimatedWeight = true;
 
     auto WeightVal =
-        Weight.value_or(static_cast<uint32_t>(BlockExecWeight::DEFAULT));
+        Weight.getValueOr(static_cast<uint32_t>(BlockExecWeight::DEFAULT));
     TotalWeight += WeightVal;
     SuccWeights.push_back(WeightVal);
   }
@@ -1250,7 +1252,7 @@ void BranchProbabilityInfo::calculate(const Function &F, const LoopInfo &LoopI,
 
   // Walk the basic blocks in post-order so that we can build up state about
   // the successors of a block iteratively.
-  for (const auto *BB : post_order(&F.getEntryBlock())) {
+  for (auto BB : post_order(&F.getEntryBlock())) {
     LLVM_DEBUG(dbgs() << "Computing probabilities for " << BB->getName()
                       << "\n");
     // If there is no at least two successors, no sense to set probability.

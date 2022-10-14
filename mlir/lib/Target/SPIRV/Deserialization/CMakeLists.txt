@@ -8,7 +8,7 @@ add_mlir_translation_library(MLIRSPIRVDeserialization
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRSPIRVDialect
+  MLIRSPIRV
   MLIRSPIRVBinaryUtils
   MLIRSupport
   MLIRTranslateLib

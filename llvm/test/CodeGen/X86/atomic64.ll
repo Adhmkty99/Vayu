@@ -4,7 +4,6 @@
 
 @sc64 = external dso_local global i64
 @fsc64 = external dso_local global double
-@psc64 = external dso_local global i8*
 
 define void @atomic_fetch_add64() nounwind {
 ; X64-LABEL: atomic_fetch_add64:
@@ -273,6 +272,7 @@ define void @atomic_fetch_nand64(i64 %x) nounwind {
 ; X64-NEXT:    movq {{[-0-9]+}}(%r{{[sb]}}p), %rdx # 8-byte Reload
 ; X64-NEXT:    movq %rax, %rcx
 ; X64-NEXT:    andq %rdx, %rcx
+; X64-NEXT:    movq %rcx, {{[-0-9]+}}(%r{{[sb]}}p) # 8-byte Spill
 ; X64-NEXT:    notq %rcx
 ; X64-NEXT:    lock cmpxchgq %rcx, sc64(%rip)
 ; X64-NEXT:    sete %cl
@@ -312,6 +312,7 @@ define void @atomic_fetch_max64(i64 %x) nounwind {
 ; X64-NEXT:    movq {{[-0-9]+}}(%r{{[sb]}}p), %rcx # 8-byte Reload
 ; X64-NEXT:    movq %rax, %rdx
 ; X64-NEXT:    subq %rcx, %rdx
+; X64-NEXT:    movq %rdx, {{[-0-9]+}}(%r{{[sb]}}p) # 8-byte Spill
 ; X64-NEXT:    cmovgq %rax, %rcx
 ; X64-NEXT:    lock cmpxchgq %rcx, sc64(%rip)
 ; X64-NEXT:    sete %cl
@@ -404,6 +405,7 @@ define void @atomic_fetch_min64(i64 %x) nounwind {
 ; X64-NEXT:    movq {{[-0-9]+}}(%r{{[sb]}}p), %rcx # 8-byte Reload
 ; X64-NEXT:    movq %rax, %rdx
 ; X64-NEXT:    subq %rcx, %rdx
+; X64-NEXT:    movq %rdx, {{[-0-9]+}}(%r{{[sb]}}p) # 8-byte Spill
 ; X64-NEXT:    cmovleq %rax, %rcx
 ; X64-NEXT:    lock cmpxchgq %rcx, sc64(%rip)
 ; X64-NEXT:    sete %cl
@@ -496,6 +498,7 @@ define void @atomic_fetch_umax64(i64 %x) nounwind {
 ; X64-NEXT:    movq {{[-0-9]+}}(%r{{[sb]}}p), %rcx # 8-byte Reload
 ; X64-NEXT:    movq %rax, %rdx
 ; X64-NEXT:    subq %rcx, %rdx
+; X64-NEXT:    movq %rdx, {{[-0-9]+}}(%r{{[sb]}}p) # 8-byte Spill
 ; X64-NEXT:    cmovaq %rax, %rcx
 ; X64-NEXT:    lock cmpxchgq %rcx, sc64(%rip)
 ; X64-NEXT:    sete %cl
@@ -588,6 +591,7 @@ define void @atomic_fetch_umin64(i64 %x) nounwind {
 ; X64-NEXT:    movq {{[-0-9]+}}(%r{{[sb]}}p), %rcx # 8-byte Reload
 ; X64-NEXT:    movq %rax, %rdx
 ; X64-NEXT:    subq %rcx, %rdx
+; X64-NEXT:    movq %rdx, {{[-0-9]+}}(%r{{[sb]}}p) # 8-byte Spill
 ; X64-NEXT:    cmovbeq %rax, %rcx
 ; X64-NEXT:    lock cmpxchgq %rcx, sc64(%rip)
 ; X64-NEXT:    sete %cl
@@ -774,20 +778,5 @@ define void @atomic_fetch_swapf64(double %x) nounwind {
 ; I486-NEXT:    popl %ebp
 ; I486-NEXT:    retl
   %t1 = atomicrmw xchg double* @fsc64, double %x acquire
-  ret void
-}
-
-define void @atomic_fetch_swapptr(i8* %x) nounwind {
-; X64-LABEL: atomic_fetch_swapptr:
-; X64:       # %bb.0:
-; X64-NEXT:    xchgq %rdi, psc64(%rip)
-; X64-NEXT:    retq
-;
-; I486-LABEL: atomic_fetch_swapptr:
-; I486:       # %bb.0:
-; I486-NEXT:    movl {{[0-9]+}}(%esp), %eax
-; I486-NEXT:    xchgl %eax, psc64
-; I486-NEXT:    retl
-  %t1 = atomicrmw xchg i8** @psc64, i8* %x acquire
   ret void
 }

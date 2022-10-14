@@ -206,20 +206,9 @@ void llvm::CloneFunctionInto(Function *NewFunc, const Function *OldFunc,
     };
 
     // Avoid cloning types, compile units, and (other) subprograms.
-    SmallPtrSet<const DISubprogram *, 16> MappedToSelfSPs;
-    for (DISubprogram *ISP : DIFinder->subprograms()) {
-      if (ISP != SPClonedWithinModule) {
+    for (DISubprogram *ISP : DIFinder->subprograms())
+      if (ISP != SPClonedWithinModule)
         mapToSelfIfNew(ISP);
-        MappedToSelfSPs.insert(ISP);
-      }
-    }
-
-    // If a subprogram isn't going to be cloned skip its lexical blocks as well.
-    for (DIScope *S : DIFinder->scopes()) {
-      auto *LScope = dyn_cast<DILocalScope>(S);
-      if (LScope && MappedToSelfSPs.count(LScope->getSubprogram()))
-        mapToSelfIfNew(S);
-    }
 
     for (DICompileUnit *CU : DIFinder->compile_units())
       mapToSelfIfNew(CU);
@@ -496,7 +485,7 @@ void PruningFunctionCloner::CloneBlock(
       // a mapping to that value rather than inserting a new instruction into
       // the basic block.
       if (Value *V =
-              simplifyInstruction(NewInst, BB->getModule()->getDataLayout())) {
+              SimplifyInstruction(NewInst, BB->getModule()->getDataLayout())) {
         // On the off-chance that this simplifies to an instruction in the old
         // function, map it back into the new function.
         if (NewFunc != OldFunc)
@@ -734,14 +723,14 @@ void llvm::CloneAndPruneIntoFromInst(Function *NewFunc, const Function *OldFunc,
     }
 
     // If the loops above have made these phi nodes have 0 or 1 operand,
-    // replace them with poison or the input value.  We must do this for
+    // replace them with undef or the input value.  We must do this for
     // correctness, because 0-operand phis are not valid.
     PN = cast<PHINode>(NewBB->begin());
     if (PN->getNumIncomingValues() == 0) {
       BasicBlock::iterator I = NewBB->begin();
       BasicBlock::const_iterator OldI = OldBB->begin();
       while ((PN = dyn_cast<PHINode>(I++))) {
-        Value *NV = PoisonValue::get(PN->getType());
+        Value *NV = UndefValue::get(PN->getType());
         PN->replaceAllUsesWith(NV);
         assert(VMap[&*OldI] == PN && "VMap mismatch");
         VMap[&*OldI] = NV;
@@ -779,7 +768,7 @@ void llvm::CloneAndPruneIntoFromInst(Function *NewFunc, const Function *OldFunc,
       continue;
 
     // See if this instruction simplifies.
-    Value *SimpleV = simplifyInstruction(I, DL);
+    Value *SimpleV = SimplifyInstruction(I, DL);
     if (!SimpleV)
       continue;
 

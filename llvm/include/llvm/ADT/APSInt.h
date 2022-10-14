@@ -21,11 +21,11 @@ namespace llvm {
 
 /// An arbitrary precision integer that knows its signedness.
 class LLVM_NODISCARD APSInt : public APInt {
-  bool IsUnsigned = false;
+  bool IsUnsigned;
 
 public:
   /// Default constructor that creates an uninitialized APInt.
-  explicit APSInt() = default;
+  explicit APSInt() : IsUnsigned(false) {}
 
   /// Create an APSInt with the specified width, default to unsigned.
   explicit APSInt(uint32_t BitWidth, bool isUnsigned = true)

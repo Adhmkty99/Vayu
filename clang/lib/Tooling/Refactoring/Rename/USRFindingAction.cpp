@@ -145,12 +145,14 @@ private:
   void handleVarTemplateDecl(const VarTemplateDecl *VTD) {
     USRSet.insert(getUSRForDecl(VTD));
     USRSet.insert(getUSRForDecl(VTD->getTemplatedDecl()));
-    for (const auto *Spec : VTD->specializations())
+    llvm::for_each(VTD->specializations(), [&](const auto *Spec) {
       USRSet.insert(getUSRForDecl(Spec));
+    });
     SmallVector<VarTemplatePartialSpecializationDecl *, 4> PartialSpecs;
     VTD->getPartialSpecializations(PartialSpecs);
-    for (const auto *Spec : PartialSpecs)
+    llvm::for_each(PartialSpecs, [&](const auto *Spec) {
       USRSet.insert(getUSRForDecl(Spec));
+    });
   }
 
   void addUSRsOfCtorDtors(const CXXRecordDecl *RD) {

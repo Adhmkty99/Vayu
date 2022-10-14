@@ -81,6 +81,7 @@ struct FlagEntry {
 };
 
 raw_ostream &operator<<(raw_ostream &OS, const HexNumber &Value);
+std::string to_hexString(uint64_t Value, bool UpperCase = true);
 
 template <class T> std::string to_string(const T &Value) {
   std::string number;
@@ -94,7 +95,7 @@ std::string enumToString(T Value, ArrayRef<EnumEntry<TEnum>> EnumValues) {
   for (const EnumEntry<TEnum> &EnumItem : EnumValues)
     if (EnumItem.Value == Value)
       return std::string(EnumItem.AltName);
-  return utohexstr(Value, true);
+  return to_hexString(Value, false);
 }
 
 class ScopedPrinter {

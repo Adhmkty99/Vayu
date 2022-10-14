@@ -15,16 +15,7 @@
 
 include "mlir/Pass/PassBase.td"
 
-def TosaLayerwiseConstantFoldPass : Pass<"tosa-layerwise-constant-fold", "func::FuncOp"> {
-  let summary = "Fold layerwise operations on constant tensors";
-  let description = [{
-    Pass that enables folding of full-layer operations on constant tensors.
-  }];
-
-  let constructor = "createTosaLayerwiseConstantFoldPass()";
-}
-
-def TosaInferShapes : Pass<"tosa-infer-shapes", "func::FuncOp"> {
+def TosaInferShapes : Pass<"tosa-infer-shapes", "FuncOp"> {
   let summary = "Propagate shapes across TOSA operations";
   let description = [{
     Pass that uses operand types and propagates shapes to TOSA operations.
@@ -39,7 +30,7 @@ def TosaInferShapes : Pass<"tosa-infer-shapes", "func::FuncOp"> {
   ];
 }
 
-def TosaMakeBroadcastable : Pass<"tosa-make-broadcastable", "func::FuncOp"> {
+def TosaMakeBroadcastable : Pass<"tosa-make-broadcastable", "FuncOp"> {
   let summary = "TOSA rank Reshape to enable Broadcasting";
   let description = [{
     Pass that enables broadcast by making all input arrays have the same
@@ -53,7 +44,7 @@ def TosaMakeBroadcastable : Pass<"tosa-make-broadcastable", "func::FuncOp"> {
 }
 
 def TosaOptionalDecompositions
-  : Pass<"tosa-optional-decompositions", "func::FuncOp"> {
+  : Pass<"tosa-optional-decompositions", "FuncOp"> {
   let summary = "Applies Tosa operations optional decompositions";
   let description = [{
     Pass to apply the Tosa operations decompositions 

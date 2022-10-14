@@ -6,8 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: !stdlib=libc++ && (c++03 || c++11 || c++14)
-
 // <string_view>
 
 // size_type copy(charT* s, size_type n, size_type pos = 0) const;
@@ -17,6 +15,7 @@
 // Requires: [s, s+rlen) is a valid range.
 // Effects: Equivalent to std::copy_n(begin() + pos, rlen, s).
 // Returns: rlen.
+
 
 #include <string_view>
 #include <algorithm>

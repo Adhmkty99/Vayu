@@ -347,6 +347,10 @@ public:
   CFNumberChecker() : ICreate(nullptr), IGetValue(nullptr) {}
 
   void checkPreStmt(const CallExpr *CE, CheckerContext &C) const;
+
+private:
+  void EmitError(const TypedRegion* R, const Expr *Ex,
+                uint64_t SourceSize, uint64_t TargetSize, uint64_t NumberKind);
 };
 } // end anonymous namespace
 
@@ -442,7 +446,7 @@ void CFNumberChecker::checkPreStmt(const CallExpr *CE,
 
   // FIXME: We really should allow ranges of valid theType values, and
   //   bifurcate the state appropriately.
-  Optional<nonloc::ConcreteInt> V = dyn_cast<nonloc::ConcreteInt>(TheTypeVal);
+  Optional<nonloc::ConcreteInt> V = TheTypeVal.getAs<nonloc::ConcreteInt>();
   if (!V)
     return;
 
@@ -754,7 +758,7 @@ void VariadicMethodTypeChecker::checkPreObjCMessage(const ObjCMethodCall &msg,
       continue;
 
     // Ignore pointer constants.
-    if (isa<loc::ConcreteInt>(msg.getArgSVal(I)))
+    if (msg.getArgSVal(I).getAs<loc::ConcreteInt>())
       continue;
 
     // Ignore pointer types annotated with 'NSObject' attribute.
@@ -766,10 +770,10 @@ void VariadicMethodTypeChecker::checkPreObjCMessage(const ObjCMethodCall &msg,
       continue;
 
     // Generate only one error node to use for all bug reports.
-    if (!errorNode)
+    if (!errorNode.hasValue())
       errorNode = C.generateNonFatalErrorNode();
 
-    if (!errorNode.value())
+    if (!errorNode.getValue())
       continue;
 
     SmallString<128> sbuf;
@@ -787,7 +791,7 @@ void VariadicMethodTypeChecker::checkPreObjCMessage(const ObjCMethodCall &msg,
     os << "'";
 
     auto R = std::make_unique<PathSensitiveBugReport>(*BT, os.str(),
-                                                      errorNode.value());
+                                                      errorNode.getValue());
     R->addRange(msg.getArgSourceRange(I));
     C.emitReport(std::move(R));
   }
@@ -903,7 +907,7 @@ static ProgramStateRef checkElementNonNil(CheckerContext &C,
 
   // Go ahead and assume the value is non-nil.
   SVal Val = State->getSVal(*ElementLoc);
-  return State->assume(cast<DefinedOrUnknownSVal>(Val), true);
+  return State->assume(Val.castAs<DefinedOrUnknownSVal>(), true);
 }
 
 /// Returns NULL state if the collection is known to contain elements

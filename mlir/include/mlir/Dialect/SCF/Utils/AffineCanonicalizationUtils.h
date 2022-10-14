@@ -20,7 +20,6 @@ namespace mlir {
 class AffineMap;
 struct LogicalResult;
 class Operation;
-class OpFoldResult;
 class RewriterBase;
 class Value;
 class ValueRange;
@@ -33,8 +32,8 @@ class IfOp;
 /// step size via the last parameter. The function should return `success` in
 /// that case. If the first parameter is not an iteration variable, return
 /// `failure`.
-using LoopMatcherFn = function_ref<LogicalResult(
-    Value, OpFoldResult &, OpFoldResult &, OpFoldResult &)>;
+using LoopMatcherFn =
+    function_ref<LogicalResult(Value, Value &, Value &, Value &)>;
 
 /// Try to canonicalize an min/max operations in the context of for `loops` with
 /// a known range.

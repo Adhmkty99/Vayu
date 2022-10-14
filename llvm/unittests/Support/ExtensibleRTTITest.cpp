@@ -66,9 +66,9 @@ TEST(ExtensibleRTTI, cast) {
   MyDerivedType D;
   MyBaseType &BD = D;
 
-  (void)cast<MyBaseType>(D);
-  (void)cast<MyBaseType>(BD);
-  (void)cast<MyDerivedType>(BD);
+  cast<MyBaseType>(D);
+  cast<MyBaseType>(BD);
+  cast<MyDerivedType>(BD);
 }
 
 TEST(ExtensibleRTTI, dyn_cast) {

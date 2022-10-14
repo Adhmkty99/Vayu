@@ -23,14 +23,11 @@
 
 using namespace llvm;
 
-static cl::OptionCategory Cat("sanstats Options");
-
 static cl::opt<std::string> ClInputFile(cl::Positional, cl::Required,
                                         cl::desc("<filename>"));
 
 static cl::opt<bool> ClDemangle("demangle", cl::init(false),
-                                cl::desc("Print demangled function name"),
-                                cl::cat(Cat));
+                                cl::desc("Print demangled function name."));
 
 inline uint64_t KindFromData(uint64_t Data, char SizeofPtr) {
   return Data >> (SizeofPtr * 8 - kSanitizerStatKindBits);
@@ -126,7 +123,6 @@ static const char *ReadModule(char SizeofPtr, const char *Begin,
 }
 
 int main(int argc, char **argv) {
-  cl::HideUnrelatedOptions(Cat);
   cl::ParseCommandLineOptions(argc, argv,
                               "Sanitizer Statistics Processing Tool");
 

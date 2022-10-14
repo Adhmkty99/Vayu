@@ -11,9 +11,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2, $sgpr3
 
     ; GCN-LABEL: name: select_s32_scc
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2, $sgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_32 = COPY $sgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_32 = COPY $sgpr3
@@ -42,9 +40,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
 
     ; GCN-LABEL: name: select_s64_scc
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_64 = COPY $sgpr2_sgpr3
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_64 = COPY $sgpr4_sgpr5
@@ -73,9 +69,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
 
     ; GCN-LABEL: name: select_p0_scc
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_64 = COPY $sgpr2_sgpr3
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_64 = COPY $sgpr4_sgpr5
@@ -104,9 +98,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
 
     ; GCN-LABEL: name: select_p1_scc
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_64 = COPY $sgpr2_sgpr3
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_64 = COPY $sgpr4_sgpr5
@@ -135,9 +127,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
 
     ; GCN-LABEL: name: select_p999_scc
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_64 = COPY $sgpr2_sgpr3
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_64 = COPY $sgpr4_sgpr5
@@ -166,9 +156,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
 
     ; GCN-LABEL: name: select_v4s16_scc
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2_sgpr3, $sgpr4_sgpr5
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_64 = COPY $sgpr2_sgpr3
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_64 = COPY $sgpr4_sgpr5
@@ -197,9 +185,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2, $sgpr3
 
     ; GCN-LABEL: name: select_s16_scc
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2, $sgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_32 = COPY $sgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_32 = COPY $sgpr3
@@ -230,9 +216,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2, $sgpr3
 
     ; GCN-LABEL: name: select_v2s16_scc
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2, $sgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_32 = COPY $sgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_32 = COPY $sgpr3
@@ -261,9 +245,7 @@ body: |
     liveins:  $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GCN-LABEL: name: select_s32_vcc
-    ; GCN: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
+    ; GCN: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:vgpr_32 = COPY $vgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:vgpr_32 = COPY $vgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:vgpr_32 = COPY $vgpr3
@@ -290,9 +272,7 @@ body: |
     liveins:  $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GCN-LABEL: name: select_s16_vcc
-    ; GCN: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
+    ; GCN: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:vgpr_32 = COPY $vgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:vgpr_32 = COPY $vgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:vgpr_32 = COPY $vgpr3
@@ -321,9 +301,7 @@ body: |
     liveins:  $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GCN-LABEL: name: select_v2s16_vcc
-    ; GCN: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
+    ; GCN: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:vgpr_32 = COPY $vgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:vgpr_32 = COPY $vgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:vgpr_32 = COPY $vgpr3
@@ -350,9 +328,7 @@ body: |
     liveins:  $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GCN-LABEL: name: select_p3_vcc
-    ; GCN: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
+    ; GCN: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:vgpr_32 = COPY $vgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:vgpr_32 = COPY $vgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:vgpr_32 = COPY $vgpr3
@@ -380,9 +356,7 @@ body: |
     liveins:  $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GCN-LABEL: name: select_s32_vcc_fneg_lhs
-    ; GCN: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
+    ; GCN: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:vgpr_32 = COPY $vgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:vgpr_32 = COPY $vgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:vgpr_32 = COPY $vgpr3
@@ -410,9 +384,7 @@ body: |
     liveins:  $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GCN-LABEL: name: select_s32_vcc_fneg_rhs
-    ; GCN: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
+    ; GCN: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:vgpr_32 = COPY $vgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:vgpr_32 = COPY $vgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:vgpr_32 = COPY $vgpr3
@@ -440,9 +412,7 @@ body: |
     liveins:  $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GCN-LABEL: name: select_s32_vcc_fneg_fabs_lhs
-    ; GCN: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
+    ; GCN: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:vgpr_32 = COPY $vgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:vgpr_32 = COPY $vgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:vgpr_32 = COPY $vgpr3
@@ -472,9 +442,7 @@ body: |
     liveins:  $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GCN-LABEL: name: select_s16_vcc_fneg_lhs
-    ; GCN: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
+    ; GCN: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:vgpr_32 = COPY $vgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:vgpr_32 = COPY $vgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:vgpr_32 = COPY $vgpr3
@@ -508,9 +476,7 @@ body: |
     liveins:  $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GCN-LABEL: name: select_v2s16_vcc_fneg_lhs
-    ; GCN: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
+    ; GCN: [[COPY:%[0-9]+]]:vgpr_32 = COPY $vgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:vgpr_32 = COPY $vgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:vgpr_32 = COPY $vgpr3
     ; GCN-NEXT: [[S_MOV_B32_:%[0-9]+]]:sreg_32 = S_MOV_B32 2147516416
@@ -541,9 +507,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2, $sgpr3
 
     ; GCN-LABEL: name: select_s32_scc_fneg_lhs
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2, $sgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_32 = COPY $sgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_32 = COPY $sgpr3
@@ -575,9 +539,7 @@ body: |
     liveins:  $sgpr0, $sgpr1, $sgpr2, $sgpr3
 
     ; GCN-LABEL: name: select_s32_scc_fneg_rhs
-    ; GCN: liveins: $sgpr0, $sgpr1, $sgpr2, $sgpr3
-    ; GCN-NEXT: {{  $}}
-    ; GCN-NEXT: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
+    ; GCN: [[COPY:%[0-9]+]]:sreg_32 = COPY $sgpr0
     ; GCN-NEXT: [[COPY1:%[0-9]+]]:sreg_32 = COPY $sgpr1
     ; GCN-NEXT: [[COPY2:%[0-9]+]]:sreg_32 = COPY $sgpr2
     ; GCN-NEXT: [[COPY3:%[0-9]+]]:sreg_32 = COPY $sgpr3

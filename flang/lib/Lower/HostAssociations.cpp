@@ -15,9 +15,9 @@
 #include "flang/Lower/ConvertType.h"
 #include "flang/Lower/PFTBuilder.h"
 #include "flang/Lower/SymbolMap.h"
+#include "flang/Lower/Todo.h"
 #include "flang/Optimizer/Builder/Character.h"
 #include "flang/Optimizer/Builder/FIRBuilder.h"
-#include "flang/Optimizer/Builder/Todo.h"
 #include "flang/Optimizer/Support/FatalError.h"
 #include "flang/Semantics/tools.h"
 #include "llvm/ADT/TypeSwitch.h"
@@ -222,7 +222,8 @@ public:
 };
 
 /// Is \p sym a derived type entity with length parameters ?
-static bool isDerivedWithLenParameters(const Fortran::semantics::Symbol &sym) {
+static bool
+isDerivedWithLengthParameters(const Fortran::semantics::Symbol &sym) {
   if (const auto *declTy = sym.GetType())
     if (const auto *derived = declTy->AsDerived())
       return Fortran::semantics::CountLenParameters(*derived) != 0;
@@ -300,7 +301,7 @@ public:
           nonDeferredLenParams.push_back(readLength());
         }
       }
-    } else if (isDerivedWithLenParameters(sym)) {
+    } else if (isDerivedWithLengthParameters(sym)) {
       TODO(loc, "host associated derived type allocatable or pointer with "
                 "length parameters");
     }
@@ -401,7 +402,7 @@ public:
         if (!fir::isa_ref_type(eleTy))
           eleTy = builder.getRefType(eleTy);
         auto addr = builder.create<fir::BoxAddrOp>(loc, eleTy, box);
-        mlir::Value isPresent = builder.genIsNotNullAddr(loc, addr);
+        mlir::Value isPresent = builder.genIsNotNull(loc, addr);
         auto absentBox = builder.create<fir::AbsentOp>(loc, boxTy);
         box = builder.create<mlir::arith::SelectOp>(loc, isPresent, box,
                                                     absentBox);
@@ -425,7 +426,7 @@ private:
     const Fortran::semantics::DeclTypeSpec *type = sym.GetType();
     bool isPolymorphic = type && type->IsPolymorphic();
     return isScalarOrContiguous && !isPolymorphic &&
-           !isDerivedWithLenParameters(sym);
+           !isDerivedWithLengthParameters(sym);
   }
 };
 
@@ -437,7 +438,7 @@ template <typename T>
 typename T::Result
 walkCaptureCategories(T visitor, Fortran::lower::AbstractConverter &converter,
                       const Fortran::semantics::Symbol &sym) {
-  if (isDerivedWithLenParameters(sym))
+  if (isDerivedWithLengthParameters(sym))
     // Should be boxed.
     TODO(converter.genLocation(sym.name()),
          "host associated derived type with length parameters");
@@ -512,7 +513,7 @@ void Fortran::lower::HostAssociations::internalProcedureBindings(
   mlir::Type argTy = getArgumentType(converter);
   mlir::TupleType tupTy = unwrapTupleTy(argTy);
   mlir::Location loc = converter.getCurrentLocation();
-  mlir::func::FuncOp func = builder.getFunction();
+  mlir::FuncOp func = builder.getFunction();
   mlir::Value tupleArg;
   for (auto [ty, arg] : llvm::reverse(llvm::zip(
            func.getFunctionType().getInputs(), func.front().getArguments())))

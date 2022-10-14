@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 class FoundationSymtabTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     symbols_list = ['-[MyString initWithNSString:]',
                     '-[MyString dealloc]',
                     '-[MyString description]',

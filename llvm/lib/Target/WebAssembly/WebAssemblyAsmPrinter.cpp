@@ -203,7 +203,7 @@ void WebAssemblyAsmPrinter::emitGlobalVariable(const GlobalVariable *GV) {
     OutStreamer->emitLabel(Sym);
     // TODO: Actually emit the initializer value.  Otherwise the global has the
     // default value for its type (0, ref.null, etc).
-    OutStreamer->addBlankLine();
+    OutStreamer->AddBlankLine();
   }
 }
 
@@ -211,7 +211,7 @@ MCSymbol *WebAssemblyAsmPrinter::getOrCreateWasmSymbol(StringRef Name) {
   auto *WasmSym = cast<MCSymbolWasm>(GetExternalSymbolSymbol(Name));
 
   // May be called multiple times, so early out.
-  if (WasmSym->getType())
+  if (WasmSym->getType().hasValue())
     return WasmSym;
 
   const WebAssemblySubtarget &Subtarget = getSubtarget();
@@ -276,7 +276,7 @@ void WebAssemblyAsmPrinter::emitSymbolType(const MCSymbolWasm *Sym) {
   if (!WasmTy)
     return;
 
-  switch (*WasmTy) {
+  switch (WasmTy.getValue()) {
   case wasm::WASM_SYMBOL_TYPE_GLOBAL:
     getTargetStreamer()->emitGlobalType(Sym);
     break;
@@ -426,13 +426,13 @@ void WebAssemblyAsmPrinter::emitEndOfAsmFile(Module &M) {
       if (!Name || !Contents)
         continue;
 
-      OutStreamer->pushSection();
+      OutStreamer->PushSection();
       std::string SectionName = (".custom_section." + Name->getString()).str();
       MCSectionWasm *MySection =
           OutContext.getWasmSection(SectionName, SectionKind::getMetadata());
-      OutStreamer->switchSection(MySection);
+      OutStreamer->SwitchSection(MySection);
       OutStreamer->emitBytes(Contents->getString());
-      OutStreamer->popSection();
+      OutStreamer->PopSection();
     }
   }
 
@@ -470,8 +470,8 @@ void WebAssemblyAsmPrinter::EmitProducerInfo(Module &M) {
   if (FieldCount != 0) {
     MCSectionWasm *Producers = OutContext.getWasmSection(
         ".custom_section.producers", SectionKind::getMetadata());
-    OutStreamer->pushSection();
-    OutStreamer->switchSection(Producers);
+    OutStreamer->PushSection();
+    OutStreamer->SwitchSection(Producers);
     OutStreamer->emitULEB128IntValue(FieldCount);
     for (auto &Producers : {std::make_pair("language", &Languages),
             std::make_pair("processed-by", &Tools)}) {
@@ -487,7 +487,7 @@ void WebAssemblyAsmPrinter::EmitProducerInfo(Module &M) {
         OutStreamer->emitBytes(Producer.second);
       }
     }
-    OutStreamer->popSection();
+    OutStreamer->PopSection();
   }
 }
 
@@ -543,8 +543,8 @@ void WebAssemblyAsmPrinter::EmitTargetFeatures(Module &M) {
   // Emit features and linkage policies into the "target_features" section
   MCSectionWasm *FeaturesSection = OutContext.getWasmSection(
       ".custom_section.target_features", SectionKind::getMetadata());
-  OutStreamer->pushSection();
-  OutStreamer->switchSection(FeaturesSection);
+  OutStreamer->PushSection();
+  OutStreamer->SwitchSection(FeaturesSection);
 
   OutStreamer->emitULEB128IntValue(EmittedFeatures.size());
   for (auto &F : EmittedFeatures) {
@@ -553,7 +553,7 @@ void WebAssemblyAsmPrinter::EmitTargetFeatures(Module &M) {
     OutStreamer->emitBytes(F.Name);
   }
 
-  OutStreamer->popSection();
+  OutStreamer->PopSection();
 }
 
 void WebAssemblyAsmPrinter::emitConstantPool() {
@@ -597,8 +597,6 @@ void WebAssemblyAsmPrinter::emitFunctionBodyStart() {
 
 void WebAssemblyAsmPrinter::emitInstruction(const MachineInstr *MI) {
   LLVM_DEBUG(dbgs() << "EmitInstruction: " << *MI << '\n');
-  WebAssembly_MC::verifyInstructionPredicates(MI->getOpcode(),
-                                              Subtarget->getFeatureBits());
 
   switch (MI->getOpcode()) {
   case WebAssembly::ARGUMENT_i32:
@@ -629,7 +627,7 @@ void WebAssemblyAsmPrinter::emitInstruction(const MachineInstr *MI) {
     // function body.
     if (isVerbose()) {
       OutStreamer->AddComment("fallthrough-return");
-      OutStreamer->addBlankLine();
+      OutStreamer->AddBlankLine();
     }
     break;
   }

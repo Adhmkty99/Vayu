@@ -5,14 +5,13 @@ add_mlir_dialect_library(MLIRLinalgUtils
   ${MLIR_MAIN_INCLUDE_DIR}/mlir/Dialect/Linalg
 
   LINK_LIBS PUBLIC
-  MLIRAffineDialect
+  MLIRAffine
   MLIRAffineAnalysis
   MLIRAffineUtils
-  MLIRArithmeticDialect
-  MLIRFuncDialect
+  MLIRArithmetic
   MLIRIR
-  MLIRLinalgDialect
-  MLIRSCFDialect
+  MLIRLinalg
+  MLIRSCF
   MLIRPass
   MLIRTensorUtils
   MLIRTransformUtils

@@ -9,12 +9,15 @@
 #ifndef LLVM_LIBC_SRC_SUPPORT_THREADS_LINUX_FUTEX_WORD_H
 #define LLVM_LIBC_SRC_SUPPORT_THREADS_LINUX_FUTEX_WORD_H
 
-#include <stdint.h>
+#include "src/__support/architectures.h"
 
 namespace __llvm_libc {
 
-// Futexes are 32 bits in size on all platforms, including 64-bit platforms.
-using FutexWordType = uint32_t;
+#if defined(LLVM_LIBC_ARCH_X86_64) || defined(LLVM_LIBC_ARCH_AARCH64)
+using FutexWordType = unsigned int;
+#else
+#error "FutexWordType not defined for the target architecture."
+#endif
 
 } // namespace __llvm_libc
 

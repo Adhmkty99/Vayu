@@ -21,9 +21,7 @@
    followed by code that writes [[noreturn]]. The issue with such code is not
    with the attribute, or the use of 'noreturn', but the inclusion of the
    header. */
-/* FIXME: We should be issuing a deprecation warning here, but cannot yet due
- * to system headers which include this header file unconditionally.
- */
+#warning "the '<stdnoreturn.h>' header is deprecated in C2x; either use the '_Noreturn' keyword or the '[[noreturn]]' attribute"
 #endif
 
 #endif /* __STDNORETURN_H */

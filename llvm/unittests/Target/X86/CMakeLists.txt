@@ -19,5 +19,3 @@ set(LLVM_LINK_COMPONENTS
 add_llvm_unittest(X86Tests
   MachineSizeOptsTest.cpp
   )
-
-set_property(TARGET X86Tests PROPERTY FOLDER "Tests/UnitTests/TargetTests")

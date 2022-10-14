@@ -21,7 +21,6 @@ if(MLIR_INCLUDE_TESTS)
     MLIRTestPass
     MLIRTestReducer
     MLIRTestRewrite
-    MLIRTestTransformDialect
     MLIRTestTransforms
     )
 endif()
@@ -42,7 +41,7 @@ set(LIBS
   MLIRIR
   )
 
-add_mlir_tool(mlir-lsp-server
+add_llvm_tool(mlir-lsp-server
   mlir-lsp-server.cpp
 
   DEPENDS

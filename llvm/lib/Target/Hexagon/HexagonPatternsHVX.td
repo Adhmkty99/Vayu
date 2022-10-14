@@ -37,7 +37,7 @@ def SDTHexagonVINSERTW0: SDTypeProfile<1, 2,
 def HexagonVINSERTW0: SDNode<"HexagonISD::VINSERTW0", SDTHexagonVINSERTW0>;
 
 def HwLen2: SDNodeXForm<imm, [{
-  const auto &ST = CurDAG->getSubtarget<HexagonSubtarget>();
+  const auto &ST = static_cast<const HexagonSubtarget&>(CurDAG->getSubtarget());
   return CurDAG->getTargetConstant(ST.getVectorLength()/2, SDLoc(N), MVT::i32);
 }]>;
 

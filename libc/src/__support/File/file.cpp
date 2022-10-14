@@ -16,7 +16,9 @@
 
 namespace __llvm_libc {
 
-size_t File::write_unlocked(const void *data, size_t len) {
+size_t File::write(const void *data, size_t len) {
+  FileLock lock(this);
+
   if (!write_allowed()) {
     errno = EBADF;
     err = true;
@@ -25,156 +27,58 @@ size_t File::write_unlocked(const void *data, size_t len) {
 
   prev_op = FileOp::WRITE;
 
-  if (bufmode == _IOFBF) { // fully buffered
-    return write_unlocked_fbf(data, len);
-  } else if (bufmode == _IOLBF) { // line buffered
-    return write_unlocked_lbf(data, len);
-  } else /*if (bufmode == _IONBF) */ { // unbuffered
-    size_t ret_val = write_unlocked_nbf(data, len);
-    flush_unlocked();
-    return ret_val;
-  }
-}
-
-size_t File::write_unlocked_nbf(const void *data, size_t len) {
-  if (pos > 0) { // If the buffer is not empty
-    // Flush the buffer
-    const size_t write_size = pos;
-    size_t bytes_written = platform_write(this, buf, write_size);
-    pos = 0; // Buffer is now empty so reset pos to the beginning.
-    // If less bytes were written than expected, then an error occurred.
-    if (bytes_written < write_size) {
-      err = true;
-      return 0; // No bytes from data were written, so return 0.
-    }
-  }
-
-  size_t written = platform_write(this, data, len);
-  if (written < len)
-    err = true;
-  return written;
-}
-
-size_t File::write_unlocked_fbf(const void *data, size_t len) {
-  const size_t init_pos = pos;
-  const size_t bufspace = bufsize - pos;
-
-  // If data is too large to be buffered at all, then just write it unbuffered.
-  if (len > bufspace + bufsize)
-    return write_unlocked_nbf(data, len);
-
-  // we split |data| (conceptually) using the split point. Then we handle the
-  // two pieces separately.
-  const size_t split_point = len < bufspace ? len : bufspace;
-
-  // The primary piece is the piece of |data| we want to write to the buffer
-  // before flushing. It will always fit into the buffer, since the split point
-  // is defined as being min(len, bufspace), and it will always exist if len is
-  // non-zero.
-  cpp::ArrayRef<uint8_t> primary(data, split_point);
-
-  // The second piece is the remainder of |data|. It is written to the buffer if
-  // it fits, or written directly to the output if it doesn't. If the primary
-  // piece fits entirely in the buffer, the remainder may be nothing.
-  cpp::ArrayRef<uint8_t> remainder(
-      static_cast<const uint8_t *>(data) + split_point, len - split_point);
-
+  cpp::ArrayRef<uint8_t> dataref(data, len);
   cpp::MutableArrayRef<uint8_t> bufref(buf, bufsize);
 
-  // Copy the first piece into the buffer.
+  const size_t used = pos;
+  const size_t bufspace = bufsize - pos;
+  const size_t write_size = bufspace > len ? len : bufspace;
   // TODO: Replace the for loop below with a call to internal memcpy.
-  for (size_t i = 0; i < primary.size(); ++i)
-    bufref[pos + i] = primary[i];
-  pos += primary.size();
-
-  // If there is no remainder, we can return early, since the first piece has
-  // fit completely into the buffer.
-  if (remainder.size() == 0)
+  for (size_t i = 0; i < write_size; ++i)
+    bufref[pos + i] = dataref[i];
+  pos += write_size;
+  if (len < bufspace)
     return len;
 
-  // We need to flush the buffer now, since there is still data and the buffer
-  // is full.
-  const size_t write_size = pos;
-  size_t bytes_written = platform_write(this, buf, write_size);
+  // If the control reaches beyond this point, it means that |data|
+  // is more than what can be accomodated in the buffer. So, we first
+  // flush out the buffer.
+  size_t bytes_written = platform_write(this, buf, bufsize);
   pos = 0; // Buffer is now empty so reset pos to the beginning.
-  // If less bytes were written than expected, then an error occurred. Return
-  // the number of bytes that have been written from |data|.
-  if (bytes_written < write_size) {
+  if (bytes_written < bufsize) {
     err = true;
-    return bytes_written <= init_pos ? 0 : bytes_written - init_pos;
+    // If less bytes were written than expected, then there are two
+    // possibilities.
+    // 1. None of the bytes from |data| were flushed out.
+    if (bytes_written <= used)
+      return 0;
+    // 2. Some of the bytes from |data| were written
+    return bytes_written - used;
   }
 
-  // The second piece is handled basically the same as the first, although we
-  // know that if the second piece has data in it then the buffer has been
-  // flushed, meaning that pos is always 0.
-  if (remainder.size() < bufsize) {
+  // If the remaining bytes from |data| can fit in the buffer, write
+  // into it. Else, write it directly to the platform stream.
+  size_t remaining = len - write_size;
+  if (remaining <= len) {
     // TODO: Replace the for loop below with a call to internal memcpy.
-    for (size_t i = 0; i < remainder.size(); ++i)
-      bufref[i] = remainder[i];
-    pos = remainder.size();
-  } else {
-    size_t bytes_written =
-        platform_write(this, remainder.data(), remainder.size());
-
-    // If less bytes were written than expected, then an error occurred. Return
-    // the number of bytes that have been written from |data|.
-    if (bytes_written < remainder.size()) {
-      err = true;
-      return primary.size() + bytes_written;
-    }
+    for (size_t i = 0; i < remaining; ++i)
+      bufref[i] = dataref[i];
+    pos += remaining;
+    return len;
   }
 
+  size_t transferred =
+      platform_write(this, dataref.data() + write_size, remaining);
+  if (transferred < remaining) {
+    err = true;
+    return write_size + transferred;
+  }
   return len;
 }
 
-size_t File::write_unlocked_lbf(const void *data, size_t len) {
-  constexpr char NEWLINE_CHAR = '\n';
-  size_t last_newline = len;
-  for (size_t i = len; i > 1; --i) {
-    if (static_cast<const char *>(data)[i - 1] == NEWLINE_CHAR) {
-      last_newline = i - 1;
-      break;
-    }
-  }
+size_t File::read(void *data, size_t len) {
+  FileLock lock(this);
 
-  // If there is no newline, treat this as fully buffered.
-  if (last_newline == len) {
-    return write_unlocked_fbf(data, len);
-  }
-
-  // we split |data| (conceptually) using the split point. Then we handle the
-  // two pieces separately.
-  const size_t split_point = last_newline + 1;
-
-  // The primary piece is everything in |data| up to the newline. It's written
-  // unbuffered to the output.
-  cpp::ArrayRef<uint8_t> primary(data, split_point);
-
-  // The second piece is the remainder of |data|. It is written fully buffered,
-  // meaning it may stay in the buffer if it fits.
-  cpp::ArrayRef<uint8_t> remainder(
-      static_cast<const uint8_t *>(data) + split_point, len - split_point);
-
-  size_t written = 0;
-
-  written = write_unlocked_nbf(primary.data(), primary.size());
-  if (written < primary.size()) {
-    err = true;
-    return written;
-  }
-
-  flush_unlocked();
-
-  written += write_unlocked_fbf(remainder.data(), remainder.size());
-  if (written < len) {
-    err = true;
-    return written;
-  }
-
-  return len;
-}
-
-size_t File::read_unlocked(void *data, size_t len) {
   if (!read_allowed()) {
     errno = EBADF;
     err = true;
@@ -254,7 +158,8 @@ int File::seek(long offset, int whence) {
   return platform_seek(this, offset, whence);
 }
 
-int File::flush_unlocked() {
+int File::flush() {
+  FileLock lock(this);
   if (prev_op == FileOp::WRITE && pos > 0) {
     size_t transferred_size = platform_write(this, buf, pos);
     if (transferred_size < pos) {
@@ -264,7 +169,6 @@ int File::flush_unlocked() {
     pos = 0;
     return platform_flush(this);
   }
-  // TODO: Add POSIX behavior for input streams.
   return 0;
 }
 

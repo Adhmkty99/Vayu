@@ -60,7 +60,6 @@ add_clang_library(clangDriver
   ToolChains/HIPAMD.cpp
   ToolChains/HIPSPV.cpp
   ToolChains/Hexagon.cpp
-  ToolChains/HLSL.cpp
   ToolChains/Hurd.cpp
   ToolChains/Linux.cpp
   ToolChains/MipsLinux.cpp

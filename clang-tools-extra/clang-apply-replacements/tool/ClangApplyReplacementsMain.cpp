@@ -42,11 +42,6 @@ static cl::opt<bool> RemoveTUReplacementFiles(
              "merging/replacing."),
     cl::init(false), cl::cat(ReplacementCategory));
 
-static cl::opt<bool> IgnoreInsertConflict(
-    "ignore-insert-conflict",
-    cl::desc("Ignore insert conflict and keep running to fix."),
-    cl::init(false), cl::cat(ReplacementCategory));
-
 static cl::opt<bool> DoFormat(
     "format",
     cl::desc("Enable formatting of code changed by applying replacements.\n"
@@ -136,7 +131,7 @@ int main(int argc, char **argv) {
   SourceManager SM(Diagnostics, Files);
 
   FileToChangesMap Changes;
-  if (!mergeAndDeduplicate(TURs, TUDs, Changes, SM, IgnoreInsertConflict))
+  if (!mergeAndDeduplicate(TURs, TUDs, Changes, SM))
     return 1;
 
   tooling::ApplyChangesSpec Spec;

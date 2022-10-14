@@ -48,7 +48,7 @@ struct ParallelizationCandidate {
 } // namespace
 
 void AffineParallelize::runOnOperation() {
-  func::FuncOp f = getOperation();
+  FuncOp f = getOperation();
 
   // The walker proceeds in pre-order to process the outer loops first
   // and control the number of outer parallel loops.
@@ -81,7 +81,6 @@ void AffineParallelize::runOnOperation() {
   }
 }
 
-std::unique_ptr<OperationPass<func::FuncOp>>
-mlir::createAffineParallelizePass() {
+std::unique_ptr<OperationPass<FuncOp>> mlir::createAffineParallelizePass() {
   return std::make_unique<AffineParallelize>();
 }

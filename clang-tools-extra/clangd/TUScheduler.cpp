@@ -110,11 +110,6 @@ constexpr trace::Metric
 constexpr trace::Metric PreambleBuildFilesystemLatencyRatio(
     "preamble_fs_latency_ratio", trace::Metric::Distribution, "build_type");
 
-constexpr trace::Metric PreambleBuildSize("preamble_build_size",
-                                          trace::Metric::Distribution);
-constexpr trace::Metric PreambleSerializedSize("preamble_serialized_size",
-                                               trace::Metric::Distribution);
-
 void reportPreambleBuild(const PreambleBuildStats &Stats,
                          bool IsFirstPreamble) {
   auto RecordWithLabel = [&Stats](llvm::StringRef Label) {
@@ -127,9 +122,6 @@ void reportPreambleBuild(const PreambleBuildStats &Stats,
   static llvm::once_flag OnceFlag;
   llvm::call_once(OnceFlag, [&] { RecordWithLabel("first_build"); });
   RecordWithLabel(IsFirstPreamble ? "first_build_for_file" : "rebuild");
-
-  PreambleBuildSize.record(Stats.BuildSize);
-  PreambleSerializedSize.record(Stats.SerializedSize);
 }
 
 class ASTWorker;
@@ -381,41 +373,6 @@ private:
   ParsingCallbacks &Callbacks;
 };
 
-// An attempt to acquire resources for a task using PreambleThrottler.
-// Initially it is unsatisfied, it (hopefully) becomes satisfied later but may
-// be destroyed before then. Destruction releases all resources.
-class PreambleThrottlerRequest {
-public:
-  // The condition variable is signalled when the request is satisfied.
-  PreambleThrottlerRequest(llvm::StringRef Filename,
-                           PreambleThrottler *Throttler,
-                           std::condition_variable &CV)
-      : Throttler(Throttler), Satisfied(Throttler == nullptr) {
-    // If there is no throttler, this dummy request is always satisfied.
-    if (!Throttler)
-      return;
-    ID = Throttler->acquire(Filename, [&] {
-      Satisfied.store(true, std::memory_order_release);
-      CV.notify_all();
-    });
-  }
-
-  bool satisfied() const { return Satisfied.load(std::memory_order_acquire); }
-
-  // When the request is destroyed:
-  //  - if resources are not yet obtained, stop trying to get them.
-  //  - if resources were obtained, release them.
-  ~PreambleThrottlerRequest() {
-    if (Throttler)
-      Throttler->release(ID);
-  }
-
-private:
-  PreambleThrottler::RequestID ID;
-  PreambleThrottler *Throttler;
-  std::atomic<bool> Satisfied = {false};
-};
-
 /// Responsible for building preambles. Whenever the thread is idle and the
 /// preamble is outdated, it starts to build a fresh preamble from the latest
 /// inputs. If RunSync is true, preambles are built synchronously in update()
@@ -424,13 +381,12 @@ class PreambleThread {
 public:
   PreambleThread(llvm::StringRef FileName, ParsingCallbacks &Callbacks,
                  bool StorePreambleInMemory, bool RunSync,
-                 PreambleThrottler *Throttler, SynchronizedTUStatus &Status,
+                 SynchronizedTUStatus &Status,
                  TUScheduler::HeaderIncluderCache &HeaderIncluders,
                  ASTWorker &AW)
       : FileName(FileName), Callbacks(Callbacks),
-        StoreInMemory(StorePreambleInMemory), RunSync(RunSync),
-        Throttler(Throttler), Status(Status), ASTPeer(AW),
-        HeaderIncluders(HeaderIncluders) {}
+        StoreInMemory(StorePreambleInMemory), RunSync(RunSync), Status(Status),
+        ASTPeer(AW), HeaderIncluders(HeaderIncluders) {}
 
   /// It isn't guaranteed that each requested version will be built. If there
   /// are multiple update requests while building a preamble, only the last one
@@ -464,27 +420,13 @@ public:
 
   void run() {
     while (true) {
-      llvm::Optional<PreambleThrottlerRequest> Throttle;
       {
         std::unique_lock<std::mutex> Lock(Mutex);
         assert(!CurrentReq && "Already processing a request?");
         // Wait until stop is called or there is a request.
-        ReqCV.wait(Lock, [&] { return NextReq || Done; });
+        ReqCV.wait(Lock, [this] { return NextReq || Done; });
         if (Done)
           break;
-
-        Throttle.emplace(FileName, Throttler, ReqCV);
-        // If acquire succeeded synchronously, avoid status jitter.
-        if (!Throttle->satisfied())
-          Status.update([&](TUStatus &Status) {
-            Status.PreambleActivity = PreambleAction::Queued;
-          });
-        ReqCV.wait(Lock, [&] { return Throttle->satisfied() || Done; });
-        if (Done)
-          break;
-        // While waiting for the throttler, the request may have been updated!
-        // That's fine though, there's still guaranteed to be some request.
-
         CurrentReq = std::move(*NextReq);
         NextReq.reset();
       }
@@ -498,13 +440,11 @@ public:
         // Build the preamble and let the waiters know about it.
         build(std::move(*CurrentReq));
       }
-      // Releasing the throttle before destroying the request assists testing.
-      Throttle.reset();
       bool IsEmpty = false;
       {
         std::lock_guard<std::mutex> Lock(Mutex);
         CurrentReq.reset();
-        IsEmpty = !NextReq;
+        IsEmpty = !NextReq.hasValue();
       }
       if (IsEmpty) {
         // We don't perform this above, before waiting for a request to make
@@ -570,7 +510,6 @@ private:
   ParsingCallbacks &Callbacks;
   const bool StoreInMemory;
   const bool RunSync;
-  PreambleThrottler *Throttler;
 
   SynchronizedTUStatus &Status;
   ASTWorker &ASTPeer;
@@ -831,7 +770,7 @@ ASTWorker::ASTWorker(PathRef FileName, const GlobalCompilationDatabase &CDB,
       ContextProvider(Opts.ContextProvider), CDB(CDB), Callbacks(Callbacks),
       Barrier(Barrier), Done(false), Status(FileName, Callbacks),
       PreamblePeer(FileName, Callbacks, Opts.StorePreamblesInMemory, RunSync,
-                   Opts.PreambleThrottler, Status, HeaderIncluders, *this) {
+                   Status, HeaderIncluders, *this) {
   // Set a fallback command because compile command can be accessed before
   // `Inputs` is initialized. Other fields are only used after initialization
   // from client inputs.
@@ -851,7 +790,7 @@ ASTWorker::~ASTWorker() {
 
 void ASTWorker::update(ParseInputs Inputs, WantDiagnostics WantDiags,
                        bool ContentChanged) {
-  llvm::StringLiteral TaskName = "Update";
+  std::string TaskName = llvm::formatv("Update ({0})", Inputs.Version);
   auto Task = [=]() mutable {
     // Get the actual command as `Inputs` does not have a command.
     // FIXME: some build systems like Bazel will take time to preparing
@@ -1066,10 +1005,9 @@ void PreambleThread::build(Request Req) {
   bool IsFirstPreamble = !LatestBuild;
   LatestBuild = clang::clangd::buildPreamble(
       FileName, *Req.CI, Inputs, StoreInMemory,
-      [&](ASTContext &Ctx, Preprocessor &PP,
-          const CanonicalIncludes &CanonIncludes) {
-        Callbacks.onPreambleAST(FileName, Inputs.Version, *Req.CI, Ctx, PP,
-                                CanonIncludes);
+      [this, Version(Inputs.Version)](ASTContext &Ctx, Preprocessor &PP,
+                                      const CanonicalIncludes &CanonIncludes) {
+        Callbacks.onPreambleAST(FileName, Version, Ctx, PP, CanonIncludes);
       },
       &Stats);
   if (!LatestBuild)
@@ -1199,7 +1137,7 @@ void ASTWorker::generateDiagnostics(
     }
     Status.update([&](TUStatus &Status) {
       Status.Details.ReuseAST = false;
-      Status.Details.BuildFailed = !NewAST;
+      Status.Details.BuildFailed = !NewAST.hasValue();
     });
     AST = NewAST ? std::make_unique<ParsedAST>(std::move(*NewAST)) : nullptr;
   } else {
@@ -1249,7 +1187,7 @@ std::shared_ptr<const PreambleData> ASTWorker::getPossiblyStalePreamble(
 
 void ASTWorker::waitForFirstPreamble() const {
   std::unique_lock<std::mutex> Lock(Mutex);
-  PreambleCV.wait(Lock, [this] { return LatestPreamble || Done; });
+  PreambleCV.wait(Lock, [this] { return LatestPreamble.hasValue() || Done; });
 }
 
 tooling::CompileCommand ASTWorker::getCurrentCompileCommand() const {
@@ -1551,9 +1489,6 @@ std::string renderTUAction(const PreambleAction PA, const ASTAction &AA) {
   switch (PA) {
   case PreambleAction::Building:
     Result.push_back("parsing includes");
-    break;
-  case PreambleAction::Queued:
-    Result.push_back("includes are queued");
     break;
   case PreambleAction::Idle:
     // We handle idle specially below.

@@ -25,7 +25,7 @@
 #include "mlir/Dialect/Affine/Utils.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
-#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/IR/IntegerSet.h"
 #include "mlir/IR/Visitors.h"
@@ -50,7 +50,7 @@ public:
   LogicalResult
   matchAndRewrite(mlir::AffineLoadOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    SmallVector<Value> indices(adaptor.getIndices());
+    SmallVector<Value> indices(adaptor.indices());
     auto maybeExpandedMap =
         expandAffineMap(rewriter, op.getLoc(), op.getAffineMap(), indices);
     if (!maybeExpandedMap)
@@ -58,7 +58,7 @@ public:
 
     auto coorOp = rewriter.create<fir::CoordinateOp>(
         op.getLoc(), fir::ReferenceType::get(op.getResult().getType()),
-        adaptor.getMemref(), *maybeExpandedMap);
+        adaptor.memref(), *maybeExpandedMap);
 
     rewriter.replaceOpWithNewOp<fir::LoadOp>(op, coorOp.getResult());
     return success();
@@ -72,7 +72,7 @@ public:
   LogicalResult
   matchAndRewrite(mlir::AffineStoreOp op, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override {
-    SmallVector<Value> indices(op.getIndices());
+    SmallVector<Value> indices(op.indices());
     auto maybeExpandedMap =
         expandAffineMap(rewriter, op.getLoc(), op.getAffineMap(), indices);
     if (!maybeExpandedMap)
@@ -80,8 +80,8 @@ public:
 
     auto coorOp = rewriter.create<fir::CoordinateOp>(
         op.getLoc(), fir::ReferenceType::get(op.getValueToStore().getType()),
-        adaptor.getMemref(), *maybeExpandedMap);
-    rewriter.replaceOpWithNewOp<fir::StoreOp>(op, adaptor.getValue(),
+        adaptor.memref(), *maybeExpandedMap);
+    rewriter.replaceOpWithNewOp<fir::StoreOp>(op, adaptor.value(),
                                               coorOp.getResult());
     return success();
   }

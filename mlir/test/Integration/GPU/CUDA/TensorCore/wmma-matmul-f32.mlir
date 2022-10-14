@@ -8,7 +8,7 @@
 // RUN:   --entry-point-result=void \
 // RUN: | FileCheck %s
 
-func.func @main() {
+func @main() {
   %0 = memref.alloc() : memref<16x16xf16>
   %22 = memref.alloc() : memref<16x16xf32>
   %1 = memref.alloc() : memref<16x16xf32>
@@ -51,7 +51,7 @@ func.func @main() {
     gpu.terminator
   }
   // Print the memref after computation.
-  call @printMemrefF32(%33) : (memref<*xf32>) -> ()
+  call @print_memref_f32(%33) : (memref<*xf32>) -> ()
   // CHECK: [16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16],
   // CHECK-NEXT: [16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16],
   // CHECK-NEXT: [16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16],
@@ -71,4 +71,4 @@ func.func @main() {
   return
 }
 
-func.func private @printMemrefF32(memref<*xf32>)
+func private @print_memref_f32(memref<*xf32>)

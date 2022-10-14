@@ -9,6 +9,8 @@ from lldbsuite.test.lldbpexpect import PExpectTest
 
 class MultilineCompletionTest(PExpectTest):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def start_expression_editor(self):
         """ Starts the multiline expression editor. """
         self.child.send("expression\n")

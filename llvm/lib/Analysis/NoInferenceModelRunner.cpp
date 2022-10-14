@@ -10,14 +10,24 @@
 // logs for the default policy, in 'development' mode, but never ask it to
 // 'run'.
 //===----------------------------------------------------------------------===//
+#include "llvm/Config/config.h"
+#if defined(LLVM_HAVE_TF_API)
+
 #include "llvm/Analysis/NoInferenceModelRunner.h"
+#include "llvm/Analysis/Utils/TFUtils.h"
 
 using namespace llvm;
 
 NoInferenceModelRunner::NoInferenceModelRunner(
     LLVMContext &Ctx, const std::vector<TensorSpec> &Inputs)
-    : MLModelRunner(Ctx, MLModelRunner::Kind::NoOp, Inputs.size()) {
-  size_t Index = 0;
+    : MLModelRunner(Ctx, MLModelRunner::Kind::NoOp) {
+  ValuesBuffer.reserve(Inputs.size());
   for (const auto &TS : Inputs)
-    setUpBufferForTensor(Index++, TS, nullptr);
+    ValuesBuffer.push_back(std::make_unique<char[]>(TS.getElementCount() *
+                                                    TS.getElementByteSize()));
 }
+
+void *NoInferenceModelRunner::getTensorUntyped(size_t Index) {
+  return ValuesBuffer[Index].get();
+}
+#endif // defined(LLVM_HAVE_TF_API)

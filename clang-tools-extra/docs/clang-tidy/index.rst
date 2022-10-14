@@ -135,7 +135,8 @@ An overview of all the command-line options:
     --config=<string>              -
                                      Specifies a configuration in YAML/JSON format:
                                        -config="{Checks: '*',
-                                                 CheckOptions: {x, y}}"
+                                                 CheckOptions: [{key: x,
+                                                                 value: y}]}"
                                      When the value is empty, clang-tidy will
                                      attempt to find a file named .clang-tidy for
                                      each source file in its parent directories.
@@ -226,7 +227,7 @@ An overview of all the command-line options:
                                      complete list of passes, use the
                                      :option:`--list-checks` and
                                      :option:`-load` options together.
-    -p <string>                    - Build path
+    -p=<string>                    - Build path
     --quiet                        -
                                      Run clang-tidy in quiet mode. This suppresses
                                      printing statistics about ignored warnings and
@@ -243,9 +244,6 @@ An overview of all the command-line options:
                                     standard output supports colors.
                                     This option overrides the 'UseColor' option in
                                     .clang-tidy file, if any.
-    --verify-config                -
-                                     Check the config files to ensure each check and
-                                     option is recognized.
     --vfsoverlay=<filename>        -
                                      Overlay the virtual filesystem described by file
                                      over the real file system.
@@ -294,7 +292,8 @@ An overview of all the command-line options:
       InheritParentConfig: true
       User:                user
       CheckOptions:
-        some-check.SomeOption: 'some value'
+        - key:             some-check.SomeOption
+          value:           'some value'
       ...
 
 .. _clang-tidy-nolint:

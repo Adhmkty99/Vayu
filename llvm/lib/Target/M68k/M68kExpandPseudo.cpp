@@ -302,7 +302,7 @@ bool M68kExpandPseudo::ExpandMBB(MachineBasicBlock &MBB) {
 }
 
 bool M68kExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
-  STI = &MF.getSubtarget<M68kSubtarget>();
+  STI = &static_cast<const M68kSubtarget &>(MF.getSubtarget());
   TII = STI->getInstrInfo();
   TRI = STI->getRegisterInfo();
   MFI = MF.getInfo<M68kMachineFunctionInfo>();

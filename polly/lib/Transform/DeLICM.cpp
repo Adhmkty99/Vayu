@@ -183,7 +183,7 @@ isl::union_map expandMapping(isl::union_map Relevant, isl::union_set Universe) {
 /// conflict, but overwrite values that might still be required. Another source
 /// of problems are multiple writes to the same element at the same timepoint,
 /// because their order is undefined.
-class Knowledge final {
+class Knowledge {
 private:
   /// { [Element[] -> Zone[]] }
   /// Set of array elements and when they are alive.
@@ -520,7 +520,7 @@ public:
 };
 
 /// Implementation of the DeLICM/DePRE transformation.
-class DeLICMImpl final : public ZoneAlgorithm {
+class DeLICMImpl : public ZoneAlgorithm {
 private:
   /// Knowledge before any transformation took place.
   Knowledge OriginalZone;
@@ -1416,7 +1416,7 @@ static PreservedAnalyses runDeLICMUsingNPM(Scop &S, ScopAnalysisManager &SAM,
   return PA;
 }
 
-class DeLICMWrapperPass final : public ScopPass {
+class DeLICMWrapperPass : public ScopPass {
 private:
   DeLICMWrapperPass(const DeLICMWrapperPass &) = delete;
   const DeLICMWrapperPass &operator=(const DeLICMWrapperPass &) = delete;
@@ -1459,7 +1459,7 @@ public:
 char DeLICMWrapperPass::ID;
 
 /// Print result from DeLICMWrapperPass.
-class DeLICMPrinterLegacyPass final : public ScopPass {
+class DeLICMPrinterLegacyPass : public ScopPass {
 public:
   static char ID;
 

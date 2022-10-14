@@ -34,7 +34,7 @@ public:
   DummyCommand(const char *message) : m_message(message) {}
 
   bool DoExecute(SBDebugger dbg, char **command,
-                 SBCommandReturnObject &result) override {
+                 SBCommandReturnObject &result) {
     result.PutCString(m_message.c_str());
     result.SetStatus(eReturnStatusSuccessFinishResult);
     return result.Succeeded();

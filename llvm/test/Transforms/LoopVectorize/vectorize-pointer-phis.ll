@@ -1,4 +1,4 @@
-; RUN: opt < %s -passes=loop-vectorize -force-vector-width=2 -S | FileCheck %s
+; RUN: opt -loop-vectorize -force-vector-width=2 -S %s | FileCheck %s
 
 %s1 = type { [32000 x double], [32000 x double], [32000 x double] }
 

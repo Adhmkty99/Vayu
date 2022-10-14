@@ -479,7 +479,7 @@ public:
   void diagnoseHeaderInclusion(Module *RequestingModule,
                                bool RequestingModuleIsModuleInterface,
                                SourceLocation FilenameLoc, StringRef Filename,
-                               FileEntryRef File);
+                               const FileEntry *File);
 
   /// Determine whether the given header is part of a module
   /// marked 'unavailable'.

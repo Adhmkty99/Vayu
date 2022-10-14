@@ -5,6 +5,8 @@ from lldbsuite.test import lldbutil
 
 class TestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfRemote
     @skipIfWindows
     # glibc's dlopen doesn't support opening executables.

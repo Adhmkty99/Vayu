@@ -23,7 +23,6 @@ class RISCVTargetStreamer : public MCTargetStreamer {
 public:
   RISCVTargetStreamer(MCStreamer &S);
   void finish() override;
-  virtual void reset();
 
   virtual void emitDirectiveOptionPush();
   virtual void emitDirectiveOptionPop();

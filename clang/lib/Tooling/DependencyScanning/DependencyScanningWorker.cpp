@@ -137,11 +137,12 @@ public:
   DependencyScanningAction(
       StringRef WorkingDirectory, DependencyConsumer &Consumer,
       llvm::IntrusiveRefCntPtr<DependencyScanningWorkerFilesystem> DepFS,
-      ScanningOutputFormat Format, bool OptimizeArgs, bool DisableFree,
+      ExcludedPreprocessorDirectiveSkipMapping *PPSkipMappings,
+      ScanningOutputFormat Format, bool OptimizeArgs,
       llvm::Optional<StringRef> ModuleName = None)
       : WorkingDirectory(WorkingDirectory), Consumer(Consumer),
-        DepFS(std::move(DepFS)), Format(Format), OptimizeArgs(OptimizeArgs),
-        DisableFree(DisableFree), ModuleName(ModuleName) {}
+        DepFS(std::move(DepFS)), PPSkipMappings(PPSkipMappings), Format(Format),
+        OptimizeArgs(OptimizeArgs), ModuleName(ModuleName) {}
 
   bool runInvocation(std::shared_ptr<CompilerInvocation> Invocation,
                      FileManager *FileMgr,
@@ -149,8 +150,6 @@ public:
                      DiagnosticConsumer *DiagConsumer) override {
     // Make a deep copy of the original Clang invocation.
     CompilerInvocation OriginalInvocation(*Invocation);
-    // Restore the value of DisableFree, which may be modified by Tooling.
-    OriginalInvocation.getFrontendOpts().DisableFree = DisableFree;
 
     // Create a compiler instance to handle the actual work.
     CompilerInstance ScanInstance(std::move(PCHContainerOps));
@@ -184,21 +183,30 @@ public:
 
     // Use the dependency scanning optimized file system if requested to do so.
     if (DepFS) {
+      DepFS->enableMinimizationOfAllFiles();
+      // Don't minimize any files that contributed to prebuilt modules. The
+      // implicit build validates the modules by comparing the reported sizes of
+      // their inputs to the current state of the filesystem. Minimization would
+      // throw this mechanism off.
+      for (const auto &File : PrebuiltModulesInputFiles)
+        DepFS->disableMinimization(File.getKey());
+      // Don't minimize any files that were explicitly passed in the build
+      // settings and that might be opened.
+      for (const auto &E : ScanInstance.getHeaderSearchOpts().UserEntries)
+        DepFS->disableMinimization(E.Path);
+      for (const auto &F : ScanInstance.getHeaderSearchOpts().VFSOverlayFiles)
+        DepFS->disableMinimization(F);
+
       // Support for virtual file system overlays on top of the caching
       // filesystem.
       FileMgr->setVirtualFileSystem(createVFSFromCompilerInvocation(
           ScanInstance.getInvocation(), ScanInstance.getDiagnostics(), DepFS));
 
-      llvm::IntrusiveRefCntPtr<DependencyScanningWorkerFilesystem> LocalDepFS =
-          DepFS;
-      ScanInstance.getPreprocessorOpts().DependencyDirectivesForFile =
-          [LocalDepFS = std::move(LocalDepFS)](FileEntryRef File)
-          -> Optional<ArrayRef<dependency_directives_scan::Directive>> {
-        if (llvm::ErrorOr<EntryRef> Entry =
-                LocalDepFS->getOrCreateFileSystemEntry(File.getName()))
-          return Entry->getDirectiveTokens();
-        return None;
-      };
+      // Pass the skip mappings which should speed up excluded conditional block
+      // skipping in the preprocessor.
+      if (PPSkipMappings)
+        ScanInstance.getPreprocessorOpts()
+            .ExcludedConditionalDirectiveSkipMappings = PPSkipMappings;
     }
 
     // Create the dependency collector that will collect the produced
@@ -240,7 +248,7 @@ public:
 
     std::unique_ptr<FrontendAction> Action;
 
-    if (ModuleName)
+    if (ModuleName.hasValue())
       Action = std::make_unique<GetDependenciesByModuleNameAction>(*ModuleName);
     else
       Action = std::make_unique<ReadPCHAndPreprocessAction>();
@@ -255,17 +263,16 @@ private:
   StringRef WorkingDirectory;
   DependencyConsumer &Consumer;
   llvm::IntrusiveRefCntPtr<DependencyScanningWorkerFilesystem> DepFS;
+  ExcludedPreprocessorDirectiveSkipMapping *PPSkipMappings;
   ScanningOutputFormat Format;
   bool OptimizeArgs;
-  bool DisableFree;
   llvm::Optional<StringRef> ModuleName;
 };
 
 } // end anonymous namespace
 
 DependencyScanningWorker::DependencyScanningWorker(
-    DependencyScanningService &Service,
-    llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS)
+    DependencyScanningService &Service)
     : Format(Service.getFormat()), OptimizeArgs(Service.canOptimizeArgs()) {
   PCHContainerOps = std::make_shared<PCHContainerOperations>();
   PCHContainerOps->registerReader(
@@ -275,15 +282,18 @@ DependencyScanningWorker::DependencyScanningWorker(
   PCHContainerOps->registerWriter(
       std::make_unique<ObjectFilePCHContainerWriter>());
 
-  auto OverlayFS =
-      llvm::makeIntrusiveRefCnt<llvm::vfs::OverlayFileSystem>(std::move(FS));
+  auto OverlayFS = llvm::makeIntrusiveRefCnt<llvm::vfs::OverlayFileSystem>(
+      llvm::vfs::createPhysicalFileSystem());
   InMemoryFS = llvm::makeIntrusiveRefCnt<llvm::vfs::InMemoryFileSystem>();
   OverlayFS->pushOverlay(InMemoryFS);
   RealFS = OverlayFS;
 
-  if (Service.getMode() == ScanningMode::DependencyDirectivesScan)
-    DepFS = new DependencyScanningWorkerFilesystem(Service.getSharedCache(),
-                                                   RealFS);
+  if (Service.canSkipExcludedPPRanges())
+    PPSkipMappings =
+        std::make_unique<ExcludedPreprocessorDirectiveSkipMapping>();
+  if (Service.getMode() == ScanningMode::MinimizedSourcePreprocessing)
+    DepFS = new DependencyScanningWorkerFilesystem(
+        Service.getSharedCache(), RealFS, PPSkipMappings.get());
   if (Service.canReuseFileManager())
     Files = new FileManager(FileSystemOptions(), RealFS);
 }
@@ -318,7 +328,7 @@ llvm::Error DependencyScanningWorker::computeDependencies(
       Files ? Files : new FileManager(FileSystemOptions(), RealFS);
 
   Optional<std::vector<std::string>> ModifiedCommandLine;
-  if (ModuleName) {
+  if (ModuleName.hasValue()) {
     ModifiedCommandLine = CommandLine;
     InMemoryFS->addFile(*ModuleName, 0, llvm::MemoryBuffer::getMemBuffer(""));
     ModifiedCommandLine->emplace_back(*ModuleName);
@@ -333,13 +343,10 @@ llvm::Error DependencyScanningWorker::computeDependencies(
 
   return runWithDiags(CreateAndPopulateDiagOpts(FinalCCommandLine).release(),
                       [&](DiagnosticConsumer &DC, DiagnosticOptions &DiagOpts) {
-                        // DisableFree is modified by Tooling for running
-                        // in-process; preserve the original value, which is
-                        // always true for a driver invocation.
-                        bool DisableFree = true;
                         DependencyScanningAction Action(
-                            WorkingDirectory, Consumer, DepFS, Format,
-                            OptimizeArgs, DisableFree, ModuleName);
+                            WorkingDirectory, Consumer, DepFS,
+                            PPSkipMappings.get(), Format, OptimizeArgs,
+                            ModuleName);
                         // Create an invocation that uses the underlying file
                         // system to ensure that any file system requests that
                         // are made by the driver do not go through the

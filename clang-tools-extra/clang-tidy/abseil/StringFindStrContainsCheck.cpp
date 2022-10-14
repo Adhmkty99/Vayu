@@ -40,9 +40,10 @@ static const char DefaultStringLikeClasses[] = "::std::basic_string;"
 static const char DefaultAbseilStringsMatchHeader[] = "absl/strings/match.h";
 
 static transformer::RewriteRuleWith<std::string>
-makeRewriteRule(ArrayRef<StringRef> StringLikeClassNames,
+makeRewriteRule(const std::vector<std::string> &StringLikeClassNames,
                 StringRef AbseilStringsMatchHeader) {
-  auto StringLikeClass = cxxRecordDecl(hasAnyName(StringLikeClassNames));
+  auto StringLikeClass = cxxRecordDecl(hasAnyName(SmallVector<StringRef, 4>(
+      StringLikeClassNames.begin(), StringLikeClassNames.end())));
   auto StringType =
       hasUnqualifiedDesugaredType(recordType(hasDeclaration(StringLikeClass)));
   auto CharStarType =

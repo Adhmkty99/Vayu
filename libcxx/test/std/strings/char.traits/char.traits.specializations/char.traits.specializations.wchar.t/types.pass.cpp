@@ -16,7 +16,7 @@
 // typedef streampos pos_type;
 // typedef mbstate_t state_type;
 
-// UNSUPPORTED: no-wide-characters
+// UNSUPPORTED: libcpp-has-no-wide-characters
 
 #include <string>
 #include <type_traits>

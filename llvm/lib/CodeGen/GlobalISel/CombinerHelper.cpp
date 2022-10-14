@@ -697,16 +697,14 @@ bool CombinerHelper::matchCombineLoadWithAndMask(MachineInstr &MI,
     return false;
 
   Register SrcReg = MI.getOperand(1).getReg();
-  // Don't use getOpcodeDef() here since intermediate instructions may have
-  // multiple users.
-  GAnyLoad *LoadMI = dyn_cast<GAnyLoad>(MRI.getVRegDef(SrcReg));
-  if (!LoadMI || !MRI.hasOneNonDBGUse(LoadMI->getDstReg()))
+  GAnyLoad *LoadMI = getOpcodeDef<GAnyLoad>(SrcReg, MRI);
+  if (!LoadMI || !MRI.hasOneNonDBGUse(LoadMI->getDstReg()) ||
+      !LoadMI->isSimple())
     return false;
 
   Register LoadReg = LoadMI->getDstReg();
-  LLT RegTy = MRI.getType(LoadReg);
+  LLT LoadTy = MRI.getType(LoadReg);
   Register PtrReg = LoadMI->getPointerReg();
-  unsigned RegSize = RegTy.getSizeInBits();
   uint64_t LoadSizeBits = LoadMI->getMemSizeInBits();
   unsigned MaskSizeBits = MaskVal.countTrailingOnes();
 
@@ -717,7 +715,7 @@ bool CombinerHelper::matchCombineLoadWithAndMask(MachineInstr &MI,
 
   // If the mask covers the whole destination register, there's nothing to
   // extend
-  if (MaskSizeBits >= RegSize)
+  if (MaskSizeBits >= LoadTy.getSizeInBits())
     return false;
 
   // Most targets cannot deal with loads of size < 8 and need to re-legalize to
@@ -727,26 +725,17 @@ bool CombinerHelper::matchCombineLoadWithAndMask(MachineInstr &MI,
 
   const MachineMemOperand &MMO = LoadMI->getMMO();
   LegalityQuery::MemDesc MemDesc(MMO);
-
-  // Don't modify the memory access size if this is atomic/volatile, but we can
-  // still adjust the opcode to indicate the high bit behavior.
-  if (LoadMI->isSimple())
-    MemDesc.MemoryTy = LLT::scalar(MaskSizeBits);
-  else if (LoadSizeBits > MaskSizeBits || LoadSizeBits == RegSize)
-    return false;
-
-  // TODO: Could check if it's legal with the reduced or original memory size.
+  MemDesc.MemoryTy = LLT::scalar(MaskSizeBits);
   if (!isLegalOrBeforeLegalizer(
-          {TargetOpcode::G_ZEXTLOAD, {RegTy, MRI.getType(PtrReg)}, {MemDesc}}))
+          {TargetOpcode::G_ZEXTLOAD, {LoadTy, MRI.getType(PtrReg)}, {MemDesc}}))
     return false;
 
   MatchInfo = [=](MachineIRBuilder &B) {
     B.setInstrAndDebugLoc(*LoadMI);
     auto &MF = B.getMF();
     auto PtrInfo = MMO.getPointerInfo();
-    auto *NewMMO = MF.getMachineMemOperand(&MMO, PtrInfo, MemDesc.MemoryTy);
+    auto *NewMMO = MF.getMachineMemOperand(&MMO, PtrInfo, MaskSizeBits / 8);
     B.buildLoadInstr(TargetOpcode::G_ZEXTLOAD, Dst, PtrReg, *NewMMO);
-    LoadMI->eraseFromParent();
   };
   return true;
 }
@@ -816,24 +805,21 @@ bool CombinerHelper::matchSextInRegOfLoad(
     MachineInstr &MI, std::tuple<Register, unsigned> &MatchInfo) {
   assert(MI.getOpcode() == TargetOpcode::G_SEXT_INREG);
 
-  Register DstReg = MI.getOperand(0).getReg();
-  LLT RegTy = MRI.getType(DstReg);
-
   // Only supports scalars for now.
-  if (RegTy.isVector())
+  if (MRI.getType(MI.getOperand(0).getReg()).isVector())
     return false;
 
   Register SrcReg = MI.getOperand(1).getReg();
   auto *LoadDef = getOpcodeDef<GLoad>(SrcReg, MRI);
-  if (!LoadDef || !MRI.hasOneNonDBGUse(DstReg))
+  if (!LoadDef || !MRI.hasOneNonDBGUse(LoadDef->getOperand(0).getReg()) ||
+      !LoadDef->isSimple())
     return false;
-
-  uint64_t MemBits = LoadDef->getMemSizeInBits();
 
   // If the sign extend extends from a narrower width than the load's width,
   // then we can narrow the load width when we combine to a G_SEXTLOAD.
   // Avoid widening the load at all.
-  unsigned NewSizeBits = std::min((uint64_t)MI.getOperand(2).getImm(), MemBits);
+  unsigned NewSizeBits = std::min((uint64_t)MI.getOperand(2).getImm(),
+                                  LoadDef->getMemSizeInBits());
 
   // Don't generate G_SEXTLOADs with a < 1 byte width.
   if (NewSizeBits < 8)
@@ -845,15 +831,7 @@ bool CombinerHelper::matchSextInRegOfLoad(
 
   const MachineMemOperand &MMO = LoadDef->getMMO();
   LegalityQuery::MemDesc MMDesc(MMO);
-
-  // Don't modify the memory access size if this is atomic/volatile, but we can
-  // still adjust the opcode to indicate the high bit behavior.
-  if (LoadDef->isSimple())
-    MMDesc.MemoryTy = LLT::scalar(NewSizeBits);
-  else if (MemBits > NewSizeBits || MemBits == RegTy.getSizeInBits())
-    return false;
-
-  // TODO: Could check if it's legal with the reduced or original memory size.
+  MMDesc.MemoryTy = LLT::scalar(NewSizeBits);
   if (!isLegalOrBeforeLegalizer({TargetOpcode::G_SEXTLOAD,
                                  {MRI.getType(LoadDef->getDstReg()),
                                   MRI.getType(LoadDef->getPointerReg())},
@@ -1313,12 +1291,12 @@ bool CombinerHelper::matchCombineConstantFoldFpUnary(MachineInstr &MI,
   Register SrcReg = MI.getOperand(1).getReg();
   LLT DstTy = MRI.getType(DstReg);
   Cst = constantFoldFpUnary(MI.getOpcode(), DstTy, SrcReg, MRI);
-  return Cst.has_value();
+  return Cst.hasValue();
 }
 
 void CombinerHelper::applyCombineConstantFoldFpUnary(MachineInstr &MI,
                                                      Optional<APFloat> &Cst) {
-  assert(Cst && "Optional is unexpectedly empty!");
+  assert(Cst.hasValue() && "Optional is unexpectedly empty!");
   Builder.setInstrAndDebugLoc(MI);
   MachineFunction &MF = Builder.getMF();
   auto *FPVal = ConstantFP::get(MF.getFunction().getContext(), *Cst);
@@ -2385,7 +2363,7 @@ bool CombinerHelper::matchEqualDefs(const MachineOperand &MOP1,
   // loading from. To be safe, let's just assume that all loads and stores
   // are different (unless we have something which is guaranteed to not
   // change.)
-  if (I1->mayLoadOrStore() && !I1->isDereferenceableInvariantLoad())
+  if (I1->mayLoadOrStore() && !I1->isDereferenceableInvariantLoad(nullptr))
     return false;
 
   // If both instructions are loads or stores, they are equal only if both
@@ -2396,7 +2374,7 @@ bool CombinerHelper::matchEqualDefs(const MachineOperand &MOP1,
     if (!LS1 || !LS2)
       return false;
 
-    if (!I2->isDereferenceableInvariantLoad() ||
+    if (!I2->isDereferenceableInvariantLoad(nullptr) ||
         (LS1->getMemSizeInBits() != LS2->getMemSizeInBits()))
       return false;
   }
@@ -2448,7 +2426,7 @@ bool CombinerHelper::matchConstantOp(const MachineOperand &MOP, int64_t C) {
     return false;
   auto *MI = MRI.getVRegDef(MOP.getReg());
   auto MaybeCst = isConstantOrConstantSplatVector(*MI, MRI);
-  return MaybeCst && MaybeCst->getBitWidth() <= 64 &&
+  return MaybeCst.hasValue() && MaybeCst->getBitWidth() <= 64 &&
          MaybeCst->getSExtValue() == C;
 }
 
@@ -2967,7 +2945,7 @@ bool CombinerHelper::matchNotCmp(MachineInstr &MI,
   int64_t Cst;
   if (Ty.isVector()) {
     MachineInstr *CstDef = MRI.getVRegDef(CstReg);
-    auto MaybeCst = getIConstantSplatSExtVal(*CstDef, MRI);
+    auto MaybeCst = getBuildVectorConstantSplat(*CstDef, MRI);
     if (!MaybeCst)
       return false;
     if (!isConstValidTrue(TLI, Ty.getScalarSizeInBits(), *MaybeCst, true, IsFP))
@@ -3487,7 +3465,7 @@ bool CombinerHelper::matchLoadOrCombine(
   // BSWAP.
   bool IsBigEndianTarget = MF.getDataLayout().isBigEndian();
   Optional<bool> IsBigEndian = isBigEndian(MemOffset2Idx, LowestIdx);
-  if (!IsBigEndian)
+  if (!IsBigEndian.hasValue())
     return false;
   bool NeedsBSwap = IsBigEndianTarget != *IsBigEndian;
   if (NeedsBSwap && !isLegalOrBeforeLegalizer({TargetOpcode::G_BSWAP, {Ty}}))
@@ -3995,7 +3973,7 @@ bool CombinerHelper::matchExtractAllEltsFromBuildVector(
     auto Cst = getIConstantVRegVal(II.getOperand(2).getReg(), MRI);
     if (!Cst)
       return false;
-    unsigned Idx = Cst->getZExtValue();
+    unsigned Idx = Cst.getValue().getZExtValue();
     if (Idx >= NumElts)
       return false; // Out of range.
     ExtractedElts.set(Idx);
@@ -4051,9 +4029,10 @@ bool CombinerHelper::matchOrShiftToFunnelShift(MachineInstr &MI,
 
   // Given constants C0 and C1 such that C0 + C1 is bit-width:
   // (or (shl x, C0), (lshr y, C1)) -> (fshl x, y, C0) or (fshr x, y, C1)
+  // TODO: Match constant splat.
   int64_t CstShlAmt, CstLShrAmt;
-  if (mi_match(ShlAmt, MRI, m_ICstOrSplat(CstShlAmt)) &&
-      mi_match(LShrAmt, MRI, m_ICstOrSplat(CstLShrAmt)) &&
+  if (mi_match(ShlAmt, MRI, m_ICst(CstShlAmt)) &&
+      mi_match(LShrAmt, MRI, m_ICst(CstLShrAmt)) &&
       CstShlAmt + CstLShrAmt == BitWidth) {
     FshOpc = TargetOpcode::G_FSHR;
     Amt = LShrAmt;
@@ -4246,23 +4225,18 @@ bool CombinerHelper::matchAndOrDisjointMask(
     return false;
 
   Register Src;
-  Register AndMaskReg;
-  int64_t AndMaskBits;
-  int64_t OrMaskBits;
+  int64_t MaskAnd;
+  int64_t MaskOr;
   if (!mi_match(MI, MRI,
-                m_GAnd(m_GOr(m_Reg(Src), m_ICst(OrMaskBits)),
-                       m_all_of(m_ICst(AndMaskBits), m_Reg(AndMaskReg)))))
+                m_GAnd(m_GOr(m_Reg(Src), m_ICst(MaskOr)), m_ICst(MaskAnd))))
     return false;
 
-  // Check if OrMask could turn on any bits in Src.
-  if (AndMaskBits & OrMaskBits)
+  // Check if MaskOr could turn on any bits in Src.
+  if (MaskAnd & MaskOr)
     return false;
 
   MatchInfo = [=, &MI](MachineIRBuilder &B) {
     Observer.changingInstr(MI);
-    // Canonicalize the result to have the constant on the RHS.
-    if (MI.getOperand(1).getReg() == AndMaskReg)
-      MI.getOperand(2).setReg(AndMaskReg);
     MI.getOperand(1).setReg(Src);
     Observer.changedInstr(MI);
   };
@@ -4409,14 +4383,6 @@ bool CombinerHelper::matchBitfieldExtractFromShrAnd(
   const unsigned Size = Ty.getScalarSizeInBits();
   if (ShrAmt < 0 || ShrAmt >= Size)
     return false;
-
-  // If the shift subsumes the mask, emit the 0 directly.
-  if (0 == (SMask >> ShrAmt)) {
-    MatchInfo = [=](MachineIRBuilder &B) {
-      B.buildConstant(Dst, 0);
-    };
-    return true;
-  }
 
   // Check that ubfx can do the extraction, with no holes in the mask.
   uint64_t UMask = SMask;
@@ -4800,22 +4766,24 @@ MachineInstr *CombinerHelper::buildUDivUsingMul(MachineInstr &MI) {
   auto BuildUDIVPattern = [&](const Constant *C) {
     auto *CI = cast<ConstantInt>(C);
     const APInt &Divisor = CI->getValue();
-    UnsignedDivisionByConstantInfo magics =
-        UnsignedDivisionByConstantInfo::get(Divisor);
+    UnsignedDivisonByConstantInfo magics =
+        UnsignedDivisonByConstantInfo::get(Divisor);
     unsigned PreShift = 0, PostShift = 0;
 
     // If the divisor is even, we can avoid using the expensive fixup by
     // shifting the divided value upfront.
-    if (magics.IsAdd && !Divisor[0]) {
+    if (magics.IsAdd != 0 && !Divisor[0]) {
       PreShift = Divisor.countTrailingZeros();
       // Get magic number for the shifted divisor.
       magics =
-          UnsignedDivisionByConstantInfo::get(Divisor.lshr(PreShift), PreShift);
-      assert(!magics.IsAdd && "Should use cheap fixup now");
+          UnsignedDivisonByConstantInfo::get(Divisor.lshr(PreShift), PreShift);
+      assert(magics.IsAdd == 0 && "Should use cheap fixup now");
     }
 
+    APInt Magic = magics.Magic;
+
     unsigned SelNPQ;
-    if (!magics.IsAdd || Divisor.isOneValue()) {
+    if (magics.IsAdd == 0 || Divisor.isOneValue()) {
       assert(magics.ShiftAmount < Divisor.getBitWidth() &&
              "We shouldn't generate an undefined shift!");
       PostShift = magics.ShiftAmount;
@@ -4827,7 +4795,7 @@ MachineInstr *CombinerHelper::buildUDivUsingMul(MachineInstr &MI) {
 
     PreShifts.push_back(
         MIB.buildConstant(ScalarShiftAmtTy, PreShift).getReg(0));
-    MagicFactors.push_back(MIB.buildConstant(ScalarTy, magics.Magic).getReg(0));
+    MagicFactors.push_back(MIB.buildConstant(ScalarTy, Magic).getReg(0));
     NPQFactors.push_back(
         MIB.buildConstant(ScalarTy,
                           SelNPQ ? APInt::getOneBitSet(EltBits, EltBits - 1)
@@ -5625,49 +5593,6 @@ bool CombinerHelper::matchSelectToLogical(MachineInstr &MI,
   return false;
 }
 
-bool CombinerHelper::matchCombineFMinMaxNaN(MachineInstr &MI,
-                                            unsigned &IdxToPropagate) {
-  bool PropagateNaN;
-  switch (MI.getOpcode()) {
-  default:
-    return false;
-  case TargetOpcode::G_FMINNUM:
-  case TargetOpcode::G_FMAXNUM:
-    PropagateNaN = false;
-    break;
-  case TargetOpcode::G_FMINIMUM:
-  case TargetOpcode::G_FMAXIMUM:
-    PropagateNaN = true;
-    break;
-  }
-
-  auto MatchNaN = [&](unsigned Idx) {
-    Register MaybeNaNReg = MI.getOperand(Idx).getReg();
-    const ConstantFP *MaybeCst = getConstantFPVRegVal(MaybeNaNReg, MRI);
-    if (!MaybeCst || !MaybeCst->getValueAPF().isNaN())
-      return false;
-    IdxToPropagate = PropagateNaN ? Idx : (Idx == 1 ? 2 : 1);
-    return true;
-  };
-
-  return MatchNaN(1) || MatchNaN(2);
-}
-
-bool CombinerHelper::matchAddSubSameReg(MachineInstr &MI, Register &Src) {
-  assert(MI.getOpcode() == TargetOpcode::G_ADD && "Expected a G_ADD");
-  Register LHS = MI.getOperand(1).getReg();
-  Register RHS = MI.getOperand(2).getReg();
-
-  // Helper lambda to check for opportunities for
-  // A + (B - A) -> B
-  // (B - A) + A -> B
-  auto CheckFold = [&](Register MaybeSub, Register MaybeSameReg) {
-    Register Reg;
-    return mi_match(MaybeSub, MRI, m_GSub(m_Reg(Src), m_Reg(Reg))) &&
-           Reg == MaybeSameReg;
-  };
-  return CheckFold(LHS, RHS) || CheckFold(RHS, LHS);
-}
 
 bool CombinerHelper::tryCombine(MachineInstr &MI) {
   if (tryCombineCopy(MI))

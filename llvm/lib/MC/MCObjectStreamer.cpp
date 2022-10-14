@@ -560,7 +560,7 @@ void MCObjectStreamer::emitDwarfLineEndEntry(MCSection *Section,
   // Switch back the dwarf line section, in case endSection had to switch the
   // section.
   MCContext &Ctx = getContext();
-  switchSection(Ctx.getObjectFileInfo()->getDwarfLineSection());
+  SwitchSection(Ctx.getObjectFileInfo()->getDwarfLineSection());
 
   const MCAsmInfo *AsmInfo = Ctx.getAsmInfo();
   emitDwarfAdvanceLineAddr(INT64_MAX, LastLabel, SectionEnd,
@@ -647,8 +647,7 @@ void MCObjectStreamer::emitValueToAlignment(unsigned ByteAlignment,
                                             unsigned MaxBytesToEmit) {
   if (MaxBytesToEmit == 0)
     MaxBytesToEmit = ByteAlignment;
-  insert(new MCAlignFragment(Align(ByteAlignment), Value, ValueSize,
-                             MaxBytesToEmit));
+  insert(new MCAlignFragment(ByteAlignment, Value, ValueSize, MaxBytesToEmit));
 
   // Update the maximum alignment on the current section if necessary.
   MCSection *CurSec = getCurrentSectionOnly();
@@ -796,7 +795,7 @@ MCObjectStreamer::emitRelocDirective(const MCExpr &Offset, StringRef Name,
                                      const MCExpr *Expr, SMLoc Loc,
                                      const MCSubtargetInfo &STI) {
   Optional<MCFixupKind> MaybeKind = Assembler->getBackend().getFixupKind(Name);
-  if (!MaybeKind)
+  if (!MaybeKind.hasValue())
     return std::make_pair(true, std::string("unknown relocation name"));
 
   MCFixupKind Kind = *MaybeKind;

@@ -16,8 +16,6 @@ class StoragePrinter:
       else:
         yield field.name, self.val[field.name]
 
-  def to_string(self):
-    return 'mlir::Storage'
 
 class TupleTypeStoragePrinter(StoragePrinter):
 
@@ -29,8 +27,6 @@ class TupleTypeStoragePrinter(StoragePrinter):
     for i in range(self.val['numElements']):
       yield 'elements[%u]' % i, elements[i]
 
-  def to_string(self):
-    return 'mlir::TupleTypeStorage of %u elements' % self.val['numElements']
 
 class FusedLocationStoragePrinter(StoragePrinter):
 
@@ -41,9 +37,6 @@ class FusedLocationStoragePrinter(StoragePrinter):
     elements = (self.val.address + 1).cast(pointer_type)
     for i in range(self.val['numLocs']):
       yield 'locs[%u]' % i, elements[i]
-
-  def to_string(self):
-    return 'mlir::FusedLocationStorage of %u locs' % self.val['numLocs']
 
 
 class StorageTypeMap:
@@ -112,10 +105,7 @@ def get_attr_or_type_printer(val, get_type_id):
 
     def children(self):
       yield 'typeID', self.type_id
-      yield 'impl', self.impl
-
-    def to_string(self):
-      return 'cast<%s>' % self.impl.type
+      yield 'cast<%s>(impl)' % self.impl.type, self.impl
 
   if not val['impl']:
     return None
@@ -135,15 +125,10 @@ class ImplPrinter:
   """Printer for an instance with a single 'impl' member pointer."""
 
   def __init__(self, val):
-    self.val = val
     self.impl = val['impl']
 
   def children(self):
-    if self.impl:
-      yield 'impl', self.impl.dereference()
-
-  def to_string(self):
-    return self.val.type.name
+    yield 'impl', (self.impl.dereference() if self.impl else self.impl)
 
 
 # Printers of types deriving from Attribute::AttrBase or Type::TypeBase.

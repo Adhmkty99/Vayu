@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class BackticksWithNoTargetTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @no_debug_info_test
     def test_backticks_no_target(self):
         """A simple test of backticks without a target."""

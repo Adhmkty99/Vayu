@@ -267,7 +267,7 @@ void SwiftErrorValueTracking::preassignVRegs(
     if (auto *CB = dyn_cast<CallBase>(&*It)) {
       // A call-site with a swifterror argument is both use and def.
       const Value *SwiftErrorAddr = nullptr;
-      for (const auto &Arg : CB->args()) {
+      for (auto &Arg : CB->args()) {
         if (!Arg->isSwiftError())
           continue;
         // Use of swifterror.

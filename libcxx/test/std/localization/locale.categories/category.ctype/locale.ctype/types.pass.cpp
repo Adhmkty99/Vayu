@@ -17,7 +17,7 @@
 //     typedef CharT char_type;
 // };
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 #include <locale>
 #include <type_traits>

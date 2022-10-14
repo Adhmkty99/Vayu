@@ -263,34 +263,34 @@ TEST_F(CommandLineTest, BoolOptionDefaultArbitraryTwoFlagsPresentNone) {
   const char *Args = {""};
 
   ASSERT_TRUE(CompilerInvocation::CreateFromArgs(Invocation, Args, *Diags));
-  ASSERT_EQ(Invocation.getCodeGenOpts().ClearASTBeforeBackend, false);
+  ASSERT_EQ(Invocation.getCodeGenOpts().LegacyPassManager, false);
 
   Invocation.generateCC1CommandLine(GeneratedArgs, *this);
 
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-no-clear-ast-before-backend"))));
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-clear-ast-before-backend"))));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-fno-legacy-pass-manager"))));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-flegacy-pass-manager"))));
 }
 
 TEST_F(CommandLineTest, BoolOptionDefaultArbitraryTwoFlagsPresentChange) {
-  const char *Args[] = {"-clear-ast-before-backend"};
+  const char *Args[] = {"-flegacy-pass-manager"};
 
   ASSERT_TRUE(CompilerInvocation::CreateFromArgs(Invocation, Args, *Diags));
-  ASSERT_EQ(Invocation.getCodeGenOpts().ClearASTBeforeBackend, true);
+  ASSERT_EQ(Invocation.getCodeGenOpts().LegacyPassManager, true);
 
   Invocation.generateCC1CommandLine(GeneratedArgs, *this);
-  ASSERT_THAT(GeneratedArgs, Contains(StrEq("-clear-ast-before-backend")));
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-no-clear-ast-before-backend"))));
+  ASSERT_THAT(GeneratedArgs, Contains(StrEq("-flegacy-pass-manager")));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-fno-legacy-pass-manager"))));
 }
 
 TEST_F(CommandLineTest, BoolOptionDefaultArbitraryTwoFlagsPresentReset) {
-  const char *Args[] = {"-no-clear-ast-before-backend"};
+  const char *Args[] = {"-fno-legacy-pass-manager"};
 
   ASSERT_TRUE(CompilerInvocation::CreateFromArgs(Invocation, Args, *Diags));
-  ASSERT_EQ(Invocation.getCodeGenOpts().ClearASTBeforeBackend, false);
+  ASSERT_EQ(Invocation.getCodeGenOpts().LegacyPassManager, false);
 
   Invocation.generateCC1CommandLine(GeneratedArgs, *this);
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-no-clear-ast-before-backend"))));
-  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-clear-ast-before-backend"))));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-fno-legacy-pass-manager"))));
+  ASSERT_THAT(GeneratedArgs, Not(Contains(StrEq("-flegacy-pass-manager"))));
 }
 
 // Boolean option that gets the CC1Option flag from a let statement (which

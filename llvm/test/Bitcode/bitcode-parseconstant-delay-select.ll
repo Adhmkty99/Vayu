@@ -1,4 +1,4 @@
-; RUN: llvm-dis -disable-output < %S/Inputs/bitcode-parseconstant-delay-select.bc
+; RUN: llvm-as < %s -preserve-bc-uselistorder=false | llvm-dis -disable-output
 @a = external dso_local global i32, align 4
 @c = external dso_local global [3 x i32], align 4
 @b = external dso_local local_unnamed_addr global i32, align 4

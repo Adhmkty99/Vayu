@@ -110,30 +110,30 @@ public:
 
   /// Look up a symbol in JITDylib JD by the symbol's linker-mangled name (to
   /// look up symbols based on their IR name use the lookup function instead).
-  Expected<ExecutorAddr> lookupLinkerMangled(JITDylib &JD,
-                                             SymbolStringPtr Name);
+  Expected<JITEvaluatedSymbol> lookupLinkerMangled(JITDylib &JD,
+                                                   SymbolStringPtr Name);
 
   /// Look up a symbol in JITDylib JD by the symbol's linker-mangled name (to
   /// look up symbols based on their IR name use the lookup function instead).
-  Expected<ExecutorAddr> lookupLinkerMangled(JITDylib &JD,
-                                             StringRef Name) {
+  Expected<JITEvaluatedSymbol> lookupLinkerMangled(JITDylib &JD,
+                                                   StringRef Name) {
     return lookupLinkerMangled(JD, ES->intern(Name));
   }
 
   /// Look up a symbol in the main JITDylib by the symbol's linker-mangled name
   /// (to look up symbols based on their IR name use the lookup function
   /// instead).
-  Expected<ExecutorAddr> lookupLinkerMangled(StringRef Name) {
+  Expected<JITEvaluatedSymbol> lookupLinkerMangled(StringRef Name) {
     return lookupLinkerMangled(*Main, Name);
   }
 
   /// Look up a symbol in JITDylib JD based on its IR symbol name.
-  Expected<ExecutorAddr> lookup(JITDylib &JD, StringRef UnmangledName) {
+  Expected<JITEvaluatedSymbol> lookup(JITDylib &JD, StringRef UnmangledName) {
     return lookupLinkerMangled(JD, mangle(UnmangledName));
   }
 
   /// Look up a symbol in the main JITDylib based on its IR symbol name.
-  Expected<ExecutorAddr> lookup(StringRef UnmangledName) {
+  Expected<JITEvaluatedSymbol> lookup(StringRef UnmangledName) {
     return lookup(*Main, UnmangledName);
   }
 
@@ -401,7 +401,7 @@ public:
       std::function<std::unique_ptr<IndirectStubsManager>()>;
 
   Triple TT;
-  ExecutorAddr LazyCompileFailureAddr;
+  JITTargetAddress LazyCompileFailureAddr = 0;
   std::unique_ptr<LazyCallThroughManager> LCTMgr;
   IndirectStubsManagerBuilderFunction ISMBuilder;
 
@@ -415,7 +415,7 @@ public:
   /// Set the address in the target address to call if a lazy compile fails.
   ///
   /// If this method is not called then the value will default to 0.
-  SetterImpl &setLazyCompileFailureAddr(ExecutorAddr Addr) {
+  SetterImpl &setLazyCompileFailureAddr(JITTargetAddress Addr) {
     this->impl().LazyCompileFailureAddr = Addr;
     return this->impl();
   }

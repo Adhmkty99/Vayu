@@ -76,7 +76,7 @@ void AArch64TargetStreamer::emitNoteSection(unsigned Flags) {
     return;
   }
   MCSection *Cur = OutStreamer.getCurrentSectionOnly();
-  OutStreamer.switchSection(Nt);
+  OutStreamer.SwitchSection(Nt);
 
   // Emit the note header.
   OutStreamer.emitValueToAlignment(Align(8).value());
@@ -92,7 +92,7 @@ void AArch64TargetStreamer::emitNoteSection(unsigned Flags) {
   OutStreamer.emitIntValue(0, 4);     // pad
 
   OutStreamer.endSection(Nt);
-  OutStreamer.switchSection(Cur);
+  OutStreamer.SwitchSection(Cur);
 }
 
 void AArch64TargetStreamer::emitInst(uint32_t Inst) {

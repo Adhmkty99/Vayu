@@ -5,14 +5,9 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-//
-// Coding style: https://mlir.llvm.org/getting_started/DeveloperGuide/
-//
-//===----------------------------------------------------------------------===//
 
 #include "flang/Frontend/CompilerInvocation.h"
 #include "flang/Common/Fortran-features.h"
-#include "flang/Frontend/CodeGenOptions.h"
 #include "flang/Frontend/PreprocessorOptions.h"
 #include "flang/Frontend/TargetOptions.h"
 #include "flang/Semantics/semantics.h"
@@ -21,17 +16,14 @@
 #include "clang/Basic/DiagnosticDriver.h"
 #include "clang/Basic/DiagnosticOptions.h"
 #include "clang/Driver/DriverDiagnostic.h"
-#include "clang/Driver/OptionUtils.h"
 #include "clang/Driver/Options.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/StringSwitch.h"
-#include "llvm/ADT/Triple.h"
 #include "llvm/Option/Arg.h"
 #include "llvm/Option/ArgList.h"
 #include "llvm/Option/OptTable.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/FileUtilities.h"
-#include "llvm/Support/Host.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/Process.h"
 #include "llvm/Support/raw_ostream.h"
@@ -43,87 +35,58 @@ using namespace Fortran::frontend;
 // Initialization.
 //===----------------------------------------------------------------------===//
 CompilerInvocationBase::CompilerInvocationBase()
-    : diagnosticOpts(new clang::DiagnosticOptions()),
-      preprocessorOpts(new PreprocessorOptions()) {}
+    : diagnosticOpts_(new clang::DiagnosticOptions()),
+      preprocessorOpts_(new PreprocessorOptions()) {}
 
 CompilerInvocationBase::CompilerInvocationBase(const CompilerInvocationBase &x)
-    : diagnosticOpts(new clang::DiagnosticOptions(x.getDiagnosticOpts())),
-      preprocessorOpts(new PreprocessorOptions(x.getPreprocessorOpts())) {}
+    : diagnosticOpts_(new clang::DiagnosticOptions(x.GetDiagnosticOpts())),
+      preprocessorOpts_(new PreprocessorOptions(x.preprocessorOpts())) {}
 
 CompilerInvocationBase::~CompilerInvocationBase() = default;
 
 //===----------------------------------------------------------------------===//
 // Deserialization (from args)
 //===----------------------------------------------------------------------===//
-static bool parseShowColorsArgs(const llvm::opt::ArgList &args,
-                                bool defaultColor = true) {
-  // Color diagnostics default to auto ("on" if terminal supports) in the
-  // compiler driver `flang-new` but default to off in the frontend driver
-  // `flang-new -fc1`, needing an explicit OPT_fdiagnostics_color.
+static bool parseShowColorsArgs(
+    const llvm::opt::ArgList &args, bool defaultColor) {
+  // Color diagnostics default to auto ("on" if terminal supports) in the driver
+  // but default to off in cc1, needing an explicit OPT_fdiagnostics_color.
   // Support both clang's -f[no-]color-diagnostics and gcc's
   // -f[no-]diagnostics-colors[=never|always|auto].
   enum {
     Colors_On,
     Colors_Off,
     Colors_Auto
-  } showColors = defaultColor ? Colors_Auto : Colors_Off;
+  } ShowColors = defaultColor ? Colors_Auto : Colors_Off;
 
   for (auto *a : args) {
-    const llvm::opt::Option &opt = a->getOption();
-    if (opt.matches(clang::driver::options::OPT_fcolor_diagnostics)) {
-      showColors = Colors_On;
-    } else if (opt.matches(clang::driver::options::OPT_fno_color_diagnostics)) {
-      showColors = Colors_Off;
-    } else if (opt.matches(clang::driver::options::OPT_fdiagnostics_color_EQ)) {
+    const llvm::opt::Option &O = a->getOption();
+    if (O.matches(clang::driver::options::OPT_fcolor_diagnostics) ||
+        O.matches(clang::driver::options::OPT_fdiagnostics_color)) {
+      ShowColors = Colors_On;
+    } else if (O.matches(clang::driver::options::OPT_fno_color_diagnostics) ||
+        O.matches(clang::driver::options::OPT_fno_diagnostics_color)) {
+      ShowColors = Colors_Off;
+    } else if (O.matches(clang::driver::options::OPT_fdiagnostics_color_EQ)) {
       llvm::StringRef value(a->getValue());
       if (value == "always")
-        showColors = Colors_On;
+        ShowColors = Colors_On;
       else if (value == "never")
-        showColors = Colors_Off;
+        ShowColors = Colors_Off;
       else if (value == "auto")
-        showColors = Colors_Auto;
+        ShowColors = Colors_Auto;
     }
   }
 
-  return showColors == Colors_On ||
-         (showColors == Colors_Auto &&
-          llvm::sys::Process::StandardErrHasColors());
+  return ShowColors == Colors_On ||
+      (ShowColors == Colors_Auto && llvm::sys::Process::StandardErrHasColors());
 }
 
-/// Extracts the optimisation level from \a args.
-static unsigned getOptimizationLevel(llvm::opt::ArgList &args,
-                                     clang::DiagnosticsEngine &diags) {
-  unsigned defaultOpt = llvm::CodeGenOpt::None;
-
-  if (llvm::opt::Arg *a =
-          args.getLastArg(clang::driver::options::OPT_O_Group)) {
-    if (a->getOption().matches(clang::driver::options::OPT_O0))
-      return llvm::CodeGenOpt::None;
-
-    assert(a->getOption().matches(clang::driver::options::OPT_O));
-
-    return getLastArgIntValue(args, clang::driver::options::OPT_O, defaultOpt,
-                              diags);
-  }
-
-  return defaultOpt;
-}
-
-bool Fortran::frontend::parseDiagnosticArgs(clang::DiagnosticOptions &opts,
-                                            llvm::opt::ArgList &args) {
-  opts.ShowColors = parseShowColorsArgs(args);
+bool Fortran::frontend::ParseDiagnosticArgs(clang::DiagnosticOptions &opts,
+    llvm::opt::ArgList &args, bool defaultDiagColor) {
+  opts.ShowColors = parseShowColorsArgs(args, defaultDiagColor);
 
   return true;
-}
-
-static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
-                             llvm::opt::ArgList &args,
-                             clang::DiagnosticsEngine &diags) {
-  opts.OptimizationLevel = getOptimizationLevel(args, diags);
-
-  if (args.hasFlag(clang::driver::options::OPT_fdebug_pass_manager,
-                   clang::driver::options::OPT_fno_debug_pass_manager, false))
-    opts.DebugPassManager = 1;
 }
 
 /// Parses all target input arguments and populates the target
@@ -131,14 +94,15 @@ static void parseCodeGenArgs(Fortran::frontend::CodeGenOptions &opts,
 ///
 /// \param [in] opts The target options instance to update
 /// \param [in] args The list of input arguments (from the compiler invocation)
-static void parseTargetArgs(TargetOptions &opts, llvm::opt::ArgList &args) {
-  if (const llvm::opt::Arg *a =
-          args.getLastArg(clang::driver::options::OPT_triple))
-    opts.triple = a->getValue();
+static void ParseTargetArgs(TargetOptions &opts, llvm::opt::ArgList &args) {
+  opts.triple = args.getLastArgValue(clang::driver::options::OPT_triple);
 }
 
 // Tweak the frontend configuration based on the frontend action
 static void setUpFrontendBasedOnAction(FrontendOptions &opts) {
+  assert(opts.programAction != Fortran::frontend::InvalidAction &&
+      "Fortran frontend action not set!");
+
   if (opts.programAction == DebugDumpParsingLog)
     opts.instrumentedParse = true;
 
@@ -147,8 +111,8 @@ static void setUpFrontendBasedOnAction(FrontendOptions &opts) {
     opts.needProvenanceRangeToCharBlockMappings = true;
 }
 
-static bool parseFrontendArgs(FrontendOptions &opts, llvm::opt::ArgList &args,
-                              clang::DiagnosticsEngine &diags) {
+static bool ParseFrontendArgs(FrontendOptions &opts, llvm::opt::ArgList &args,
+    clang::DiagnosticsEngine &diags) {
   unsigned numErrorsBefore = diags.getNumErrors();
 
   // By default the frontend driver creates a ParseSyntaxOnly action.
@@ -185,9 +149,6 @@ static bool parseFrontendArgs(FrontendOptions &opts, llvm::opt::ArgList &args,
       break;
     case clang::driver::options::OPT_emit_llvm:
       opts.programAction = EmitLLVM;
-      break;
-    case clang::driver::options::OPT_emit_llvm_bc:
-      opts.programAction = EmitLLVMBitcode;
       break;
     case clang::driver::options::OPT_emit_obj:
       opts.programAction = EmitObj;
@@ -280,7 +241,7 @@ static bool parseFrontendArgs(FrontendOptions &opts, llvm::opt::ArgList &args,
   if (const llvm::opt::Arg *a =
           args.getLastArg(clang::driver::options::OPT_plugin)) {
     opts.programAction = PluginAction;
-    opts.actionName = a->getValue();
+    opts.ActionName = a->getValue();
   }
 
   opts.outputFile = args.getLastArgValue(clang::driver::options::OPT_o);
@@ -291,24 +252,19 @@ static bool parseFrontendArgs(FrontendOptions &opts, llvm::opt::ArgList &args,
   InputKind dashX(Language::Unknown);
   if (const llvm::opt::Arg *a =
           args.getLastArg(clang::driver::options::OPT_x)) {
-    llvm::StringRef xValue = a->getValue();
+    llvm::StringRef XValue = a->getValue();
     // Principal languages.
-    dashX = llvm::StringSwitch<InputKind>(xValue)
-                // Flang does not differentiate between pre-processed and not
-                // pre-processed inputs.
-                .Case("f95", Language::Fortran)
-                .Case("f95-cpp-input", Language::Fortran)
+    dashX = llvm::StringSwitch<InputKind>(XValue)
+                .Case("f90", Language::Fortran)
                 .Default(Language::Unknown);
 
-    // Flang's intermediate representations.
-    if (dashX.isUnknown())
-      dashX = llvm::StringSwitch<InputKind>(xValue)
+    // Some special cases cannot be combined with suffixes.
+    if (dashX.IsUnknown())
+      dashX = llvm::StringSwitch<InputKind>(XValue)
                   .Case("ir", Language::LLVM_IR)
-                  .Case("fir", Language::MLIR)
-                  .Case("mlir", Language::MLIR)
                   .Default(Language::Unknown);
 
-    if (dashX.isUnknown())
+    if (dashX.IsUnknown())
       diags.Report(clang::diag::err_drv_invalid_value)
           << a->getAsString(args) << a->getValue();
   }
@@ -322,10 +278,10 @@ static bool parseFrontendArgs(FrontendOptions &opts, llvm::opt::ArgList &args,
     inputs.push_back("-");
   for (unsigned i = 0, e = inputs.size(); i != e; ++i) {
     InputKind ik = dashX;
-    if (ik.isUnknown()) {
-      ik = FrontendOptions::getInputKindForExtension(
+    if (ik.IsUnknown()) {
+      ik = FrontendOptions::GetInputKindForExtension(
           llvm::StringRef(inputs[i]).rsplit('.').second);
-      if (ik.isUnknown())
+      if (ik.IsUnknown())
         ik = Language::Unknown;
       if (i == 0)
         dashX = ik;
@@ -491,23 +447,23 @@ static bool parseSemaArgs(CompilerInvocation &res, llvm::opt::ArgList &args,
     diags.Report(diagID);
   }
   if (moduleDirList.size() == 1)
-    res.setModuleDir(moduleDirList[0]);
+    res.SetModuleDir(moduleDirList[0]);
 
   // -fdebug-module-writer option
   if (args.hasArg(clang::driver::options::OPT_fdebug_module_writer)) {
-    res.setDebugModuleDir(true);
+    res.SetDebugModuleDir(true);
   }
 
   // -module-suffix
   if (const auto *moduleSuffix =
           args.getLastArg(clang::driver::options::OPT_module_suffix)) {
-    res.setModuleFileSuffix(moduleSuffix->getValue());
+    res.SetModuleFileSuffix(moduleSuffix->getValue());
   }
 
   // -f{no-}analyzed-objects-for-unparse
-  res.setUseAnalyzedObjectsForUnparse(args.hasFlag(
-      clang::driver::options::OPT_fanalyzed_objects_for_unparse,
-      clang::driver::options::OPT_fno_analyzed_objects_for_unparse, true));
+  res.SetUseAnalyzedObjectsForUnparse(
+      args.hasFlag(clang::driver::options::OPT_fanalyzed_objects_for_unparse,
+          clang::driver::options::OPT_fno_analyzed_objects_for_unparse, true));
 
   return diags.getNumErrors() == numErrorsBefore;
 }
@@ -524,7 +480,7 @@ static bool parseDiagArgs(CompilerInvocation &res, llvm::opt::ArgList &args,
   if (args.hasArg(clang::driver::options::OPT_W_Joined)) {
     if (args.getLastArgValue(clang::driver::options::OPT_W_Joined)
             .equals("error")) {
-      res.setWarnAsErr(true);
+      res.SetWarnAsErr(true);
     } else {
       const unsigned diagID =
           diags.getCustomDiagID(clang::DiagnosticsEngine::Error,
@@ -532,10 +488,6 @@ static bool parseDiagArgs(CompilerInvocation &res, llvm::opt::ArgList &args,
       diags.Report(diagID);
     }
   }
-
-  // Default to off for `flang-new -fc1`.
-  res.getFrontendOpts().showColors =
-      parseShowColorsArgs(args, /*defaultDiagColor=*/false);
 
   return diags.getNumErrors() == numErrorsBefore;
 }
@@ -548,13 +500,13 @@ static bool parseDialectArgs(CompilerInvocation &res, llvm::opt::ArgList &args,
 
   // -fdefault* family
   if (args.hasArg(clang::driver::options::OPT_fdefault_real_8)) {
-    res.getDefaultKinds().set_defaultRealKind(8);
-    res.getDefaultKinds().set_doublePrecisionKind(16);
+    res.defaultKinds().set_defaultRealKind(8);
+    res.defaultKinds().set_doublePrecisionKind(16);
   }
   if (args.hasArg(clang::driver::options::OPT_fdefault_integer_8)) {
-    res.getDefaultKinds().set_defaultIntegerKind(8);
-    res.getDefaultKinds().set_subscriptIntegerKind(8);
-    res.getDefaultKinds().set_sizeIntegerKind(8);
+    res.defaultKinds().set_defaultIntegerKind(8);
+    res.defaultKinds().set_subscriptIntegerKind(8);
+    res.defaultKinds().set_sizeIntegerKind(8);
   }
   if (args.hasArg(clang::driver::options::OPT_fdefault_double_8)) {
     if (!args.hasArg(clang::driver::options::OPT_fdefault_real_8)) {
@@ -566,24 +518,24 @@ static bool parseDialectArgs(CompilerInvocation &res, llvm::opt::ArgList &args,
       diags.Report(diagID);
     }
     // https://gcc.gnu.org/onlinedocs/gfortran/Fortran-Dialect-Options.html
-    res.getDefaultKinds().set_doublePrecisionKind(8);
+    res.defaultKinds().set_doublePrecisionKind(8);
   }
   if (args.hasArg(clang::driver::options::OPT_flarge_sizes))
-    res.getDefaultKinds().set_sizeIntegerKind(8);
+    res.defaultKinds().set_sizeIntegerKind(8);
 
   // -fopenmp and -fopenacc
   if (args.hasArg(clang::driver::options::OPT_fopenacc)) {
-    res.getFrontendOpts().features.Enable(
+    res.frontendOpts().features.Enable(
         Fortran::common::LanguageFeature::OpenACC);
   }
   if (args.hasArg(clang::driver::options::OPT_fopenmp)) {
-    res.getFrontendOpts().features.Enable(
+    res.frontendOpts().features.Enable(
         Fortran::common::LanguageFeature::OpenMP);
   }
 
   // -pedantic
   if (args.hasArg(clang::driver::options::OPT_pedantic)) {
-    res.setEnableConformanceChecks();
+    res.set_EnableConformanceChecks();
   }
   // -std=f2018 (currently this implies -pedantic)
   // TODO: Set proper options when more fortran standards
@@ -592,7 +544,7 @@ static bool parseDialectArgs(CompilerInvocation &res, llvm::opt::ArgList &args,
     auto standard = args.getLastArgValue(clang::driver::options::OPT_std_EQ);
     // We only allow f2018 as the given standard
     if (standard.equals("f2018")) {
-      res.setEnableConformanceChecks();
+      res.set_EnableConformanceChecks();
     } else {
       const unsigned diagID =
           diags.getCustomDiagID(clang::DiagnosticsEngine::Error,
@@ -603,20 +555,11 @@ static bool parseDialectArgs(CompilerInvocation &res, llvm::opt::ArgList &args,
   return diags.getNumErrors() == numErrorsBefore;
 }
 
-bool CompilerInvocation::createFromArgs(
-    CompilerInvocation &res, llvm::ArrayRef<const char *> commandLineArgs,
+bool CompilerInvocation::CreateFromArgs(CompilerInvocation &res,
+    llvm::ArrayRef<const char *> commandLineArgs,
     clang::DiagnosticsEngine &diags) {
 
   bool success = true;
-
-  // Set the default triple for this CompilerInvocation. This might be
-  // overridden by users with `-triple` (see the call to `ParseTargetArgs`
-  // below).
-  // NOTE: Like in Clang, it would be nice to use option marshalling
-  // for this so that the entire logic for setting-up the triple is in one
-  // place.
-  res.getTargetOpts().triple =
-      llvm::Triple::normalize(llvm::sys::getDefaultTargetTriple());
 
   // Parse the arguments
   const llvm::opt::OptTable &opts = clang::driver::getDriverOptTable();
@@ -644,24 +587,20 @@ bool CompilerInvocation::createFromArgs(
     success = false;
   }
 
-  success &= parseFrontendArgs(res.getFrontendOpts(), args, diags);
-  parseTargetArgs(res.getTargetOpts(), args);
-  parsePreprocessorArgs(res.getPreprocessorOpts(), args);
-  parseCodeGenArgs(res.getCodeGenOpts(), args, diags);
+  success &= ParseFrontendArgs(res.frontendOpts(), args, diags);
+  ParseTargetArgs(res.targetOpts(), args);
+  parsePreprocessorArgs(res.preprocessorOpts(), args);
   success &= parseSemaArgs(res, args, diags);
   success &= parseDialectArgs(res, args, diags);
   success &= parseDiagArgs(res, args, diags);
-  res.frontendOpts.llvmArgs =
+  res.frontendOpts_.llvmArgs =
       args.getAllArgValues(clang::driver::options::OPT_mllvm);
-
-  res.frontendOpts.mlirArgs =
-      args.getAllArgValues(clang::driver::options::OPT_mmlir);
 
   return success;
 }
 
-void CompilerInvocation::collectMacroDefinitions() {
-  auto &ppOpts = this->getPreprocessorOpts();
+void CompilerInvocation::CollectMacroDefinitions() {
+  auto &ppOpts = this->preprocessorOpts();
 
   for (unsigned i = 0, n = ppOpts.macros.size(); i != n; ++i) {
     llvm::StringRef macro = ppOpts.macros[i].first;
@@ -673,8 +612,8 @@ void CompilerInvocation::collectMacroDefinitions() {
 
     // For an #undef'd macro, we only care about the name.
     if (isUndef) {
-      parserOpts.predefinitions.emplace_back(macroName.str(),
-                                             std::optional<std::string>{});
+      parserOpts_.predefinitions.emplace_back(
+          macroName.str(), std::optional<std::string>{});
       continue;
     }
 
@@ -683,16 +622,16 @@ void CompilerInvocation::collectMacroDefinitions() {
       macroBody = "1";
     else {
       // Note: GCC drops anything following an end-of-line character.
-      llvm::StringRef::size_type end = macroBody.find_first_of("\n\r");
-      macroBody = macroBody.substr(0, end);
+      llvm::StringRef::size_type End = macroBody.find_first_of("\n\r");
+      macroBody = macroBody.substr(0, End);
     }
-    parserOpts.predefinitions.emplace_back(
+    parserOpts_.predefinitions.emplace_back(
         macroName, std::optional<std::string>(macroBody.str()));
   }
 }
 
-void CompilerInvocation::setDefaultFortranOpts() {
-  auto &fortranOptions = getFortranOpts();
+void CompilerInvocation::SetDefaultFortranOpts() {
+  auto &fortranOptions = fortranOpts();
 
   std::vector<std::string> searchDirectories{"."s};
   fortranOptions.searchDirectories = searchDirectories;
@@ -707,9 +646,9 @@ void CompilerInvocation::setDefaultFortranOpts() {
 // TODO: When expanding this method, consider creating a dedicated API for
 // this. Also at some point we will need to differentiate between different
 // targets and add dedicated predefines for each.
-void CompilerInvocation::setDefaultPredefinitions() {
-  auto &fortranOptions = getFortranOpts();
-  const auto &frontendOptions = getFrontendOpts();
+void CompilerInvocation::SetDefaultPredefinitions() {
+  auto &fortranOptions = fortranOpts();
+  const auto &frontendOptions = frontendOpts();
 
   // Populate the macro list with version numbers and other predefinitions.
   fortranOptions.predefinitions.emplace_back("__flang__", "1");
@@ -731,11 +670,11 @@ void CompilerInvocation::setDefaultPredefinitions() {
   }
 }
 
-void CompilerInvocation::setFortranOpts() {
-  auto &fortranOptions = getFortranOpts();
-  const auto &frontendOptions = getFrontendOpts();
-  const auto &preprocessorOptions = getPreprocessorOpts();
-  auto &moduleDirJ = getModuleDir();
+void CompilerInvocation::SetFortranOpts() {
+  auto &fortranOptions = fortranOpts();
+  const auto &frontendOptions = frontendOpts();
+  const auto &preprocessorOptions = preprocessorOpts();
+  auto &moduleDirJ = moduleDir();
 
   if (frontendOptions.fortranForm != FortranForm::Unknown) {
     fortranOptions.isFixedForm =
@@ -772,22 +711,22 @@ void CompilerInvocation::setFortranOpts() {
   if (frontendOptions.needProvenanceRangeToCharBlockMappings)
     fortranOptions.needProvenanceRangeToCharBlockMappings = true;
 
-  if (getEnableConformanceChecks()) {
+  if (enableConformanceChecks()) {
     fortranOptions.features.WarnOnAllNonstandard();
   }
 }
 
-void CompilerInvocation::setSemanticsOpts(
+void CompilerInvocation::SetSemanticsOpts(
     Fortran::parser::AllCookedSources &allCookedSources) {
-  const auto &fortranOptions = getFortranOpts();
+  const auto &fortranOptions = fortranOpts();
 
-  semanticsContext = std::make_unique<semantics::SemanticsContext>(
-      getDefaultKinds(), fortranOptions.features, allCookedSources);
+  semanticsContext_ = std::make_unique<semantics::SemanticsContext>(
+      defaultKinds(), fortranOptions.features, allCookedSources);
 
-  semanticsContext->set_moduleDirectory(getModuleDir())
+  semanticsContext_->set_moduleDirectory(moduleDir())
       .set_searchDirectories(fortranOptions.searchDirectories)
       .set_intrinsicModuleDirectories(fortranOptions.intrinsicModuleDirectories)
-      .set_warnOnNonstandardUsage(getEnableConformanceChecks())
-      .set_warningsAreErrors(getWarnAsErr())
-      .set_moduleFileSuffix(getModuleFileSuffix());
+      .set_warnOnNonstandardUsage(enableConformanceChecks())
+      .set_warningsAreErrors(warnAsErr())
+      .set_moduleFileSuffix(moduleFileSuffix());
 }

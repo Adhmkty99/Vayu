@@ -15,9 +15,9 @@ add_mlir_conversion_library(MLIRLinalgToLLVM
   LINK_LIBS PUBLIC
   MLIRAffineToStandard
   MLIRIR
-  MLIRLinalgDialect
+  MLIRLinalg
   MLIRLLVMCommonConversion
-  MLIRLLVMDialect
+  MLIRLLVMIR
   MLIRMemRefToLLVM
   MLIRSCFToControlFlow
   MLIRTransforms

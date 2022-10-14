@@ -84,7 +84,7 @@ public:
   // - Negative globs ignored (which would effectively disable the suppression).
   NoLintToken(NoLintType Type, size_t Pos, const Optional<std::string> &Checks)
       : Type(Type), Pos(Pos), ChecksGlob(std::make_unique<CachedGlobList>(
-                                  Checks.value_or("*"),
+                                  Checks.getValueOr("*"),
                                   /*KeepNegativeGlobs=*/false)) {
     if (Checks)
       this->Checks = trimWhitespace(*Checks);
@@ -266,7 +266,7 @@ bool NoLintDirectiveHandler::Impl::diagHasNoLintInMacro(
       return true;
     if (!DiagLoc.isMacroID())
       return false;
-    DiagLoc = SrcMgr.getImmediateExpansionRange(DiagLoc).getBegin();
+    DiagLoc = SrcMgr.getImmediateMacroCallerLoc(DiagLoc);
   }
   return false;
 }

@@ -69,9 +69,6 @@ public:
     return llvm::Error::success();
   }
 
-  /// Undo N previous incremental inputs.
-  llvm::Error Undo(unsigned N = 1);
-
   /// \returns the \c JITTargetAddress of a \c GlobalDecl. This interface uses
   /// the CodeGenModule's internal mangling cache to avoid recomputing the
   /// mangled name.

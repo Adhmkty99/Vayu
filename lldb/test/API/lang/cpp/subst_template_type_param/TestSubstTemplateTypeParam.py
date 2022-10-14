@@ -10,6 +10,8 @@ from lldbsuite.test import decorators
 
 class TestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_typedef(self):
         target = self.dbg.GetDummyTarget()
 

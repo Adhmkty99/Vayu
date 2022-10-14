@@ -9,6 +9,8 @@ from lldbsuite.test import lldbutil
 
 class TestCppGlobalOperators(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def prepare_executable_and_get_frame(self):
         self.build()
 

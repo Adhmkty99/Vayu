@@ -198,7 +198,7 @@ public:
   InstructionCost getShuffleCost(TTI::ShuffleKind Kind, VectorType *Tp,
                                  ArrayRef<int> Mask, int Index,
                                  VectorType *SubTp,
-                                 ArrayRef<const Value *> Args = None);
+                                 ArrayRef<Value *> Args = None);
 
   bool areInlineCompatible(const Function *Caller,
                            const Function *Callee) const;

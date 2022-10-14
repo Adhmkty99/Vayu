@@ -120,7 +120,7 @@ private:
 class IRInserter final : public llvm::IRBuilderDefaultInserter {
 public:
   IRInserter() = default;
-  IRInserter(ScopAnnotator &A) : Annotator(&A) {}
+  IRInserter(class ScopAnnotator &A) : Annotator(&A) {}
 
   void InsertHelper(llvm::Instruction *I, const llvm::Twine &Name,
                     llvm::BasicBlock *BB,
@@ -131,7 +131,7 @@ public:
   }
 
 private:
-  ScopAnnotator *Annotator = nullptr;
+  class ScopAnnotator *Annotator = nullptr;
 };
 
 // TODO: We should not name instructions in NDEBUG builds.

@@ -1,8 +1,6 @@
-cmake_minimum_required(VERSION 3.13.4)
 include(CheckIncludeFiles)
 
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD 14)
 
 project(libbolt_rt_project)
 
@@ -23,8 +21,7 @@ set(BOLT_RT_FLAGS
   -ffreestanding
   -fno-exceptions
   -fno-rtti
-  -fno-stack-protector
-  -mno-sse)
+  -fno-stack-protector)
 
 # Don't let the compiler think it can create calls to standard libs
 target_compile_options(bolt_rt_instr PRIVATE ${BOLT_RT_FLAGS} -fPIE)

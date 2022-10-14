@@ -13,6 +13,8 @@ from lldbsuite.test import lldbutil
 
 class ValueAPITestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         # Call super's setUp().
         TestBase.setUp(self)
@@ -43,7 +45,7 @@ class ValueAPITestCase(TestBase):
         self.assertTrue(process, PROCESS_IS_VALID)
 
         # Get Frame #0.
-        self.assertState(process.GetState(), lldb.eStateStopped)
+        self.assertEqual(process.GetState(), lldb.eStateStopped)
         thread = lldbutil.get_stopped_thread(
             process, lldb.eStopReasonBreakpoint)
         self.assertTrue(

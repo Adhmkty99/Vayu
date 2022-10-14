@@ -310,11 +310,10 @@ bool InterleavedAccess::lowerInterleavedLoad(
       Extracts.push_back(Extract);
       continue;
     }
-    if (auto *BI = dyn_cast<BinaryOperator>(User)) {
-      if (all_of(BI->users(),
-                 [](auto *U) { return isa<ShuffleVectorInst>(U); })) {
-        for (auto *SVI : BI->users())
-          BinOpShuffles.insert(cast<ShuffleVectorInst>(SVI));
+    auto *BI = dyn_cast<BinaryOperator>(User);
+    if (BI && BI->hasOneUse()) {
+      if (auto *SVI = dyn_cast<ShuffleVectorInst>(*BI->user_begin())) {
+        BinOpShuffles.insert(SVI);
         continue;
       }
     }
@@ -541,7 +540,7 @@ bool InterleavedAccess::runOnFunction(Function &F) {
       Changed |= lowerInterleavedStore(SI, DeadInsts);
   }
 
-  for (auto *I : DeadInsts)
+  for (auto I : DeadInsts)
     I->eraseFromParent();
 
   return Changed;

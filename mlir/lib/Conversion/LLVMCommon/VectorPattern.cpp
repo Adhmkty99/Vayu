@@ -120,7 +120,8 @@ LogicalResult LLVM::detail::vectorOneToOneRewrite(
   assert(!operands.empty());
 
   // Cannot convert ops if their operands are not of LLVM type.
-  if (!llvm::all_of(operands.getTypes(), isCompatibleType))
+  if (!llvm::all_of(operands.getTypes(),
+                    [](Type t) { return isCompatibleType(t); }))
     return failure();
 
   auto llvmNDVectorTy = operands[0].getType();

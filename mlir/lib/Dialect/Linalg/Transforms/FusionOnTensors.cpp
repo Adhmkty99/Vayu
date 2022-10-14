@@ -87,11 +87,10 @@ getTiledProducerLoops(OpResult producerResult,
   assert(tiledProducerIndexingSubMap.isProjectedPermutation() &&
          "expect slice and producer loop dimensions map one-to-one");
   SmallVector<int64_t> tiledProducerLoopIndices;
-  llvm::transform(
-      llvm::seq<unsigned>(0, tiledProducerIndexingSubMap.getNumResults()),
-      std::back_inserter(tiledProducerLoopIndices), [&](unsigned idx) {
-        return tiledProducerIndexingSubMap.getDimPosition(idx);
-      });
+  transform(llvm::seq<unsigned>(0, tiledProducerIndexingSubMap.getNumResults()),
+            std::back_inserter(tiledProducerLoopIndices), [&](unsigned idx) {
+              return tiledProducerIndexingSubMap.getDimPosition(idx);
+            });
 
   return tiledProducerLoopIndices;
 }
@@ -142,9 +141,9 @@ static LinalgOp getTiledProducer(OpBuilder &b, OpResult producerResult,
 
   // Obtain the `producerOp` loop bounds and the `sliceOp` ranges.
   SmallVector<Value> producerLoopBounds;
-  llvm::transform(producerOp.createLoopRanges(b, loc),
-                  std::back_inserter(producerLoopBounds),
-                  [](Range range) { return range.size; });
+  transform(producerOp.createLoopRanges(b, loc),
+            std::back_inserter(producerLoopBounds),
+            [](Range range) { return range.size; });
   SmallVector<Range> sliceOpRanges = sliceOp.getOrCreateRanges(b, loc);
 
   // Tile the producer operands given the `sliceOp` ranges. Iterate the
@@ -186,7 +185,7 @@ static LinalgOp getTiledProducer(OpBuilder &b, OpResult producerResult,
   LinalgOp clonedOp = producerOp.clone(b, loc, resultTypes, tiledOperands);
 
   // Shift all IndexOp results by the tile offset.
-  offsetIndices(b, clonedOp, allIvs);
+  addTileLoopIvsToIndexOpResults(b, clonedOp, allIvs);
 
   return clonedOp;
 }
@@ -256,7 +255,7 @@ bool TileLoopNest::hasOtherUses(BlockArgument bbArg,
     }
     if (auto insertSliceOp = dyn_cast<tensor::InsertSliceOp>(op)) {
       SetVector<Operation *> backwardSlice;
-      getBackwardSlice(insertSliceOp.getSource(), &backwardSlice,
+      getBackwardSlice(insertSliceOp.source(), &backwardSlice,
                        [](Operation *op) {
                          return isa<LinalgOp, tensor::InsertSliceOp>(op);
                        });
@@ -288,7 +287,8 @@ LogicalResult TileLoopNest::tileRootOp(
                       .setTileSizes(tileSizes)
                       .setLoopType(LinalgTilingLoopType::Loops);
   if (tileDistribution)
-    tilingOptions = tilingOptions.setDistributionOptions(*tileDistribution);
+    tilingOptions =
+        tilingOptions.setDistributionOptions(tileDistribution.getValue());
 
   // TODO: Propagate RewriterBase everywhere.
   IRRewriter rewriter(b);
@@ -358,8 +358,8 @@ FailureOr<LinalgOp> TileLoopNest::fuseProducer(OpBuilder &b,
 
   // Check if the producer is a LinalgOp possibly passed by iteration argument.
   OpOperand *iterArg = nullptr;
-  auto producerResult = sliceOp.getSource().dyn_cast<OpResult>();
-  if (auto bbArg = sliceOp.getSource().dyn_cast<BlockArgument>()) {
+  auto producerResult = sliceOp.source().dyn_cast<OpResult>();
+  if (auto bbArg = sliceOp.source().dyn_cast<BlockArgument>()) {
     iterArg = getTiedIterArg(bbArg);
     // Check the iteration argument may be used to pass in the producer output.
     if (!iterArg || hasOtherUses(bbArg, sliceOp))
@@ -454,24 +454,19 @@ FailureOr<TileLoopNest> mlir::linalg::tileConsumerAndFuseProducers(
     }
   };
 
-  // Perform tiling and fusion in two steps. We need to respect the loop
-  // interchange here; filter parellel dimensions based on their order *after*
-  // permutation but pass in the original configuration *before* permuation,
-  // given the tiling and interchange happen together.
-  SmallVector<int64_t> outerTileSizes(tileSizes.size(), 0);
-  SmallVector<int64_t> innerTileSizes(tileSizes.size(), 0);
-  for (int64_t i : tileInterchange.take_front(split))
-    outerTileSizes[i] = tileSizes[i];
-  for (int64_t i : tileInterchange.drop_front(split))
-    innerTileSizes[i] = tileSizes[i];
-
   // Tile the outer parallel loops and fuse the output operands.
+  SmallVector<int64_t> outerTileSizes;
+  outerTileSizes.append(tileSizes.begin(), tileSizes.begin() + split);
+  outerTileSizes.append(tileSizes.size() - split, 0);
   if (failed(tileLoopNest.tileRootOp(b, outerTileSizes, tileInterchange,
                                      tileDistribution)))
     return failure();
   fuseProducersGreedily(tileLoopNest.getRootOp().getOutputOperands());
 
   // Tile the remaining loops and fuse the input operands.
+  SmallVector<int64_t> innerTileSizes;
+  innerTileSizes.append(split, 0);
+  innerTileSizes.append(tileSizes.begin() + split, tileSizes.end());
   if (failed(tileLoopNest.tileRootOp(b, innerTileSizes, tileInterchange,
                                      tileDistribution)))
     return failure();

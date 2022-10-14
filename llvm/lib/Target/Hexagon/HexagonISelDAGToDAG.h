@@ -95,6 +95,7 @@ public:
   void SelectIndexedStore(StoreSDNode *ST, const SDLoc &dl);
   void SelectStore(SDNode *N);
   void SelectSHL(SDNode *N);
+  void SelectZeroExtend(SDNode *N);
   void SelectIntrinsicWChain(SDNode *N);
   void SelectIntrinsicWOChain(SDNode *N);
   void SelectConstant(SDNode *N);

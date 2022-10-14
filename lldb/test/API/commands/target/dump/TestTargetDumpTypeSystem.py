@@ -5,6 +5,8 @@ import lldbsuite.test.lldbutil as lldbutil
 
 class TestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @no_debug_info_test
     def test_dumping(self):
         """ Tests dumping an empty and non-empty scratch AST. """
@@ -28,4 +30,4 @@ class TestCase(TestBase):
         self.build()
         self.createTestTarget()
         self.expect("target dump typesystem arg", error=True,
-                    substrs=["'target dump typesystem' doesn't take any arguments."])
+                    substrs=["error: target dump typesystem doesn't take arguments."])

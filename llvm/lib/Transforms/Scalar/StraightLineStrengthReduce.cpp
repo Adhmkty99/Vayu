@@ -682,16 +682,24 @@ void StraightLineStrengthReduce::rewriteCandidateWithBasis(
         unsigned AS = Basis.Ins->getType()->getPointerAddressSpace();
         Type *CharTy = Type::getInt8PtrTy(Basis.Ins->getContext(), AS);
         Reduced = Builder.CreateBitCast(Basis.Ins, CharTy);
-        Reduced =
-            Builder.CreateGEP(Builder.getInt8Ty(), Reduced, Bump, "", InBounds);
+        if (InBounds)
+          Reduced =
+              Builder.CreateInBoundsGEP(Builder.getInt8Ty(), Reduced, Bump);
+        else
+          Reduced = Builder.CreateGEP(Builder.getInt8Ty(), Reduced, Bump);
         Reduced = Builder.CreateBitCast(Reduced, C.Ins->getType());
       } else {
         // C = gep Basis, Bump
         // Canonicalize bump to pointer size.
         Bump = Builder.CreateSExtOrTrunc(Bump, IntPtrTy);
-        Reduced = Builder.CreateGEP(
-            cast<GetElementPtrInst>(Basis.Ins)->getResultElementType(),
-            Basis.Ins, Bump, "", InBounds);
+        if (InBounds)
+          Reduced = Builder.CreateInBoundsGEP(
+              cast<GetElementPtrInst>(Basis.Ins)->getResultElementType(),
+              Basis.Ins, Bump);
+        else
+          Reduced = Builder.CreateGEP(
+              cast<GetElementPtrInst>(Basis.Ins)->getResultElementType(),
+              Basis.Ins, Bump);
       }
       break;
     }

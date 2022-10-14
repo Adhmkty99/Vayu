@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 class StepUntilTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         # Call super's setUp().
         TestBase.setUp(self)
@@ -19,7 +21,7 @@ class StepUntilTestCase(TestBase):
         self.greater_than_two = line_number('main.c', 'Greater than or equal to 2.')
         self.back_out_in_main = line_number('main.c', 'Back out in main')
 
-    def common_setup (self, args):
+    def do_until (self, args, until_lines, expected_linenum):
         self.build()
         exe = self.getBuildArtifact("a.out")
 
@@ -48,8 +50,7 @@ class StepUntilTestCase(TestBase):
         thread = threads[0]
         return thread
 
-    def do_until (self, args, until_lines, expected_linenum):
-        thread = self.common_setup(args)
+        thread = self.common_setup(None)
 
         cmd_interp = self.dbg.GetCommandInterpreter()
         ret_obj = lldb.SBCommandReturnObject()
@@ -78,7 +79,7 @@ class StepUntilTestCase(TestBase):
         self.do_until(None, [self.less_than_two, self.greater_than_two], self.less_than_two)
 
     def test_missing_one (self):
-        """Test thread step until - targeting one line and missing it by stepping out to call site"""
+        """Test thread step until - targeting one line and missing it."""
         self.do_until(["foo", "bar", "baz"], [self.less_than_two], self.back_out_in_main)
 
 

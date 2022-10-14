@@ -70,7 +70,7 @@ public:
     }
   };
 
-  CVPLatticeVal() = default;
+  CVPLatticeVal() : LatticeState(Undefined) {}
   CVPLatticeVal(CVPLatticeStateTy LatticeState) : LatticeState(LatticeState) {}
   CVPLatticeVal(std::vector<Function *> &&Functions)
       : LatticeState(FunctionSet), Functions(std::move(Functions)) {
@@ -96,7 +96,7 @@ public:
 
 private:
   /// Holds the state this lattice value is in.
-  CVPLatticeStateTy LatticeState = Undefined;
+  CVPLatticeStateTy LatticeState;
 
   /// Holds functions indicating the possible targets of call sites. This set
   /// is empty for lattice values in the undefined, overdefined, and untracked

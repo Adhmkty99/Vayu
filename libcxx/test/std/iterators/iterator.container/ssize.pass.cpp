@@ -20,7 +20,6 @@
 #include <list>
 #include <initializer_list>
 #include <string_view>
-#include <limits>
 
 #include "test_macros.h"
 

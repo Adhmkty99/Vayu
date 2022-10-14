@@ -2,8 +2,7 @@
 
 // Hangs
 // UNSUPPORTED: amdgcn-amd-amdhsa
-// UNSUPPORTED: amdgcn-amd-amdhsa-oldDriver
-// UNSUPPORTED: amdgcn-amd-amdhsa-LTO
+// UNSUPPORTED: amdgcn-amd-amdhsa-newDriver
 
 #include <iostream>
 

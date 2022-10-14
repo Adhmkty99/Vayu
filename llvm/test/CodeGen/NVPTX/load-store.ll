@@ -1,5 +1,4 @@
 ; RUN: llc < %s -march=nvptx64 -mcpu=sm_20 | FileCheck %s
-; RUN: %if ptxas %{ llc < %s -march=nvptx64 -mcpu=sm_20 | %ptxas-verify %}
 
 ; CHECK-LABEL: plain
 define void @plain(i8* %a, i16* %b, i32* %c, i64* %d) local_unnamed_addr {

@@ -102,7 +102,6 @@ BitVector RISCVRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   markSuperRegs(Reserved, RISCV::VTYPE);
   markSuperRegs(Reserved, RISCV::VXSAT);
   markSuperRegs(Reserved, RISCV::VXRM);
-  markSuperRegs(Reserved, RISCV::VLENB); // vlenb (constant)
 
   // Floating point environment registers.
   markSuperRegs(Reserved, RISCV::FRM);
@@ -118,7 +117,7 @@ bool RISCVRegisterInfo::isAsmClobberable(const MachineFunction &MF,
 }
 
 bool RISCVRegisterInfo::isConstantPhysReg(MCRegister PhysReg) const {
-  return PhysReg == RISCV::X0 || PhysReg == RISCV::VLENB;
+  return PhysReg == RISCV::X0;
 }
 
 const uint32_t *RISCVRegisterInfo::getNoPreservedMask() const {
@@ -174,7 +173,7 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   Register FrameReg;
   StackOffset Offset =
       getFrameLowering(MF)->getFrameIndexReference(MF, FrameIndex, FrameReg);
-  bool IsRVVSpill = RISCV::isRVVSpill(MI);
+  bool IsRVVSpill = TII->isRVVSpill(MI, /*CheckFIs*/ false);
   if (!IsRVVSpill)
     Offset += StackOffset::getFixed(MI.getOperand(FIOperandNum + 1).getImm());
 
@@ -273,7 +272,7 @@ void RISCVRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
       MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset.getFixed());
   }
 
-  auto ZvlssegInfo = RISCV::isRVVSpillForZvlsseg(MI.getOpcode());
+  auto ZvlssegInfo = TII->isRVVSpillForZvlsseg(MI.getOpcode());
   if (ZvlssegInfo) {
     Register VL = MRI.createVirtualRegister(&RISCV::GPRRegClass);
     BuildMI(MBB, II, DL, TII->get(RISCV::PseudoReadVLENB), VL);

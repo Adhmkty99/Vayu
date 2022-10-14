@@ -619,10 +619,11 @@ public:
 
     auto addInstrOperands = [&](const MCInst &Instr) {
       // Update Uses table
-      for (const MCOperand &Operand : MCPlus::primeOperands(Instr)) {
-        if (!Operand.isReg())
+      for (unsigned OpNum = 0, OpEnd = MCPlus::getNumPrimeOperands(Instr);
+           OpNum != OpEnd; ++OpNum) {
+        if (!Instr.getOperand(OpNum).isReg())
           continue;
-        unsigned Reg = Operand.getReg();
+        unsigned Reg = Instr.getOperand(OpNum).getReg();
         MCInst *AliasInst = RegAliasTable[Reg];
         Uses[&Instr].push_back(AliasInst);
         LLVM_DEBUG({
@@ -655,10 +656,12 @@ public:
       getWrittenRegs(Instr, Regs);
 
       // Update register definitions after this point
-      for (int Idx : Regs.set_bits()) {
+      int Idx = Regs.find_first();
+      while (Idx != -1) {
         RegAliasTable[Idx] = &Instr;
         LLVM_DEBUG(dbgs() << "Setting reg " << Idx
                           << " def to current instr.\n");
+        Idx = Regs.find_next(Idx);
       }
 
       TerminatorSeen = isTerminator(Instr);
@@ -763,7 +766,6 @@ public:
     assert(Adrp->getOperand(1).isImm() && "Unexpected adrp operand");
     bool Ret = evaluateMemOperandTarget(*Adrp, Base, AdrpPC, InstSize);
     assert(Ret && "Failed to evaluate adrp");
-    (void)Ret;
 
     return Base + Offset;
   }
@@ -1032,17 +1034,17 @@ public:
   ///    ADD   x16, x16, imm
   ///    BR    x16
   ///
-  uint64_t matchLinkerVeneer(InstructionIterator Begin, InstructionIterator End,
-                             uint64_t Address, const MCInst &CurInst,
-                             MCInst *&TargetHiBits, MCInst *&TargetLowBits,
-                             uint64_t &Target) const override {
+  bool matchLinkerVeneer(InstructionIterator Begin, InstructionIterator End,
+                         uint64_t Address, const MCInst &CurInst,
+                         MCInst *&TargetHiBits, MCInst *&TargetLowBits,
+                         uint64_t &Target) const override {
     if (CurInst.getOpcode() != AArch64::BR || !CurInst.getOperand(0).isReg() ||
         CurInst.getOperand(0).getReg() != AArch64::X16)
-      return 0;
+      return false;
 
     auto I = End;
     if (I == Begin)
-      return 0;
+      return false;
 
     --I;
     Address -= 4;
@@ -1051,7 +1053,7 @@ public:
         !I->getOperand(1).isReg() ||
         I->getOperand(0).getReg() != AArch64::X16 ||
         I->getOperand(1).getReg() != AArch64::X16 || !I->getOperand(2).isImm())
-      return 0;
+      return false;
     TargetLowBits = &*I;
     uint64_t Addr = I->getOperand(2).getImm() & 0xFFF;
 
@@ -1060,12 +1062,12 @@ public:
     if (I->getOpcode() != AArch64::ADRP ||
         MCPlus::getNumPrimeOperands(*I) < 2 || !I->getOperand(0).isReg() ||
         !I->getOperand(1).isImm() || I->getOperand(0).getReg() != AArch64::X16)
-      return 0;
+      return false;
     TargetHiBits = &*I;
     Addr |= (Address + ((int64_t)I->getOperand(1).getImm() << 12)) &
             0xFFFFFFFFFFFFF000ULL;
     Target = Addr;
-    return 3;
+    return true;
   }
 
   bool replaceImmWithSymbolRef(MCInst &Inst, const MCSymbol *Symbol,
@@ -1106,6 +1108,8 @@ public:
   bool isPop(const MCInst &Inst) const override { return false; }
 
   bool isPrefix(const MCInst &Inst) const override { return false; }
+
+  bool deleteREPPrefix(MCInst &Inst) const override { return false; }
 
   bool createReturn(MCInst &Inst) const override {
     Inst.setOpcode(AArch64::RET);

@@ -64,7 +64,7 @@ public:
                  CoreSimulatorSupport::DeviceType::ProductFamilyID kind,
                  bool force, const ArchSpec *arch);
 
-  ~PlatformAppleSimulator() override;
+  virtual ~PlatformAppleSimulator();
 
   llvm::StringRef GetPluginName() override {
     return m_plugin_name.GetStringRef();

@@ -246,7 +246,8 @@ define i1 @test9() {
 define i64 @test10() {
 ; CHECK-LABEL: @test10(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    ret i64 undef
+; CHECK-NEXT:    [[E:%.*]] = extractvalue { i64, i64 } undef, 1
+; CHECK-NEXT:    ret i64 [[E]]
 ;
 entry:
   %e = extractvalue { i64, i64 } undef, 1

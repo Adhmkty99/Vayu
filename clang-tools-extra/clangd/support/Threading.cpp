@@ -34,9 +34,9 @@ void Notification::notify() {
   }
 }
 
-bool Notification::wait(Deadline D) const {
+void Notification::wait() const {
   std::unique_lock<std::mutex> Lock(Mu);
-  return clangd::wait(Lock, CV, D, [&] { return Notified; });
+  CV.wait(Lock, [this] { return Notified; });
 }
 
 Semaphore::Semaphore(std::size_t MaxLocks) : FreeSlots(MaxLocks) {}

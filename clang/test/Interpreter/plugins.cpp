@@ -6,7 +6,8 @@
 int i = 10;
 extern "C" int printf(const char*,...);
 auto r1 = printf("i = %d\n", i);
-%quit
+quit
+
 
 // CHECK: top-level-decl: "i"
 // CHECK-NEXT: top-level-decl: "r1"

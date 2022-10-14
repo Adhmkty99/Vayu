@@ -91,12 +91,15 @@ void SuspiciousStringCompareCheck::registerMatchers(MatchFinder *Finder) {
 
   // Add the list of known string compare-like functions and add user-defined
   // functions.
-  std::vector<StringRef> FunctionNames = utils::options::parseListPair(
-      KnownStringCompareFunctions, StringCompareLikeFunctions);
+  std::vector<std::string> FunctionNames = utils::options::parseStringList(
+      (llvm::Twine(KnownStringCompareFunctions) + StringCompareLikeFunctions)
+          .str());
 
   // Match a call to a string compare functions.
   const auto FunctionCompareDecl =
-      functionDecl(hasAnyName(FunctionNames)).bind("decl");
+      functionDecl(hasAnyName(std::vector<StringRef>(FunctionNames.begin(),
+                                                     FunctionNames.end())))
+          .bind("decl");
   const auto DirectStringCompareCallExpr =
       callExpr(hasDeclaration(FunctionCompareDecl)).bind("call");
   const auto MacroStringCompareCallExpr = conditionalOperator(anyOf(

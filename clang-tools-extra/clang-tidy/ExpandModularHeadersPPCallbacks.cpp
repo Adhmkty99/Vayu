@@ -162,9 +162,8 @@ void ExpandModularHeadersPPCallbacks::FileChanged(
 void ExpandModularHeadersPPCallbacks::InclusionDirective(
     SourceLocation DirectiveLoc, const Token &IncludeToken,
     StringRef IncludedFilename, bool IsAngled, CharSourceRange FilenameRange,
-    Optional<FileEntryRef> IncludedFile, StringRef SearchPath,
-    StringRef RelativePath, const Module *Imported,
-    SrcMgr::CharacteristicKind FileType) {
+    const FileEntry *IncludedFile, StringRef SearchPath, StringRef RelativePath,
+    const Module *Imported, SrcMgr::CharacteristicKind FileType) {
   if (Imported) {
     serialization::ModuleFile *MF =
         Compiler.getASTReader()->getModuleManager().lookup(

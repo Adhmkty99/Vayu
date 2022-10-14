@@ -24,7 +24,7 @@ public:
   void InclusionDirective(SourceLocation HashLocation,
                           const Token &IncludeToken, StringRef FileNameRef,
                           bool IsAngled, CharSourceRange FileNameRange,
-                          Optional<FileEntryRef> /*IncludedFile*/,
+                          const FileEntry * /*IncludedFile*/,
                           StringRef /*SearchPath*/, StringRef /*RelativePath*/,
                           const Module * /*ImportedModule*/,
                           SrcMgr::CharacteristicKind /*FileType*/) override {
@@ -36,9 +36,8 @@ private:
   IncludeInserter *Inserter;
 };
 
-IncludeInserter::IncludeInserter(IncludeSorter::IncludeStyle Style,
-                                 bool SelfContainedDiags)
-    : Style(Style), SelfContainedDiags(SelfContainedDiags) {}
+IncludeInserter::IncludeInserter(IncludeSorter::IncludeStyle Style)
+    : Style(Style) {}
 
 void IncludeInserter::registerPreprocessor(Preprocessor *PP) {
   assert(PP && "PP shouldn't be null");
@@ -74,9 +73,7 @@ IncludeInserter::createIncludeInsertion(FileID FileID, llvm::StringRef Header) {
     return llvm::None;
   // We assume the same Header will never be included both angled and not
   // angled.
-  // In self contained diags mode we don't track what headers we have already
-  // inserted.
-  if (!SelfContainedDiags && !InsertedHeaders[FileID].insert(Header).second)
+  if (!InsertedHeaders[FileID].insert(Header).second)
     return llvm::None;
 
   return getOrCreate(FileID).createIncludeInsertion(Header, IsAngled);

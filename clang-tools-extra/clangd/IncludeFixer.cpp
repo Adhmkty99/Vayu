@@ -35,7 +35,6 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/None.h"
 #include "llvm/ADT/Optional.h"
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/StringSet.h"
@@ -198,7 +197,8 @@ std::vector<Fix> IncludeFixer::fix(DiagnosticsEngine::Level DiagLevel,
   case diag::err_no_member_template:
   case diag::err_no_member_template_suggest:
   case diag::warn_implicit_function_decl:
-  case diag::ext_implicit_function_decl_c99:
+  case diag::ext_implicit_function_decl:
+  case diag::err_opencl_implicit_function_decl:
     dlog("Unresolved name at {0}, last typo was {1}",
          Info.getLocation().printToString(Info.getSourceManager()),
          LastUnresolvedName
@@ -241,7 +241,7 @@ std::vector<Fix> IncludeFixer::fix(DiagnosticsEngine::Level DiagLevel,
     if (Info.getNumArgs() > 0)
       if (auto Header = getArgStr(Info, 0))
         return only(insertHeader(("<" + *Header + ">").str(),
-                                 getArgStr(Info, 1).value_or("")));
+                                 getArgStr(Info, 1).getValueOr("")));
     break;
   }
 
@@ -476,7 +476,7 @@ collectAccessibleScopes(Sema &Sem, const DeclarationNameInfo &Typo, Scope *S,
   Sem.LookupVisibleDecls(S, LookupKind, Collector,
                          /*IncludeGlobalScope=*/false,
                          /*LoadExternal=*/false);
-  llvm::sort(Scopes);
+  std::sort(Scopes.begin(), Scopes.end());
   Scopes.erase(std::unique(Scopes.begin(), Scopes.end()), Scopes.end());
   return Scopes;
 }
@@ -545,7 +545,7 @@ IncludeFixer::unresolvedNameRecorder() {
 }
 
 std::vector<Fix> IncludeFixer::fixUnresolvedName() const {
-  assert(LastUnresolvedName);
+  assert(LastUnresolvedName.hasValue());
   auto &Unresolved = *LastUnresolvedName;
   vlog("Trying to fix unresolved name \"{0}\" in scopes: [{1}]",
        Unresolved.Name, llvm::join(Unresolved.Scopes, ", "));

@@ -5,6 +5,8 @@ import textwrap
 
 class TestCommandParser(Base):
 
+    mydir = Base.compute_mydir(__file__)
+
     def test_indentation(self):
         """Test indentation handling"""
         filename = self.getBuildArtifact("test_file.cpp")

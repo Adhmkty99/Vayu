@@ -6,7 +6,6 @@ add_llvm_component_library(LLVMObject
   COFFModuleDefinition.cpp
   COFFObjectFile.cpp
   Decompressor.cpp
-  DXContainer.cpp
   ELF.cpp
   ELFObjectFile.cpp
   Error.cpp
@@ -19,7 +18,6 @@ add_llvm_component_library(LLVMObject
   ModuleSymbolTable.cpp
   Object.cpp
   ObjectFile.cpp
-  OffloadBinary.cpp
   RecordStreamer.cpp
   RelocationResolver.cpp
   SymbolicFile.cpp

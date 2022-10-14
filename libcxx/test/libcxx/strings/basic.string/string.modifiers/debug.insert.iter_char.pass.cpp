@@ -10,8 +10,8 @@
 
 // iterator insert(const_iterator p, charT c);
 
-// REQUIRES: has-unix-headers
-// UNSUPPORTED: !libcpp-has-debug-mode, c++03
+// UNSUPPORTED: libcxx-no-debug-mode, c++03, windows
+// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DEBUG=1
 
 // TODO: Since string::insert(iter, char) is intantiated in the dylib, this test doesn't
 //       actually work if the dylib hasn't been built with debug assertions enabled.

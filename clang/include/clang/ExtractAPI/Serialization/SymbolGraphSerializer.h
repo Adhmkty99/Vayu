@@ -122,8 +122,7 @@ private:
   ///
   /// \returns \c None if this \p Record should be skipped, or a JSON object
   /// containing common symbol information of \p Record.
-  template <typename RecordTy>
-  Optional<Object> serializeAPIRecord(const RecordTy &Record) const;
+  Optional<Object> serializeAPIRecord(const APIRecord &Record) const;
 
   /// Helper method to serialize second-level member records of \p Record and
   /// the member-of relationships.
@@ -138,11 +137,8 @@ private:
   void serializeRelationship(RelationshipKind Kind, SymbolReference Source,
                              SymbolReference Target);
 
-  /// Serialize a global function record.
-  void serializeGlobalFunctionRecord(const GlobalFunctionRecord &Record);
-
-  /// Serialize a global variable record.
-  void serializeGlobalVariableRecord(const GlobalVariableRecord &Record);
+  /// Serialize a global record.
+  void serializeGlobalRecord(const GlobalRecord &Record);
 
   /// Serialize an enum record.
   void serializeEnumRecord(const EnumRecord &Record);

@@ -931,9 +931,10 @@ static void addArgumentAttrs(const SCCNodeSet &SCCNodes,
     // a value can't capture arguments. Don't analyze them.
     if (F->onlyReadsMemory() && F->doesNotThrow() &&
         F->getReturnType()->isVoidTy()) {
-      for (Argument &A : F->args()) {
-        if (A.getType()->isPointerTy() && !A.hasNoCaptureAttr()) {
-          A.addAttr(Attribute::NoCapture);
+      for (Function::arg_iterator A = F->arg_begin(), E = F->arg_end(); A != E;
+           ++A) {
+        if (A->getType()->isPointerTy() && !A->hasNoCaptureAttr()) {
+          A->addAttr(Attribute::NoCapture);
           ++NumNoCapture;
           Changed.insert(F);
         }
@@ -941,43 +942,44 @@ static void addArgumentAttrs(const SCCNodeSet &SCCNodes,
       continue;
     }
 
-    for (Argument &A : F->args()) {
-      if (!A.getType()->isPointerTy())
+    for (Function::arg_iterator A = F->arg_begin(), E = F->arg_end(); A != E;
+         ++A) {
+      if (!A->getType()->isPointerTy())
         continue;
       bool HasNonLocalUses = false;
-      if (!A.hasNoCaptureAttr()) {
+      if (!A->hasNoCaptureAttr()) {
         ArgumentUsesTracker Tracker(SCCNodes);
-        PointerMayBeCaptured(&A, &Tracker);
+        PointerMayBeCaptured(&*A, &Tracker);
         if (!Tracker.Captured) {
           if (Tracker.Uses.empty()) {
             // If it's trivially not captured, mark it nocapture now.
-            A.addAttr(Attribute::NoCapture);
+            A->addAttr(Attribute::NoCapture);
             ++NumNoCapture;
             Changed.insert(F);
           } else {
             // If it's not trivially captured and not trivially not captured,
             // then it must be calling into another function in our SCC. Save
             // its particulars for Argument-SCC analysis later.
-            ArgumentGraphNode *Node = AG[&A];
+            ArgumentGraphNode *Node = AG[&*A];
             for (Argument *Use : Tracker.Uses) {
               Node->Uses.push_back(AG[Use]);
-              if (Use != &A)
+              if (Use != &*A)
                 HasNonLocalUses = true;
             }
           }
         }
         // Otherwise, it's captured. Don't bother doing SCC analysis on it.
       }
-      if (!HasNonLocalUses && !A.onlyReadsMemory()) {
+      if (!HasNonLocalUses && !A->onlyReadsMemory()) {
         // Can we determine that it's readonly/readnone/writeonly without doing
         // an SCC? Note that we don't allow any calls at all here, or else our
         // result will be dependent on the iteration order through the
         // functions in the SCC.
         SmallPtrSet<Argument *, 8> Self;
-        Self.insert(&A);
-        Attribute::AttrKind R = determinePointerAccessAttrs(&A, Self);
+        Self.insert(&*A);
+        Attribute::AttrKind R = determinePointerAccessAttrs(&*A, Self);
         if (R != Attribute::None)
-          if (addAccessAttr(&A, R))
+          if (addAccessAttr(A, R))
             Changed.insert(F);
       }
     }
@@ -1015,10 +1017,12 @@ static void addArgumentAttrs(const SCCNodeSet &SCCNodes,
     }
 
     bool SCCCaptured = false;
-    for (ArgumentGraphNode *Node : ArgumentSCC) {
-      if (Node->Uses.empty() && !Node->Definition->hasNoCaptureAttr()) {
-        SCCCaptured = true;
-        break;
+    for (auto I = ArgumentSCC.begin(), E = ArgumentSCC.end();
+         I != E && !SCCCaptured; ++I) {
+      ArgumentGraphNode *Node = *I;
+      if (Node->Uses.empty()) {
+        if (!Node->Definition->hasNoCaptureAttr())
+          SCCCaptured = true;
       }
     }
     if (SCCCaptured)
@@ -1031,7 +1035,9 @@ static void addArgumentAttrs(const SCCNodeSet &SCCNodes,
       ArgumentSCCNodes.insert(I->Definition);
     }
 
-    for (ArgumentGraphNode *N : ArgumentSCC) {
+    for (auto I = ArgumentSCC.begin(), E = ArgumentSCC.end();
+         I != E && !SCCCaptured; ++I) {
+      ArgumentGraphNode *N = *I;
       for (ArgumentGraphNode *Use : N->Uses) {
         Argument *A = Use->Definition;
         if (A->hasNoCaptureAttr() || ArgumentSCCNodes.count(A))
@@ -1039,14 +1045,12 @@ static void addArgumentAttrs(const SCCNodeSet &SCCNodes,
         SCCCaptured = true;
         break;
       }
-      if (SCCCaptured)
-        break;
     }
     if (SCCCaptured)
       continue;
 
-    for (ArgumentGraphNode *N : ArgumentSCC) {
-      Argument *A = N->Definition;
+    for (unsigned i = 0, e = ArgumentSCC.size(); i != e; ++i) {
+      Argument *A = ArgumentSCC[i]->Definition;
       A->addAttr(Attribute::NoCapture);
       ++NumNoCapture;
       Changed.insert(A->getParent());
@@ -1074,17 +1078,16 @@ static void addArgumentAttrs(const SCCNodeSet &SCCNodes,
     };
 
     Attribute::AttrKind AccessAttr = Attribute::ReadNone;
-    for (ArgumentGraphNode *N : ArgumentSCC) {
-      Argument *A = N->Definition;
+    for (unsigned i = 0, e = ArgumentSCC.size();
+         i != e && AccessAttr != Attribute::None; ++i) {
+      Argument *A = ArgumentSCC[i]->Definition;
       Attribute::AttrKind K = determinePointerAccessAttrs(A, ArgumentSCCNodes);
       AccessAttr = meetAccessAttr(AccessAttr, K);
-      if (AccessAttr == Attribute::None)
-        break;
     }
 
     if (AccessAttr != Attribute::None) {
-      for (ArgumentGraphNode *N : ArgumentSCC) {
-        Argument *A = N->Definition;
+      for (unsigned i = 0, e = ArgumentSCC.size(); i != e; ++i) {
+        Argument *A = ArgumentSCC[i]->Definition;
         if (addAccessAttr(A, AccessAttr))
           Changed.insert(A->getParent());
       }
@@ -1932,7 +1935,6 @@ struct PostOrderFunctionAttrsLegacyPass : public CallGraphSCCPass {
 char PostOrderFunctionAttrsLegacyPass::ID = 0;
 INITIALIZE_PASS_BEGIN(PostOrderFunctionAttrsLegacyPass, "function-attrs",
                       "Deduce function attributes", false, false)
-INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(AssumptionCacheTracker)
 INITIALIZE_PASS_DEPENDENCY(CallGraphWrapperPass)
 INITIALIZE_PASS_END(PostOrderFunctionAttrsLegacyPass, "function-attrs",
@@ -2012,13 +2014,12 @@ static bool addNoRecurseAttrsTopDown(Function &F) {
   // this function could be recursively (indirectly) called. Note that this
   // also detects if F is directly recursive as F is not yet marked as
   // a norecurse function.
-  for (auto &U : F.uses()) {
-    auto *I = dyn_cast<Instruction>(U.getUser());
+  for (auto *U : F.users()) {
+    auto *I = dyn_cast<Instruction>(U);
     if (!I)
       return false;
     CallBase *CB = dyn_cast<CallBase>(I);
-    if (!CB || !CB->isCallee(&U) ||
-        !CB->getParent()->getParent()->doesNotRecurse())
+    if (!CB || !CB->getParent()->getParent()->doesNotRecurse())
       return false;
   }
   F.setDoesNotRecurse();

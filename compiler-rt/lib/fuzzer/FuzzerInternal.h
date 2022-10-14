@@ -65,10 +65,7 @@ public:
   static void StaticFileSizeExceedCallback();
   static void StaticGracefulExitCallback();
 
-  // Executes the target callback on {Data, Size} once.
-  // Returns false if the input was rejected by the target (target returned -1),
-  // and true otherwise.
-  bool ExecuteCallback(const uint8_t *Data, size_t Size);
+  void ExecuteCallback(const uint8_t *Data, size_t Size);
   bool RunOne(const uint8_t *Data, size_t Size, bool MayDeleteFile = false,
               InputInfo *II = nullptr, bool ForceAddToCorpus = false,
               bool *FoundUniqFeatures = nullptr);

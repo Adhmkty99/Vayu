@@ -385,13 +385,9 @@ public:
                   step),
         affineMap(map) {}
 
-private:
-  /// Give the parent CRTP class access to hook implementations below.
-  friend class Sliceable<PyAffineMapExprList, PyAffineExpr>;
+  intptr_t getNumElements() { return mlirAffineMapGetNumResults(affineMap); }
 
-  intptr_t getRawNumElements() { return mlirAffineMapGetNumResults(affineMap); }
-
-  PyAffineExpr getRawElement(intptr_t pos) {
+  PyAffineExpr getElement(intptr_t pos) {
     return PyAffineExpr(affineMap.getContext(),
                         mlirAffineMapGetResult(affineMap, pos));
   }
@@ -401,6 +397,7 @@ private:
     return PyAffineMapExprList(affineMap, startIndex, length, step);
   }
 
+private:
   PyAffineMap affineMap;
 };
 } // namespace
@@ -463,13 +460,9 @@ public:
                   step),
         set(set) {}
 
-private:
-  /// Give the parent CRTP class access to hook implementations below.
-  friend class Sliceable<PyIntegerSetConstraintList, PyIntegerSetConstraint>;
+  intptr_t getNumElements() { return mlirIntegerSetGetNumConstraints(set); }
 
-  intptr_t getRawNumElements() { return mlirIntegerSetGetNumConstraints(set); }
-
-  PyIntegerSetConstraint getRawElement(intptr_t pos) {
+  PyIntegerSetConstraint getElement(intptr_t pos) {
     return PyIntegerSetConstraint(set, pos);
   }
 
@@ -478,6 +471,7 @@ private:
     return PyIntegerSetConstraintList(set, startIndex, length, step);
   }
 
+private:
   PyIntegerSet set;
 };
 } // namespace

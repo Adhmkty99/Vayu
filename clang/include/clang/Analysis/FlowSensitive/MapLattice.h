@@ -54,13 +54,10 @@ public:
   // The `bottom` element is the empty map.
   static MapLattice bottom() { return MapLattice(); }
 
-  std::pair<iterator, bool>
-  insert(const std::pair<const key_type, mapped_type> &P) {
-    return C.insert(P);
-  }
+  void insert(const std::pair<const key_type, mapped_type> &P) { C.insert(P); }
 
-  std::pair<iterator, bool> insert(std::pair<const key_type, mapped_type> &&P) {
-    return C.insert(std::move(P));
+  void insert(std::pair<const key_type, mapped_type> &&P) {
+    C.insert(std::move(P));
   }
 
   unsigned size() const { return C.size(); }

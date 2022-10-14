@@ -40,8 +40,7 @@ struct test_basics
         }
 
         {
-            // The string has more characters than valid in an 128-bit value.
-            char s[] = "0X7BAtSGHDkEIXZgQRfYChLpOzRnM ";
+            char s[] = "0X7BAtSGHDkEIXZg ";
 
             // The letters from a (or A) through z (or Z) are ascribed the
             // values 10 through 35; (C11 7.22.1.4/3)
@@ -89,15 +88,13 @@ struct test_signed
     void operator()()
     {
         std::from_chars_result r;
-        T x = 42;
+        T x;
 
         {
             // If the pattern allows for an optional sign,
             // but the string has no digit characters following the sign,
             char s[] = "- 9+12";
             r = std::from_chars(s, s + sizeof(s), x);
-            // value is unmodified,
-            assert(x == 42);
             // no characters match the pattern.
             assert(r.ptr == s);
             assert(r.ec == std::errc::invalid_argument);

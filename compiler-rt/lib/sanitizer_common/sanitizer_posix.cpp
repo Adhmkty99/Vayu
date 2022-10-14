@@ -41,8 +41,6 @@ uptr GetMmapGranularity() {
   return GetPageSize();
 }
 
-bool ErrorIsOOM(error_t err) { return err == ENOMEM; }
-
 void *MmapOrDie(uptr size, const char *mem_type, bool raw_report) {
   size = RoundUpTo(size, GetPageSizeCached());
   uptr res = MmapNamed(nullptr, size, PROT_READ | PROT_WRITE,
@@ -149,7 +147,7 @@ bool MprotectReadOnly(uptr addr, uptr size) {
   return 0 == internal_mprotect((void *)addr, size, PROT_READ);
 }
 
-#if !SANITIZER_APPLE
+#if !SANITIZER_MAC
 void MprotectMallocZones(void *addr, int prot) {}
 #endif
 
@@ -242,7 +240,7 @@ bool MemoryRangeIsAvailable(uptr range_start, uptr range_end) {
   return true;
 }
 
-#if !SANITIZER_APPLE
+#if !SANITIZER_MAC
 void DumpProcessMap() {
   MemoryMappingLayout proc_maps(/*cache_enabled*/true);
   const sptr kBufSize = 4095;

@@ -20,7 +20,7 @@
 
 using namespace _OMP;
 
-#pragma omp begin declare target device_type(nohost)
+#pragma omp declare target
 
 TaskDescriptorTy *__kmpc_omp_task_alloc(IdentTy *, uint32_t, int32_t,
                                         uint64_t TaskSizeInclPrivateValues,

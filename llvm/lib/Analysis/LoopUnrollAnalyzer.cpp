@@ -87,9 +87,9 @@ bool UnrolledInstAnalyzer::visitBinaryOperator(BinaryOperator &I) {
   const DataLayout &DL = I.getModule()->getDataLayout();
   if (auto FI = dyn_cast<FPMathOperator>(&I))
     SimpleV =
-        simplifyBinOp(I.getOpcode(), LHS, RHS, FI->getFastMathFlags(), DL);
+        SimplifyBinOp(I.getOpcode(), LHS, RHS, FI->getFastMathFlags(), DL);
   else
-    SimpleV = simplifyBinOp(I.getOpcode(), LHS, RHS, DL);
+    SimpleV = SimplifyBinOp(I.getOpcode(), LHS, RHS, DL);
 
   if (SimpleV) {
     SimplifiedValues[&I] = SimpleV;
@@ -158,7 +158,7 @@ bool UnrolledInstAnalyzer::visitCastInst(CastInst &I) {
   // i32 0).
   if (CastInst::castIsValid(I.getOpcode(), Op, I.getType())) {
     const DataLayout &DL = I.getModule()->getDataLayout();
-    if (Value *V = simplifyCastInst(I.getOpcode(), Op, I.getType(), DL)) {
+    if (Value *V = SimplifyCastInst(I.getOpcode(), Op, I.getType(), DL)) {
       SimplifiedValues[&I] = V;
       return true;
     }
@@ -195,7 +195,7 @@ bool UnrolledInstAnalyzer::visitCmpInst(CmpInst &I) {
   }
 
   const DataLayout &DL = I.getModule()->getDataLayout();
-  if (Value *V = simplifyCmpInst(I.getPredicate(), LHS, RHS, DL)) {
+  if (Value *V = SimplifyCmpInst(I.getPredicate(), LHS, RHS, DL)) {
     SimplifiedValues[&I] = V;
     return true;
   }

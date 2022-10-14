@@ -511,9 +511,8 @@ DynamicLoaderDarwinKernel::DynamicLoaderDarwinKernel(Process *process,
       m_kext_summary_header(), m_known_kexts(), m_mutex(),
       m_break_id(LLDB_INVALID_BREAK_ID) {
   Status error;
-  PlatformSP platform_sp =
-      process->GetTarget().GetDebugger().GetPlatformList().Create(
-          PlatformDarwinKernel::GetPluginNameStatic());
+  PlatformSP platform_sp(Platform::Create(
+      ConstString(PlatformDarwinKernel::GetPluginNameStatic()), error));
   if (platform_sp.get())
     process->GetTarget().SetPlatform(platform_sp);
 }
@@ -790,8 +789,7 @@ bool DynamicLoaderDarwinKernel::KextImageInfo::LoadImageUsingMemoryModule(
       // exists, instead of depending on the DebugSymbols preferences being
       // set.
       if (IsKernel()) {
-        Status error;
-        if (Symbols::DownloadObjectAndSymbolFile(module_spec, error, true)) {
+        if (Symbols::DownloadObjectAndSymbolFile(module_spec, true)) {
           if (FileSystem::Instance().Exists(module_spec.GetFileSpec())) {
             m_module_sp = std::make_shared<Module>(module_spec.GetFileSpec(),
                                                    target.GetArchitecture());

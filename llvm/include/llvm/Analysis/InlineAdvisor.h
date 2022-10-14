@@ -9,7 +9,6 @@
 #ifndef LLVM_ANALYSIS_INLINEADVISOR_H
 #define LLVM_ANALYSIS_INLINEADVISOR_H
 
-#include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/Analysis/InlineCost.h"
 #include "llvm/Analysis/LazyCallGraph.h"
 #include "llvm/Config/llvm-config.h"
@@ -40,28 +39,6 @@ struct ReplayInlinerSettings;
 /// dynamically. This mode also permits generating training logs, for offline
 /// training.
 enum class InliningAdvisorMode : int { Default, Release, Development };
-
-// Each entry represents an inline driver.
-enum class InlinePass : int {
-  AlwaysInliner,
-  CGSCCInliner,
-  EarlyInliner,
-  ModuleInliner,
-  MLInliner,
-  ReplayCGSCCInliner,
-  ReplaySampleProfileInliner,
-  SampleProfileInliner,
-};
-
-/// Provides context on when an inline advisor is constructed in the pipeline
-/// (e.g., link phase, inline driver).
-struct InlineContext {
-  ThinOrFullLTOPhase LTOPhase;
-
-  InlinePass Pass;
-};
-
-std::string AnnotateInlinePassName(InlineContext IC);
 
 class InlineAdvisor;
 /// Capture state between an inlining decision having had been made, and
@@ -145,7 +122,7 @@ public:
   DefaultInlineAdvice(InlineAdvisor *Advisor, CallBase &CB,
                       Optional<InlineCost> OIC, OptimizationRemarkEmitter &ORE,
                       bool EmitRemarks = true)
-      : InlineAdvice(Advisor, CB, ORE, OIC.has_value()), OriginalCB(&CB),
+      : InlineAdvice(Advisor, CB, ORE, OIC.hasValue()), OriginalCB(&CB),
         OIC(OIC), EmitRemarks(EmitRemarks) {}
 
 private:
@@ -181,7 +158,7 @@ public:
   /// This must be called when the Inliner pass is entered, to allow the
   /// InlineAdvisor update internal state, as result of function passes run
   /// between Inliner pass runs (for the same module).
-  virtual void onPassEntry(LazyCallGraph::SCC *SCC = nullptr) {}
+  virtual void onPassEntry() {}
 
   /// This must be called when the Inliner pass is exited, as function passes
   /// may be run subsequently. This allows an implementation of InlineAdvisor
@@ -193,22 +170,14 @@ public:
     OS << "Unimplemented InlineAdvisor print\n";
   }
 
-  /// NOTE pass name is annotated only when inline advisor constructor provides InlineContext.
-  const char *getAnnotatedInlinePassName() const {
-    return AnnotatedInlinePassName.c_str();
-  }
-
 protected:
-  InlineAdvisor(Module &M, FunctionAnalysisManager &FAM,
-                Optional<InlineContext> IC = NoneType::None);
+  InlineAdvisor(Module &M, FunctionAnalysisManager &FAM);
   virtual std::unique_ptr<InlineAdvice> getAdviceImpl(CallBase &CB) = 0;
   virtual std::unique_ptr<InlineAdvice> getMandatoryAdvice(CallBase &CB,
                                                            bool Advice);
 
   Module &M;
   FunctionAnalysisManager &FAM;
-  const Optional<InlineContext> IC;
-  const std::string AnnotatedInlinePassName;
   std::unique_ptr<ImportedFunctionsInliningStatistics> ImportedFunctionsStats;
 
   enum class MandatoryInliningKind { NotMandatory, Always, Never };
@@ -229,8 +198,8 @@ private:
 class DefaultInlineAdvisor : public InlineAdvisor {
 public:
   DefaultInlineAdvisor(Module &M, FunctionAnalysisManager &FAM,
-                       InlineParams Params, InlineContext IC)
-      : InlineAdvisor(M, FAM, IC), Params(Params) {}
+                       InlineParams Params)
+      : InlineAdvisor(M, FAM), Params(Params) {}
 
 private:
   std::unique_ptr<InlineAdvice> getAdviceImpl(CallBase &CB) override;
@@ -254,8 +223,7 @@ public:
       return !PAC.preservedWhenStateless();
     }
     bool tryCreate(InlineParams Params, InliningAdvisorMode Mode,
-                   const ReplayInlinerSettings &ReplaySettings,
-                   InlineContext IC);
+                   const ReplayInlinerSettings &ReplaySettings);
     InlineAdvisor *getAdvisor() const { return Advisor.get(); }
 
   private:
@@ -276,9 +244,6 @@ public:
   explicit InlineAdvisorAnalysisPrinterPass(raw_ostream &OS) : OS(OS) {}
 
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &MAM);
-
-  PreservedAnalyses run(LazyCallGraph::SCC &InitialC, CGSCCAnalysisManager &AM,
-                        LazyCallGraph &CG, CGSCCUpdateResult &UR);
 };
 
 std::unique_ptr<InlineAdvisor>

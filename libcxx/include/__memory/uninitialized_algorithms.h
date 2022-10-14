@@ -347,6 +347,10 @@ uninitialized_move_n(_InputIterator __ifirst, _Size __n, _ForwardIterator __ofir
                                                    __unreachable_sentinel(), __iter_move);
 }
 
+#endif // _LIBCPP_STD_VER > 14
+
+#if _LIBCPP_STD_VER > 17
+
 // Destroys every element in the range [first, last) FROM RIGHT TO LEFT using allocator
 // destruction. If elements are themselves C-style arrays, they are recursively destroyed
 // in the same manner.
@@ -366,7 +370,7 @@ constexpr void __allocator_destroy_multidimensional(_Alloc& __alloc, _BidirIter 
         return;
 
     if constexpr (is_array_v<_ValueType>) {
-        static_assert(!__libcpp_is_unbounded_array<_ValueType>::value,
+        static_assert(!is_unbounded_array_v<_ValueType>,
             "arrays of unbounded arrays don't exist, but if they did we would mess up here");
 
         using _Element = remove_extent_t<_ValueType>;
@@ -490,7 +494,7 @@ constexpr void __uninitialized_allocator_value_construct_n(_Alloc& __alloc, _Bid
     __guard.__complete();
 }
 
-#endif // _LIBCPP_STD_VER > 14
+#endif // _LIBCPP_STD_VER > 17
 
 _LIBCPP_END_NAMESPACE_STD
 

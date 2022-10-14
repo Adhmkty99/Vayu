@@ -28,8 +28,8 @@ public:
   using FileOffset = std::int64_t;
 
   const char *path() const { return path_.get(); }
-  std::size_t pathLength() const { return pathLength_; }
   void set_path(OwningPtr<char> &&, std::size_t bytes);
+  std::size_t pathLength() const { return pathLength_; }
   bool mayRead() const { return mayRead_; }
   bool mayWrite() const { return mayWrite_; }
   bool mayPosition() const { return mayPosition_; }
@@ -109,6 +109,5 @@ bool IsExtant(const char *path);
 bool MayRead(const char *path);
 bool MayWrite(const char *path);
 bool MayReadAndWrite(const char *path);
-std::int64_t SizeInBytes(const char *path);
 } // namespace Fortran::runtime::io
 #endif // FORTRAN_RUNTIME_FILE_H_

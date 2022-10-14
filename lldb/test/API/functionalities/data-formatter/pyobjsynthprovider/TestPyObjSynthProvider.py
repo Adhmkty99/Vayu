@@ -11,6 +11,8 @@ from lldbsuite.test import lldbutil
 
 
 class PyObjectSynthProviderTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def test_print_array(self):

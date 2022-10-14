@@ -200,11 +200,11 @@ implement the `materializeConstant` hook. This hook takes in an `Attribute`
 value, generally returned by `fold`, and produces a "constant-like" operation
 that materializes that value.
 
-In [ODS](DefiningDialects.md), a dialect can set the `hasConstantMaterializer` bit
+In [ODS](OpDefinitions.md), a dialect can set the `hasConstantMaterializer` bit
 to generate a declaration for the `materializeConstant` method.
 
 ```tablegen
-def MyDialect : ... {
+def MyDialect_Dialect : ... {
   let hasConstantMaterializer = 1;
 }
 ```

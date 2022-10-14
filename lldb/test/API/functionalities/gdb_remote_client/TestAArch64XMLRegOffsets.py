@@ -93,6 +93,8 @@ class MyResponder(MockGDBServerResponder):
 
 class TestAArch64XMLRegOffsets(GDBRemoteTestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfXmlSupportMissing
     @skipIfRemote
     @skipIfLLVMTargetMissing("AArch64")

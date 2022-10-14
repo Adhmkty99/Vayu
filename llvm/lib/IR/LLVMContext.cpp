@@ -138,25 +138,13 @@ bool LLVMContext::getDiagnosticsHotnessRequested() const {
 void LLVMContext::setDiagnosticsHotnessThreshold(Optional<uint64_t> Threshold) {
   pImpl->DiagnosticsHotnessThreshold = Threshold;
 }
-void LLVMContext::setMisExpectWarningRequested(bool Requested) {
-  pImpl->MisExpectWarningRequested = Requested;
-}
-bool LLVMContext::getMisExpectWarningRequested() const {
-  return pImpl->MisExpectWarningRequested;
-}
+
 uint64_t LLVMContext::getDiagnosticsHotnessThreshold() const {
-  return pImpl->DiagnosticsHotnessThreshold.value_or(UINT64_MAX);
-}
-void LLVMContext::setDiagnosticsMisExpectTolerance(
-    Optional<uint64_t> Tolerance) {
-  pImpl->DiagnosticsMisExpectTolerance = Tolerance;
-}
-uint64_t LLVMContext::getDiagnosticsMisExpectTolerance() const {
-  return pImpl->DiagnosticsMisExpectTolerance.value_or(0);
+  return pImpl->DiagnosticsHotnessThreshold.getValueOr(UINT64_MAX);
 }
 
 bool LLVMContext::isDiagnosticsHotnessThresholdSetFromPSI() const {
-  return !pImpl->DiagnosticsHotnessThreshold.has_value();
+  return !pImpl->DiagnosticsHotnessThreshold.hasValue();
 }
 
 remarks::RemarkStreamer *LLVMContext::getMainRemarkStreamer() {
@@ -373,8 +361,4 @@ void LLVMContext::setOpaquePointers(bool Enable) const {
 
 bool LLVMContext::supportsTypedPointers() const {
   return !pImpl->getOpaquePointers();
-}
-
-Any &LLVMContext::getTargetData() const {
-  return pImpl->TargetDataStorage;
 }

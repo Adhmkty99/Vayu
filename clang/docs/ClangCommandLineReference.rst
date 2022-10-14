@@ -76,6 +76,16 @@ Pass <arg> to fatbinary invocation
 
 Pass <arg> to the ptxas assembler
 
+.. option:: -Xopenmp-target <arg>
+
+Pass <arg> to the target offloading toolchain.
+
+.. program:: clang1
+.. option:: -Xopenmp-target=<triple> <arg>
+.. program:: clang
+
+Pass <arg> to the target offloading toolchain identified by <triple>.
+
 .. option:: -Z<arg>
 
 .. option:: -a<arg>, --profile-blocks
@@ -132,9 +142,17 @@ Specifies configuration file
 
 .. option:: --constant-cfstrings
 
-.. option:: --cuda-feature=<arg>
+.. option:: --cuda-compile-host-device
 
-Manually specify the CUDA feature to use
+Compile CUDA code for both host and device (default).  Has no effect on non-CUDA compilations.
+
+.. option:: --cuda-device-only
+
+Compile CUDA code for device only
+
+.. option:: --cuda-host-only
+
+Compile CUDA code for host only.  Has no effect on non-CUDA compilations.
 
 .. option:: --cuda-include-ptx=<arg>, --no-cuda-include-ptx=<arg>
 
@@ -149,14 +167,6 @@ Enable device-side debug info generation. Disables ptxas optimizations.
 An ID for compilation unit, which should be the same for the same compilation unit but different for different compilation units. It is used to externalize device-side static variables for single source offloading languages CUDA and HIP so that they can be accessed by the host code of the same compilation unit.
 
 .. option:: -current\_version<arg>
-
-.. option:: -darwin-target-variant <arg>
-
-Generate code for an additional runtime variant of the deployment target
-
-.. option:: -darwin-target-variant-triple <arg>
-
-Specify the darwin target variant triple
 
 .. option:: -dead\_strip
 
@@ -215,10 +225,6 @@ Start emitting warnings for unused driver arguments
 .. option:: -ffixed-r19
 
 Reserve register r19 (Hexagon only)
-
-.. option:: -fgpu-default-stream=<arg>
-
-Specify default stream. The default value is 'legacy'. (HIP only). <arg> must be 'legacy' or 'per-thread'.
 
 .. option:: -fgpu-flush-denormals-to-zero, -fcuda-flush-denormals-to-zero, -fno-gpu-flush-denormals-to-zero
 
@@ -281,10 +287,6 @@ Generate CodeView debug information
 
 Emit type record hashes in a .debug$H section
 
-.. option:: -gen-reproducer=<arg>, -fno-crash-diagnostics (equivalent to -gen-reproducer=off)
-
-Emit reproducer on (option: off, crash (default), error, always)
-
 .. option:: --gpu-instrument-lib=<arg>
 
 Instrument device library for HIP, which is a LLVM bitcode containing \_\_cyg\_profile\_func\_enter and \_\_cyg\_profile\_func\_exit
@@ -295,7 +297,7 @@ Default max threads per block for kernel launch bounds for HIP
 
 .. option:: -headerpad\_max\_install\_names<arg>
 
-.. option:: -help, --help, /help<arg>, -help<arg>, --help<arg>
+.. option:: -help, --help
 
 Display available options
 
@@ -337,13 +339,17 @@ Make the next included directory (-I or -F) an indexer header map
 
 .. option:: -mbig-endian, -EB
 
+.. option:: -mbranch-protection=<arg>
+
+Enforce targets of indirect branches and function returns
+
 .. option:: -menable-unsafe-fp-math
 
 Allow unsafe floating-point math optimizations which may decrease precision
 
 .. option:: -mharden-sls=<arg>
 
-Select straight-line speculation hardening scope (ARM/AArch64/X86 only). <arg> must be: all, none, retbr(ARM/AArch64), blr(ARM/AArch64), comdat(ARM/AArch64), nocomdat(ARM/AArch64), return(X86), indirect-jmp(X86)
+Select straight-line speculation hardening scope
 
 .. option:: --migrate
 
@@ -358,10 +364,6 @@ Run the migrator
 .. option:: -mllvm <arg>
 
 Additional arguments to forward to LLVM's option processing
-
-.. option:: -mmlir <arg>
-
-Additional arguments to forward to MLIR's option processing
 
 .. option:: -module-dependency-dir <arg>
 
@@ -383,10 +385,6 @@ Directory to dump module dependencies to
 
 Don't error out if the detected version of the CUDA install is too low for the requested CUDA gpu architecture.
 
-.. option:: -no-hip-rt
-
-Do not link against HIP runtime libraries
-
 .. option:: -no-integrated-cpp, --no-integrated-cpp
 
 .. option:: -no\_dead\_strip\_inits\_and\_terms
@@ -396,8 +394,6 @@ Do not link against HIP runtime libraries
 Disable builtin #include directories
 
 .. option:: -nodefaultlibs
-
-.. option:: -nodriverkitlib
 
 .. option:: -nofixprebinding
 
@@ -437,9 +433,7 @@ Disable standard #include directories for the C++ standard library
 
 .. option:: -nostdlibinc
 
-.. program:: clang1
-.. option:: -o<file>, /Fo<arg>, -Fo<arg>, --output <arg>, --output=<arg>
-.. program:: clang
+.. option:: -o<file>, --output <arg>, --output=<arg>
 
 Write output to <file>
 
@@ -517,18 +511,6 @@ Set the output <file> for debug infos
 
 CUDA offloading device architecture (e.g. sm\_35), or HIP offloading target ID in the form of a device architecture followed by target ID features delimited by a colon. Each target ID feature is a pre-defined string followed by a plus or minus sign (e.g. gfx908:xnack+:sramecc-).  May be specified more than once.
 
-.. option:: --offload-device-only, --cuda-device-only
-
-Only compile for the offloading device.
-
-.. option:: --offload-host-device, --cuda-compile-host-device
-
-Only compile for the offloading host.
-
-.. option:: --offload-host-only, --cuda-host-only
-
-Only compile for the offloading host.
-
 .. option:: --offload=<arg1>,<arg2>...
 
 Specify comma-separated list of offloading target triples (CUDA and HIP only)
@@ -554,10 +536,6 @@ Use pipes between commands, when possible
 .. option:: -preload
 
 .. option:: --print-diagnostic-categories
-
-.. option:: -print-diagnostic-options, --print-diagnostic-options
-
-Print all of Clang's warning options
 
 .. option:: -print-effective-triple, --print-effective-triple
 
@@ -612,8 +590,6 @@ Print the normalized target triple
 Print the registered targets
 
 .. option:: -private\_bundle
-
-.. option:: --product-name=<arg>
 
 .. option:: -pthread, -no-pthread
 
@@ -711,7 +687,7 @@ Use the static host OpenMP runtime while linking.
 
 .. option:: -stdlib=<arg>, --stdlib=<arg>, --stdlib <arg>
 
-C++ standard library to use. <arg> must be 'libc++', 'libstdc++' or 'platform'.
+C++ standard library to use
 
 .. option:: -sub\_library<arg>
 
@@ -749,7 +725,7 @@ Enable some traditional CPP emulation
 
 .. option:: -unwindlib=<arg>, --unwindlib=<arg>
 
-Unwind library to use. <arg> must be 'libgcc', 'unwindlib' or 'platform'.
+Unwind library to use
 
 .. option:: -v, --verbose
 
@@ -825,9 +801,9 @@ Generate Interface Stub Files, emit merged text not binary.
 
 Extract API information
 
-.. option:: -fdriver-only
+.. option:: -fopenmp-new-driver
 
-Only run the driver.
+Use the new driver for OpenMP offloading.
 
 .. option:: -fsyntax-only
 
@@ -861,16 +837,6 @@ Pass <arg> to the assembler
 
 Pass <arg> to the clang compiler
 
-.. option:: -Xopenmp-target <arg>
-
-Pass <arg> to the target offloading toolchain.
-
-.. program:: clang1
-.. option:: -Xopenmp-target=<triple> <arg>
-.. program:: clang
-
-Pass <arg> to the target offloading toolchain identified by <triple>.
-
 .. option:: -ansi, --ansi
 
 .. option:: -fc++-abi=<arg>
@@ -879,7 +845,7 @@ C++ ABI to use. This will override the target C++ ABI.
 
 .. option:: -fclang-abi-compat=<version>
 
-Attempt to match the ABI of Clang <version>. <version> must be '<major>.<minor>' or 'latest'.
+Attempt to match the ABI of Clang <version>
 
 .. option:: -fcomment-block-commands=<arg>,<arg2>...
 
@@ -941,7 +907,13 @@ Inline suitable functions
 
 Inline functions which are (explicitly or implicitly) marked inline
 
-.. option:: -fno-legacy-pass-manager, -fexperimental-new-pass-manager
+.. option:: -flegacy-pass-manager, -fno-legacy-pass-manager
+
+Use the legacy pass manager in LLVM (deprecated, to be removed in a future release)
+
+.. option:: -fno-crash-diagnostics
+
+Disable auto-generation of preprocessed source files and a script for reproduction during a clang crash
 
 .. option:: -fno-sanitize-ignorelist, -fno-sanitize-blacklist
 
@@ -949,25 +921,17 @@ Don't use ignorelist file for sanitizers
 
 .. option:: -fparse-all-comments
 
-.. option:: -frandomize-layout-seed-file=<file>
-
-File holding the seed used by the randomize structure layout feature
-
-.. option:: -frandomize-layout-seed=<seed>
-
-The seed used by the randomize structure layout feature
-
 .. option:: -frecord-command-line, -fno-record-command-line, -frecord-gcc-switches
 
 .. option:: -fsanitize-address-destructor=<arg>
 
-Set destructor type used in ASan instrumentation. <arg> must be 'none' or 'global'.
+Set destructor type used in ASan instrumentation
 
 .. option:: -fsanitize-address-field-padding=<arg>
 
 Level of field padding for AddressSanitizer
 
-.. option:: -fsanitize-address-globals-dead-stripping, -fno-sanitize-address-globals-dead-stripping
+.. option:: -fsanitize-address-globals-dead-stripping
 
 Enable linker dead stripping of globals in AddressSanitizer
 
@@ -981,7 +945,7 @@ Enable poisoning array cookies when using custom operator new\[\] in AddressSani
 
 .. option:: -fsanitize-address-use-after-return=<mode>
 
-Select the mode of detecting stack use-after-return in AddressSanitizer. <mode> must be 'never', 'runtime' or 'always'.
+Select the mode of detecting stack use-after-return in AddressSanitizer: never \| runtime (default) \| always
 
 .. option:: -fsanitize-address-use-after-scope, -fno-sanitize-address-use-after-scope
 
@@ -1044,10 +1008,6 @@ Enable origins tracking in MemorySanitizer
 .. option:: -fsanitize-memory-use-after-dtor, -fno-sanitize-memory-use-after-dtor
 
 Enable use-after-destroy detection in MemorySanitizer
-
-.. option:: -fsanitize-memtag-mode=<arg>
-
-Set default MTE mode to 'sync' (default) or 'async'
 
 .. option:: -fsanitize-minimal-runtime, -fno-sanitize-minimal-runtime
 
@@ -1114,9 +1074,7 @@ Include comments in preprocessed output
 
 Include comments from within macros in preprocessed output
 
-.. program:: clang2
-.. option:: -D<macro>=<value>, --D<arg>, /D<arg>, -D<arg>, --define-macro <arg>, --define-macro=<arg>
-.. program:: clang
+.. option:: -D<macro>=<value>, --define-macro <arg>, --define-macro=<arg>
 
 Define <macro> to <value> (or 1 if <value> omitted)
 
@@ -1453,7 +1411,7 @@ Treat editor placeholders as valid source code
 
 .. option:: -faltivec-src-compat=<arg>
 
-Source-level compatibility for Altivec vectors (for PowerPC targets). This includes results of vector comparison (scalar for 'xl', vector for 'gcc') as well as behavior when initializing with a scalar (splatting for 'xl', element zero only for 'gcc'). For 'mixed', the compatibility is as 'gcc' for 'vector bool/vector pixel' and as 'xl' for other types. Current default is 'mixed'. <arg> must be 'mixed', 'gcc' or 'xl'.
+Source-level compatibility for Altivec vectors (for PowerPC targets). This includes results of vector comparison (scalar for 'xl', vector for 'gcc') as well as behavior when initializing with a scalar (splatting for 'xl', element zero only for 'gcc'). For 'mixed', the compatibility is as 'gcc' for 'vector bool/vector pixel' and as 'xl' for other types. Current default is 'mixed'.
 
 .. option:: -fansi-escape-codes
 
@@ -1503,7 +1461,7 @@ Enable EH Asynchronous exceptions
 
 .. option:: -fbasic-block-sections=<arg>
 
-Generate labels for each basic block or place each basic block or a subset of basic blocks in its own section. <arg> must be 'all', 'labels', 'none' or 'list='.
+Generate labels for each basic block or place each basic block or a subset of basic blocks in its own section.
 
 .. option:: -fbinutils-version=<major.minor>
 
@@ -1535,11 +1493,9 @@ Load the clang builtins module map file.
 
 .. option:: -fcf-protection=<arg>, -fcf-protection (equivalent to -fcf-protection=full)
 
-Instrument control-flow architecture protection. <arg> must be 'return', 'branch', 'full' or 'none'.
+Instrument control-flow architecture protection. Options: return, branch, full, none.
 
 .. option:: -fcf-runtime-abi=<arg>
-
- <arg> must be 'unspecified', 'standalone', 'objc', 'swift', 'swift-5.0', 'swift-4.2' or 'swift-4.1'.
 
 .. option:: -fchar8\_t, -fno-char8\_t
 
@@ -1547,7 +1503,7 @@ Enable C++ builtin type char8\_t
 
 .. option:: -fclasspath=<arg>, --CLASSPATH <arg>, --CLASSPATH=<arg>, --classpath <arg>, --classpath=<arg>
 
-.. option:: -fcolor-diagnostics, -fdiagnostics-color, -fno-color-diagnostics
+.. option:: -fcolor-diagnostics, -fno-color-diagnostics
 
 Enable colors in diagnostics
 
@@ -1665,6 +1621,8 @@ Treat usage of null pointers as undefined behavior (default)
 
 Print absolute paths in diagnostics
 
+.. option:: -fdiagnostics-color, -fno-diagnostics-color
+
 .. program:: clang1
 .. option:: -fdiagnostics-color=<arg>
 .. program:: clang
@@ -1672,10 +1630,6 @@ Print absolute paths in diagnostics
 .. option:: -fdiagnostics-hotness-threshold=<value>
 
 Prevent optimization remarks from being output if they do not have at least this profile count. Use 'auto' to apply the threshold from profile summary
-
-.. option:: -fdiagnostics-misexpect-tolerance=<value>
-
-Prevent misexpect diagnostics from being output if the profile counts are within N% of the expected. 
 
 .. option:: -fdiagnostics-show-hotness, -fno-diagnostics-show-hotness
 
@@ -1701,8 +1655,6 @@ Enable alternative token representations '<:', ':>', '<%', '%>', '%:', '%:%:' (d
 
 Don't use GOT indirection to reference external data symbols
 
-.. option:: -fdirectives-only, -fno-directives-only
-
 .. option:: -fdollars-in-identifiers, -fno-dollars-in-identifiers
 
 Allow '$' in identifiers
@@ -1727,7 +1679,7 @@ Do not emit  debug info for defined but unused types
 
 .. option:: -fembed-bitcode=<option>, -fembed-bitcode (equivalent to -fembed-bitcode=all), -fembed-bitcode-marker (equivalent to -fembed-bitcode=marker)
 
-Embed LLVM bitcode. <option> must be 'off', 'all', 'bitcode' or 'marker'.
+Embed LLVM bitcode (option: off, all, bitcode, marker)
 
 .. option:: -fembed-offload-object=<arg>
 
@@ -1736,10 +1688,6 @@ Embed Offloading device-side binary into host object file as a section.
 .. option:: -femit-all-decls
 
 Emit all declarations, even if unused
-
-.. option:: -femit-dwarf-unwind=<arg>
-
-When to emit DWARF unwind (EH frame) info. <arg> must be 'always', 'no-compact-unwind' or 'default'.
 
 .. option:: -femulated-tls, -fno-emulated-tls
 
@@ -1761,10 +1709,6 @@ Enable support for exception handling
 
 .. option:: -fexec-charset=<arg>
 
-.. option:: -fexperimental-library, -fno-experimental-library
-
-Control whether unstable and experimental library features are enabled. This option enables various library features that are either experimental (also known as TSes), or have been but are not stable yet in the selected Standard Library implementation. It is not recommended to use this option in production code, since neither ABI nor API stability are guaranteed. This is intended to provide a preview of features that will ship in the future for experimentation purposes
-
 .. option:: -fexperimental-new-constant-interpreter
 
 Enable the experimental new constant interpreter
@@ -1773,7 +1717,7 @@ Enable the experimental new constant interpreter
 
 .. option:: -fextend-arguments=<arg>
 
-Controls how scalar integer arguments are extended in calls to unprototyped and varargs functions. <arg> must be '32' or '64'.
+Controls how scalar integer arguments are extended in calls to unprototyped and varargs functions
 
 .. option:: -ffast-math, -fno-fast-math
 
@@ -1785,11 +1729,7 @@ The compilation directory to embed in the debug info and coverage mapping.
 
 .. option:: -ffile-prefix-map=<arg>
 
-remap file source paths in debug info, predefined preprocessor macros and \_\_builtin\_FILE(). Implies -ffile-reproducible.
-
-.. option:: -ffile-reproducible, -fno-file-reproducible
-
-Use the target's platform-specific path separator character when expanding the \_\_FILE\_\_ macro
+remap file source paths in debug info, predefined preprocessor macros and \_\_builtin\_FILE()
 
 .. option:: -ffinite-loops, -fno-finite-loops
 
@@ -1817,15 +1757,11 @@ Enable support for int128\_t type
 
 .. option:: -ffp-contract=<arg>
 
-Form fused FP ops (e.g. FMAs): fast (fuses across statements disregarding pragmas) \| on (only fuses in the same statement unless dictated by pragmas) \| off (never fuses) \| fast-honor-pragmas (fuses across statements unless diectated by pragmas). Default is 'fast' for CUDA, 'fast-honor-pragmas' for HIP, and 'on' otherwise. <arg> must be 'fast', 'on', 'off' or 'fast-honor-pragmas'.
-
-.. option:: -ffp-eval-method=<arg>
-
-Specifies the evaluation method to use for floating-point arithmetic. <arg> must be 'source', 'double' or 'extended'.
+Form fused FP ops (e.g. FMAs): fast (fuses across statements disregarding pragmas) \| on (only fuses in the same statement unless dictated by pragmas) \| off (never fuses) \| fast-honor-pragmas (fuses across statements unless diectated by pragmas). Default is 'fast' for CUDA, 'fast-honor-pragmas' for HIP, and 'on' otherwise.
 
 .. option:: -ffp-exception-behavior=<arg>
 
-Specifies the exception behavior of floating-point operations. <arg> must be 'ignore', 'maytrap' or 'strict'.
+Specifies the exception behavior of floating-point operations.
 
 .. option:: -ffp-model=<arg>
 
@@ -1877,10 +1813,6 @@ Enable sanitizer for AMDGPU target
 
 Specify that single precision floating-point divide and sqrt used in the program source are correctly rounded (HIP device compilation only)
 
-.. option:: -fhip-kernel-arg-name, -fno-hip-kernel-arg-name
-
-Specify that kernel argument names are preserved (HIP only)
-
 .. option:: -fhip-new-launch-api, -fno-hip-new-launch-api
 
 Use new kernel launching API for HIP
@@ -1925,14 +1857,6 @@ Enable the integrated assembler
 
 Run cc1 in-process
 
-.. option:: -fintegrated-objemitter, -fno-integrated-objemitter
-
-Use internal machine object code emitter.
-
-.. option:: -fjmc, -fno-jmc
-
-Enable just-my-code debugging
-
 .. option:: -fjump-tables, -fno-jump-tables
 
 Use jump tables for lowering switches
@@ -1943,7 +1867,7 @@ Keep static const variables if unused
 
 .. option:: -flax-vector-conversions=<arg>, -flax-vector-conversions (equivalent to -flax-vector-conversions=integer), -fno-lax-vector-conversions (equivalent to -flax-vector-conversions=none)
 
-Enable implicit vector bit-casts. <arg> must be 'none', 'integer' or 'all'.
+Enable implicit vector bit-casts
 
 .. option:: -flimited-precision=<arg>
 
@@ -1953,13 +1877,13 @@ Controls the backend parallelism of -flto=thin (default of 0 means the number of
 
 .. option:: -flto=<arg>, -flto (equivalent to -flto=full), -flto=auto (equivalent to -flto=full), -flto=jobserver (equivalent to -flto=full)
 
-Set LTO mode. <arg> must be 'thin' or 'full'.
+Set LTO mode to either 'full' or 'thin'
 
 .. option:: -fmacro-backtrace-limit=<arg>
 
 .. option:: -fmacro-prefix-map=<arg>
 
-remap file source paths in predefined preprocessor macros and \_\_builtin\_FILE(). Implies -ffile-reproducible.
+remap file source paths in predefined preprocessor macros and \_\_builtin\_FILE()
 
 .. option:: -fmath-errno, -fno-math-errno
 
@@ -1996,16 +1920,6 @@ Format message diagnostics so that they fit within N columns
 Minimize whitespace when emitting preprocessor output
 
 .. option:: -fmodule-file-deps, -fno-module-file-deps
-
-.. option:: -fmodule-header
-
-Build a C++20 Header Unit from a header.
-
-.. program:: clang1
-.. option:: -fmodule-header=<kind>
-.. program:: clang
-
-Build a C++20 Header Unit from a header that should be found in the user (fmodule-header=user) or system (fmodule-header=system) search path.
 
 .. option:: -fmodule-map-file=<file>
 
@@ -2061,8 +1975,6 @@ Ensure that all functions can be hotpatched at runtime
 
 .. option:: -fms-memptr-rep=<arg>
 
- <arg> must be 'single', 'multiple' or 'virtual'.
-
 .. option:: -fms-volatile
 
 .. option:: -fmsc-version=<arg>
@@ -2092,10 +2004,6 @@ Disable implicit builtin knowledge of a specific function
 .. option:: -fno-elide-type
 
 Do not elide types when printing diagnostics
-
-.. option:: -fno-knr-functions
-
-Disable support for K&R C function declarations
 
 .. option:: -fno-max-type-align
 
@@ -2161,7 +2069,7 @@ Enable ARC-style weak references in Objective-C
 
 .. option:: -foffload-lto=<arg>, -foffload-lto (equivalent to -foffload-lto=full)
 
-Set LTO mode for offload compilation. <arg> must be 'thin' or 'full'.
+Set LTO mode to either 'full' or 'thin' for offload compilation
 
 .. option:: -fomit-frame-pointer, -fno-omit-frame-pointer
 
@@ -2177,14 +2085,6 @@ Enable all Clang extensions for OpenMP directives and clauses
 
 Set rpath on OpenMP executables
 
-.. option:: -fopenmp-new-driver
-
-Use the new driver for OpenMP offloading.
-
-.. option:: -fopenmp-offload-mandatory
-
-Do not create a host fallback if offloading to the device fails.
-
 .. option:: -fopenmp-simd, -fno-openmp-simd
 
 Emit OpenMP code only for SIMD-based constructs.
@@ -2192,6 +2092,10 @@ Emit OpenMP code only for SIMD-based constructs.
 .. option:: -fopenmp-target-debug, -fno-openmp-target-debug
 
 Enable debugging in the OpenMP offloading device RTL
+
+.. option:: -fopenmp-offload-mandatory
+
+Indicate that offloading to the device is mandatory and do not generate host-fallback code.
 
 .. option:: -fopenmp-version=<arg>
 
@@ -2333,10 +2237,6 @@ Use instrumentation data for profile-guided optimization
 
 Filename defining the list of functions/files to instrument
 
-.. option:: -fprofile-function-groups=<N>, -fprofile-selected-function-group=<i>
-
-Partition functions into <N> groups and select only functions in group <i> to be instrumented
-
 .. option:: -fprofile-remapping-file=<file>
 
 Use the remappings described in <file> to match the profile data against names in the program
@@ -2358,7 +2258,7 @@ Enable sample-based profile guided optimizations
 
 .. option:: -fprofile-update=<method>
 
-Set update method of profile counters. <method> must be 'atomic', 'prefer-atomic' or 'single'.
+Set update method of profile counters (atomic,prefer-atomic,single)
 
 .. program:: clang1
 .. option:: -fprofile-use=<pathname>
@@ -2448,7 +2348,7 @@ Force wchar\_t to be a short unsigned int
 
 .. option:: -fshow-overloads=<arg>
 
-Which overload candidates to show when overload resolution fails. Defaults to 'all'. <arg> must be 'best' or 'all'.
+Which overload candidates to show when overload resolution fails: best\|all; defaults to all
 
 .. option:: -fshow-source-location, -fno-show-source-location
 
@@ -2544,7 +2444,7 @@ Enable optimizations based on the strict rules for overwriting polymorphic C++ o
 
 .. option:: -fswift-async-fp=<option>
 
-Control emission of Swift async extended frame info. <option> must be 'auto', 'always' or 'never'.
+Control emission of Swift async extended frame info (option: auto, always, never)
 
 .. option:: -fsymbol-partition=<arg>
 
@@ -2574,7 +2474,7 @@ Perform ThinLTO importing using provided function summary index
 .. option:: -ftime-report=<arg>
 .. program:: clang
 
-(For new pass manager) 'per-pass': one report for each pass; 'per-pass-run': one report for each pass invocation. <arg> must be 'per-pass' or 'per-pass-run'.
+(For new pass manager) "per-pass": one report for each pass; "per-pass-run": one report for each pass invocation
 
 .. option:: -ftime-trace
 
@@ -2588,8 +2488,6 @@ can be analyzed with chrome://tracing or `Speedscope App
 Minimum time granularity (in microseconds) traced by time profiler
 
 .. option:: -ftls-model=<arg>
-
- <arg> must be 'global-dynamic', 'local-dynamic', 'initial-exec' or 'local-exec'.
 
 .. option:: -ftrap-function=<arg>
 
@@ -2619,7 +2517,7 @@ Stop initializing trivial automatic stack variables after the specified number o
 
 .. option:: -ftrivial-auto-var-init=<arg>
 
-Initialize trivial automatic stack variables. Defaults to 'uninitialized'. <arg> must be 'uninitialized', 'zero' or 'pattern'.
+Initialize trivial automatic stack variables: uninitialized (default) \| pattern
 
 .. option:: -funique-basic-block-section-names, -fno-unique-basic-block-section-names
 
@@ -2630,6 +2528,8 @@ Use unique names for basic block sections (ELF Only)
 Uniqueify Internal Linkage Symbol Names by appending the MD5 hash of the module path
 
 .. option:: -funique-section-names, -fno-unique-section-names
+
+.. option:: -funit-at-a-time, -fno-unit-at-a-time
 
 .. option:: -funroll-loops, -fno-unroll-loops
 
@@ -2647,12 +2547,6 @@ Turn on loop unroller
 
 .. option:: -fuse-init-array, -fno-use-init-array
 
-.. option:: -fstrict-flex-arrays=<arg>, -fno-strict-flex-arrays
-
-Control which arrays are considered as flexible arrays members. <arg>
-can be 1 (array of size 0, 1 and undefined are considered) or 2 (array of size 0
-and undefined are considered).
-
 .. option:: -fuse-ld=<arg>
 
 .. option:: -fuse-line-directives, -fno-use-line-directives
@@ -2665,7 +2559,7 @@ Compute and store the hash of input files used to build an AST. Files with misma
 
 .. option:: -fveclib=<arg>
 
-Use the given vector functions library. <arg> must be 'Accelerate', 'libmvec', 'MASSV', 'SVML', 'Darwin_libsystem_m' or 'none'.
+Use the given vector functions library
 
 .. option:: -fvectorize, -fno-vectorize, -ftree-vectorize
 
@@ -2681,15 +2575,15 @@ Enables dead virtual function elimination optimization. Requires -flto=full
 
 .. option:: -fvisibility-dllexport=<arg>
 
-The visibility for dllexport definitions \[-fvisibility-from-dllstorageclass\]. <arg> must be 'default', 'hidden', 'internal' or 'protected'.
+The visibility for dllexport definitions \[-fvisibility-from-dllstorageclass\]
 
 .. option:: -fvisibility-externs-dllimport=<arg>
 
-The visibility for dllimport external declarations \[-fvisibility-from-dllstorageclass\]. <arg> must be 'default', 'hidden', 'internal' or 'protected'.
+The visibility for dllimport external declarations \[-fvisibility-from-dllstorageclass\]
 
 .. option:: -fvisibility-externs-nodllstorageclass=<arg>
 
-The visibility for external declarations without an explicit DLL dllstorageclass \[-fvisibility-from-dllstorageclass\]. <arg> must be 'default', 'hidden', 'internal' or 'protected'.
+The visibility for external declarations without an explicit DLL dllstorageclass \[-fvisibility-from-dllstorageclass\]
 
 .. option:: -fvisibility-from-dllstorageclass, -fno-visibility-from-dllstorageclass
 
@@ -2713,11 +2607,11 @@ Give global types 'default' visibility and global functions and variables 'hidde
 
 .. option:: -fvisibility-nodllstorageclass=<arg>
 
-The visibility for definitions without an explicit DLL export class \[-fvisibility-from-dllstorageclass\]. <arg> must be 'default', 'hidden', 'internal' or 'protected'.
+The visibility for defintiions without an explicit DLL export class \[-fvisibility-from-dllstorageclass\]
 
 .. option:: -fvisibility=<arg>
 
-Set the default symbol visibility for all global declarations. <arg> must be 'hidden' or 'default'.
+Set the default symbol visibility for all global declarations
 
 .. option:: -fwasm-exceptions
 
@@ -2799,7 +2693,7 @@ When using -fxray-function-groups, select which group of functions to instrument
 
 .. option:: -fzero-call-used-regs=<arg>
 
-Clear call-used registers upon function return (AArch64/x86 only). <arg> must be 'skip', 'used-gpr-arg', 'used-gpr', 'used-arg', 'used', 'all-gpr-arg', 'all-gpr', 'all-arg' or 'all'.
+Clear call-used registers upon function return.
 
 .. option:: -fzero-initialized-in-bss, -fno-zero-initialized-in-bss
 
@@ -2810,10 +2704,6 @@ Enable System z vector language extension
 .. option:: --gpu-bundle-output, --no-gpu-bundle-output
 
 Bundle output files of HIP device compilation
-
-.. option:: --offload-new-driver, --no-offload-new-driver
-
-Use the new driver for offloading compilation.
 
 .. option:: -pedantic, --pedantic, -no-pedantic, --no-pedantic
 
@@ -2826,10 +2716,6 @@ OpenCL flags
 .. option:: -cl-denorms-are-zero
 
 OpenCL only. Allow denormals to be flushed to zero.
-
-.. option:: -cl-ext=<arg1>,<arg2>...
-
-OpenCL only. Enable or disable OpenCL extensions/optional features. The argument is a comma-separated sequence of one or more extension names, each prefixed by '+' or '-'.
 
 .. option:: -cl-fast-relaxed-math
 
@@ -2869,7 +2755,7 @@ OpenCL only. Treat double precision floating-point constant as single precision 
 
 .. option:: -cl-std=<arg>
 
-OpenCL language standard to compile for. <arg> must be 'cl', 'CL', 'cl1.0', 'CL1.0', 'cl1.1', 'CL1.1', 'cl1.2', 'CL1.2', 'cl2.0', 'CL2.0', 'cl3.0', 'CL3.0', 'clc++', 'CLC++', 'clc++1.0', 'CLC++1.0', 'clc++2021' or 'CLC++2021'.
+OpenCL language standard to compile for.
 
 .. option:: -cl-strict-aliasing
 
@@ -2891,7 +2777,7 @@ Enables SYCL kernels compilation for device
 
 .. option:: -sycl-std=<arg>
 
-SYCL language standard to compile for. <arg> must be '2020', '2017', '121', '1.2.1' or 'sycl-1.2.1'.
+SYCL language standard to compile for.
 
 Target-dependent compilation options
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -3029,8 +2915,6 @@ Set Fuchsia API level
 
 .. option:: -inline-asm=<arg>
 
- <arg> must be 'att' or 'intel'.
-
 .. option:: -m16
 
 .. option:: -m32
@@ -3079,10 +2963,6 @@ Sets the IEEE bit in the expected default floating point  mode register. Floatin
 
 Link stack frames through backchain on System Z
 
-.. option:: -mbranch-protection=<arg>
-
-Enforce targets of indirect branches and function returns
-
 .. option:: -mbranches-within-32B-boundaries
 
 Align selected branches (fused, jcc, jmp) within 32-byte boundary
@@ -3095,7 +2975,7 @@ Legacy option to specify code object ABI V3 (AMDGPU only)
 
 .. option:: -mcode-object-version=<arg>
 
-Specify code object ABI version. Defaults to 4. (AMDGPU only). <arg> must be 'none', '2', '3', '4' or '5'.
+Specify code object ABI version. Allowed values are 2, 3, 4, and 5. Defaults to 4. (AMDGPU only)
 
 .. option:: -mconsole<arg>
 
@@ -3109,21 +2989,17 @@ Allow use of CRC instructions (ARM/Mips only)
 
 .. option:: -mdefault-build-attributes<arg>, -mno-default-build-attributes<arg>
 
-.. option:: -mdefault-visibility-export-mapping=<arg>
-
-Mapping between default visibility and export. <arg> must be 'none', 'explicit' or 'all'.
-
 .. option:: -mdll<arg>
 
-.. option:: -mdouble=<n
+.. option:: -mdouble=<arg>
 
-Force double to be <n> bits. <n must be '32' or '64'.
+Force double to be 32 bits or 64 bits
 
 .. option:: -mdynamic-no-pic<arg>
 
 .. option:: -meabi <arg>
 
-Set EABI type. Default depends on triple). <arg> must be 'default', '4', '5' or 'gnu'.
+Set EABI type, e.g. 4, 5 or gnu (default depends on triple)
 
 .. option:: -menable-experimental-extensions
 
@@ -3134,8 +3010,6 @@ Enable use of experimental RISC-V extensions.
 Insert calls to fentry at function entry (x86/SystemZ only)
 
 .. option:: -mfloat-abi=<arg>
-
- <arg> must be 'soft', 'softfp' or 'hard'.
 
 .. option:: -mfpmath=<arg>
 
@@ -3261,7 +3135,7 @@ Enable speculative execution side effect suppression (SESES). Includes LVI contr
 
 .. option:: -msign-return-address=<arg>
 
-Select return address signing scope. <arg> must be 'none', 'all' or 'non-leaf'.
+Select return address signing scope
 
 .. option:: -msim
 
@@ -3295,10 +3169,6 @@ Use the given offset for addressing the stack-protector guard
 
 Use the given reg for addressing the stack-protector guard
 
-.. option:: -mstack-protector-guard-symbol=<arg>
-
-Use the given symbol for addressing the stack-protector guard
-
 .. option:: -mstack-protector-guard=<arg>
 
 Use the given guard (global, tls) for addressing the stack-protector guard
@@ -3317,7 +3187,7 @@ Set the deployment target to be the specified OS and OS version
 
 .. option:: -mthread-model <arg>
 
-The thread model to use. Defaults to 'posix'). <arg> must be 'posix' or 'single'.
+The thread model to use, e.g. posix, single (posix by default)
 
 .. option:: -mthreads<arg>
 
@@ -3335,7 +3205,7 @@ Specify bit size of immediate TLS offsets (AArch64 ELF only): 12 (for 4KB) \| 24
 .. option:: -mtune=<arg>
 .. program:: clang
 
-Only supported on X86, RISC-V and SystemZ. Otherwise accepted for compatibility with GCC.
+Only supported on X86 and RISC-V. Otherwise accepted for compatibility with GCC.
 
 .. option:: -mtvos-version-min=<arg>, -mappletvos-version-min=<arg>
 
@@ -3453,17 +3323,9 @@ Disallow generation of data access to code sections (ARM only)
 
 Work around VLLDM erratum CVE-2021-35465 (ARM only)
 
-.. option:: -mfix-cortex-a57-aes-1742098, -mfix-cortex-a72-aes-1655431, -mno-fix-cortex-a57-aes-1742098
-
-Work around Cortex-A57 Erratum 1742098 (ARM only)
-
-.. option:: -mframe-chain=<arg>
-
-Select the frame chain model used to emit frame records (Arm only). <arg> must be 'none', 'aapcs' or 'aapcs+leaf'.
-
 .. option:: -mno-bti-at-return-twice
 
-Do not add a BTI instruction after a setjmp or other return-twice construct (Arm/AArch64 only)
+Do not add a BTI instruction after a setjmp or other return-twice construct (AArch32/AArch64 only)
 
 .. option:: -mno-movt
 
@@ -3483,7 +3345,7 @@ Disallow generation of complex IT blocks.
 
 .. option:: -mtp=<arg>
 
-Thread pointer access method (AArch32/AArch64 only). <arg> must be 'soft', 'cp15', 'el0', 'el1', 'el2' or 'el3'.
+Thread pointer access method (AArch32/AArch64 only)
 
 .. option:: -munaligned-access, -mno-unaligned-access
 
@@ -3521,7 +3383,7 @@ Enable Hexagon Vector eXtensions
 
 .. option:: -mhvx-length=<arg>
 
-Set Hexagon Vector Length. <arg> must be '64B' or '128B'.
+Set Hexagon Vector Length
 
 .. option:: -mhvx-qfloat, -mno-hvx-qfloat
 
@@ -3747,8 +3609,6 @@ WebAssembly
 
 .. option:: -mexception-handling, -mno-exception-handling
 
-.. option:: -mextended-const, -mno-extended-const
-
 .. option:: -mmultivalue, -mno-multivalue
 
 .. option:: -mmutable-globals, -mno-mutable-globals
@@ -3765,11 +3625,13 @@ WebAssembly
 
 .. option:: -mtail-call, -mno-tail-call
 
+.. option:: -mextended-const, -mno-extended-const
+
 WebAssembly Driver
 ------------------
 .. option:: -mexec-model=<arg>
 
-Execution model (WebAssembly only). <arg> must be 'command' or 'reactor'.
+Execution model (WebAssembly only)
 
 X86
 ---
@@ -3890,8 +3752,6 @@ X86
 .. option:: -mptwrite, -mno-ptwrite
 
 .. option:: -mrdpid, -mno-rdpid
-
-.. option:: -mrdpru, -mno-rdpru
 
 .. option:: -mrdrnd, -mno-rdrnd
 
@@ -4096,7 +3956,7 @@ Embed source text in DWARF debug sections
 .. option:: -gsplit-dwarf=<arg>
 .. program:: clang
 
-Set DWARF fission mode. <arg> must be 'split' or 'single'.
+Set DWARF fission mode to either 'split' or 'single'
 
 .. option:: -gstrict-dwarf, -gno-strict-dwarf
 
@@ -4265,10 +4125,6 @@ Pass the comma separated arguments in <arg> to the linker
 
 Pass <arg> to the linker
 
-.. option:: -Xoffload-linker<triple> <arg>
-
-Pass <arg> to the offload linkers or the ones idenfied by -<triple>
-
 .. program:: clang1
 .. option:: -Z
 .. program:: clang
@@ -4300,10 +4156,6 @@ path to a pass plugin for HIP to SPIR-V passes.
 .. program:: clang1
 .. option:: -nostdlib, --no-standard-libraries
 .. program:: clang
-
-.. option:: --offload-link
-
-Use the new offloading linker to perform the link job.
 
 .. option:: -pie
 
@@ -4340,26 +4192,4 @@ undef all system defines
 .. option:: -z <arg>
 
 Pass -z <arg> to the linker
-
-<clang-dxc options>
-===================
-dxc compatibility options
-
-.. program:: clang3
-.. option:: /T<profile>, -T<profile>
-.. program:: clang
-
-Set target profile. <profile> must be 'ps_6_0', ' ps_6_1', ' ps_6_2', ' ps_6_3', ' ps_6_4', ' ps_6_5', ' ps_6_6', ' ps_6_7', 'vs_6_0', ' vs_6_1', ' vs_6_2', ' vs_6_3', ' vs_6_4', ' vs_6_5', ' vs_6_6', ' vs_6_7', 'gs_6_0', ' gs_6_1', ' gs_6_2', ' gs_6_3', ' gs_6_4', ' gs_6_5', ' gs_6_6', ' gs_6_7', 'hs_6_0', ' hs_6_1', ' hs_6_2', ' hs_6_3', ' hs_6_4', ' hs_6_5', ' hs_6_6', ' hs_6_7', 'ds_6_0', ' ds_6_1', ' ds_6_2', ' ds_6_3', ' ds_6_4', ' ds_6_5', ' ds_6_6', ' ds_6_7', 'cs_6_0', ' cs_6_1', ' cs_6_2', ' cs_6_3', ' cs_6_4', ' cs_6_5', ' cs_6_6', ' cs_6_7', 'lib_6_3', ' lib_6_4', ' lib_6_5', ' lib_6_6', ' lib_6_7', ' lib_6_x', 'ms_6_5', ' ms_6_6', ' ms_6_7', 'as_6_5', ' as_6_6' or ' as_6_7'.
-
-.. program:: clang4
-.. option:: /emit-pristine-llvm, -emit-pristine-llvm, /fcgl, -fcgl
-.. program:: clang
-
-Emit pristine LLVM IR from the frontend by not running any LLVM passes at all.Same as -S + -emit-llvm + -disable-llvm-passes.
-
-.. program:: clang5
-.. option:: /hlsl-no-stdinc, -hlsl-no-stdinc
-.. program:: clang
-
-HLSL only. Disables all standard includes containing non-native compiler types and functions.
 

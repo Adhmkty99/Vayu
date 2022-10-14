@@ -11,7 +11,6 @@ fixed point in execution.
 import os
 
 from collections import OrderedDict
-from pathlib import PurePath
 from typing import List
 
 class SourceLocation:
@@ -32,7 +31,7 @@ class SourceLocation:
         if not other or not isinstance(other, SourceLocation):
             return False
 
-        if self.path and (other.path is None or (PurePath(self.path) != PurePath(other.path))):
+        if self.path and (self.path != other.path):
             return False
 
         if self.lineno and (self.lineno != other.lineno):

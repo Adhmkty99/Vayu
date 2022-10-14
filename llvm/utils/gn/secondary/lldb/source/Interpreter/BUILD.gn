@@ -39,7 +39,6 @@ static_library("Interpreter") {
     "OptionGroupBoolean.cpp",
     "OptionGroupFile.cpp",
     "OptionGroupFormat.cpp",
-    "OptionGroupMemoryTag.cpp",
     "OptionGroupOutputFile.cpp",
     "OptionGroupPlatform.cpp",
     "OptionGroupPythonClassWithDict.cpp",

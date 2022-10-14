@@ -16,7 +16,6 @@
 #include "format.h"
 #include "internal-unit.h"
 #include "io-error.h"
-#include "flang/Common/visit.h"
 #include "flang/Runtime/descriptor.h"
 #include "flang/Runtime/io-api.h"
 #include <functional>
@@ -114,7 +113,7 @@ public:
 
   // N.B.: this also works with base classes
   template <typename A> A *get_if() const {
-    return common::visit(
+    return std::visit(
         [](auto &x) -> A * {
           if constexpr (std::is_convertible_v<decltype(x.get()), A &>) {
             return &x.get();
@@ -136,7 +135,7 @@ public:
   std::optional<char32_t> PrepareInput(
       const DataEdit &edit, std::optional<int> &remaining) {
     remaining.reset();
-    if (edit.IsListDirected()) {
+    if (edit.descriptor == DataEdit::ListDirected) {
       std::size_t byteCount{0};
       GetNextNonBlank(byteCount);
     } else {
@@ -194,16 +193,11 @@ public:
     return ch;
   }
 
-  template <Direction D> bool CheckFormattedStmtType(const char *name) {
-    if (get_if<FormattedIoStatementState<D>>()) {
-      return true;
-    } else {
-      if (!get_if<ErroneousIoStatementState>()) {
-        GetIoErrorHandler().Crash(
-            "%s called for I/O statement that is not formatted %s", name,
-            D == Direction::Output ? "output" : "input");
-      }
-      return false;
+  template <Direction D> void CheckFormattedStmtType(const char *name) {
+    if (!get_if<FormattedIoStatementState<D>>()) {
+      GetIoErrorHandler().Crash(
+          "%s called for I/O statement that is not formatted %s", name,
+          D == Direction::Output ? "output" : "input");
     }
   }
 
@@ -412,14 +406,12 @@ public:
   ExternalFileUnit &unit() { return unit_; }
   MutableModes &mutableModes();
   ConnectionState &GetConnectionState();
-  int asynchronousID() const { return asynchronousID_; }
+  void CompleteOperation();
   int EndIoStatement();
   ExternalFileUnit *GetExternalFileUnit() const { return &unit_; }
-  void SetAsynchronous();
 
 private:
   ExternalFileUnit &unit_;
-  int asynchronousID_{-1};
 };
 
 template <Direction DIR>
@@ -590,35 +582,29 @@ private:
   CloseStatus status_{CloseStatus::Keep};
 };
 
-// For CLOSE(bad unit), WAIT(bad unit, ID=nonzero), INQUIRE(unconnected unit),
-// and recoverable BACKSPACE(bad unit)
+// For CLOSE(bad unit) and INQUIRE(unconnected unit)
 class NoUnitIoStatementState : public IoStatementBase {
 public:
   IoStatementState &ioStatementState() { return ioStatementState_; }
   MutableModes &mutableModes() { return connection_.modes; }
   ConnectionState &GetConnectionState() { return connection_; }
-  int badUnitNumber() const { return badUnitNumber_; }
   void CompleteOperation();
   int EndIoStatement();
 
 protected:
   template <typename A>
-  NoUnitIoStatementState(A &stmt, const char *sourceFile = nullptr,
-      int sourceLine = 0, int badUnitNumber = -1)
-      : IoStatementBase{sourceFile, sourceLine}, ioStatementState_{stmt},
-        badUnitNumber_{badUnitNumber} {}
+  NoUnitIoStatementState(const char *sourceFile, int sourceLine, A &stmt)
+      : IoStatementBase{sourceFile, sourceLine}, ioStatementState_{stmt} {}
 
 private:
   IoStatementState ioStatementState_; // points to *this
   ConnectionState connection_;
-  int badUnitNumber_;
 };
 
 class NoopStatementState : public NoUnitIoStatementState {
 public:
-  NoopStatementState(
-      const char *sourceFile = nullptr, int sourceLine = 0, int unitNumber = -1)
-      : NoUnitIoStatementState{*this, sourceFile, sourceLine, unitNumber} {}
+  NoopStatementState(const char *sourceFile, int sourceLine)
+      : NoUnitIoStatementState{sourceFile, sourceLine, *this} {}
   void set_status(CloseStatus) {} // discards
 };
 
@@ -670,8 +656,7 @@ public:
 
 class InquireNoUnitState : public NoUnitIoStatementState {
 public:
-  InquireNoUnitState(const char *sourceFile = nullptr, int sourceLine = 0,
-      int badUnitNumber = -1);
+  InquireNoUnitState(const char *sourceFile = nullptr, int sourceLine = 0);
   bool Inquire(InquiryKeywordHash, char *, std::size_t);
   bool Inquire(InquiryKeywordHash, bool &);
   bool Inquire(InquiryKeywordHash, std::int64_t, bool &);
@@ -707,7 +692,7 @@ private:
 
 class ExternalMiscIoStatementState : public ExternalIoStatementBase {
 public:
-  enum Which { Flush, Backspace, Endfile, Rewind, Wait };
+  enum Which { Flush, Backspace, Endfile, Rewind };
   ExternalMiscIoStatementState(ExternalFileUnit &unit, Which which,
       const char *sourceFile = nullptr, int sourceLine = 0)
       : ExternalIoStatementBase{unit, sourceFile, sourceLine}, which_{which} {}
@@ -720,10 +705,9 @@ private:
 
 class ErroneousIoStatementState : public IoStatementBase {
 public:
-  explicit ErroneousIoStatementState(Iostat iostat,
-      ExternalFileUnit *unit = nullptr, const char *sourceFile = nullptr,
-      int sourceLine = 0)
-      : IoStatementBase{sourceFile, sourceLine}, unit_{unit} {
+  explicit ErroneousIoStatementState(
+      Iostat iostat, const char *sourceFile = nullptr, int sourceLine = 0)
+      : IoStatementBase{sourceFile, sourceLine} {
     SetPendingError(iostat);
   }
   int EndIoStatement();
@@ -732,7 +716,6 @@ public:
 
 private:
   ConnectionState connection_;
-  ExternalFileUnit *unit_{nullptr};
 };
 
 extern template bool IoStatementState::EmitEncoded<char>(

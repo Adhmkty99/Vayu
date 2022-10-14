@@ -37,20 +37,21 @@ STATISTIC(NumBBsPadded, "Number of basic blocks padded");
 namespace {
   struct VisitedBBInfo {
     // HasReturn - Whether the BB contains a return instruction
-    bool HasReturn = false;
+    bool HasReturn;
 
     // Cycles - Number of cycles until return if HasReturn is true, otherwise
     // number of cycles until end of the BB
-    unsigned int Cycles = 0;
+    unsigned int Cycles;
 
-    VisitedBBInfo() = default;
+    VisitedBBInfo() : HasReturn(false), Cycles(0) {}
     VisitedBBInfo(bool HasReturn, unsigned int Cycles)
       : HasReturn(HasReturn), Cycles(Cycles) {}
   };
 
   struct PadShortFunc : public MachineFunctionPass {
     static char ID;
-    PadShortFunc() : MachineFunctionPass(ID) {}
+    PadShortFunc() : MachineFunctionPass(ID)
+                   , Threshold(4) {}
 
     bool runOnMachineFunction(MachineFunction &MF) override;
 
@@ -81,7 +82,7 @@ namespace {
                     MachineBasicBlock::iterator &MBBI,
                     unsigned int NOOPsToAdd);
 
-    const unsigned int Threshold = 4;
+    const unsigned int Threshold;
 
     // ReturnBBs - Maps basic blocks that return to the minimum number of
     // cycles until the return, starting from the entry block.

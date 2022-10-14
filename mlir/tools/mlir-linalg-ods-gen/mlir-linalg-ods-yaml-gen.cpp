@@ -419,7 +419,7 @@ findTypeValue(StringRef typeVar, SmallVectorImpl<LinalgOperandDef> &args) {
         it.value().kind != LinalgOperandDefKind::Scalar &&
         it.value().kind != LinalgOperandDefKind::OutputTensor)
       continue;
-    if (*it.value().typeVar == typeVar)
+    if (it.value().typeVar.getValue() == typeVar)
       return llvm::formatv("block.getArgument({0}).getType()", it.index())
           .str();
   }
@@ -524,16 +524,44 @@ def {0} : LinalgStructuredBase_Op<"{1}", !listconcat([AttrSizedOperandSegments],
       (ins "ValueRange":$inputs, "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{{}">:$attributes),
       [{{
-        buildStructuredOp($_builder, $_state, llvm::None, inputs, outputs,
-          attributes, {0}::getRegionBuilder());
+        $_state.addOperands(inputs);
+        $_state.addOperands(outputs);
+        SmallVector<Type> resultTensorTypes;
+        copy_if(outputs.getTypes(),
+                std::back_inserter(resultTensorTypes),
+                [](Type type) {{ return type.isa<RankedTensorType>(); });
+        $_state.addTypes(resultTensorTypes);
+        $_state.addAttribute(
+          "operand_segment_sizes",
+          $_builder.getI32VectorAttr({{
+            static_cast<int32_t>(inputs.size()),
+            static_cast<int32_t>(outputs.size())}));
+        $_state.addAttributes(attributes);
+        createAndFillStructuredOpRegion<{0}>(
+          $_builder,
+          $_state,
+          TypeRange(inputs),
+          TypeRange(outputs));
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$inputs,
             "ValueRange":$outputs,
             CArg<"ArrayRef<NamedAttribute>", "{{}">:$attributes),
       [{{
-        buildStructuredOp($_builder, $_state, resultTensorTypes,
-          inputs, outputs, attributes, {0}::getRegionBuilder());
+        $_state.addOperands(inputs);
+        $_state.addOperands(outputs);
+        $_state.addTypes(resultTensorTypes);
+        $_state.addAttributes(attributes);
+        $_state.addAttribute(
+          "operand_segment_sizes",
+          $_builder.getI32VectorAttr({{
+            static_cast<int32_t>(inputs.size()),
+            static_cast<int32_t>(outputs.size())}));
+        createAndFillStructuredOpRegion<{0}>(
+          $_builder,
+          $_state,
+          TypeRange(inputs),
+          TypeRange(outputs));
       }]>,
       OpBuilder<
       (ins "TypeRange":$resultTensorTypes, "ValueRange":$operands,
@@ -553,7 +581,7 @@ def {0} : LinalgStructuredBase_Op<"{1}", !listconcat([AttrSizedOperandSegments],
     let extraClassDeclaration = structuredOpsBaseDecls # [{{
       // Auto-generated.
       ArrayAttr iterator_types();
-      ArrayAttr getIndexingMaps();
+      ArrayAttr indexing_maps();
       static void regionBuilder(ImplicitLocOpBuilder &b,
                                 Block &block, ArrayRef<NamedAttribute> attrs);
       static std::function<void(ImplicitLocOpBuilder &,
@@ -580,9 +608,21 @@ static const char structuredOpBuilderFormat[] = R"FMT(
        "ValueRange":$outputs, {1},
        CArg<"ArrayRef<NamedAttribute>", "{{}">:$attributes),
   [{{
+    $_state.addOperands(inputs);
+    $_state.addOperands(outputs);
+    $_state.addTypes(resultTensorTypes);
     {2}
-    buildStructuredOp($_builder, $_state, resultTensorTypes, inputs, outputs,
-      attributes, {0}::getRegionBuilder());
+    $_state.addAttributes(attributes);
+    $_state.addAttribute(
+      "operand_segment_sizes",
+      $_builder.getI32VectorAttr({{
+        static_cast<int32_t>(inputs.size()),
+        static_cast<int32_t>(outputs.size())}));
+    createAndFillStructuredOpRegion<{0}>(
+      $_builder,
+      $_state,
+      TypeRange(inputs),
+      TypeRange(outputs));
   }]>
 )FMT";
 
@@ -612,7 +652,7 @@ ArrayAttr {0}::iterator_types() {{
 // {1}: Comma-separated list of dimension variable names.
 // {2}: Statements
 static const char structuredOpIndexingMapsFormat[] = R"FMT(
-ArrayAttr {0}::getIndexingMaps() {{
+ArrayAttr {0}::indexing_maps() {{
   static const char memoizeAttr[] = "linalg.memoized_indexing_maps";
   ArrayAttr cached = getOperation()->getAttrOfType<ArrayAttr>(memoizeAttr);
   if (cached)
@@ -631,7 +671,7 @@ ArrayAttr {0}::getIndexingMaps() {{
 // The indexing_maps() method for rank polymorphic structured ops. Parameters:
 // {0}: Class name
 static const char rankPolyStructuredOpIndexingMapsFormat[] = R"FMT(
-ArrayAttr {0}::getIndexingMaps() {{
+ArrayAttr {0}::indexing_maps() {{
   MLIRContext *context = getContext();
   AffineMap scalarMap = AffineMap::get(getNumParallelLoops(), 0, context);
   AffineMap tensorMap = AffineMap::getMultiDimIdentityMap(
@@ -665,11 +705,10 @@ void {0}::getEffects(SmallVectorImpl<
 // {0}: Class name
 static const char structuredOpParserFormat[] = R"FMT(
 ParseResult {0}::parse(OpAsmParser &parser, OperationState &result) {{
-  return ::parseNamedStructuredOp(parser, result,
-    {0}::getNumRegionArgs(), {0}::getRegionBuilder());
+  return ::parseNamedStructuredOp<{0}>(parser, result);
 }
 void {0}::print(OpAsmPrinter &p) {{
-  ::printNamedStructuredOp(p, getOperation(), inputs(), outputs());
+  ::printNamedStructuredOp(p, *this);
 }
 )FMT";
 
@@ -718,7 +757,7 @@ static LogicalResult generateNamedGenericOpOds(LinalgOpConfig &opConfig,
       static const char stmtFmt[] = "$_state.addAttribute(\"{0}\", {0});";
       // Add the type conversion attributes to the op definition and builders.
       if (isFunctionAttribute(arg.kind)) {
-        assert(arg.defaultFn);
+        assert(arg.defaultFn.hasValue());
         std::string enumName = convertOperandKindToEnumName(arg.kind);
         static const char typeFmt[] = "{0}::{1}";
         static const char defFmt[] = "DefaultValuedAttr<{0}, \"{1}\">:${2}";
@@ -730,16 +769,16 @@ static LogicalResult generateNamedGenericOpOds(LinalgOpConfig &opConfig,
       }
       // Add the index attributes to the op definition and builders.
       if (arg.kind == LinalgOperandDefKind::IndexAttr) {
-        assert(arg.indexAttrMap.has_value());
-        assert(arg.defaultIndices.has_value());
+        assert(arg.indexAttrMap.hasValue());
+        assert(arg.defaultIndices.hasValue());
         size_t size = arg.indexAttrMap->affineMap().getNumResults();
-        assert(arg.defaultIndices.value().size() == size);
+        assert(arg.defaultIndices.getValue().size() == size);
         static const char typeFmt[] = "RankedI64ElementsAttr<[{0}]>";
         static const char defFmt[] = "DefaultValuedAttr<{0}, \"{ {1} }\">:${2}";
         std::string defaultVals;
         llvm::raw_string_ostream ss(defaultVals);
         llvm::interleave(
-            arg.defaultIndices.value(), ss,
+            arg.defaultIndices.getValue(), ss,
             [&](int64_t val) { ss << "static_cast<int64_t>(" << val << ")"; },
             ", ");
         attrDefs.push_back(llvm::formatv(defFmt, llvm::formatv(typeFmt, size),
@@ -819,7 +858,7 @@ generateNamedGenericOpDefns(LinalgOpConfig &opConfig,
     os << llvm::formatv(rankPolyStructuredOpIteratorTypesFormat, className);
   }
 
-  // Generating the getIndexingMaps() method.
+  // Generating the indexing_maps() method.
   if (auto &staticMaps =
           opConfig.structuredOp->indexingMaps.staticIndexingMaps) {
     if (staticMaps->empty())
@@ -861,7 +900,7 @@ exprs.push_back(getAffineConstantExpr(cst{1}, context));
         for (LinalgOperandDef &arg : opConfig.structuredOp->args) {
           if (arg.kind != LinalgOperandDefKind::IndexAttr)
             continue;
-          assert(arg.indexAttrMap);
+          assert(arg.indexAttrMap.hasValue());
           for (auto &en :
                llvm::enumerate(arg.indexAttrMap->affineMap().getResults())) {
             if (auto symbol = en.value().dyn_cast<AffineSymbolExpr>()) {
@@ -958,7 +997,7 @@ std::string {0}::getLibraryCallName() {{
     for (LinalgOperandDef &arg : opConfig.structuredOp->args) {
       if (arg.kind != LinalgOperandDefKind::IndexAttr)
         continue;
-      assert(arg.indexAttrMap);
+      assert(arg.indexAttrMap.hasValue());
       // Verify index attribute. Paramters:
       // {0}: Attribute name
       // {1}: Attribute size
@@ -1088,11 +1127,11 @@ if ({1}Iter != attrs.end()) {{
           if (expression.scalarFn->attrName) {
             if (llvm::none_of(args, [&](LinalgOperandDef &arg) {
                   return isFunctionAttribute(arg.kind) &&
-                         arg.name == expression.scalarFn->attrName.value();
+                         arg.name == expression.scalarFn->attrName.getValue();
                 })) {
               emitError(genContext.getLoc())
                   << "missing function attribute "
-                  << expression.scalarFn->attrName.value();
+                  << expression.scalarFn->attrName.getValue();
             }
             funcType = llvm::formatv("{0}Val", *expression.scalarFn->attrName);
           }
@@ -1101,17 +1140,17 @@ if ({1}Iter != attrs.end()) {{
           // Add the optional type parameter to the operands.
           SmallVector<std::string> operandCppValues;
           if (expression.scalarFn->kind == ScalarFnKind::Type) {
-            assert(expression.scalarFn->typeVar.has_value());
+            assert(expression.scalarFn->typeVar.hasValue());
             Optional<std::string> typeCppValue =
-                findTypeValue(expression.scalarFn->typeVar.value(), args);
+                findTypeValue(expression.scalarFn->typeVar.getValue(), args);
             if (!typeCppValue) {
               emitError(genContext.getLoc())
-                  << "type variable " << expression.scalarFn->typeVar.value()
+                  << "type variable " << expression.scalarFn->typeVar.getValue()
                   << ", used in a type conversion, must map to a predefined or "
                   << "an argument type but it does not";
               return None;
             }
-            operandCppValues.push_back(typeCppValue.value());
+            operandCppValues.push_back(typeCppValue.getValue());
           }
 
           // Collect the scalar operands.

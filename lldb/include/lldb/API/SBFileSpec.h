@@ -74,7 +74,6 @@ private:
   friend class SBSourceManager;
   friend class SBTarget;
   friend class SBThread;
-  friend class SBTrace;
 
   SBFileSpec(const lldb_private::FileSpec &fspec);
 

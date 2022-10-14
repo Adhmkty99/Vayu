@@ -887,7 +887,7 @@ ASTContext::getCanonicalTemplateTemplateParmDecl(
 
 TargetCXXABI::Kind ASTContext::getCXXABIKind() const {
   auto Kind = getTargetInfo().getCXXABI().getKind();
-  return getLangOpts().CXXABI.value_or(Kind);
+  return getLangOpts().CXXABI.getValueOr(Kind);
 }
 
 CXXABI *ASTContext::createCXXABI(const TargetInfo &T) {
@@ -1707,17 +1707,8 @@ const llvm::fltSemantics &ASTContext::getFloatTypeSemantics(QualType T) const {
   case BuiltinType::BFloat16:
     return Target->getBFloat16Format();
   case BuiltinType::Float16:
-    return Target->getHalfFormat();
   case BuiltinType::Half:
-    // For HLSL, when the native half type is disabled, half will be treat as
-    // float.
-    if (getLangOpts().HLSL)
-      if (getLangOpts().NativeHalfType)
-        return Target->getHalfFormat();
-      else
-        return Target->getFloatFormat();
-    else
-      return Target->getHalfFormat();
+    return Target->getHalfFormat();
   case BuiltinType::Float:      return Target->getFloatFormat();
   case BuiltinType::Double:     return Target->getDoubleFormat();
   case BuiltinType::Ibm128:
@@ -2127,10 +2118,8 @@ TypeInfo ASTContext::getTypeInfoImpl(const Type *T) const {
       Align = Target->getLongFractAlign();
       break;
     case BuiltinType::BFloat16:
-      if (Target->hasBFloat16Type()) {
-        Width = Target->getBFloat16Width();
-        Align = Target->getBFloat16Align();
-      }
+      Width = Target->getBFloat16Width();
+      Align = Target->getBFloat16Align();
       break;
     case BuiltinType::Float16:
     case BuiltinType::Half:
@@ -2693,11 +2682,7 @@ getSubobjectSizeInBits(const FieldDecl *Field, const ASTContext &Context) {
     if (!RD->isUnion())
       return structHasUniqueObjectRepresentations(Context, RD);
   }
-
-  // A _BitInt type may not be unique if it has padding bits
-  // but if it is a bitfield the padding bits are not used.
-  bool IsBitIntType = Field->getType()->isBitIntType();
-  if (!Field->getType()->isReferenceType() && !IsBitIntType &&
+  if (!Field->getType()->isReferenceType() &&
       !Context.hasUniqueObjectRepresentations(Field->getType()))
     return llvm::None;
 
@@ -2705,17 +2690,9 @@ getSubobjectSizeInBits(const FieldDecl *Field, const ASTContext &Context) {
       Context.toBits(Context.getTypeSizeInChars(Field->getType()));
   if (Field->isBitField()) {
     int64_t BitfieldSize = Field->getBitWidthValue(Context);
-    if (IsBitIntType) {
-      if ((unsigned)BitfieldSize >
-          cast<BitIntType>(Field->getType())->getNumBits())
-        return llvm::None;
-    } else if (BitfieldSize > FieldSizeInBits) {
+    if (BitfieldSize > FieldSizeInBits)
       return llvm::None;
-    }
     FieldSizeInBits = BitfieldSize;
-  } else if (IsBitIntType &&
-             !Context.hasUniqueObjectRepresentations(Field->getType())) {
-    return llvm::None;
   }
   return FieldSizeInBits;
 }
@@ -2813,13 +2790,8 @@ bool ASTContext::hasUniqueObjectRepresentations(QualType Ty) const {
     return false;
 
   // All integrals and enums are unique.
-  if (Ty->isIntegralOrEnumerationType()) {
-    // Except _BitInt types that have padding bits.
-    if (const auto *BIT = dyn_cast<BitIntType>(Ty))
-      return getTypeSize(BIT) == BIT->getNumBits();
-
+  if (Ty->isIntegralOrEnumerationType())
     return true;
-  }
 
   // All other pointers are unique.
   if (Ty->isPointerType())
@@ -2842,7 +2814,8 @@ bool ASTContext::hasUniqueObjectRepresentations(QualType Ty) const {
     Optional<int64_t> StructSize =
         structHasUniqueObjectRepresentations(*this, Record);
 
-    return StructSize && *StructSize == static_cast<int64_t>(getTypeSize(Ty));
+    return StructSize &&
+           StructSize.getValue() == static_cast<int64_t>(getTypeSize(Ty));
   }
 
   // FIXME: More cases to handle here (list by rsmith):
@@ -3166,7 +3139,7 @@ void ASTContext::adjustDeducedFunctionResultType(FunctionDecl *FD,
 /// declaration of a function with an exception specification is permitted
 /// and preserved. Other type sugar (for instance, typedefs) is not.
 QualType ASTContext::getFunctionTypeWithExceptionSpec(
-    QualType Orig, const FunctionProtoType::ExceptionSpecInfo &ESI) const {
+    QualType Orig, const FunctionProtoType::ExceptionSpecInfo &ESI) {
   // Might have some parens.
   if (const auto *PT = dyn_cast<ParenType>(Orig))
     return getParenType(
@@ -3194,7 +3167,7 @@ QualType ASTContext::getFunctionTypeWithExceptionSpec(
 }
 
 bool ASTContext::hasSameFunctionTypeIgnoringExceptionSpec(QualType T,
-                                                          QualType U) const {
+                                                          QualType U) {
   return hasSameType(T, U) ||
          (getLangOpts().CPlusPlus17 &&
           hasSameType(getFunctionTypeWithExceptionSpec(T, EST_None),
@@ -4266,13 +4239,6 @@ static bool isCanonicalResultType(QualType T) {
 QualType
 ASTContext::getFunctionNoProtoType(QualType ResultTy,
                                    const FunctionType::ExtInfo &Info) const {
-  // FIXME: This assertion cannot be enabled (yet) because the ObjC rewriter
-  // functionality creates a function without a prototype regardless of
-  // language mode (so it makes them even in C++). Once the rewriter has been
-  // fixed, this assertion can be enabled again.
-  //assert(!LangOpts.requiresStrictPrototypes() &&
-  //       "strict prototypes are disabled");
-
   // Unique functions, to guarantee there is only one function of a particular
   // structure.
   llvm::FoldingSetNodeID ID;
@@ -4476,7 +4442,8 @@ QualType ASTContext::getFunctionTypeInternal(
       QualType, SourceLocation, FunctionType::FunctionTypeExtraBitfields,
       FunctionType::ExceptionType, Expr *, FunctionDecl *,
       FunctionProtoType::ExtParameterInfo, Qualifiers>(
-      NumArgs, EPI.Variadic, EPI.requiresFunctionProtoTypeExtraBitfields(),
+      NumArgs, EPI.Variadic,
+      FunctionProtoType::hasExtraBitfields(EPI.ExceptionSpec.Type),
       ESH.NumExceptionType, ESH.NumExprPtr, ESH.NumFunctionDeclPtr,
       EPI.ExtParameterInfos ? NumArgs : 0,
       EPI.TypeQuals.hasNonFastQualifiers() ? 1 : 0);
@@ -4703,7 +4670,7 @@ QualType ASTContext::getUnresolvedUsingType(
 
 QualType ASTContext::getAttributedType(attr::Kind attrKind,
                                        QualType modifiedType,
-                                       QualType equivalentType) const {
+                                       QualType equivalentType) {
   llvm::FoldingSetNodeID id;
   AttributedType::Profile(id, attrKind, modifiedType, equivalentType);
 
@@ -4885,10 +4852,11 @@ ASTContext::getTemplateSpecializationType(TemplateName Template,
          "No dependent template names here!");
   // Look through qualified template names.
   if (QualifiedTemplateName *QTN = Template.getAsQualifiedTemplateName())
-    Template = QTN->getUnderlyingTemplate();
+    Template = TemplateName(QTN->getTemplateDecl());
 
   bool IsTypeAlias =
-      isa_and_nonnull<TypeAliasTemplateDecl>(Template.getAsTemplateDecl());
+    Template.getAsTemplateDecl() &&
+    isa<TypeAliasTemplateDecl>(Template.getAsTemplateDecl());
   QualType CanonType;
   if (!Underlying.isNull())
     CanonType = getCanonicalType(Underlying);
@@ -4940,7 +4908,7 @@ QualType ASTContext::getCanonicalTemplateSpecializationType(
 
   // Look through qualified template names.
   if (QualifiedTemplateName *QTN = Template.getAsQualifiedTemplateName())
-    Template = TemplateName(QTN->getUnderlyingTemplate());
+    Template = TemplateName(QTN->getTemplateDecl());
 
   // Build the canonical template specialization type.
   TemplateName CanonTemplate = getCanonicalTemplateName(Template);
@@ -5707,9 +5675,6 @@ QualType ASTContext::getAutoTypeInternal(
       !TypeConstraintConcept && !IsDependent)
     return getAutoDeductType();
 
-  if (TypeConstraintConcept)
-    TypeConstraintConcept = TypeConstraintConcept->getCanonicalDecl();
-
   // Look in the folding set for an existing type.
   void *InsertPos = nullptr;
   llvm::FoldingSetNodeID ID;
@@ -6160,9 +6125,6 @@ ASTContext::getNameForTemplate(TemplateName Name,
     return DeclarationNameInfo(subst->getParameterPack()->getDeclName(),
                                NameLoc);
   }
-  case TemplateName::UsingTemplate:
-    return DeclarationNameInfo(Name.getAsUsingShadowDecl()->getDeclName(),
-                               NameLoc);
   }
 
   llvm_unreachable("bad template name kind!");
@@ -6171,7 +6133,6 @@ ASTContext::getNameForTemplate(TemplateName Name,
 TemplateName
 ASTContext::getCanonicalTemplateName(const TemplateName &Name) const {
   switch (Name.getKind()) {
-  case TemplateName::UsingTemplate:
   case TemplateName::QualifiedTemplate:
   case TemplateName::Template: {
     TemplateDecl *Template = Name.getAsTemplateDecl();
@@ -6218,59 +6179,8 @@ bool ASTContext::hasSameTemplateName(const TemplateName &X,
          getCanonicalTemplateName(Y).getAsVoidPointer();
 }
 
-bool ASTContext::isSameConstraintExpr(const Expr *XCE, const Expr *YCE) const {
-  if (!XCE != !YCE)
-    return false;
-
-  if (!XCE)
-    return true;
-
-  llvm::FoldingSetNodeID XCEID, YCEID;
-  XCE->Profile(XCEID, *this, /*Canonical=*/true);
-  YCE->Profile(YCEID, *this, /*Canonical=*/true);
-  return XCEID == YCEID;
-}
-
-bool ASTContext::isSameTypeConstraint(const TypeConstraint *XTC,
-                                      const TypeConstraint *YTC) const {
-  if (!XTC != !YTC)
-    return false;
-
-  if (!XTC)
-    return true;
-
-  auto *NCX = XTC->getNamedConcept();
-  auto *NCY = YTC->getNamedConcept();
-  if (!NCX || !NCY || !isSameEntity(NCX, NCY))
-    return false;
-  if (XTC->hasExplicitTemplateArgs() != YTC->hasExplicitTemplateArgs())
-    return false;
-  if (XTC->hasExplicitTemplateArgs())
-    if (XTC->getTemplateArgsAsWritten()->NumTemplateArgs !=
-        YTC->getTemplateArgsAsWritten()->NumTemplateArgs)
-      return false;
-
-  // Compare slowly by profiling.
-  //
-  // We couldn't compare the profiling result for the template
-  // args here. Consider the following example in different modules:
-  //
-  // template <__integer_like _Tp, C<_Tp> Sentinel>
-  // constexpr _Tp operator()(_Tp &&__t, Sentinel &&last) const {
-  //   return __t;
-  // }
-  //
-  // When we compare the profiling result for `C<_Tp>` in different
-  // modules, it will compare the type of `_Tp` in different modules.
-  // However, the type of `_Tp` in different modules refer to different
-  // types here naturally. So we couldn't compare the profiling result
-  // for the template args directly.
-  return isSameConstraintExpr(XTC->getImmediatelyDeclaredConstraint(),
-                              YTC->getImmediatelyDeclaredConstraint());
-}
-
 bool ASTContext::isSameTemplateParameter(const NamedDecl *X,
-                                         const NamedDecl *Y) const {
+                                         const NamedDecl *Y) {
   if (X->getKind() != Y->getKind())
     return false;
 
@@ -6280,8 +6190,32 @@ bool ASTContext::isSameTemplateParameter(const NamedDecl *X,
       return false;
     if (TX->hasTypeConstraint() != TY->hasTypeConstraint())
       return false;
-    return isSameTypeConstraint(TX->getTypeConstraint(),
-                                TY->getTypeConstraint());
+    const TypeConstraint *TXTC = TX->getTypeConstraint();
+    const TypeConstraint *TYTC = TY->getTypeConstraint();
+    if (!TXTC != !TYTC)
+      return false;
+    if (TXTC && TYTC) {
+      auto *NCX = TXTC->getNamedConcept();
+      auto *NCY = TYTC->getNamedConcept();
+      if (!NCX || !NCY || !isSameEntity(NCX, NCY))
+        return false;
+      if (TXTC->hasExplicitTemplateArgs() != TYTC->hasExplicitTemplateArgs())
+        return false;
+      if (TXTC->hasExplicitTemplateArgs()) {
+        auto *TXTCArgs = TXTC->getTemplateArgsAsWritten();
+        auto *TYTCArgs = TYTC->getTemplateArgsAsWritten();
+        if (TXTCArgs->NumTemplateArgs != TYTCArgs->NumTemplateArgs)
+          return false;
+        llvm::FoldingSetNodeID XID, YID;
+        for (auto &ArgLoc : TXTCArgs->arguments())
+          ArgLoc.getArgument().Profile(XID, X->getASTContext());
+        for (auto &ArgLoc : TYTCArgs->arguments())
+          ArgLoc.getArgument().Profile(YID, Y->getASTContext());
+        if (XID != YID)
+          return false;
+      }
+    }
+    return true;
   }
 
   if (auto *TX = dyn_cast<NonTypeTemplateParmDecl>(X)) {
@@ -6297,8 +6231,8 @@ bool ASTContext::isSameTemplateParameter(const NamedDecl *X,
                                      TY->getTemplateParameters());
 }
 
-bool ASTContext::isSameTemplateParameterList(
-    const TemplateParameterList *X, const TemplateParameterList *Y) const {
+bool ASTContext::isSameTemplateParameterList(const TemplateParameterList *X,
+                                             const TemplateParameterList *Y) {
   if (X->size() != Y->size())
     return false;
 
@@ -6306,46 +6240,19 @@ bool ASTContext::isSameTemplateParameterList(
     if (!isSameTemplateParameter(X->getParam(I), Y->getParam(I)))
       return false;
 
-  return isSameConstraintExpr(X->getRequiresClause(), Y->getRequiresClause());
-}
-
-bool ASTContext::isSameDefaultTemplateArgument(const NamedDecl *X,
-                                               const NamedDecl *Y) const {
-  // If the type parameter isn't the same already, we don't need to check the
-  // default argument further.
-  if (!isSameTemplateParameter(X, Y))
+  const Expr *XRC = X->getRequiresClause();
+  const Expr *YRC = Y->getRequiresClause();
+  if (!XRC != !YRC)
     return false;
-
-  if (auto *TTPX = dyn_cast<TemplateTypeParmDecl>(X)) {
-    auto *TTPY = cast<TemplateTypeParmDecl>(Y);
-    if (!TTPX->hasDefaultArgument() || !TTPY->hasDefaultArgument())
+  if (XRC) {
+    llvm::FoldingSetNodeID XRCID, YRCID;
+    XRC->Profile(XRCID, *this, /*Canonical=*/true);
+    YRC->Profile(YRCID, *this, /*Canonical=*/true);
+    if (XRCID != YRCID)
       return false;
-
-    return hasSameType(TTPX->getDefaultArgument(), TTPY->getDefaultArgument());
   }
 
-  if (auto *NTTPX = dyn_cast<NonTypeTemplateParmDecl>(X)) {
-    auto *NTTPY = cast<NonTypeTemplateParmDecl>(Y);
-    if (!NTTPX->hasDefaultArgument() || !NTTPY->hasDefaultArgument())
-      return false;
-
-    Expr *DefaultArgumentX = NTTPX->getDefaultArgument()->IgnoreImpCasts();
-    Expr *DefaultArgumentY = NTTPY->getDefaultArgument()->IgnoreImpCasts();
-    llvm::FoldingSetNodeID XID, YID;
-    DefaultArgumentX->Profile(XID, *this, /*Canonical=*/true);
-    DefaultArgumentY->Profile(YID, *this, /*Canonical=*/true);
-    return XID == YID;
-  }
-
-  auto *TTPX = cast<TemplateTemplateParmDecl>(X);
-  auto *TTPY = cast<TemplateTemplateParmDecl>(Y);
-
-  if (!TTPX->hasDefaultArgument() || !TTPY->hasDefaultArgument())
-    return false;
-
-  const TemplateArgument &TAX = TTPX->getDefaultArgument().getArgument();
-  const TemplateArgument &TAY = TTPY->getDefaultArgument().getArgument();
-  return hasSameTemplateName(TAX.getAsTemplate(), TAY.getAsTemplate());
+  return true;
 }
 
 static NamespaceDecl *getNamespace(const NestedNameSpecifier *X) {
@@ -6428,7 +6335,7 @@ static bool hasSameOverloadableAttrs(const FunctionDecl *A,
   return true;
 }
 
-bool ASTContext::isSameEntity(const NamedDecl *X, const NamedDecl *Y) const {
+bool ASTContext::isSameEntity(const NamedDecl *X, const NamedDecl *Y) {
   if (X == Y)
     return true;
 
@@ -6504,9 +6411,17 @@ bool ASTContext::isSameEntity(const NamedDecl *X, const NamedDecl *Y) const {
         return false;
     }
 
-    if (!isSameConstraintExpr(FuncX->getTrailingRequiresClause(),
-                              FuncY->getTrailingRequiresClause()))
+    const Expr *XRC = FuncX->getTrailingRequiresClause();
+    const Expr *YRC = FuncY->getTrailingRequiresClause();
+    if (!XRC != !YRC)
       return false;
+    if (XRC) {
+      llvm::FoldingSetNodeID XRCID, YRCID;
+      XRC->Profile(XRCID, *this, /*Canonical=*/true);
+      YRC->Profile(YRCID, *this, /*Canonical=*/true);
+      if (XRCID != YRCID)
+        return false;
+    }
 
     auto GetTypeAsWritten = [](const FunctionDecl *FD) {
       // Map to the first declaration that we've already merged into this one.
@@ -6527,6 +6442,8 @@ bool ASTContext::isSameEntity(const NamedDecl *X, const NamedDecl *Y) const {
       if (getLangOpts().CPlusPlus17 && XFPT && YFPT &&
           (isUnresolvedExceptionSpec(XFPT->getExceptionSpecType()) ||
            isUnresolvedExceptionSpec(YFPT->getExceptionSpecType())) &&
+          // FIXME: We could make isSameEntity const after we make
+          // hasSameFunctionTypeIgnoringExceptionSpec const.
           hasSameFunctionTypeIgnoringExceptionSpec(XT, YT))
         return true;
       return false;
@@ -6568,20 +6485,6 @@ bool ASTContext::isSameEntity(const NamedDecl *X, const NamedDecl *Y) const {
   // and patterns match.
   if (const auto *TemplateX = dyn_cast<TemplateDecl>(X)) {
     const auto *TemplateY = cast<TemplateDecl>(Y);
-
-    // ConceptDecl wouldn't be the same if their constraint expression differs.
-    if (const auto *ConceptX = dyn_cast<ConceptDecl>(X)) {
-      const auto *ConceptY = cast<ConceptDecl>(Y);
-      const Expr *XCE = ConceptX->getConstraintExpr();
-      const Expr *YCE = ConceptY->getConstraintExpr();
-      assert(XCE && YCE && "ConceptDecl without constraint expression?");
-      llvm::FoldingSetNodeID XID, YID;
-      XCE->Profile(XID, *this, /*Canonical=*/true);
-      YCE->Profile(YID, *this, /*Canonical=*/true);
-      if (XID != YID)
-        return false;
-    }
-
     return isSameEntity(TemplateX->getTemplatedDecl(),
                         TemplateY->getTemplatedDecl()) &&
            isSameTemplateParameterList(TemplateX->getTemplateParameters(),
@@ -9064,9 +8967,10 @@ TemplateName ASTContext::getAssumedTemplateName(DeclarationName Name) const {
 
 /// Retrieve the template name that represents a qualified
 /// template name such as \c std::vector.
-TemplateName ASTContext::getQualifiedTemplateName(NestedNameSpecifier *NNS,
-                                                  bool TemplateKeyword,
-                                                  TemplateName Template) const {
+TemplateName
+ASTContext::getQualifiedTemplateName(NestedNameSpecifier *NNS,
+                                     bool TemplateKeyword,
+                                     TemplateDecl *Template) const {
   assert(NNS && "Missing nested-name-specifier in qualified template name");
 
   // FIXME: Canonicalization?
@@ -10384,11 +10288,11 @@ QualType ASTContext::mergeTypes(QualType LHS, QualType RHS,
     // Allow __auto_type to match anything; it merges to the type with more
     // information.
     if (const auto *AT = LHS->getAs<AutoType>()) {
-      if (!AT->isDeduced() && AT->isGNUAutoType())
+      if (AT->isGNUAutoType())
         return RHS;
     }
     if (const auto *AT = RHS->getAs<AutoType>()) {
-      if (!AT->isDeduced() && AT->isGNUAutoType())
+      if (AT->isGNUAutoType())
         return LHS;
     }
     return {};
@@ -11327,7 +11231,7 @@ QualType ASTContext::GetBuiltinType(unsigned Id,
 
 
   // We really shouldn't be making a no-proto type here.
-  if (ArgTypes.empty() && Variadic && !getLangOpts().requiresStrictPrototypes())
+  if (ArgTypes.empty() && Variadic && !getLangOpts().CPlusPlus)
     return getFunctionNoProtoType(ResType, EI);
 
   FunctionProtoType::ExtProtoInfo EPI;
@@ -11424,7 +11328,7 @@ static GVALinkage adjustGVALinkageForAttributes(const ASTContext &Context,
     // name between the host and device compilation which is the same for the
     // same compilation unit whereas different among different compilation
     // units.
-    if (Context.shouldExternalize(D))
+    if (Context.shouldExternalizeStaticVar(D))
       return GVA_StrongExternal;
   }
   return L;
@@ -11779,11 +11683,9 @@ MangleContext *ASTContext::createDeviceMangleContext(const TargetInfo &T) {
           if (const auto *RD = dyn_cast<CXXRecordDecl>(ND))
             return RD->getDeviceLambdaManglingNumber();
           return llvm::None;
-        },
-        /*IsAux=*/true);
+        });
   case TargetCXXABI::Microsoft:
-    return MicrosoftMangleContext::create(*this, getDiagnostics(),
-                                          /*IsAux=*/true);
+    return MicrosoftMangleContext::create(*this, getDiagnostics());
   }
   llvm_unreachable("Unsupported ABI");
 }
@@ -11827,8 +11729,6 @@ QualType ASTContext::getRealTypeForBitwidth(unsigned DestWidth,
   FloatModeKind Ty =
       getTargetInfo().getRealTypeByWidth(DestWidth, ExplicitType);
   switch (Ty) {
-  case FloatModeKind::Half:
-    return HalfTy;
   case FloatModeKind::Float:
     return FloatTy;
   case FloatModeKind::Double:
@@ -11851,19 +11751,9 @@ void ASTContext::setManglingNumber(const NamedDecl *ND, unsigned Number) {
     MangleNumbers[ND] = Number;
 }
 
-unsigned ASTContext::getManglingNumber(const NamedDecl *ND,
-                                       bool ForAuxTarget) const {
+unsigned ASTContext::getManglingNumber(const NamedDecl *ND) const {
   auto I = MangleNumbers.find(ND);
-  unsigned Res = I != MangleNumbers.end() ? I->second : 1;
-  // CUDA/HIP host compilation encodes host and device mangling numbers
-  // as lower and upper half of 32 bit integer.
-  if (LangOpts.CUDA && !LangOpts.CUDAIsDevice) {
-    Res = ForAuxTarget ? Res >> 16 : Res & 0xFFFF;
-  } else {
-    assert(!ForAuxTarget && "Only CUDA/HIP host compilation supports mangling "
-                            "number for aux target");
-  }
-  return Res > 1 ? Res : 1;
+  return I != MangleNumbers.end() ? I->second : 1;
 }
 
 void ASTContext::setStaticLocalNumber(const VarDecl *VD, unsigned Number) {
@@ -11962,7 +11852,7 @@ ASTContext::getPredefinedStringLiteralFromCache(StringRef Key) const {
   StringLiteral *&Result = StringLiteralCache[Key];
   if (!Result)
     Result = StringLiteral::Create(
-        *this, Key, StringLiteral::Ordinary,
+        *this, Key, StringLiteral::Ascii,
         /*Pascal*/ false, getStringLiteralArrayType(CharTy, Key.size()),
         SourceLocation());
   return Result;
@@ -12387,7 +12277,7 @@ operator<<(const StreamingDiagnostic &DB,
   return DB << "a prior #pragma section";
 }
 
-bool ASTContext::mayExternalize(const Decl *D) const {
+bool ASTContext::mayExternalizeStaticVar(const Decl *D) const {
   bool IsStaticVar =
       isa<VarDecl>(D) && cast<VarDecl>(D)->getStorageClass() == SC_Static;
   bool IsExplicitDeviceVar = (D->hasAttr<CUDADeviceAttr>() &&
@@ -12395,18 +12285,14 @@ bool ASTContext::mayExternalize(const Decl *D) const {
                              (D->hasAttr<CUDAConstantAttr>() &&
                               !D->getAttr<CUDAConstantAttr>()->isImplicit());
   // CUDA/HIP: static managed variables need to be externalized since it is
-  // a declaration in IR, therefore cannot have internal linkage. Kernels in
-  // anonymous name space needs to be externalized to avoid duplicate symbols.
-  return (IsStaticVar &&
-          (D->hasAttr<HIPManagedAttr>() || IsExplicitDeviceVar)) ||
-         (D->hasAttr<CUDAGlobalAttr>() &&
-          basicGVALinkageForFunction(*this, cast<FunctionDecl>(D)) ==
-              GVA_Internal);
+  // a declaration in IR, therefore cannot have internal linkage.
+  return IsStaticVar &&
+         (D->hasAttr<HIPManagedAttr>() || IsExplicitDeviceVar);
 }
 
-bool ASTContext::shouldExternalize(const Decl *D) const {
-  return mayExternalize(D) &&
-         (D->hasAttr<HIPManagedAttr>() || D->hasAttr<CUDAGlobalAttr>() ||
+bool ASTContext::shouldExternalizeStaticVar(const Decl *D) const {
+  return mayExternalizeStaticVar(D) &&
+         (D->hasAttr<HIPManagedAttr>() ||
           CUDADeviceVarODRUsedByHost.count(cast<VarDecl>(D)));
 }
 

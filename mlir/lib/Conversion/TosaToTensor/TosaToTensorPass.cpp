@@ -12,7 +12,6 @@
 
 #include "../PassDetail.h"
 #include "mlir/Conversion/TosaToTensor/TosaToTensor.h"
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
 #include "mlir/Dialect/Tosa/Transforms/PassDetail.h"
@@ -32,7 +31,6 @@ public:
     RewritePatternSet patterns(&getContext());
     ConversionTarget target(getContext());
     target.addIllegalOp<tosa::SliceOp>();
-    target.addLegalDialect<arith::ArithmeticDialect>();
     target.addLegalDialect<tensor::TensorDialect>();
 
     mlir::tosa::populateTosaToTensorConversionPatterns(&patterns);

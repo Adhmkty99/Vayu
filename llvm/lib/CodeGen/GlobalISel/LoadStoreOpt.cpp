@@ -73,7 +73,6 @@ void LoadStoreOpt::init(MachineFunction &MF) {
 
 void LoadStoreOpt::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<AAResultsWrapperPass>();
-  AU.setPreservesAll();
   getSelectionDAGFallbackAnalysisUsage(AU);
   MachineFunctionPass::getAnalysisUsage(AU);
 }
@@ -298,7 +297,7 @@ bool LoadStoreOpt::mergeStores(SmallVectorImpl<GStore *> &StoresToMerge) {
   const auto &LegalSizes = LegalStoreSizes[AS];
 
 #ifndef NDEBUG
-  for (auto *StoreMI : StoresToMerge)
+  for (auto StoreMI : StoresToMerge)
     assert(MRI->getType(StoreMI->getValueReg()) == OrigTy);
 #endif
 
@@ -366,7 +365,7 @@ bool LoadStoreOpt::doSingleStoreMerge(SmallVectorImpl<GStore *> &Stores) {
   // directly. Otherwise, we need to generate some instructions to merge the
   // existing values together into a wider type.
   SmallVector<APInt, 8> ConstantVals;
-  for (auto *Store : Stores) {
+  for (auto Store : Stores) {
     auto MaybeCst =
         getIConstantVRegValWithLookThrough(Store->getValueReg(), *MRI);
     if (!MaybeCst) {
@@ -415,7 +414,7 @@ bool LoadStoreOpt::doSingleStoreMerge(SmallVectorImpl<GStore *> &Stores) {
     return R;
   });
 
-  for (auto *MI : Stores)
+  for (auto MI : Stores)
     InstsToErase.insert(MI);
   return true;
 }

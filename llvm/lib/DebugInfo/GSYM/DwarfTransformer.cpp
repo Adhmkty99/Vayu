@@ -288,12 +288,12 @@ static void convertFunctionLineTable(raw_ostream &Log, CUInfo &CUI,
     // linker problems or LTO or other DWARF re-linking so it is worth emitting
     // an error, but not worth stopping the creation of the GSYM.
     if (!FI.Range.contains(RowAddress)) {
-      if (RowAddress < FI.Range.start()) {
+      if (RowAddress < FI.Range.Start) {
         Log << "error: DIE has a start address whose LowPC is between the "
           "line table Row[" << RowIndex << "] with address "
           << HEX64(RowAddress) << " and the next one.\n";
         Die.dump(Log, 0, DIDumpOptions::getForSingleDIE());
-        RowAddress = FI.Range.start();
+        RowAddress = FI.Range.Start;
       } else {
         continue;
       }
@@ -404,7 +404,8 @@ void DwarfTransformer::handleDie(raw_ostream &OS, CUInfo &CUI, DWARFDie Die) {
       }
 
       FunctionInfo FI;
-      FI.Range = {Range.LowPC, Range.HighPC};
+      FI.setStartAddress(Range.LowPC);
+      FI.setEndAddress(Range.HighPC);
       FI.Name = *NameIndex;
       if (CUI.LineTable) {
         convertFunctionLineTable(OS, CUI, Die, Gsym, FI);

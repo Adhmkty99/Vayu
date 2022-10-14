@@ -163,7 +163,7 @@ public:
 using RejectReasonPtr = std::shared_ptr<RejectReason>;
 
 /// Stores all errors that occurred during the detection.
-class RejectLog final {
+class RejectLog {
   Region *R;
   SmallVector<RejectReasonPtr, 1> ErrorReports;
 
@@ -204,7 +204,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures bad terminator within a Scop candidate.
-class ReportInvalidTerminator final : public ReportCFG {
+class ReportInvalidTerminator : public ReportCFG {
   BasicBlock *BB;
 
 public:
@@ -227,7 +227,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures irreducible regions in CFG.
-class ReportIrreducibleRegion final : public ReportCFG {
+class ReportIrreducibleRegion : public ReportCFG {
   Region *R;
   DebugLoc DbgLoc;
 
@@ -252,7 +252,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures regions with an unreachable in the exit block.
-class ReportUnreachableInExit final : public ReportCFG {
+class ReportUnreachableInExit : public ReportCFG {
   BasicBlock *BB;
   DebugLoc DbgLoc;
 
@@ -278,7 +278,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures regions with an IndirectBr predecessor.
-class ReportIndirectPredecessor final : public ReportCFG {
+class ReportIndirectPredecessor : public ReportCFG {
   Instruction *Inst;
   DebugLoc DbgLoc;
 
@@ -328,7 +328,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures a condition that is based on an 'undef' value.
-class ReportUndefCond final : public ReportAffFunc {
+class ReportUndefCond : public ReportAffFunc {
   // The BasicBlock we found the broken condition in.
   BasicBlock *BB;
 
@@ -353,7 +353,7 @@ public:
 /// Captures an invalid condition
 ///
 /// Conditions have to be either constants or icmp instructions.
-class ReportInvalidCond final : public ReportAffFunc {
+class ReportInvalidCond : public ReportAffFunc {
   // The BasicBlock we found the broken condition in.
   BasicBlock *BB;
 
@@ -376,7 +376,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures an undefined operand.
-class ReportUndefOperand final : public ReportAffFunc {
+class ReportUndefOperand : public ReportAffFunc {
   // The BasicBlock we found the undefined operand in.
   BasicBlock *BB;
 
@@ -399,7 +399,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures a non-affine branch.
-class ReportNonAffBranch final : public ReportAffFunc {
+class ReportNonAffBranch : public ReportAffFunc {
   // The BasicBlock we found the non-affine branch in.
   BasicBlock *BB;
 
@@ -433,7 +433,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures a missing base pointer.
-class ReportNoBasePtr final : public ReportAffFunc {
+class ReportNoBasePtr : public ReportAffFunc {
 public:
   ReportNoBasePtr(const Instruction *Inst)
       : ReportAffFunc(RejectReasonKind::NoBasePtr, Inst) {}
@@ -453,7 +453,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures an undefined base pointer.
-class ReportUndefBasePtr final : public ReportAffFunc {
+class ReportUndefBasePtr : public ReportAffFunc {
 public:
   ReportUndefBasePtr(const Instruction *Inst)
       : ReportAffFunc(RejectReasonKind::UndefBasePtr, Inst) {}
@@ -473,7 +473,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures a base pointer that is not invariant in the region.
-class ReportVariantBasePtr final : public ReportAffFunc {
+class ReportVariantBasePtr : public ReportAffFunc {
   // The variant base pointer.
   Value *BaseValue;
 
@@ -498,7 +498,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures a non-affine access function.
-class ReportNonAffineAccess final : public ReportAffFunc {
+class ReportNonAffineAccess : public ReportAffFunc {
   // The non-affine access function.
   const SCEV *AccessFunction;
 
@@ -529,7 +529,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Report array accesses with differing element size.
-class ReportDifferentArrayElementSize final : public ReportAffFunc {
+class ReportDifferentArrayElementSize : public ReportAffFunc {
   // The base pointer of the memory access.
   const Value *BaseValue;
 
@@ -554,7 +554,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors with non affine loop bounds.
-class ReportLoopBound final : public RejectReason {
+class ReportLoopBound : public RejectReason {
   // The offending loop.
   Loop *L;
 
@@ -586,7 +586,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors when loop has no exit.
-class ReportLoopHasNoExit final : public RejectReason {
+class ReportLoopHasNoExit : public RejectReason {
   /// The loop that has no exit.
   Loop *L;
 
@@ -614,7 +614,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors when a loop has multiple exists.
-class ReportLoopHasMultipleExits final : public RejectReason {
+class ReportLoopHasMultipleExits : public RejectReason {
   /// The loop that has multiple exits.
   Loop *L;
 
@@ -642,7 +642,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors when not all loop latches are part of the scop.
-class ReportLoopOnlySomeLatches final : public RejectReason {
+class ReportLoopOnlySomeLatches : public RejectReason {
   /// The loop for which not all loop latches are part of the scop.
   Loop *L;
 
@@ -670,7 +670,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors with non-side-effect-known function calls.
-class ReportFuncCall final : public RejectReason {
+class ReportFuncCall : public RejectReason {
   // The offending call instruction.
   Instruction *Inst;
 
@@ -694,7 +694,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors with aliasing.
-class ReportAlias final : public RejectReason {
+class ReportAlias : public RejectReason {
 public:
   using PointerSnapshotTy = std::vector<const Value *>;
 
@@ -751,7 +751,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors with bad IntToPtr instructions.
-class ReportIntToPtr final : public ReportOther {
+class ReportIntToPtr : public ReportOther {
   // The offending base value.
   Instruction *BaseValue;
 
@@ -774,7 +774,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors with alloca instructions.
-class ReportAlloca final : public ReportOther {
+class ReportAlloca : public ReportOther {
   Instruction *Inst;
 
 public:
@@ -796,7 +796,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors with unknown instructions.
-class ReportUnknownInst final : public ReportOther {
+class ReportUnknownInst : public ReportOther {
   Instruction *Inst;
 
 public:
@@ -818,7 +818,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors with regions containing the function entry block.
-class ReportEntry final : public ReportOther {
+class ReportEntry : public ReportOther {
   BasicBlock *BB;
 
 public:
@@ -841,7 +841,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Report regions that seem not profitable to be optimized.
-class ReportUnprofitable final : public ReportOther {
+class ReportUnprofitable : public ReportOther {
   Region *R;
 
 public:
@@ -864,7 +864,7 @@ public:
 
 //===----------------------------------------------------------------------===//
 /// Captures errors with non-simple memory accesses.
-class ReportNonSimpleMemoryAccess final : public ReportOther {
+class ReportNonSimpleMemoryAccess : public ReportOther {
   // The offending call instruction.
   Instruction *Inst;
 

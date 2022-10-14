@@ -98,7 +98,7 @@ static const char *ReportTypeString(ReportType typ, uptr tag) {
   UNREACHABLE("missing case");
 }
 
-#if SANITIZER_APPLE
+#if SANITIZER_MAC
 static const char *const kInterposedFunctionPrefix = "wrap_";
 #else
 static const char *const kInterposedFunctionPrefix = "__interceptor_";

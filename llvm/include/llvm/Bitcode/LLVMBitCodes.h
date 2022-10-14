@@ -458,9 +458,7 @@ enum RMWOperations {
   RMW_UMAX = 9,
   RMW_UMIN = 10,
   RMW_FADD = 11,
-  RMW_FSUB = 12,
-  RMW_FMAX = 13,
-  RMW_FMIN = 14
+  RMW_FSUB = 12
 };
 
 /// OverflowingBinaryOperatorOptionalFlags - Flags for serializing
@@ -587,15 +585,14 @@ enum FunctionCodes {
       52, // CATCHSWITCH: [num,args...] or [num,args...,bb]
   // 53 is unused.
   // 54 is unused.
-  FUNC_CODE_OPERAND_BUNDLE = 55,  // OPERAND_BUNDLE: [tag#, value...]
-  FUNC_CODE_INST_UNOP = 56,       // UNOP:       [opcode, ty, opval]
-  FUNC_CODE_INST_CALLBR = 57,     // CALLBR:     [attr, cc, norm, transfs,
-                                  //              fnty, fnid, args...]
-  FUNC_CODE_INST_FREEZE = 58,     // FREEZE: [opty, opval]
-  FUNC_CODE_INST_ATOMICRMW = 59,  // ATOMICRMW: [ptrty, ptr, valty, val,
-                                  //             operation, align, vol,
-                                  //             ordering, synchscope]
-  FUNC_CODE_BLOCKADDR_USERS = 60, // BLOCKADDR_USERS: [value...]
+  FUNC_CODE_OPERAND_BUNDLE = 55, // OPERAND_BUNDLE: [tag#, value...]
+  FUNC_CODE_INST_UNOP = 56,      // UNOP:       [opcode, ty, opval]
+  FUNC_CODE_INST_CALLBR = 57,    // CALLBR:     [attr, cc, norm, transfs,
+                                 //              fnty, fnid, args...]
+  FUNC_CODE_INST_FREEZE = 58,    // FREEZE: [opty, opval]
+  FUNC_CODE_INST_ATOMICRMW = 59, // ATOMICRMW: [ptrty, ptr, valty, val,
+                                 //             operation, align, vol,
+                                 //             ordering, synchscope]
 };
 
 enum UseListCodes {
@@ -685,10 +682,6 @@ enum AttributeKindCodes {
   ATTR_KIND_DISABLE_SANITIZER_INSTRUMENTATION = 78,
   ATTR_KIND_NO_SANITIZE_BOUNDS = 79,
   ATTR_KIND_ALLOC_ALIGN = 80,
-  ATTR_KIND_ALLOCATED_POINTER = 81,
-  ATTR_KIND_ALLOC_KIND = 82,
-  ATTR_KIND_PRESPLIT_COROUTINE = 83,
-  ATTR_KIND_FNRETTHUNK_EXTERN = 84,
 };
 
 enum ComdatSelectionKindCodes {

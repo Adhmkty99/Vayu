@@ -6,8 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: !stdlib=libc++ && (c++03 || c++11 || c++14)
-
 // <string_view>
 
 // [string.view.capacity], capacity
@@ -18,7 +16,6 @@
 
 #include <string_view>
 #include <cassert>
-#include <iterator>
 #include <limits>
 
 #include "test_macros.h"

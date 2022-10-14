@@ -1,6 +1,7 @@
 ;; For a global constructor, _GLOBAL__sub_I_ only has artificial lines.
 ;; Test that we don't instrument those functions.
 ; RUN: mkdir -p %t && cd %t
+; RUN: opt -S -insert-gcov-profiling < %s | FileCheck %s
 ; RUN: opt -S -passes=insert-gcov-profiling < %s | FileCheck %s
 
 @var = dso_local global i32 0, align 4

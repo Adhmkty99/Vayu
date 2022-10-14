@@ -43,7 +43,7 @@ static llvm::cl::opt<std::string> Expression(
     llvm::cl::desc("Path to a file containing the expression to parse"));
 
 static llvm::cl::list<std::string>
-    Imports("import",
+    Imports("import", llvm::cl::ZeroOrMore,
             llvm::cl::desc("Path to a file containing declarations to import"));
 
 static llvm::cl::opt<bool>
@@ -56,7 +56,7 @@ static llvm::cl::opt<bool> UseOrigins(
         "Use DeclContext origin information for more accurate lookups"));
 
 static llvm::cl::list<std::string>
-    ClangArgs("Xcc",
+    ClangArgs("Xcc", llvm::cl::ZeroOrMore,
               llvm::cl::desc("Argument to pass to the CompilerInvocation"),
               llvm::cl::CommaSeparated);
 
@@ -84,18 +84,18 @@ public:
   TestDiagnosticConsumer()
       : Passthrough(std::make_unique<TextDiagnosticBuffer>()) {}
 
-  void BeginSourceFile(const LangOptions &LangOpts,
-                       const Preprocessor *PP = nullptr) override {
+  virtual void BeginSourceFile(const LangOptions &LangOpts,
+                               const Preprocessor *PP = nullptr) override {
     this->LangOpts = &LangOpts;
     return Passthrough->BeginSourceFile(LangOpts, PP);
   }
 
-  void EndSourceFile() override {
+  virtual void EndSourceFile() override {
     this->LangOpts = nullptr;
     Passthrough->EndSourceFile();
   }
 
-  bool IncludeInDiagnosticCounts() const override {
+  virtual bool IncludeInDiagnosticCounts() const override {
     return Passthrough->IncludeInDiagnosticCounts();
   }
 
@@ -130,8 +130,8 @@ private:
     llvm::errs() << '\n';
   }
 
-  void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
-                        const Diagnostic &Info) override {
+  virtual void HandleDiagnostic(DiagnosticsEngine::Level DiagLevel,
+                                const Diagnostic &Info) override {
     if (Info.hasSourceManager() && LangOpts) {
       SourceManager &SM = Info.getSourceManager();
 

@@ -62,8 +62,6 @@ json::Value ModuleStats::ToJSON() const {
                      debug_info_index_loaded_from_cache);
   module.try_emplace("debugInfoIndexSavedToCache",
                      debug_info_index_saved_to_cache);
-  module.try_emplace("debugInfoEnabled", debug_info_enabled);
-  module.try_emplace("symbolTableStripped", symtab_stripped);
   if (!symfile_path.empty())
     module.try_emplace("symbolFilePath", symfile_path);
 
@@ -185,10 +183,7 @@ llvm::json::Value DebuggerStats::ReportStatistics(Debugger &debugger,
   std::vector<ModuleStats> modules;
   std::lock_guard<std::recursive_mutex> guard(
       Module::GetAllocationModuleCollectionMutex());
-  const uint64_t num_modules = Module::GetNumberAllocatedModules();
-  uint32_t num_debug_info_enabled_modules = 0;
-  uint32_t num_modules_has_debug_info = 0;
-  uint32_t num_stripped_modules = 0;
+  const size_t num_modules = Module::GetNumberAllocatedModules();
   for (size_t image_idx = 0; image_idx < num_modules; ++image_idx) {
     Module *module = Module::GetAllocatedModuleAtIndex(image_idx);
     ModuleStats module_stat;
@@ -232,15 +227,6 @@ llvm::json::Value DebuggerStats::ReportStatistics(Debugger &debugger,
       ModuleList symbol_modules = sym_file->GetDebugInfoModules();
       for (const auto &symbol_module: symbol_modules.Modules())
         module_stat.symfile_modules.push_back((intptr_t)symbol_module.get());
-      module_stat.symtab_stripped = module->GetObjectFile()->IsStripped();
-      if (module_stat.symtab_stripped)
-        ++num_stripped_modules;
-      module_stat.debug_info_enabled = sym_file->GetLoadDebugInfoEnabled() &&
-                                       module_stat.debug_info_size > 0;
-      if (module_stat.debug_info_enabled)
-        ++num_debug_info_enabled_modules;
-      if (module_stat.debug_info_size > 0)
-        ++num_modules_has_debug_info;
     }
     symtab_parse_time += module_stat.symtab_parse_time;
     symtab_index_time += module_stat.symtab_index_time;
@@ -268,10 +254,6 @@ llvm::json::Value DebuggerStats::ReportStatistics(Debugger &debugger,
       {"totalDebugInfoIndexLoadedFromCache", debug_index_loaded},
       {"totalDebugInfoIndexSavedToCache", debug_index_saved},
       {"totalDebugInfoByteSize", debug_info_size},
-      {"totalModuleCount", num_modules},
-      {"totalModuleCountHasDebugInfo", num_modules_has_debug_info},
-      {"totalDebugInfoEnabled", num_debug_info_enabled_modules},
-      {"totalSymbolTableStripped", num_stripped_modules},
   };
   return std::move(global_stats);
 }

@@ -6,4 +6,3 @@ function(add_bolt_unittest test_dirname)
 endfunction()
 
 add_subdirectory(Core)
-add_subdirectory(Profile)

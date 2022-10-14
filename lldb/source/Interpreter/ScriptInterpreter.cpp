@@ -109,13 +109,13 @@ ScriptInterpreter::StringToLanguage(const llvm::StringRef &language) {
 Status ScriptInterpreter::SetBreakpointCommandCallback(
     std::vector<std::reference_wrapper<BreakpointOptions>> &bp_options_vec,
     const char *callback_text) {
-  Status error;
+  Status return_error;
   for (BreakpointOptions &bp_options : bp_options_vec) {
-    error = SetBreakpointCommandCallback(bp_options, callback_text);
-    if (!error.Success())
+    return_error = SetBreakpointCommandCallback(bp_options, callback_text);
+    if (return_error.Success())
       break;
   }
-  return error;
+  return return_error;
 }
 
 Status ScriptInterpreter::SetBreakpointCommandCallbackFunction(

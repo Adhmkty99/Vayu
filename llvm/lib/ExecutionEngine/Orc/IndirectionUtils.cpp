@@ -152,11 +152,6 @@ createLocalCompileCallbackManager(const Triple &T, ExecutionSession &ES,
       return CCMgrT::Create(ES, ErrorHandlerAddress);
     }
 
-    case Triple::riscv64: {
-      typedef orc::LocalJITCompileCallbackManager<orc::OrcRiscv64> CCMgrT;
-      return CCMgrT::Create(ES, ErrorHandlerAddress);
-    }
-
     case Triple::x86_64: {
       if (T.getOS() == Triple::OSType::Win32) {
         typedef orc::LocalJITCompileCallbackManager<orc::OrcX86_64_Win32> CCMgrT;
@@ -209,12 +204,6 @@ createLocalIndirectStubsManagerBuilder(const Triple &T) {
       return [](){
           return std::make_unique<
                       orc::LocalIndirectStubsManager<orc::OrcMips64>>();
-      };
-
-    case Triple::riscv64:
-      return []() {
-        return std::make_unique<
-            orc::LocalIndirectStubsManager<orc::OrcRiscv64>>();
       };
 
     case Triple::x86_64:
@@ -442,7 +431,8 @@ Error addFunctionPointerRelocationsToCurrentSymbol(jitlink::Symbol &Sym,
 
     auto RelocOffInInstr =
         MIA.getMemoryOperandRelocationOffset(Instr, InstrSize);
-    if (!RelocOffInInstr || InstrSize - *RelocOffInInstr != 4) {
+    if (!RelocOffInInstr.hasValue() ||
+        InstrSize - RelocOffInInstr.getValue() != 4) {
       LLVM_DEBUG(dbgs() << "Skipping unknown self-relocation at "
                         << InstrStart);
       continue;

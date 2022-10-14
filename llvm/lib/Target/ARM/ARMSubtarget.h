@@ -417,7 +417,6 @@ public:
   bool isRWPI() const;
 
   bool useMachineScheduler() const { return UseMISched; }
-  bool useMachinePipeliner() const { return UseMIPipeliner; }
   bool hasMinSize() const { return OptMinSize; }
   bool isThumb1Only() const { return isThumb() && !hasThumb2(); }
   bool isThumb2() const { return isThumb() && hasThumb2(); }
@@ -430,8 +429,7 @@ public:
   }
 
   MCPhysReg getFramePointerReg() const {
-    if (isTargetDarwin() ||
-        (!isTargetWindows() && isThumb() && !createAAPCSFrameChain()))
+    if (isTargetDarwin() || (!isTargetWindows() && isThumb()))
       return ARM::R7;
     return ARM::R11;
   }
@@ -447,8 +445,6 @@ public:
             MF.getTarget().Options.DisableFramePointerElim(MF)) ||
            isThumb1Only();
   }
-
-  bool splitFramePointerPush(const MachineFunction &MF) const;
 
   bool useStride4VFPs() const;
 
@@ -468,10 +464,6 @@ public:
 
   /// Returns true if machine scheduler should be enabled.
   bool enableMachineScheduler() const override;
-
-  /// Returns true if machine pipeliner should be enabled.
-  bool enableMachinePipeliner() const override;
-  bool useDFAforSMS() const override;
 
   /// True for some subtargets at > -O0.
   bool enablePostRAScheduler() const override;

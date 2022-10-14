@@ -5,6 +5,8 @@ from lldbsuite.test import lldbutil
 
 class TestBitfieldIvars(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
 
     def test(self):
         self.build()

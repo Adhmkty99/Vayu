@@ -4,9 +4,6 @@ include "mlir/IR/OpBase.td"
 
 def Test_Dialect : Dialect {
   let name = "test";
-
-  // TODO: Flip to _Prefixed
-  let emitAccessorPrefix = kEmitAccessorPrefix_Raw;
 }
 class NS_Op<string mnemonic, list<Trait> traits> :
     Op<Test_Dialect, mnemonic, traits>;

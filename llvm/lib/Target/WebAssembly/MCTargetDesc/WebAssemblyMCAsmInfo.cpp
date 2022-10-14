@@ -52,4 +52,6 @@ WebAssemblyMCAsmInfo::WebAssemblyMCAsmInfo(const Triple &T,
   // we make sure this info is set correctly.
   if (WebAssembly::WasmEnableEH || WebAssembly::WasmEnableSjLj)
     ExceptionsType = ExceptionHandling::Wasm;
+
+  // TODO: UseIntegratedAssembler?
 }

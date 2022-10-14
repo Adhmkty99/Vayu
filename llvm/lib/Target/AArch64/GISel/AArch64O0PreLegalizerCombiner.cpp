@@ -66,8 +66,8 @@ public:
       report_fatal_error("Invalid rule identifier");
   }
 
-  bool combine(GISelChangeObserver &Observer, MachineInstr &MI,
-               MachineIRBuilder &B) const override;
+  virtual bool combine(GISelChangeObserver &Observer, MachineInstr &MI,
+                       MachineIRBuilder &B) const override;
 };
 
 bool AArch64O0PreLegalizerCombinerInfo::combine(GISelChangeObserver &Observer,

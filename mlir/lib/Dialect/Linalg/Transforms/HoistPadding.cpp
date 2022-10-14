@@ -12,11 +12,10 @@
 
 #include "mlir/Dialect/Linalg/Transforms/HoistPadding.h"
 #include "mlir/Analysis/SliceAnalysis.h"
-#include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Linalg/Transforms/Transforms.h"
-#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/SCF/Utils/Utils.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Utils/IndexingUtils.h"
@@ -109,7 +108,7 @@ private:
 /// Return true if all uses of `padOp` are an input tensor of some
 /// LinalgOp.
 static bool isOnlyUsedAsInputOfLinalgOp(tensor::PadOp padOp) {
-  for (OpOperand &use : padOp.getResult().getUses()) {
+  for (OpOperand &use : padOp.result().getUses()) {
     auto linalgUser = dyn_cast<linalg::LinalgOp>(use.getOwner());
     if (!linalgUser || !linalgUser.isInputTensor(&use)) {
       LLVM_DEBUG(DBGS() << "Found a use of " << *(padOp)
@@ -129,7 +128,7 @@ static bool isOnlyUsedAsInputOfLinalgOp(tensor::PadOp padOp) {
 static void
 getAtMostNEnclosingLoops(tensor::PadOp padOp, int nLevels,
                          SmallVector<scf::ForOp> &reverseEnclosingLoops) {
-  AsmState state(padOp->getParentOfType<func::FuncOp>());
+  AsmState state(padOp->getParentOfType<mlir::FuncOp>());
   (void)state;
   scf::ForOp outermostEnclosingForOp = nullptr;
   Operation *nextEnclosingOp = padOp->getParentOp();
@@ -198,12 +197,12 @@ HoistingAnalysis::HoistingAnalysis(tensor::PadOp padOp, int numLoops) {
   //       %slice = tensor.extract_slice %source [%i, %j]
   //       %padded_slice = tensor.pad %slice
   // ```
-  auto sliceOp = padOp.getSource().getDefiningOp<tensor::ExtractSliceOp>();
+  auto sliceOp = padOp.source().getDefiningOp<tensor::ExtractSliceOp>();
   if (!sliceOp) {
     LLVM_DEBUG(DBGS() << "Cannot find the extract slice op -> skip\n");
     return;
   }
-  if (!outermostEnclosingForOp.isDefinedOutsideOfLoop(sliceOp.getSource())) {
+  if (!outermostEnclosingForOp.isDefinedOutsideOfLoop(sliceOp.source())) {
     LLVM_DEBUG(DBGS() << "Source not defined outside of loops -> skip\n");
     return;
   }
@@ -453,7 +452,7 @@ FailureOr<Value> mlir::linalg::hoistPaddingOnTensors(
     // Specifically sit out in the extract_slice(packedTensor) case: this is the
     // piece we seek to replace.
     if (auto sliceOp = dyn_cast<tensor::ExtractSliceOp>(op))
-      if (bvm.lookupOrDefault(sliceOp.getSource()) == packedTensor)
+      if (bvm.lookupOrDefault(sliceOp.source()) == packedTensor)
         continue;
     // Clone all operations except it is a loop.
     auto forOp = dyn_cast<scf::ForOp>(op);
@@ -499,7 +498,7 @@ FailureOr<Value> mlir::linalg::hoistPaddingOnTensors(
                                     b.getIndexAttr(1));
 
   // Stack step 2. create GenericOp if `transposeVector` is non-empty.
-  Value paddedTensor = bvm.lookup(opToHoist.getResult());
+  Value paddedTensor = bvm.lookup(opToHoist.result());
   if (!transposeVector.empty()) {
     Value outputTensor = b.create<tensor::ExtractSliceOp>(
         loc, *transposedTensorType, packedTensor, offsets, sizes, strides);
@@ -553,6 +552,6 @@ FailureOr<Value> mlir::linalg::hoistPaddingOnTensors(
 
   // Make the newly cloned `opToHoist` available to the caller.
   hoistedOp =
-      cast<tensor::PadOp>(bvm.lookup(opToHoist.getResult()).getDefiningOp());
+      cast<tensor::PadOp>(bvm.lookup(opToHoist.result()).getDefiningOp());
   return newResult;
 }

@@ -74,12 +74,15 @@ BB1:
   ret void
 }
 
-; Branch on undef is UB, so we can convert the indirectbr to unreachable.
+; Make sure we eliminate BB1 as we pick the first successor on undef.
 
 define void @indbrtest4(i8** %Q) {
 ; CHECK-LABEL: @indbrtest4(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    unreachable
+; CHECK-NEXT:    br label [[BB0:%.*]]
+; CHECK:       BB0:
+; CHECK-NEXT:    call void @BB0_f()
+; CHECK-NEXT:    ret void
 ;
 entry:
   indirectbr i8* undef, [label %BB0, label %BB1]

@@ -13,7 +13,7 @@
 // static int compare(const char_type* s1, const char_type* s2, size_t n);
 // constexpr in C++17
 
-// UNSUPPORTED: no-wide-characters
+// UNSUPPORTED: libcpp-has-no-wide-characters
 
 #include <string>
 #include <cassert>

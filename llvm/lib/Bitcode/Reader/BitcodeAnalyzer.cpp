@@ -267,7 +267,6 @@ static Optional<const char *> GetCodeName(unsigned CodeID, unsigned BlockID,
       STRINGIFY_CODE(FUNC_CODE, INST_STOREATOMIC)
       STRINGIFY_CODE(FUNC_CODE, INST_CMPXCHG)
       STRINGIFY_CODE(FUNC_CODE, INST_CALLBR)
-      STRINGIFY_CODE(FUNC_CODE, BLOCKADDR_USERS)
     }
   case bitc::VALUE_SYMTAB_BLOCK_ID:
     switch (CodeID) {
@@ -736,7 +735,7 @@ Error BitcodeAnalyzer::parseBlock(unsigned BlockID, unsigned IndentLevel,
   BlockStats.NumInstances++;
 
   // BLOCKINFO is a special part of the stream.
-  bool DumpRecords = O.has_value();
+  bool DumpRecords = O.hasValue();
   if (BlockID == bitc::BLOCKINFO_BLOCK_ID) {
     if (O && !O->DumpBlockinfo)
       O->OS << Indent << "<BLOCKINFO_BLOCK/>\n";
@@ -898,7 +897,7 @@ Error BitcodeAnalyzer::parseBlock(unsigned BlockID, unsigned IndentLevel,
 
       // If we found a module hash, let's verify that it matches!
       if (BlockID == bitc::MODULE_BLOCK_ID && Code == bitc::MODULE_CODE_HASH &&
-          CheckHash) {
+          CheckHash.hasValue()) {
         if (Record.size() != 5)
           O->OS << " (invalid)";
         else {

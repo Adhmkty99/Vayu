@@ -126,6 +126,8 @@ else:
 
 class TestGdbRemoteConnection(gdbremote_testcase.GdbRemoteTestCaseBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfRemote  # reverse connect is not a supported use case for now
     def test_reverse_connect(self):
         # Reverse connect is the default connection method.

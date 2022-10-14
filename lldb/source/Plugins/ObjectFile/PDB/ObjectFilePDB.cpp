@@ -137,6 +137,8 @@ size_t ObjectFilePDB::GetModuleSpecifications(
   case PDB_Machine::x86:
     module_arch.SetTriple("i386-pc-windows");
     specs.Append(module_spec);
+    module_arch.SetTriple("i686-pc-windows");
+    specs.Append(module_spec);
     break;
   case PDB_Machine::ArmNT:
     module_arch.SetTriple("armv7-pc-windows");

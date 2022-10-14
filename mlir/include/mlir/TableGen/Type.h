@@ -65,6 +65,9 @@ class Type : public TypeConstraint {
 public:
   explicit Type(const llvm::Record *record);
 
+  // Returns the description of the type.
+  StringRef getDescription() const;
+
   // Returns the dialect for the type if defined.
   Dialect getDialect() const;
 };

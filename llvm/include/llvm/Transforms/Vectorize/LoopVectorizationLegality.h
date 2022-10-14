@@ -219,9 +219,17 @@ public:
       ExactFPMathInst = I;
   }
 
+  void addRuntimePointerChecks(unsigned Num) { NumRuntimePointerChecks = Num; }
+
+
   Instruction *getExactFPInst() { return ExactFPMathInst; }
 
+  unsigned getNumRuntimePointerChecks() const {
+    return NumRuntimePointerChecks;
+  }
+
 private:
+  unsigned NumRuntimePointerChecks = 0;
   Instruction *ExactFPMathInst = nullptr;
 };
 
@@ -299,14 +307,6 @@ public:
 
   /// Returns the widest induction type.
   Type *getWidestInductionType() { return WidestIndTy; }
-
-  /// Returns True if given store is a final invariant store of one of the
-  /// reductions found in the loop.
-  bool isInvariantStoreOfReduction(StoreInst *SI);
-
-  /// Returns True if given address is invariant and is used to store recurrent
-  /// expression
-  bool isInvariantAddressOfReduction(Value *V);
 
   /// Returns True if V is a Phi node of an induction variable in this loop.
   bool isInductionPhi(const Value *V) const;

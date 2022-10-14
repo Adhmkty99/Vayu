@@ -31,5 +31,3 @@ add_llvm_unittest(UtilsTests
   ValueMapperTest.cpp
   VFABIUtils.cpp
   )
-
-set_property(TARGET UtilsTests PROPERTY FOLDER "Tests/UnitTests/TransformsTests")

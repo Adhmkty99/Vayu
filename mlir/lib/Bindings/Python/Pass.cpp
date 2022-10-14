@@ -73,7 +73,7 @@ void mlir::python::populatePassManagerSubmodule(py::module &m) {
           [](PyPassManager &passManager) {
             mlirPassManagerEnableIRPrinting(passManager.get());
           },
-          "Enable mlir-print-ir-after-all.")
+          "Enable print-ir-after-all.")
       .def(
           "enable_verifier",
           [](PyPassManager &passManager, bool enable) {

@@ -851,7 +851,6 @@ class GdbRemoteTestCaseBase(Base):
         "memory-tagging",
         "qSaveCore",
         "native-signals",
-        "QNonStop",
     ]
 
     def parse_qSupported_response(self, context):

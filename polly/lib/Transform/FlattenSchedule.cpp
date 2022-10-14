@@ -35,7 +35,7 @@ void printSchedule(raw_ostream &OS, const isl::union_map &Schedule,
 }
 
 /// Flatten the schedule stored in an polly::Scop.
-class FlattenSchedule final : public ScopPass {
+class FlattenSchedule : public ScopPass {
 private:
   FlattenSchedule(const FlattenSchedule &) = delete;
   const FlattenSchedule &operator=(const FlattenSchedule &) = delete;
@@ -98,7 +98,7 @@ public:
 char FlattenSchedule::ID;
 
 /// Print result from FlattenSchedule.
-class FlattenSchedulePrinterLegacyPass final : public ScopPass {
+class FlattenSchedulePrinterLegacyPass : public ScopPass {
 public:
   static char ID;
 

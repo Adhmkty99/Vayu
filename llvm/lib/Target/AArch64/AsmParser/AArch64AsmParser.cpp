@@ -127,7 +127,7 @@ private:
       return Prefix;
     }
 
-    PrefixInfo() = default;
+    PrefixInfo() : Active(false), Predicated(false) {}
     bool isActive() const { return Active; }
     bool isPredicated() const { return Predicated; }
     unsigned getElementSize() const {
@@ -141,8 +141,8 @@ private:
     }
 
   private:
-    bool Active = false;
-    bool Predicated = false;
+    bool Active;
+    bool Predicated;
     unsigned ElementSize;
     unsigned Dst;
     unsigned Pg;
@@ -190,7 +190,6 @@ private:
   bool parseDirectiveUnreq(SMLoc L);
   bool parseDirectiveCFINegateRAState();
   bool parseDirectiveCFIBKeyFrame();
-  bool parseDirectiveCFIMTETaggedFrame();
 
   bool parseDirectiveVariantPCS(SMLoc L);
 
@@ -2427,7 +2426,7 @@ static Optional<std::pair<int, int>> parseVectorKind(StringRef Suffix,
 }
 
 static bool isValidVectorKind(StringRef Suffix, RegKind VectorKind) {
-  return parseVectorKind(Suffix, VectorKind).has_value();
+  return parseVectorKind(Suffix, VectorKind).hasValue();
 }
 
 static unsigned matchSVEDataVectorRegName(StringRef Name) {
@@ -2760,8 +2759,8 @@ AArch64AsmParser::tryParsePrefetch(OperandVector &Operands) {
     }
 
     auto PRFM = LookupByEncoding(MCE->getValue());
-    Operands.push_back(AArch64Operand::CreatePrefetch(prfop, PRFM.value_or(""),
-                                                      S, getContext()));
+    Operands.push_back(AArch64Operand::CreatePrefetch(
+        prfop, PRFM.getValueOr(""), S, getContext()));
     return MatchOperand_Success;
   }
 
@@ -6039,8 +6038,6 @@ bool AArch64AsmParser::ParseDirective(AsmToken DirectiveID) {
     parseDirectiveCFINegateRAState();
   else if (IDVal == ".cfi_b_key_frame")
     parseDirectiveCFIBKeyFrame();
-  else if (IDVal == ".cfi_mte_tagged_frame")
-    parseDirectiveCFIMTETaggedFrame();
   else if (IDVal == ".arch_extension")
     parseDirectiveArchExtension(Loc);
   else if (IDVal == ".variant_pcs")
@@ -6233,7 +6230,8 @@ bool AArch64AsmParser::parseDirectiveArchExtension(SMLoc L) {
 
   StringRef Name = getParser().parseStringToEndOfStatement().trim();
 
-  if (parseEOL())
+  if (parseToken(AsmToken::EndOfStatement,
+                 "unexpected token in '.arch_extension' directive"))
     return true;
 
   bool EnableFeature = true;
@@ -6414,10 +6412,12 @@ bool AArch64AsmParser::parseDirectiveLOH(StringRef IDVal, SMLoc Loc) {
 
     if (Idx + 1 == NbArgs)
       break;
-    if (parseComma())
+    if (parseToken(AsmToken::Comma,
+                   "unexpected token in '" + Twine(IDVal) + "' directive"))
       return true;
   }
-  if (parseEOL())
+  if (parseToken(AsmToken::EndOfStatement,
+                 "unexpected token in '" + Twine(IDVal) + "' directive"))
     return true;
 
   getStreamer().emitLOHDirective((MCLOHType)Kind, Args);
@@ -6427,7 +6427,7 @@ bool AArch64AsmParser::parseDirectiveLOH(StringRef IDVal, SMLoc Loc) {
 /// parseDirectiveLtorg
 ///  ::= .ltorg | .pool
 bool AArch64AsmParser::parseDirectiveLtorg(SMLoc L) {
-  if (parseEOL())
+  if (parseToken(AsmToken::EndOfStatement, "unexpected token in directive"))
     return true;
   getTargetStreamer().emitCurrentConstantPool();
   return false;
@@ -6485,7 +6485,8 @@ bool AArch64AsmParser::parseDirectiveReq(StringRef Name, SMLoc L) {
     return Error(SRegLoc, "register name or alias expected");
 
   // Shouldn't be anything else.
-  if (parseEOL())
+  if (parseToken(AsmToken::EndOfStatement,
+                 "unexpected input in .req directive"))
     return true;
 
   auto pair = std::make_pair(RegisterKind, (unsigned) RegNum);
@@ -6506,7 +6507,7 @@ bool AArch64AsmParser::parseDirectiveUnreq(SMLoc L) {
 }
 
 bool AArch64AsmParser::parseDirectiveCFINegateRAState() {
-  if (parseEOL())
+  if (parseToken(AsmToken::EndOfStatement, "unexpected token in directive"))
     return true;
   getStreamer().emitCFINegateRAState();
   return false;
@@ -6515,18 +6516,10 @@ bool AArch64AsmParser::parseDirectiveCFINegateRAState() {
 /// parseDirectiveCFIBKeyFrame
 /// ::= .cfi_b_key
 bool AArch64AsmParser::parseDirectiveCFIBKeyFrame() {
-  if (parseEOL())
+  if (parseToken(AsmToken::EndOfStatement,
+                 "unexpected token in '.cfi_b_key_frame'"))
     return true;
   getStreamer().emitCFIBKeyFrame();
-  return false;
-}
-
-/// parseDirectiveCFIMTETaggedFrame
-/// ::= .cfi_mte_tagged_frame
-bool AArch64AsmParser::parseDirectiveCFIMTETaggedFrame() {
-  if (parseEOL())
-    return true;
-  getStreamer().emitCFIMTETaggedFrame();
   return false;
 }
 
@@ -6890,7 +6883,7 @@ unsigned AArch64AsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
     // as a literal token.
     if (Op.isTokenEqual("za"))
       return Match_Success;
-    return Match_InvalidOperand;
+    break;
   }
   if (!Op.isImm())
     return Match_InvalidOperand;

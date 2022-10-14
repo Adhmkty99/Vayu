@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class ObjCXXTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_break(self):
         """Test ivars of Objective-C++ classes"""
         if self.getArchitecture() == 'i386':

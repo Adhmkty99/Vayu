@@ -8,7 +8,7 @@
 
 // FIXME: In MSVC mode, even "std::function<int(int)> f(aref);" causes
 // allocations.
-// XFAIL: target=x86_64-pc-windows-msvc && stdlib=libc++
+// XFAIL: msvc && stdlib=libc++
 
 // <functional>
 
@@ -18,7 +18,7 @@
 // function(function&& f); // noexcept in C++20
 
 // This test runs in C++03, but we have deprecated using std::function in C++03.
-// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DISABLE_DEPRECATION_WARNINGS -D_LIBCPP_ENABLE_CXX03_FUNCTION
+// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DISABLE_DEPRECATION_WARNINGS
 
 #include <functional>
 #include <memory>

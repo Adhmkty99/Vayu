@@ -98,7 +98,6 @@ public:
   /// the beginning of the analysis, and SymbolDerived which denotes the value
   /// of a certain memory region after its super region (a memory space or
   /// a larger record region) is default-bound with a certain symbol.
-  /// It might return null.
   virtual const MemRegion *getOriginRegion() const { return nullptr; }
 };
 

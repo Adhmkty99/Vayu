@@ -80,7 +80,7 @@ static bool isColdBlock(const MachineBasicBlock &MBB,
                         const MachineBlockFrequencyInfo *MBFI,
                         ProfileSummaryInfo *PSI) {
   Optional<uint64_t> Count = MBFI->getBlockProfileCount(&MBB);
-  if (!Count)
+  if (!Count.hasValue())
     return true;
 
   if (PercentileCutoff > 0) {
@@ -106,8 +106,9 @@ bool MachineFunctionSplitter::runOnMachineFunction(MachineFunction &MF) {
   // We don't want to proceed further for cold functions
   // or functions of unknown hotness. Lukewarm functions have no prefix.
   Optional<StringRef> SectionPrefix = MF.getFunction().getSectionPrefix();
-  if (SectionPrefix && (SectionPrefix.value().equals("unlikely") ||
-                        SectionPrefix.value().equals("unknown"))) {
+  if (SectionPrefix.hasValue() &&
+      (SectionPrefix.getValue().equals("unlikely") ||
+       SectionPrefix.getValue().equals("unknown"))) {
     return false;
   }
 
@@ -146,7 +147,7 @@ bool MachineFunctionSplitter::runOnMachineFunction(MachineFunction &MF) {
     return X.getSectionID().Type < Y.getSectionID().Type;
   };
   llvm::sortBasicBlocksAndUpdateBranches(MF, Comparator);
-  llvm::avoidZeroOffsetLandingPad(MF);
+
   return true;
 }
 

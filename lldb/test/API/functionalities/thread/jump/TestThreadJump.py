@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class ThreadJumpTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test(self):
         """Test thread jump handling."""
         self.build()

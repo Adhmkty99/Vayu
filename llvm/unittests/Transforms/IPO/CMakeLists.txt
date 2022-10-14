@@ -12,5 +12,3 @@ add_llvm_unittest(IPOTests
   WholeProgramDevirt.cpp
   AttributorTest.cpp
   )
-
-set_property(TARGET IPOTests PROPERTY FOLDER "Tests/UnitTests/TransformsTests")

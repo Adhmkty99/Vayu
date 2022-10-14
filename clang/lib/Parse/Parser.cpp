@@ -153,7 +153,7 @@ bool Parser::ExpectAndConsume(tok::TokenKind ExpectedTok, unsigned DiagID,
   return true;
 }
 
-bool Parser::ExpectAndConsumeSemi(unsigned DiagID, StringRef TokenUsed) {
+bool Parser::ExpectAndConsumeSemi(unsigned DiagID) {
   if (TryConsumeToken(tok::semi))
     return false;
 
@@ -172,7 +172,7 @@ bool Parser::ExpectAndConsumeSemi(unsigned DiagID, StringRef TokenUsed) {
     return false;
   }
 
-  return ExpectAndConsume(tok::semi, DiagID , TokenUsed);
+  return ExpectAndConsume(tok::semi, DiagID);
 }
 
 void Parser::ConsumeExtraSemi(ExtraSemiKind Kind, DeclSpec::TST TST) {
@@ -663,22 +663,12 @@ bool Parser::ParseTopLevelDecl(DeclGroupPtrTy &Result,
     return false;
   }
 
-  case tok::annot_module_include: {
-    auto Loc = Tok.getLocation();
-    Module *Mod = reinterpret_cast<Module *>(Tok.getAnnotationValue());
-    // FIXME: We need a better way to disambiguate C++ clang modules and
-    // standard C++ modules.
-    if (!getLangOpts().CPlusPlusModules || !Mod->isHeaderUnit())
-      Actions.ActOnModuleInclude(Loc, Mod);
-    else {
-      DeclResult Import =
-          Actions.ActOnModuleImport(Loc, SourceLocation(), Loc, Mod);
-      Decl *ImportDecl = Import.isInvalid() ? nullptr : Import.get();
-      Result = Actions.ConvertDeclToDeclGroup(ImportDecl);
-    }
+  case tok::annot_module_include:
+    Actions.ActOnModuleInclude(Tok.getLocation(),
+                               reinterpret_cast<Module *>(
+                                   Tok.getAnnotationValue()));
     ConsumeAnnotationToken();
     return false;
-  }
 
   case tok::annot_module_begin:
     Actions.ActOnModuleBegin(Tok.getLocation(), reinterpret_cast<Module *>(
@@ -749,9 +739,6 @@ bool Parser::ParseTopLevelDecl(DeclGroupPtrTy &Result,
 }
 
 /// ParseExternalDeclaration:
-///
-/// The `Attrs` that are passed in are C++11 attributes and appertain to the
-/// declaration.
 ///
 ///       external-declaration: [C99 6.9], declaration: [C++ dcl.dcl]
 ///         function-definition
@@ -942,9 +929,7 @@ Parser::DeclGroupPtrTy Parser::ParseExternalDeclaration(ParsedAttributes &Attrs,
     // A function definition cannot start with any of these keywords.
     {
       SourceLocation DeclEnd;
-      ParsedAttributes EmptyDeclSpecAttrs(AttrFactory);
-      return ParseDeclaration(DeclaratorContext::File, DeclEnd, Attrs,
-                              EmptyDeclSpecAttrs);
+      return ParseDeclaration(DeclaratorContext::File, DeclEnd, Attrs);
     }
 
   case tok::kw_static:
@@ -954,9 +939,7 @@ Parser::DeclGroupPtrTy Parser::ParseExternalDeclaration(ParsedAttributes &Attrs,
       Diag(ConsumeToken(), diag::warn_static_inline_explicit_inst_ignored)
         << 0;
       SourceLocation DeclEnd;
-      ParsedAttributes EmptyDeclSpecAttrs(AttrFactory);
-      return ParseDeclaration(DeclaratorContext::File, DeclEnd, Attrs,
-                              EmptyDeclSpecAttrs);
+      return ParseDeclaration(DeclaratorContext::File, DeclEnd, Attrs);
     }
     goto dont_know;
 
@@ -967,9 +950,7 @@ Parser::DeclGroupPtrTy Parser::ParseExternalDeclaration(ParsedAttributes &Attrs,
       // Inline namespaces. Allowed as an extension even in C++03.
       if (NextKind == tok::kw_namespace) {
         SourceLocation DeclEnd;
-        ParsedAttributes EmptyDeclSpecAttrs(AttrFactory);
-        return ParseDeclaration(DeclaratorContext::File, DeclEnd, Attrs,
-                                EmptyDeclSpecAttrs);
+        return ParseDeclaration(DeclaratorContext::File, DeclEnd, Attrs);
       }
 
       // Parse (then ignore) 'inline' prior to a template instantiation. This is
@@ -978,9 +959,7 @@ Parser::DeclGroupPtrTy Parser::ParseExternalDeclaration(ParsedAttributes &Attrs,
         Diag(ConsumeToken(), diag::warn_static_inline_explicit_inst_ignored)
           << 1;
         SourceLocation DeclEnd;
-        ParsedAttributes EmptyDeclSpecAttrs(AttrFactory);
-        return ParseDeclaration(DeclaratorContext::File, DeclEnd, Attrs,
-                                EmptyDeclSpecAttrs);
+        return ParseDeclaration(DeclaratorContext::File, DeclEnd, Attrs);
       }
     }
     goto dont_know;
@@ -1123,8 +1102,8 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
     ProhibitAttributes(Attrs, CorrectLocationForAttributes);
     ConsumeToken();
     RecordDecl *AnonRecord = nullptr;
-    Decl *TheDecl = Actions.ParsedFreeStandingDeclSpec(
-        getCurScope(), AS_none, DS, ParsedAttributesView::none(), AnonRecord);
+    Decl *TheDecl = Actions.ParsedFreeStandingDeclSpec(getCurScope(), AS_none,
+                                                       DS, AnonRecord);
     DS.complete(TheDecl);
     if (AnonRecord) {
       Decl* decls[] = {AnonRecord, TheDecl};
@@ -1132,6 +1111,8 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
     }
     return Actions.ConvertDeclToDeclGroup(TheDecl);
   }
+
+  DS.takeAttributesFrom(Attrs);
 
   // ObjC2 allows prefix attributes on class interfaces and protocols.
   // FIXME: This still needs better diagnostics. We should only accept
@@ -1147,7 +1128,6 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
     }
 
     DS.abort();
-    DS.takeAttributesFrom(Attrs);
 
     const char *PrevSpec = nullptr;
     unsigned DiagID;
@@ -1171,12 +1151,11 @@ Parser::DeclGroupPtrTy Parser::ParseDeclOrFunctionDefInternal(
   if (getLangOpts().CPlusPlus && isTokenStringLiteral() &&
       DS.getStorageClassSpec() == DeclSpec::SCS_extern &&
       DS.getParsedSpecifiers() == DeclSpec::PQ_StorageClassSpecifier) {
-    ProhibitAttributes(Attrs);
     Decl *TheDecl = ParseLinkage(DS, DeclaratorContext::File);
     return Actions.ConvertDeclToDeclGroup(TheDecl);
   }
 
-  return ParseDeclGroup(DS, DeclaratorContext::File, Attrs);
+  return ParseDeclGroup(DS, DeclaratorContext::File);
 }
 
 Parser::DeclGroupPtrTy Parser::ParseDeclarationOrFunctionDefinition(
@@ -1216,12 +1195,10 @@ Decl *Parser::ParseFunctionDefinition(ParsingDeclarator &D,
   const DeclaratorChunk::FunctionTypeInfo &FTI = D.getFunctionTypeInfo();
   TemplateParameterDepthRAII CurTemplateDepthTracker(TemplateParameterDepth);
 
-  // If this is C89 and the declspecs were completely missing, fudge in an
+  // If this is C90 and the declspecs were completely missing, fudge in an
   // implicit int.  We do this here because this is the only place where
   // declaration-specifiers are completely optional in the grammar.
-  if (getLangOpts().isImplicitIntRequired() && D.getDeclSpec().isEmpty()) {
-    Diag(D.getIdentifierLoc(), diag::warn_missing_type_specifier)
-        << D.getDeclSpec().getSourceRange();
+  if (getLangOpts().ImplicitInt && D.getDeclSpec().isEmpty()) {
     const char *PrevSpec;
     unsigned DiagID;
     const PrintingPolicy &Policy = Actions.getASTContext().getPrintingPolicy();
@@ -1322,41 +1299,6 @@ Decl *Parser::ParseFunctionDefinition(ParsingDeclarator &D,
   ParseScope BodyScope(this, Scope::FnScope | Scope::DeclScope |
                                  Scope::CompoundStmtScope);
 
-  // Parse function body eagerly if it is either '= delete;' or '= default;' as
-  // ActOnStartOfFunctionDef needs to know whether the function is deleted.
-  Sema::FnBodyKind BodyKind = Sema::FnBodyKind::Other;
-  SourceLocation KWLoc;
-  if (TryConsumeToken(tok::equal)) {
-    assert(getLangOpts().CPlusPlus && "Only C++ function definitions have '='");
-
-    if (TryConsumeToken(tok::kw_delete, KWLoc)) {
-      Diag(KWLoc, getLangOpts().CPlusPlus11
-                      ? diag::warn_cxx98_compat_defaulted_deleted_function
-                      : diag::ext_defaulted_deleted_function)
-          << 1 /* deleted */;
-      BodyKind = Sema::FnBodyKind::Delete;
-    } else if (TryConsumeToken(tok::kw_default, KWLoc)) {
-      Diag(KWLoc, getLangOpts().CPlusPlus11
-                      ? diag::warn_cxx98_compat_defaulted_deleted_function
-                      : diag::ext_defaulted_deleted_function)
-          << 0 /* defaulted */;
-      BodyKind = Sema::FnBodyKind::Default;
-    } else {
-      llvm_unreachable("function definition after = not 'delete' or 'default'");
-    }
-
-    if (Tok.is(tok::comma)) {
-      Diag(KWLoc, diag::err_default_delete_in_multiple_declaration)
-          << (BodyKind == Sema::FnBodyKind::Delete);
-      SkipUntil(tok::semi);
-    } else if (ExpectAndConsume(tok::semi, diag::err_expected_after,
-                                BodyKind == Sema::FnBodyKind::Delete
-                                    ? "delete"
-                                    : "default")) {
-      SkipUntil(tok::semi);
-    }
-  }
-
   // Tell the actions module that we have entered a function definition with the
   // specified Declarator for the function.
   Sema::SkipBodyInfo SkipBody;
@@ -1364,13 +1306,10 @@ Decl *Parser::ParseFunctionDefinition(ParsingDeclarator &D,
                                               TemplateInfo.TemplateParams
                                                   ? *TemplateInfo.TemplateParams
                                                   : MultiTemplateParamsArg(),
-                                              &SkipBody, BodyKind);
+                                              &SkipBody);
 
   if (SkipBody.ShouldSkip) {
-    // Do NOT enter SkipFunctionBody if we already consumed the tokens.
-    if (BodyKind == Sema::FnBodyKind::Other)
-      SkipFunctionBody();
-
+    SkipFunctionBody();
     return Res;
   }
 
@@ -1381,13 +1320,6 @@ Decl *Parser::ParseFunctionDefinition(ParsingDeclarator &D,
   // safe because we're always the sole owner.
   D.getMutableDeclSpec().abort();
 
-  if (BodyKind != Sema::FnBodyKind::Other) {
-    Actions.SetFunctionBodyKind(Res, KWLoc, BodyKind);
-    Stmt *GeneratedBody = Res ? Res->getBody() : nullptr;
-    Actions.ActOnFinishFunctionBody(Res, GeneratedBody, false);
-    return Res;
-  }
-
   // With abbreviated function templates - we need to explicitly add depth to
   // account for the implicit template parameter list induced by the template.
   if (auto *Template = dyn_cast_or_null<FunctionTemplateDecl>(Res))
@@ -1396,6 +1328,42 @@ Decl *Parser::ParseFunctionDefinition(ParsingDeclarator &D,
       // First template parameter is implicit - meaning no explicit template
       // parameter list was specified.
       CurTemplateDepthTracker.addDepth(1);
+
+  if (TryConsumeToken(tok::equal)) {
+    assert(getLangOpts().CPlusPlus && "Only C++ function definitions have '='");
+
+    bool Delete = false;
+    SourceLocation KWLoc;
+    if (TryConsumeToken(tok::kw_delete, KWLoc)) {
+      Diag(KWLoc, getLangOpts().CPlusPlus11
+                      ? diag::warn_cxx98_compat_defaulted_deleted_function
+                      : diag::ext_defaulted_deleted_function)
+        << 1 /* deleted */;
+      Actions.SetDeclDeleted(Res, KWLoc);
+      Delete = true;
+    } else if (TryConsumeToken(tok::kw_default, KWLoc)) {
+      Diag(KWLoc, getLangOpts().CPlusPlus11
+                      ? diag::warn_cxx98_compat_defaulted_deleted_function
+                      : diag::ext_defaulted_deleted_function)
+        << 0 /* defaulted */;
+      Actions.SetDeclDefaulted(Res, KWLoc);
+    } else {
+      llvm_unreachable("function definition after = not 'delete' or 'default'");
+    }
+
+    if (Tok.is(tok::comma)) {
+      Diag(KWLoc, diag::err_default_delete_in_multiple_declaration)
+        << Delete;
+      SkipUntil(tok::semi);
+    } else if (ExpectAndConsume(tok::semi, diag::err_expected_after,
+                                Delete ? "delete" : "default")) {
+      SkipUntil(tok::semi);
+    }
+
+    Stmt *GeneratedBody = Res ? Res->getBody() : nullptr;
+    Actions.ActOnFinishFunctionBody(Res, GeneratedBody, false);
+    return Res;
+  }
 
   if (SkipFunctionBodies && (!Res || Actions.canSkipFunctionBody(Res)) &&
       trySkippingFunctionBody()) {
@@ -1494,8 +1462,7 @@ void Parser::ParseKNRParamDeclarations(Declarator &D) {
     }
 
     // Parse the first declarator attached to this declspec.
-    Declarator ParmDeclarator(DS, ParsedAttributesView::none(),
-                              DeclaratorContext::KNRTypeList);
+    Declarator ParmDeclarator(DS, DeclaratorContext::KNRTypeList);
     ParseDeclarator(ParmDeclarator);
 
     // Handle the full declarator list.
@@ -1584,7 +1551,7 @@ ExprResult Parser::ParseAsmStringLiteral(bool ForAsmLabel) {
   ExprResult AsmString(ParseStringLiteralExpression());
   if (!AsmString.isInvalid()) {
     const auto *SL = cast<StringLiteral>(AsmString.get());
-    if (!SL->isOrdinary()) {
+    if (!SL->isAscii()) {
       Diag(Tok, diag::err_asm_operand_wide_string_literal)
         << SL->isWide()
         << SL->getSourceRange();
@@ -2178,14 +2145,14 @@ SourceLocation Parser::handleUnexpectedCodeCompletionToken() {
   PrevTokLocation = Tok.getLocation();
 
   for (Scope *S = getCurScope(); S; S = S->getParent()) {
-    if (S->isFunctionScope()) {
+    if (S->getFlags() & Scope::FnScope) {
       cutOffParsing();
       Actions.CodeCompleteOrdinaryName(getCurScope(),
                                        Sema::PCC_RecoveryInFunction);
       return PrevTokLocation;
     }
 
-    if (S->isClassScope()) {
+    if (S->getFlags() & Scope::ClassScope) {
       cutOffParsing();
       Actions.CodeCompleteOrdinaryName(getCurScope(), Sema::PCC_Class);
       return PrevTokLocation;
@@ -2410,9 +2377,7 @@ Parser::ParseModuleDecl(Sema::ModuleImportState &ImportState) {
   // We don't support any module attributes yet; just parse them and diagnose.
   ParsedAttributes Attrs(AttrFactory);
   MaybeParseCXX11Attributes(Attrs);
-  ProhibitCXX11Attributes(Attrs, diag::err_attribute_not_module_attr,
-                          /*DiagnoseEmptyAttrs=*/false,
-                          /*WarnOnUnknownAttrs=*/true);
+  ProhibitCXX11Attributes(Attrs, diag::err_attribute_not_module_attr);
 
   ExpectAndConsumeSemi(diag::err_module_expected_semi);
 
@@ -2479,9 +2444,7 @@ Decl *Parser::ParseModuleImport(SourceLocation AtLoc,
   ParsedAttributes Attrs(AttrFactory);
   MaybeParseCXX11Attributes(Attrs);
   // We don't support any module import attributes yet.
-  ProhibitCXX11Attributes(Attrs, diag::err_attribute_not_import_attr,
-                          /*DiagnoseEmptyAttrs=*/false,
-                          /*WarnOnUnknownAttrs=*/true);
+  ProhibitCXX11Attributes(Attrs, diag::err_attribute_not_import_attr);
 
   if (PP.hadModuleLoaderFatalFailure()) {
     // With a fatal failure in the module loader, we abort parsing.
@@ -2542,8 +2505,8 @@ Decl *Parser::ParseModuleImport(SourceLocation AtLoc,
   // the header is parseable. Emit a warning to make the user aware.
   if (IsObjCAtImport && AtLoc.isValid()) {
     auto &SrcMgr = PP.getSourceManager();
-    auto FE = SrcMgr.getFileEntryRefForID(SrcMgr.getFileID(AtLoc));
-    if (FE && llvm::sys::path::parent_path(FE->getDir().getName())
+    auto *FE = SrcMgr.getFileEntryForID(SrcMgr.getFileID(AtLoc));
+    if (FE && llvm::sys::path::parent_path(FE->getDir()->getName())
                   .endswith(".framework"))
       Diags.Report(AtLoc, diag::warn_atimport_in_framework_header);
   }

@@ -30,7 +30,7 @@ class ScopDetection;
 extern bool ModelReadOnlyScalars;
 
 /// Build the Polly IR (Scop and ScopStmt) on a Region.
-class ScopBuilder final {
+class ScopBuilder {
 
   /// The AAResults to build AliasSetTracker.
   AAResults &AA;

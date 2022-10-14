@@ -29,9 +29,9 @@
 namespace polly {
 using llvm::SmallPtrSet;
 
-class Dependences;
+struct Dependences;
 
-class IslAst final {
+class IslAst {
 public:
   IslAst(const IslAst &) = delete;
   IslAst &operator=(const IslAst &) = delete;
@@ -163,7 +163,7 @@ public:
   ///}
 };
 
-struct IslAstAnalysis : AnalysisInfoMixin<IslAstAnalysis> {
+struct IslAstAnalysis : public AnalysisInfoMixin<IslAstAnalysis> {
   static AnalysisKey Key;
 
   using Result = IslAstInfo;
@@ -172,7 +172,7 @@ struct IslAstAnalysis : AnalysisInfoMixin<IslAstAnalysis> {
                  ScopStandardAnalysisResults &SAR);
 };
 
-class IslAstInfoWrapperPass final : public ScopPass {
+class IslAstInfoWrapperPass : public ScopPass {
   std::unique_ptr<IslAstInfo> Ast;
 
 public:
@@ -199,7 +199,7 @@ public:
 llvm::Pass *createIslAstInfoWrapperPassPass();
 llvm::Pass *createIslAstInfoPrinterLegacyPass(llvm::raw_ostream &OS);
 
-struct IslAstPrinterPass final : PassInfoMixin<IslAstPrinterPass> {
+struct IslAstPrinterPass : public PassInfoMixin<IslAstPrinterPass> {
   IslAstPrinterPass(raw_ostream &OS) : OS(OS) {}
 
   PreservedAnalyses run(Scop &S, ScopAnalysisManager &SAM,

@@ -94,7 +94,7 @@ void ARMException::emitTypeInfos(unsigned TTypeEncoding,
   // Emit the Catch TypeInfos.
   if (VerboseAsm && !TypeInfos.empty()) {
     Asm->OutStreamer->AddComment(">> Catch TypeInfos <<");
-    Asm->OutStreamer->addBlankLine();
+    Asm->OutStreamer->AddBlankLine();
     Entry = TypeInfos.size();
   }
 
@@ -109,7 +109,7 @@ void ARMException::emitTypeInfos(unsigned TTypeEncoding,
   // Emit the Exception Specifications.
   if (VerboseAsm && !FilterIds.empty()) {
     Asm->OutStreamer->AddComment(">> Filter TypeInfos <<");
-    Asm->OutStreamer->addBlankLine();
+    Asm->OutStreamer->AddBlankLine();
     Entry = 0;
   }
   for (std::vector<unsigned>::const_iterator

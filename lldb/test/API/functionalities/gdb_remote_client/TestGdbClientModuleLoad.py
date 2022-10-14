@@ -80,6 +80,8 @@ class MyResponder(MockGDBServerResponder):
 
 class TestGdbClientModuleLoad(GDBRemoteTestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfXmlSupportMissing
     def test_android_app_process(self):
         """

@@ -46,15 +46,16 @@ struct TransferReadOpInterface
   }
 
   LogicalResult bufferize(Operation *op, RewriterBase &rewriter,
-                          const BufferizationOptions &options) const {
+                          BufferizationState &state) const {
     auto readOp = cast<vector::TransferReadOp>(op);
     assert(readOp.getShapedType().isa<TensorType>() &&
            "only tensor types expected");
-    FailureOr<Value> buffer = getBuffer(rewriter, readOp.getSource(), options);
-    if (failed(buffer))
-      return failure();
+
+    // TransferReadOp always reads from the bufferized op.source().
+    Value buffer =
+        *state.getBuffer(rewriter, readOp->getOpOperand(0) /*source*/);
     replaceOpWithNewBufferizedOp<vector::TransferReadOp>(
-        rewriter, readOp, readOp.getVectorType(), *buffer, readOp.getIndices(),
+        rewriter, readOp, readOp.getVectorType(), buffer, readOp.getIndices(),
         readOp.getPermutationMap(), readOp.getPadding(), readOp.getMask(),
         readOp.getInBoundsAttr());
     return success();
@@ -93,20 +94,22 @@ struct TransferWriteOpInterface
   }
 
   LogicalResult bufferize(Operation *op, RewriterBase &rewriter,
-                          const BufferizationOptions &options) const {
+                          BufferizationState &state) const {
     auto writeOp = cast<vector::TransferWriteOp>(op);
     assert(writeOp.getShapedType().isa<TensorType>() &&
            "only tensor types expected");
 
     // Create a new transfer_write on buffer that doesn't have a return value.
+    // Leave the previous transfer_write to dead code as it still has uses at
+    // this point.
     FailureOr<Value> resultBuffer =
-        getBuffer(rewriter, writeOp.getSource(), options);
+        state.getBuffer(rewriter, op->getOpOperand(1) /*source*/);
     if (failed(resultBuffer))
       return failure();
     rewriter.create<vector::TransferWriteOp>(
         writeOp.getLoc(), writeOp.getVector(), *resultBuffer,
         writeOp.getIndices(), writeOp.getPermutationMapAttr(),
-        writeOp.getMask(), writeOp.getInBoundsAttr());
+        writeOp.getInBoundsAttr());
     replaceOpWithBufferizedValues(rewriter, op, *resultBuffer);
 
     return success();

@@ -98,34 +98,28 @@ bool UserExpression::MatchesContext(ExecutionContext &exe_ctx) {
   return LockAndCheckContext(exe_ctx, target_sp, process_sp, frame_sp);
 }
 
-lldb::ValueObjectSP UserExpression::GetObjectPointerValueObject(
-    lldb::StackFrameSP frame_sp, ConstString const &object_name, Status &err) {
+lldb::addr_t UserExpression::GetObjectPointer(lldb::StackFrameSP frame_sp,
+                                              ConstString &object_name,
+                                              Status &err) {
   err.Clear();
 
   if (!frame_sp) {
     err.SetErrorStringWithFormat(
         "Couldn't load '%s' because the context is incomplete",
         object_name.AsCString());
-    return {};
+    return LLDB_INVALID_ADDRESS;
   }
 
   lldb::VariableSP var_sp;
   lldb::ValueObjectSP valobj_sp;
 
-  return frame_sp->GetValueForVariableExpressionPath(
+  valobj_sp = frame_sp->GetValueForVariableExpressionPath(
       object_name.GetStringRef(), lldb::eNoDynamicValues,
       StackFrame::eExpressionPathOptionCheckPtrVsMember |
           StackFrame::eExpressionPathOptionsNoFragileObjcIvar |
           StackFrame::eExpressionPathOptionsNoSyntheticChildren |
           StackFrame::eExpressionPathOptionsNoSyntheticArrayRange,
       var_sp, err);
-}
-
-lldb::addr_t UserExpression::GetObjectPointer(lldb::StackFrameSP frame_sp,
-                                              ConstString &object_name,
-                                              Status &err) {
-  auto valobj_sp =
-      GetObjectPointerValueObject(std::move(frame_sp), object_name, err);
 
   if (!err.Success() || !valobj_sp.get())
     return LLDB_INVALID_ADDRESS;
@@ -151,30 +145,14 @@ UserExpression::Evaluate(ExecutionContext &exe_ctx,
   Log *log(GetLog(LLDBLog::Expressions | LLDBLog::Step));
 
   if (ctx_obj) {
-    static unsigned const ctx_type_mask = lldb::TypeFlags::eTypeIsClass |
-                                          lldb::TypeFlags::eTypeIsStructUnion |
-                                          lldb::TypeFlags::eTypeIsReference;
+    static unsigned const ctx_type_mask =
+        lldb::TypeFlags::eTypeIsClass | lldb::TypeFlags::eTypeIsStructUnion;
     if (!(ctx_obj->GetTypeInfo() & ctx_type_mask)) {
       LLDB_LOG(log, "== [UserExpression::Evaluate] Passed a context object of "
                     "an invalid type, can't run expressions.");
       error.SetErrorString("a context object of an invalid type passed");
       return lldb::eExpressionSetupError;
     }
-  }
-
-  if (ctx_obj && ctx_obj->GetTypeInfo() & lldb::TypeFlags::eTypeIsReference) {
-    Status error;
-    lldb::ValueObjectSP deref_ctx_sp = ctx_obj->Dereference(error);
-    if (!error.Success()) {
-      LLDB_LOG(log, "== [UserExpression::Evaluate] Passed a context object of "
-                    "a reference type that can't be dereferenced, can't run "
-                    "expressions.");
-      error.SetErrorString(
-          "passed context object of an reference type cannot be deferenced");
-      return lldb::eExpressionSetupError;
-    }
-
-    ctx_obj = deref_ctx_sp.get();
   }
 
   lldb_private::ExecutionPolicy execution_policy = options.GetExecutionPolicy();

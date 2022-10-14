@@ -35,8 +35,6 @@ public:
 
   bool runOnFunction(Function &F) override;
 
-  StringRef getPassName() const override { return "NVPTX Image Optimizer"; }
-
 private:
   bool replaceIsTypePSampler(Instruction &I);
   bool replaceIsTypePSurface(Instruction &I);

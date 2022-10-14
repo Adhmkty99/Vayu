@@ -17,9 +17,9 @@ def SPIRVCompositeTypeLayout
   let constructor = "mlir::spirv::createDecorateSPIRVCompositeTypeLayoutPass()";
 }
 
-def SPIRVCanonicalizeGL : Pass<"spirv-canonicalize-gl", ""> {
+def SPIRVCanonicalizeGLSL : Pass<"spirv-canonicalize-glsl", ""> {
   let summary = "Run canonicalization involving GLSL ops";
-  let constructor = "mlir::spirv::createCanonicalizeGLPass()";
+  let constructor = "mlir::spirv::createCanonicalizeGLSLPass()";
 }
 
 def SPIRVLowerABIAttributes : Pass<"spirv-lower-abi-attrs", "spirv::ModuleOp"> {

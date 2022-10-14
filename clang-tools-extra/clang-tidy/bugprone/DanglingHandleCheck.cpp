@@ -94,7 +94,9 @@ DanglingHandleCheck::DanglingHandleCheck(StringRef Name,
       HandleClasses(utils::options::parseStringList(Options.get(
           "HandleClasses",
           "std::basic_string_view;std::experimental::basic_string_view"))),
-      IsAHandle(cxxRecordDecl(hasAnyName(HandleClasses)).bind("handle")) {}
+      IsAHandle(cxxRecordDecl(hasAnyName(std::vector<StringRef>(
+                                  HandleClasses.begin(), HandleClasses.end())))
+                    .bind("handle")) {}
 
 void DanglingHandleCheck::storeOptions(ClangTidyOptions::OptionMap &Opts) {
   Options.store(Opts, "HandleClasses",

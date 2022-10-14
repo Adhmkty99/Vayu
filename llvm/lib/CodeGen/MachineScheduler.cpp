@@ -93,11 +93,8 @@ cl::opt<bool> VerifyScheduling(
 cl::opt<bool> ViewMISchedDAGs(
     "view-misched-dags", cl::Hidden,
     cl::desc("Pop up a window to show MISched dags after they are processed"));
-cl::opt<bool> PrintDAGs("misched-print-dags", cl::Hidden,
-                        cl::desc("Print schedule DAGs"));
 #else
 const bool ViewMISchedDAGs = false;
-const bool PrintDAGs = false;
 #endif // NDEBUG
 
 } // end namespace llvm
@@ -115,6 +112,10 @@ static cl::opt<std::string> SchedOnlyFunc("misched-only-func", cl::Hidden,
   cl::desc("Only schedule this function"));
 static cl::opt<unsigned> SchedOnlyBlock("misched-only-block", cl::Hidden,
                                         cl::desc("Only schedule this MBB#"));
+static cl::opt<bool> PrintDAGs("misched-print-dags", cl::Hidden,
+                              cl::desc("Print schedule DAGs"));
+#else
+static const bool PrintDAGs = false;
 #endif // NDEBUG
 
 /// Avoid quadratic complexity in unusually large basic blocks by limiting the
@@ -1698,7 +1699,7 @@ void BaseMemOpClusterMutation::collectMemOpRecords(
                         << ", Width: " << Width << "\n");
     }
 #ifndef NDEBUG
-    for (const auto *Op : BaseOps)
+    for (auto *Op : BaseOps)
       assert(Op);
 #endif
   }

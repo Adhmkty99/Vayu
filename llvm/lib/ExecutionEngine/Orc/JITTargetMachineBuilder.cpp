@@ -19,7 +19,6 @@ JITTargetMachineBuilder::JITTargetMachineBuilder(Triple TT)
     : TT(std::move(TT)) {
   Options.EmulatedTLS = true;
   Options.ExplicitEmulatedTLS = true;
-  Options.UseInitArray = true;
 }
 
 Expected<JITTargetMachineBuilder> JITTargetMachineBuilder::detectHost() {
@@ -47,10 +46,6 @@ JITTargetMachineBuilder::createTargetMachine() {
   auto *TheTarget = TargetRegistry::lookupTarget(TT.getTriple(), ErrMsg);
   if (!TheTarget)
     return make_error<StringError>(std::move(ErrMsg), inconvertibleErrorCode());
-
-  if (!TheTarget->hasJIT())
-    return make_error<StringError>("Target has no JIT support",
-                                   inconvertibleErrorCode());
 
   auto *TM =
       TheTarget->createTargetMachine(TT.getTriple(), CPU, Features.getString(),

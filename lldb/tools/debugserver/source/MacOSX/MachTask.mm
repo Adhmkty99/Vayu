@@ -602,9 +602,7 @@ bool MachTask::IsValid(task_t task) {
   return false;
 }
 
-bool MachTask::StartExceptionThread(
-        const RNBContext::IgnoredExceptions &ignored_exceptions, 
-        DNBError &err) {
+bool MachTask::StartExceptionThread(bool unmask_signals, DNBError &err) {
   DNBLogThreadedIf(LOG_EXCEPTIONS, "MachTask::%s ( )", __FUNCTION__);
 
   task_t task = TaskPortForProcessID(err);
@@ -633,9 +631,10 @@ bool MachTask::StartExceptionThread(
       return false;
     }
 
-    if (!ignored_exceptions.empty()) {
-      for (exception_mask_t mask : ignored_exceptions)
-        m_exc_port_info.mask = m_exc_port_info.mask & ~mask;
+    if (unmask_signals) {
+      m_exc_port_info.mask = m_exc_port_info.mask &
+                             ~(EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION |
+                               EXC_MASK_ARITHMETIC);
     }
 
     // Set the ability to get all exceptions on this port

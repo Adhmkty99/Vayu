@@ -15,7 +15,6 @@
 #ifndef BOLT_CORE_BINARY_BASIC_BLOCK_H
 #define BOLT_CORE_BINARY_BASIC_BLOCK_H
 
-#include "bolt/Core/FunctionLayout.h"
 #include "bolt/Core/MCPlus.h"
 #include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/StringRef.h"
@@ -151,9 +150,11 @@ private:
   BinaryBasicBlock &operator=(const BinaryBasicBlock &) = delete;
   BinaryBasicBlock &operator=(const BinaryBasicBlock &&) = delete;
 
-  explicit BinaryBasicBlock(BinaryFunction *Function, MCSymbol *Label)
+  explicit BinaryBasicBlock(BinaryFunction *Function, MCSymbol *Label,
+                            uint32_t Offset = INVALID_OFFSET)
       : Function(Function), Label(Label) {
     assert(Function && "Function must be non-null");
+    InputRange.first = Offset;
   }
 
   // Exclusively managed by BinaryFunction.
@@ -560,12 +561,6 @@ public:
   /// Set minimum alignment for the basic block.
   void setAlignment(uint32_t Align) { Alignment = Align; }
 
-  /// Set alignment of the block based on the alignment of its offset.
-  void setDerivedAlignment() {
-    const uint64_t DerivedAlignment = getOffset() & (1 + ~getOffset());
-    Alignment = std::min(DerivedAlignment, uint64_t(32));
-  }
-
   /// Return required alignment for the block.
   uint32_t getAlignment() const { return Alignment; }
 
@@ -635,12 +630,14 @@ public:
 
   /// Test if BB is a predecessor of this block.
   bool isPredecessor(const BinaryBasicBlock *BB) const {
-    return llvm::is_contained(Predecessors, BB);
+    auto Itr = std::find(Predecessors.begin(), Predecessors.end(), BB);
+    return Itr != Predecessors.end();
   }
 
   /// Test if BB is a successor of this block.
   bool isSuccessor(const BinaryBasicBlock *BB) const {
-    return llvm::is_contained(Successors, BB);
+    auto Itr = std::find(Successors.begin(), Successors.end(), BB);
+    return Itr != Successors.end();
   }
 
   /// Test if this BB has a valid execution count.
@@ -671,10 +668,6 @@ public:
   bool isValid() const { return IsValid; }
 
   void markValid(const bool Valid) { IsValid = Valid; }
-
-  FragmentNum getFragmentNum() const {
-    return IsCold ? FragmentNum::cold() : FragmentNum::hot();
-  }
 
   bool isCold() const { return IsCold; }
 
@@ -793,9 +786,6 @@ public:
   /// Return the new basic block that starts with the instruction
   /// at the split point.
   BinaryBasicBlock *splitAt(iterator II);
-
-  /// Set start offset of this basic block in the input binary.
-  void setOffset(uint32_t Offset) { InputRange.first = Offset; };
 
   /// Sets address of the basic block in the output.
   void setOutputStartAddress(uint64_t Address) {

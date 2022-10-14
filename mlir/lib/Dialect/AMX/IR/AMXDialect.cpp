@@ -58,14 +58,14 @@ LogicalResult amx::TileZeroOp::verify() {
 
 LogicalResult amx::TileLoadOp::verify() {
   unsigned rank = getMemRefType().getRank();
-  if (getIndices().size() != rank)
+  if (indices().size() != rank)
     return emitOpError("requires ") << rank << " indices";
   return verifyTileSize(*this, getVectorType());
 }
 
 LogicalResult amx::TileStoreOp::verify() {
   unsigned rank = getMemRefType().getRank();
-  if (getIndices().size() != rank)
+  if (indices().size() != rank)
     return emitOpError("requires ") << rank << " indices";
   return verifyTileSize(*this, getVectorType());
 }

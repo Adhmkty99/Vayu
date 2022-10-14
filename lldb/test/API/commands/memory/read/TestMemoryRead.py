@@ -10,6 +10,8 @@ from lldbsuite.test.lldbtest import *
 
 
 class MemoryReadTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def build_run_stop(self):
@@ -35,7 +37,7 @@ class MemoryReadTestCase(TestBase):
         # the third isn't 0 as expected.
         self.expect(cmd.format(3), substrs=['\"ab\"'])
         self.assertRegex(self.res.GetError(),
-            "unable to find a NULL terminated string at 0x[0-9A-Fa-f]+."
+            "unable to find a NULL terminated string at 0x[0-9A-fa-f]+."
             " Consider increasing the maximum read length.")
 
     def test_memory_read(self):

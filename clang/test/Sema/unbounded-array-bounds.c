@@ -80,7 +80,3 @@ void pr50741(void) {
   (void *)0 + 0xdead000000000000UL;
   // no array-bounds warning, and no crash
 }
-
-void func() {
-  func + 0xdead000000000000UL; // no crash
-}

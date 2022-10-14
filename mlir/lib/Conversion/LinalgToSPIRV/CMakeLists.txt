@@ -11,10 +11,10 @@ add_mlir_conversion_library(MLIRLinalgToSPIRV
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRLinalgDialect
+  MLIRLinalg
   MLIRLinalgUtils
   MLIRPass
-  MLIRSPIRVDialect
+  MLIRSPIRV
   MLIRSPIRVConversion
   MLIRSupport
   )

@@ -8,8 +8,6 @@
 
 // <codecvt>
 
-// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DISABLE_DEPRECATION_WARNINGS
-
 // template <class Elem, unsigned long Maxcode = 0x10ffff,
 //           codecvt_mode Mode = (codecvt_mode)0>
 // class codecvt_utf16
@@ -18,7 +16,7 @@
 //     // unspecified
 // };
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 // Not a portable test
 

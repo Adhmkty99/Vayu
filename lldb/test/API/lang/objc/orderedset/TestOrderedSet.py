@@ -4,6 +4,7 @@ from lldbsuite.test.lldbtest import *
 from lldbsuite.test import lldbutil
 
 class TestOrderedSet(TestBase):
+  mydir = TestBase.compute_mydir(__file__)
 
   def test_ordered_set(self):
     self.build()

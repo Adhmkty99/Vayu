@@ -57,10 +57,10 @@ public:
   // Ignore COFF-specific directives; we do not need any information from them,
   // but the default implementation of these methods crashes, so we override
   // them with versions that do nothing.
-  void beginCOFFSymbolDef(const MCSymbol *Symbol) override {}
-  void emitCOFFSymbolStorageClass(int StorageClass) override {}
-  void emitCOFFSymbolType(int Type) override {}
-  void endCOFFSymbolDef() override {}
+  void BeginCOFFSymbolDef(const MCSymbol *Symbol) override {}
+  void EmitCOFFSymbolStorageClass(int StorageClass) override {}
+  void EmitCOFFSymbolType(int Type) override {}
+  void EndCOFFSymbolDef() override {}
 
   /// Record .symver aliases for later processing.
   void emitELFSymverDirective(const MCSymbol *OriginalSym, StringRef Name,

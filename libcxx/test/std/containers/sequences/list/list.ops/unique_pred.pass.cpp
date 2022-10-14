@@ -13,7 +13,6 @@
 
 #include <list>
 #include <cassert>
-#include <functional>
 
 #include "test_macros.h"
 #include "min_allocator.h"

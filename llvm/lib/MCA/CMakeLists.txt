@@ -9,7 +9,6 @@ add_llvm_component_library(LLVMMCA
   HardwareUnits/ResourceManager.cpp
   HardwareUnits/RetireControlUnit.cpp
   HardwareUnits/Scheduler.cpp
-  IncrementalSourceMgr.cpp
   InstrBuilder.cpp
   Instruction.cpp
   Pipeline.cpp

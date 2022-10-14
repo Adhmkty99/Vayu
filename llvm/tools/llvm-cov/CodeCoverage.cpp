@@ -265,7 +265,8 @@ bool CodeCoverageTool::isEquivalentFile(StringRef FilePath1,
                                         StringRef FilePath2) {
   auto Status1 = getFileStatus(FilePath1);
   auto Status2 = getFileStatus(FilePath2);
-  return Status1 && Status2 && sys::fs::equivalent(*Status1, *Status2);
+  return Status1.hasValue() && Status2.hasValue() &&
+         sys::fs::equivalent(Status1.getValue(), Status2.getValue());
 }
 
 ErrorOr<const MemoryBuffer &>
@@ -436,7 +437,8 @@ std::unique_ptr<CoverageMapping> CodeCoverageTool::load() {
       CoverageMapping::load(ObjectFilenames, PGOFilename, CoverageArches,
                             ViewOpts.CompilationDirectory);
   if (Error E = CoverageOrErr.takeError()) {
-    error("Failed to load coverage: " + toString(std::move(E)));
+    error("Failed to load coverage: " + toString(std::move(E)),
+          join(ObjectFilenames.begin(), ObjectFilenames.end(), ", "));
     return nullptr;
   }
   auto Coverage = std::move(CoverageOrErr.get());
@@ -619,14 +621,14 @@ int CodeCoverageTool::run(Command Cmd, int argc, const char **argv) {
       cl::Positional, cl::desc("Covered executable or object file."));
 
   cl::list<std::string> CovFilenames(
-      "object", cl::desc("Coverage executable or object file"));
+      "object", cl::desc("Coverage executable or object file"), cl::ZeroOrMore);
 
   cl::opt<bool> DebugDumpCollectedObjects(
       "dump-collected-objects", cl::Optional, cl::Hidden,
       cl::desc("Show the collected coverage object files"));
 
-  cl::list<std::string> InputSourceFiles(cl::Positional,
-                                         cl::desc("<Source files>"));
+  cl::list<std::string> InputSourceFiles(
+      cl::Positional, cl::desc("<Source files>"), cl::ZeroOrMore);
 
   cl::opt<bool> DebugDumpCollectedPaths(
       "dump-collected-paths", cl::Optional, cl::Hidden,
@@ -663,32 +665,32 @@ int CodeCoverageTool::run(Command Cmd, int argc, const char **argv) {
   cl::list<std::string> NameFilters(
       "name", cl::Optional,
       cl::desc("Show code coverage only for functions with the given name"),
-      cl::cat(FilteringCategory));
+      cl::ZeroOrMore, cl::cat(FilteringCategory));
 
   cl::list<std::string> NameFilterFiles(
       "name-allowlist", cl::Optional,
       cl::desc("Show code coverage only for functions listed in the given "
                "file"),
-      cl::cat(FilteringCategory));
+      cl::ZeroOrMore, cl::cat(FilteringCategory));
 
   // Allow for accepting previous option name.
   cl::list<std::string> NameFilterFilesDeprecated(
       "name-whitelist", cl::Optional, cl::Hidden,
       cl::desc("Show code coverage only for functions listed in the given "
                "file. Deprecated, use -name-allowlist instead"),
-      cl::cat(FilteringCategory));
+      cl::ZeroOrMore, cl::cat(FilteringCategory));
 
   cl::list<std::string> NameRegexFilters(
       "name-regex", cl::Optional,
       cl::desc("Show code coverage only for functions that match the given "
                "regular expression"),
-      cl::cat(FilteringCategory));
+      cl::ZeroOrMore, cl::cat(FilteringCategory));
 
   cl::list<std::string> IgnoreFilenameRegexFilters(
       "ignore-filename-regex", cl::Optional,
       cl::desc("Skip source code files with file paths that match the given "
                "regular expression"),
-      cl::cat(FilteringCategory));
+      cl::ZeroOrMore, cl::cat(FilteringCategory));
 
   cl::opt<double> RegionCoverageLtFilter(
       "region-coverage-lt", cl::Optional,
@@ -881,9 +883,6 @@ int CodeCoverageTool::run(Command Cmd, int argc, const char **argv) {
         }
         CoverageArches.emplace_back(Arch);
       }
-      if (CoverageArches.size() == 1)
-        CoverageArches.insert(CoverageArches.end(), ObjectFilenames.size() - 1,
-                              CoverageArches[0]);
       if (CoverageArches.size() != ObjectFilenames.size()) {
         error("Number of architectures doesn't match the number of objects");
         return 1;
@@ -1052,7 +1051,7 @@ int CodeCoverageTool::doShow(int argc, const char **argv,
 
   sys::fs::file_status Status;
   if (std::error_code EC = sys::fs::status(PGOFilename, Status)) {
-    error("Could not read profile data!" + EC.message(), PGOFilename);
+    error("Could not read profile data!", EC.message());
     return 1;
   }
 
@@ -1169,12 +1168,6 @@ int CodeCoverageTool::doReport(int argc, const char **argv,
     return 1;
   }
 
-  sys::fs::file_status Status;
-  if (std::error_code EC = sys::fs::status(PGOFilename, Status)) {
-    error("Could not read profile data!" + EC.message(), PGOFilename);
-    return 1;
-  }
-
   auto Coverage = load();
   if (!Coverage)
     return 1;
@@ -1221,12 +1214,6 @@ int CodeCoverageTool::doExport(int argc, const char **argv,
       ViewOpts.Format != CoverageViewOptions::OutputFormat::Lcov) {
     error("Coverage data can only be exported as textual JSON or an "
           "lcov tracefile.");
-    return 1;
-  }
-
-  sys::fs::file_status Status;
-  if (std::error_code EC = sys::fs::status(PGOFilename, Status)) {
-    error("Could not read profile data!" + EC.message(), PGOFilename);
     return 1;
   }
 

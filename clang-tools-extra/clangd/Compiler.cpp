@@ -85,26 +85,18 @@ void disableUnsupportedOptions(CompilerInvocation &CI) {
 std::unique_ptr<CompilerInvocation>
 buildCompilerInvocation(const ParseInputs &Inputs, clang::DiagnosticConsumer &D,
                         std::vector<std::string> *CC1Args) {
-  llvm::ArrayRef<std::string> Argv = Inputs.CompileCommand.CommandLine;
-  if (Argv.empty())
+  if (Inputs.CompileCommand.CommandLine.empty())
     return nullptr;
   std::vector<const char *> ArgStrs;
-  ArgStrs.reserve(Argv.size() + 1);
-  // In asserts builds, CompilerInvocation redundantly reads/parses cc1 args as
-  // a sanity test. This is not useful to clangd, and costs 10% of test time.
-  // To avoid mismatches between assert/production builds, disable it always.
-  ArgStrs = {Argv.front().c_str(), "-Xclang", "-no-round-trip-args"};
-  for (const auto &S : Argv.drop_front())
+  for (const auto &S : Inputs.CompileCommand.CommandLine)
     ArgStrs.push_back(S.c_str());
 
-  CreateInvocationOptions CIOpts;
-  CIOpts.VFS = Inputs.TFS->view(Inputs.CompileCommand.Directory);
-  CIOpts.CC1Args = CC1Args;
-  CIOpts.RecoverOnError = true;
-  CIOpts.Diags =
+  auto VFS = Inputs.TFS->view(Inputs.CompileCommand.Directory);
+  llvm::IntrusiveRefCntPtr<DiagnosticsEngine> CommandLineDiagsEngine =
       CompilerInstance::createDiagnostics(new DiagnosticOptions, &D, false);
-  CIOpts.ProbePrecompiled = false;
-  std::unique_ptr<CompilerInvocation> CI = createInvocation(ArgStrs, CIOpts);
+  std::unique_ptr<CompilerInvocation> CI = createInvocationFromCommandLine(
+      ArgStrs, CommandLineDiagsEngine, std::move(VFS),
+      /*ShouldRecoverOnErrors=*/true, CC1Args);
   if (!CI)
     return nullptr;
   // createInvocationFromCommandLine sets DisableFree.

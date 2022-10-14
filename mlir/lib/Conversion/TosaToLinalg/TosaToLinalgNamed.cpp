@@ -14,7 +14,7 @@
 #include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
 #include "mlir/Dialect/Linalg/IR/Linalg.h"
 #include "mlir/Dialect/Math/IR/Math.h"
-#include "mlir/Dialect/SCF/IR/SCF.h"
+#include "mlir/Dialect/SCF/SCF.h"
 #include "mlir/Dialect/Tensor/IR/Tensor.h"
 #include "mlir/Dialect/Tensor/Utils/Utils.h"
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
@@ -61,7 +61,7 @@ static mlir::Value applyPad(Location loc, Value input, ArrayRef<int64_t> pad,
   return tensor::createPadScalarOp(RankedTensorType::get(paddedShape, inputETy),
                                    input, padValue, lowIndices, highIndices,
                                    /*nofold=*/false, loc, rewriter)
-      .getResult();
+      .result();
 }
 
 static mlir::Value reifyConstantDim(Attribute attr,
@@ -144,19 +144,6 @@ static SmallVector<Value> inferDynamicDimsForConv(
   return filteredDims;
 }
 
-// Creates a map to collapse the last dimension of the Depthwise convolution op
-// due to a shape mismatch
-static void createDepthwiseConvCollapseMap(
-    int64_t outputRank, SmallVector<ReassociationExprs, 4> &reassociationMap,
-    OpBuilder &rewriter) {
-  reassociationMap.resize(outputRank);
-  for (int i = 0; i < outputRank; i++) {
-    reassociationMap[i].push_back(rewriter.getAffineDimExpr(i));
-  }
-  reassociationMap[outputRank - 1].push_back(
-      rewriter.getAffineDimExpr(outputRank));
-}
-
 namespace {
 
 class ConvConverter : public OpConversionPattern<tosa::Conv2DOp> {
@@ -202,7 +189,7 @@ public:
     if (isQuantized) {
       auto quantizationInfo =
           op->getAttr("quantization_info").cast<tosa::ConvOpQuantizationAttr>();
-      int64_t iZp = quantizationInfo.getInputZp();
+      auto iZp = quantizationInfo.input_zp().getValue().getSExtValue();
 
       int64_t intMin =
           APInt::getSignedMinValue(inputETy.getIntOrFloatBitWidth())
@@ -274,8 +261,10 @@ public:
     if (isQuantized) {
       auto quantizationInfo =
           op->getAttr("quantization_info").cast<tosa::ConvOpQuantizationAttr>();
-      auto iZp = rewriter.getI32IntegerAttr(quantizationInfo.getInputZp());
-      auto kZp = rewriter.getI32IntegerAttr(quantizationInfo.getWeightZp());
+      auto iZp = rewriter.getI32IntegerAttr(
+          quantizationInfo.input_zp().getValue().getSExtValue());
+      auto kZp = rewriter.getI32IntegerAttr(
+          quantizationInfo.weight_zp().getValue().getSExtValue());
 
       auto iZpVal = rewriter.create<arith::ConstantOp>(loc, iZp);
       auto kZpVal = rewriter.create<arith::ConstantOp>(loc, kZp);
@@ -342,7 +331,6 @@ public:
     ShapedType weightTy = weight.getType().cast<ShapedType>();
     ShapedType biasTy = bias.getType().cast<ShapedType>();
     ShapedType resultTy = op->getResult(0).getType().cast<ShapedType>();
-    int64_t resultRank = resultTy.getRank();
 
     Type inputETy = inputTy.getElementType();
     Type resultETy = resultTy.getElementType();
@@ -366,8 +354,10 @@ public:
     if (isQuantized) {
       auto quantizationInfo =
           op->getAttr("quantization_info").cast<tosa::ConvOpQuantizationAttr>();
-      iZp = rewriter.getI32IntegerAttr(quantizationInfo.getInputZp());
-      kZp = rewriter.getI32IntegerAttr(quantizationInfo.getWeightZp());
+      iZp = rewriter.getI32IntegerAttr(
+          quantizationInfo.input_zp().getValue().getSExtValue());
+      kZp = rewriter.getI32IntegerAttr(
+          quantizationInfo.weight_zp().getValue().getSExtValue());
     }
 
     auto weightShape = weightTy.getShape();
@@ -378,7 +368,7 @@ public:
     if (isQuantized) {
       auto quantizationInfo =
           op->getAttr("quantization_info").cast<tosa::ConvOpQuantizationAttr>();
-      int64_t iZp = quantizationInfo.getInputZp();
+      auto iZp = quantizationInfo.input_zp().getValue().getSExtValue();
 
       int64_t intMin =
           APInt::getSignedMinValue(inputETy.getIntOrFloatBitWidth())
@@ -420,10 +410,10 @@ public:
     // Broadcast the initial value to the output tensor before convolving.
     SmallVector<AffineMap, 4> indexingMaps;
     indexingMaps.push_back(AffineMap::get(
-        /*dimCount=*/resultRank, /*symbolCount=*/0,
+        /*dimCount=*/resultTy.getRank(), /*symbolCount=*/0,
         {rewriter.getAffineDimExpr(3)}, rewriter.getContext()));
-    indexingMaps.push_back(rewriter.getMultiDimIdentityMap(resultRank));
-    indexingMaps.push_back(rewriter.getMultiDimIdentityMap(resultRank));
+    indexingMaps.push_back(rewriter.getMultiDimIdentityMap(resultTy.getRank()));
+    indexingMaps.push_back(rewriter.getMultiDimIdentityMap(resultTy.getRank()));
 
     Attribute resultZeroAttr = rewriter.getZeroAttr(resultETy);
     Value initTensor = rewriter.create<linalg::InitTensorOp>(
@@ -442,18 +432,14 @@ public:
                            loc, linalgConvTy, ValueRange{input, weight},
                            ValueRange{zeroTensor}, strideAttr, dilationAttr)
                        .getResult(0);
-
-      SmallVector<ReassociationExprs, 4> reassociationMap;
-      createDepthwiseConvCollapseMap(resultRank, reassociationMap, rewriter);
-      Value convReshape = rewriter.create<tensor::CollapseShapeOp>(
-          loc, resultTy, conv, reassociationMap);
-
+      Value convReshape = rewriter.create<tosa::ReshapeOp>(
+          loc, resultTy, conv, rewriter.getI64ArrayAttr(resultTy.getShape()));
       Value result =
           rewriter
               .create<linalg::GenericOp>(
                   loc, resultTy, ValueRange({bias, convReshape}),
                   biasInitTensor, indexingMaps,
-                  getNParallelLoopsAttrs(resultRank),
+                  getNParallelLoopsAttrs(resultTy.getRank()),
                   [&](OpBuilder &nestedBuilder, Location nestedLoc,
                       ValueRange args) {
                     Value added = nestedBuilder.create<arith::AddFOp>(
@@ -471,16 +457,14 @@ public:
                   loc, linalgConvTy, ValueRange{input, weight, iZpVal, kZpVal},
                   ValueRange{zeroTensor}, strideAttr, dilationAttr)
               .getResult(0);
-      SmallVector<ReassociationExprs, 4> reassociationMap;
-      createDepthwiseConvCollapseMap(resultRank, reassociationMap, rewriter);
-      Value convReshape = rewriter.create<tensor::CollapseShapeOp>(
-          loc, resultTy, conv, reassociationMap);
+      Value convReshape = rewriter.create<tosa::ReshapeOp>(
+          loc, resultTy, conv, rewriter.getI64ArrayAttr(resultTy.getShape()));
       Value result =
           rewriter
               .create<linalg::GenericOp>(
                   loc, resultTy, ValueRange({bias, convReshape}),
                   biasInitTensor, indexingMaps,
-                  getNParallelLoopsAttrs(resultRank),
+                  getNParallelLoopsAttrs(resultTy.getRank()),
                   [&](OpBuilder &nestedBuilder, Location nestedLoc,
                       ValueRange args) {
                     Value added = nestedBuilder.create<arith::AddIOp>(
@@ -533,21 +517,23 @@ public:
                            .create<linalg::FillOp>(loc, ValueRange{zero},
                                                    ValueRange{initTensor})
                            .result();
-    if (!op.getQuantizationInfo()) {
+    if (!op.quantization_info()) {
       rewriter.replaceOpWithNewOp<linalg::BatchMatmulOp>(
-          op, TypeRange{op.getType()},
-          ValueRange{adaptor.getA(), adaptor.getB()}, ValueRange{zeroTensor});
+          op, TypeRange{op.getType()}, ValueRange{adaptor.a(), adaptor.b()},
+          ValueRange{zeroTensor});
       return success();
     }
 
-    auto quantizationInfo = *op.getQuantizationInfo();
+    auto quantizationInfo = op.quantization_info().getValue();
     auto aZp = rewriter.create<arith::ConstantOp>(
-        loc, rewriter.getI32IntegerAttr(quantizationInfo.getAZp()));
+        loc, rewriter.getI32IntegerAttr(
+                 quantizationInfo.a_zp().getValue().getSExtValue()));
     auto bZp = rewriter.create<arith::ConstantOp>(
-        loc, rewriter.getI32IntegerAttr(quantizationInfo.getBZp()));
+        loc, rewriter.getI32IntegerAttr(
+                 quantizationInfo.b_zp().getValue().getSExtValue()));
     rewriter.replaceOpWithNewOp<linalg::QuantizedBatchMatmulOp>(
         op, TypeRange{op.getType()},
-        ValueRange{adaptor.getA(), adaptor.getB(), aZp, bZp}, zeroTensor);
+        ValueRange{adaptor.a(), adaptor.b(), aZp, bZp}, zeroTensor);
 
     return success();
   }
@@ -562,12 +548,12 @@ public:
                   ConversionPatternRewriter &rewriter) const final {
     Location loc = op.getLoc();
     auto outputTy = op.getType().cast<ShapedType>();
-    auto input = op.getInput();
+    auto input = op.input();
     auto inputTy = input.getType().cast<ShapedType>();
 
-    auto bias = op.getBias();
+    auto bias = op.bias();
 
-    auto weight = op.getWeight();
+    auto weight = op.weight();
     auto weightTy = weight.getType().cast<ShapedType>();
     auto weightShape = weightTy.getShape();
 
@@ -627,7 +613,7 @@ public:
                                           outputTy.getShape(), outputETy)
             ->getResults();
 
-    if (!op.getQuantizationInfo()) {
+    if (!op.quantization_info()) {
       Value matmul = rewriter
                          .create<linalg::MatmulOp>(
                              loc, TypeRange{op.getType()},
@@ -650,11 +636,13 @@ public:
       return success();
     }
 
-    auto quantizationInfo = *op.getQuantizationInfo();
+    auto quantizationInfo = op.quantization_info().getValue();
     auto inputZp = rewriter.create<arith::ConstantOp>(
-        loc, rewriter.getI32IntegerAttr(quantizationInfo.getInputZp()));
+        loc, rewriter.getI32IntegerAttr(
+                 quantizationInfo.input_zp().getValue().getSExtValue()));
     auto outputZp = rewriter.create<arith::ConstantOp>(
-        loc, rewriter.getI32IntegerAttr(quantizationInfo.getWeightZp()));
+        loc, rewriter.getI32IntegerAttr(
+                 quantizationInfo.weight_zp().getValue().getSExtValue()));
     Value matmul =
         rewriter
             .create<linalg::QuantizedMatmulOp>(
@@ -686,17 +674,17 @@ public:
   LogicalResult matchAndRewrite(tosa::MaxPool2dOp op,
                                 PatternRewriter &rewriter) const final {
     Location loc = op.getLoc();
-    Value input = op.getInput();
+    Value input = op.input();
     ShapedType inputTy = input.getType().cast<ShapedType>();
 
     ShapedType resultTy = op.getType().template cast<ShapedType>();
     Type resultETy = inputTy.getElementType();
 
     auto dynamicDimsOr =
-        checkHasDynamicBatchDims(rewriter, op, {input, op.getOutput()});
-    if (!dynamicDimsOr.has_value())
+        checkHasDynamicBatchDims(rewriter, op, {input, op.output()});
+    if (!dynamicDimsOr.hasValue())
       return failure();
-    SmallVector<Value> dynamicDims = dynamicDimsOr.value();
+    SmallVector<Value> dynamicDims = dynamicDimsOr.getValue();
 
     // Determine what the initial value needs to be for the max pool op.
     Attribute initialAttr;
@@ -718,15 +706,15 @@ public:
     // Apply padding as necessary.
     llvm::SmallVector<int64_t> pad;
     pad.resize(2, 0);
-    getValuesFromIntArrayAttribute(op.getPad(), pad);
+    getValuesFromIntArrayAttribute(op.pad(), pad);
     pad.resize(pad.size() + 2, 0);
     Value paddedInput = applyPad(loc, input, pad, initialAttr, rewriter);
 
     Value initialValue = rewriter.create<arith::ConstantOp>(loc, initialAttr);
 
     SmallVector<int64_t> kernel, stride;
-    getValuesFromIntArrayAttribute(op.getKernel(), kernel);
-    getValuesFromIntArrayAttribute(op.getStride(), stride);
+    getValuesFromIntArrayAttribute(op.kernel(), kernel);
+    getValuesFromIntArrayAttribute(op.stride(), stride);
 
     Attribute strideAttr = rewriter.getI64VectorAttr(stride);
     Attribute dilationAttr = rewriter.getI64VectorAttr({1, 1});
@@ -758,7 +746,7 @@ public:
   LogicalResult matchAndRewrite(tosa::AvgPool2dOp op,
                                 PatternRewriter &rewriter) const final {
     Location loc = op.getLoc();
-    Value input = op.getInput();
+    Value input = op.input();
     ShapedType inputTy = input.getType().cast<ShapedType>();
     Type inElementTy = inputTy.getElementType();
 
@@ -770,15 +758,15 @@ public:
     ShapedType accTy = resultTy.clone(accETy);
 
     auto dynamicDimsOr =
-        checkHasDynamicBatchDims(rewriter, op, {input, op.getOutput()});
-    if (!dynamicDimsOr.has_value())
+        checkHasDynamicBatchDims(rewriter, op, {input, op.output()});
+    if (!dynamicDimsOr.hasValue())
       return failure();
-    SmallVector<Value> dynamicDims = dynamicDimsOr.value();
+    SmallVector<Value> dynamicDims = dynamicDimsOr.getValue();
 
     // Apply padding as necessary.
     llvm::SmallVector<int64_t> pad;
     pad.resize(2, 0);
-    getValuesFromIntArrayAttribute(op.getPad(), pad);
+    getValuesFromIntArrayAttribute(op.pad(), pad);
     pad.resize(pad.size() + 2, 0);
     Attribute padAttr = rewriter.getZeroAttr(inElementTy);
     Value paddedInput = applyPad(loc, input, pad, padAttr, rewriter);
@@ -787,8 +775,8 @@ public:
     Value initialValue = rewriter.create<arith::ConstantOp>(loc, initialAttr);
 
     SmallVector<int64_t> kernel, stride;
-    getValuesFromIntArrayAttribute(op.getKernel(), kernel);
-    getValuesFromIntArrayAttribute(op.getStride(), stride);
+    getValuesFromIntArrayAttribute(op.kernel(), kernel);
+    getValuesFromIntArrayAttribute(op.stride(), stride);
 
     Attribute strideAttr = rewriter.getI64VectorAttr(stride);
     Attribute dilationAttr = rewriter.getI64VectorAttr({1, 1});
@@ -889,10 +877,10 @@ public:
 
             // If we have quantization information we need to apply an offset
             // for the input zp value.
-            if (op.getQuantizationInfo()) {
-              auto quantizationInfo = *op.getQuantizationInfo();
+            if (op.quantization_info()) {
+              auto quantizationInfo = op.quantization_info().getValue();
               auto inputZp = rewriter.create<arith::ConstantOp>(
-                  loc, b.getIntegerAttr(accETy, quantizationInfo.getInputZp()));
+                  loc, quantizationInfo.input_zp());
               Value offset =
                   rewriter.create<arith::MulIOp>(loc, accETy, countI, inputZp);
               poolVal =
@@ -925,11 +913,10 @@ public:
 
             // If we have quantization information we need to apply output
             // zeropoint.
-            if (op.getQuantizationInfo()) {
-              auto quantizationInfo = *op.getQuantizationInfo();
+            if (op.quantization_info()) {
+              auto quantizationInfo = op.quantization_info().getValue();
               auto outputZp = rewriter.create<arith::ConstantOp>(
-                  loc, b.getIntegerAttr(scaled.getType(),
-                                        quantizationInfo.getOutputZp()));
+                  loc, quantizationInfo.output_zp());
               scaled = rewriter.create<arith::AddIOp>(loc, scaled, outputZp)
                            .getResult();
             }

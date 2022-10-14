@@ -17,7 +17,7 @@
 
 ## --no-allow-shlib-undefined errors because __real_foo is not defined.
 # RUN: not ld.lld %t/main.o %t/bar.so -o /dev/null 2>&1 | FileCheck --check-prefix=ERR %s
-# ERR: error: undefined reference due to --no-allow-shlib-undefined: __real_foo
+# ERR: {{.*}}.so: undefined reference to __real_foo [--no-allow-shlib-undefined]
 
 ## --wrap=foo defines __real_foo.
 # RUN: ld.lld %t/main.o %t/bar.so --wrap=foo -o %t2

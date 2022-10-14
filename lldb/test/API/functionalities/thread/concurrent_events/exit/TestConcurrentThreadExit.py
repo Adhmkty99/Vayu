@@ -10,6 +10,8 @@ import lldbsuite.test.lldbutil as lldbutil
 
 
 class ConcurrentThreadExitTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     @skipIf(oslist=no_match(["linux"]))

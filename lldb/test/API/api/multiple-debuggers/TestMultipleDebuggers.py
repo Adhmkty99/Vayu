@@ -13,6 +13,8 @@ from lldbsuite.test import lldbutil
 
 class TestMultipleSimultaneousDebuggers(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     NO_DEBUG_INFO_TESTCASE = True
 
     @skipIfNoSBHeaders

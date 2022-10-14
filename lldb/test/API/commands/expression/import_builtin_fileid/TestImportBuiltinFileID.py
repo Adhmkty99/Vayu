@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class TestImportBuiltinFileID(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfDarwinEmbedded
     @add_test_categories(["gmodules", "objc"])
     def test_import_builtin_fileid(self):

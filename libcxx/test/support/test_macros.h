@@ -306,7 +306,8 @@ inline void DoNotOptimize(Tp const& value) {
 #define TEST_NOT_WIN32(...) __VA_ARGS__
 #endif
 
-#if defined(TEST_WINDOWS_DLL) ||defined(__MVS__) || defined(_AIX)
+#if (defined(_WIN32) && !defined(_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS)) ||   \
+    defined(__MVS__) || defined(_AIX)
 // Macros for waiving cases when we can't count allocations done within
 // the library implementation.
 //
@@ -324,7 +325,8 @@ inline void DoNotOptimize(Tp const& value) {
 #define TEST_SUPPORTS_LIBRARY_INTERNAL_ALLOCATIONS 1
 #endif
 
-#if (defined(TEST_WINDOWS_DLL) && !defined(_MSC_VER)) ||                      \
+#if (defined(_WIN32) && !defined(_MSC_VER) &&                                  \
+     !defined(_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS)) ||                      \
     defined(__MVS__)
 // Normally, a replaced e.g. 'operator new' ends up used if the user code
 // does a call to e.g. 'operator new[]'; it's enough to replace the base
@@ -361,6 +363,10 @@ inline void DoNotOptimize(Tp const& value) {
 
 #if defined(_LIBCPP_HAS_NO_INT128) || defined(_MSVC_STL_VERSION)
 #   define TEST_HAS_NO_INT128
+#endif
+
+#if defined(_LIBCPP_HAS_NO_UNICODE_CHARS)
+#   define TEST_HAS_NO_UNICODE_CHARS
 #endif
 
 #if defined(_LIBCPP_HAS_NO_LOCALIZATION)

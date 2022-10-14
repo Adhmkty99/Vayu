@@ -12,7 +12,7 @@
 
 // const charT* toupper(charT* low, const charT* high) const;
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 #include <locale>
 #include <string>

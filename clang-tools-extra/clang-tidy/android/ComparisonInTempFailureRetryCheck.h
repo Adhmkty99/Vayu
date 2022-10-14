@@ -31,7 +31,7 @@ public:
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
 
 private:
-  const StringRef RawRetryList;
+  const std::string RawRetryList;
   SmallVector<StringRef, 5> RetryMacros;
 };
 

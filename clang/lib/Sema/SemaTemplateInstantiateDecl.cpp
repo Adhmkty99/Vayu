@@ -469,8 +469,8 @@ static void instantiateOMPDeclareVariantAttr(
   if (!DeclVarData)
     return;
 
-  E = DeclVarData.value().second;
-  FD = DeclVarData.value().first;
+  E = DeclVarData.getValue().second;
+  FD = DeclVarData.getValue().first;
 
   if (auto *VariantDRE = dyn_cast<DeclRefExpr>(E->IgnoreParenImpCasts())) {
     if (auto *VariantFD = dyn_cast<FunctionDecl>(VariantDRE->getDecl())) {
@@ -619,31 +619,6 @@ static bool isRelevantAttr(Sema &S, const Decl *D, const Attr *A) {
                                 PNA->getTypedefType()))
         return false;
     return true;
-  }
-
-  if (const auto *BA = dyn_cast<BuiltinAttr>(A)) {
-    const FunctionDecl *FD = dyn_cast<FunctionDecl>(D);
-    switch (BA->getID()) {
-    case Builtin::BIforward:
-      // Do not treat 'std::forward' as a builtin if it takes an rvalue reference
-      // type and returns an lvalue reference type. The library implementation
-      // will produce an error in this case; don't get in its way.
-      if (FD && FD->getNumParams() >= 1 &&
-          FD->getParamDecl(0)->getType()->isRValueReferenceType() &&
-          FD->getReturnType()->isLValueReferenceType()) {
-        return false;
-      }
-      LLVM_FALLTHROUGH;
-    case Builtin::BImove:
-    case Builtin::BImove_if_noexcept:
-      // HACK: Super-old versions of libc++ (3.1 and earlier) provide
-      // std::forward and std::move overloads that sometimes return by value
-      // instead of by reference when building in C++98 mode. Don't treat such
-      // cases as builtins.
-      if (FD && !FD->getReturnType()->isReferenceType())
-        return false;
-      break;
-    }
   }
 
   return true;
@@ -846,7 +821,7 @@ void Sema::InstantiateDefaultCtorDefaultArgs(CXXConstructorDecl *Ctor) {
   for (unsigned I = 0; I != NumParams; ++I) {
     (void)CheckCXXDefaultArgExpr(Attr->getLocation(), Ctor,
                                    Ctor->getParamDecl(I));
-    CleanupVarDeclMarking();
+    DiscardCleanupsInEvaluationContext();
   }
 }
 
@@ -2182,11 +2157,6 @@ Decl *TemplateDeclInstantiator::VisitFunctionDecl(
     // definition. We don't want non-template functions to be marked as being
     // template instantiations.
     Function->setInstantiationOfMemberFunction(D, TSK_ImplicitInstantiation);
-  } else if (!isFriend) {
-    // If this is not a function template, and this is not a friend (that is,
-    // this is a locally declared function), save the instantiation relationship
-    // for the purposes of constraint instantiation.
-    Function->setInstantiatedFromDecl(D);
   }
 
   if (isFriend) {
@@ -2274,8 +2244,7 @@ Decl *TemplateDeclInstantiator::VisitFunctionDecl(
   }
 
   SemaRef.CheckFunctionDeclaration(/*Scope*/ nullptr, Function, Previous,
-                                   IsExplicitSpecialization,
-                                   Function->isThisDeclarationADefinition());
+                                   IsExplicitSpecialization);
 
   // Check the template parameter list against the previous declaration. The
   // goal here is to pick up default arguments added since the friend was
@@ -2483,7 +2452,6 @@ Decl *TemplateDeclInstantiator::VisitCXXMethodDecl(
         SemaRef.Context, Record, StartLoc, NameInfo, T, TInfo,
         Destructor->UsesFPIntrin(), Destructor->isInlineSpecified(), false,
         Destructor->getConstexprKind(), TrailingRequiresClause);
-    Method->setIneligibleOrNotSelected(true);
     Method->setRangeEnd(Destructor->getEndLoc());
     Method->setDeclName(SemaRef.Context.DeclarationNames.getCXXDestructorName(
         SemaRef.Context.getCanonicalType(
@@ -2601,7 +2569,7 @@ Decl *TemplateDeclInstantiator::VisitCXXMethodDecl(
 
     IsExplicitSpecialization = true;
   } else if (const ASTTemplateArgumentListInfo *Info =
-                 ClassScopeSpecializationArgs.value_or(
+                 ClassScopeSpecializationArgs.getValueOr(
                      D->getTemplateSpecializationArgsAsWritten())) {
     SemaRef.LookupQualifiedName(Previous, DC);
 
@@ -2637,8 +2605,7 @@ Decl *TemplateDeclInstantiator::VisitCXXMethodDecl(
   }
 
   SemaRef.CheckFunctionDeclaration(nullptr, Method, Previous,
-                                   IsExplicitSpecialization,
-                                   Method->isThisDeclarationADefinition());
+                                   IsExplicitSpecialization);
 
   if (D->isPure())
     SemaRef.CheckPureMethod(Method, SourceRange());
@@ -3807,15 +3774,13 @@ Decl *TemplateDeclInstantiator::VisitVarTemplateSpecializationDecl(
     return nullptr;
 
   // Substitute the current template arguments.
-  if (const ASTTemplateArgumentListInfo *TemplateArgsInfo =
-          D->getTemplateArgsInfo()) {
-    VarTemplateArgsInfo.setLAngleLoc(TemplateArgsInfo->getLAngleLoc());
-    VarTemplateArgsInfo.setRAngleLoc(TemplateArgsInfo->getRAngleLoc());
+  const TemplateArgumentListInfo &TemplateArgsInfo = D->getTemplateArgsInfo();
+  VarTemplateArgsInfo.setLAngleLoc(TemplateArgsInfo.getLAngleLoc());
+  VarTemplateArgsInfo.setRAngleLoc(TemplateArgsInfo.getRAngleLoc());
 
-    if (SemaRef.SubstTemplateArguments(TemplateArgsInfo->arguments(),
-                                       TemplateArgs, VarTemplateArgsInfo))
-      return nullptr;
-  }
+  if (SemaRef.SubstTemplateArguments(TemplateArgsInfo.arguments(), TemplateArgs,
+                                     VarTemplateArgsInfo))
+    return nullptr;
 
   // Check that the template argument list is well-formed for this template.
   SmallVector<TemplateArgument, 4> Converted;
@@ -4804,12 +4769,6 @@ void Sema::InstantiateFunctionDefinition(SourceLocation PointOfInstantiation,
   if (TSK == TSK_ExplicitSpecialization)
     return;
 
-  // Never implicitly instantiate a builtin; we don't actually need a function
-  // body.
-  if (Function->getBuiltinID() && TSK == TSK_ImplicitInstantiation &&
-      !DefinitionRequired)
-    return;
-
   // Don't instantiate a definition if we already have one.
   const FunctionDecl *ExistingDefn = nullptr;
   if (Function->isDefined(ExistingDefn,
@@ -4845,8 +4804,7 @@ void Sema::InstantiateFunctionDefinition(SourceLocation PointOfInstantiation,
                                      /*Complain*/DefinitionRequired)) {
     if (DefinitionRequired)
       Function->setInvalidDecl();
-    else if (TSK == TSK_ExplicitInstantiationDefinition ||
-             (Function->isConstexpr() && !Recursive)) {
+    else if (TSK == TSK_ExplicitInstantiationDefinition) {
       // Try again at the end of the translation unit (at which point a
       // definition will be required).
       assert(!Recursive);
@@ -4861,7 +4819,7 @@ void Sema::InstantiateFunctionDefinition(SourceLocation PointOfInstantiation,
         Diag(PatternDecl->getLocation(), diag::note_forward_template_decl);
         if (getLangOpts().CPlusPlus11)
           Diag(PointOfInstantiation, diag::note_inst_declaration_hint)
-              << Function;
+            << Function;
       }
     }
 
@@ -5563,18 +5521,8 @@ void Sema::InstantiateVariableDefinition(SourceLocation PointOfInstantiation,
     // declaration of the definition.
     TemplateDeclInstantiator Instantiator(*this, Var->getDeclContext(),
                                           TemplateArgs);
-
-    TemplateArgumentListInfo TemplateArgInfo;
-    if (const ASTTemplateArgumentListInfo *ArgInfo =
-            VarSpec->getTemplateArgsInfo()) {
-      TemplateArgInfo.setLAngleLoc(ArgInfo->getLAngleLoc());
-      TemplateArgInfo.setRAngleLoc(ArgInfo->getRAngleLoc());
-      for (const TemplateArgumentLoc &Arg : ArgInfo->arguments())
-        TemplateArgInfo.addArgument(Arg);
-    }
-
     Var = cast_or_null<VarDecl>(Instantiator.VisitVarTemplateSpecializationDecl(
-        VarSpec->getSpecializedTemplate(), Def, TemplateArgInfo,
+        VarSpec->getSpecializedTemplate(), Def, VarSpec->getTemplateArgsInfo(),
         VarSpec->getTemplateArgs().asArray(), VarSpec));
     if (Var) {
       llvm::PointerUnion<VarTemplateDecl *,

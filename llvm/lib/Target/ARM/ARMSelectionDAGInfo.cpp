@@ -296,7 +296,7 @@ SDValue ARMSelectionDAGInfo::EmitTargetCodeForMemmove(
 
 SDValue ARMSelectionDAGInfo::EmitTargetCodeForMemset(
     SelectionDAG &DAG, const SDLoc &dl, SDValue Chain, SDValue Dst, SDValue Src,
-    SDValue Size, Align Alignment, bool isVolatile, bool AlwaysInline,
+    SDValue Size, Align Alignment, bool isVolatile,
     MachinePointerInfo DstPtrInfo) const {
 
   const ARMSubtarget &Subtarget =
@@ -314,9 +314,6 @@ SDValue ARMSelectionDAGInfo::EmitTargetCodeForMemset(
                        DAG.getZExtOrTrunc(Size, dl, MVT::i32));
   }
 
-  if (!AlwaysInline)
-    return EmitSpecializedLibcall(DAG, dl, Chain, Dst, Src, Size,
-                                  Alignment.value(), RTLIB::MEMSET);
-
-  return SDValue();
+  return EmitSpecializedLibcall(DAG, dl, Chain, Dst, Src, Size,
+                                Alignment.value(), RTLIB::MEMSET);
 }

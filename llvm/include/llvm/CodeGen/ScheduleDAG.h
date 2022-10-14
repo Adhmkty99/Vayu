@@ -525,8 +525,9 @@ class TargetRegisterInfo;
     virtual void push(SUnit *U) = 0;
 
     void push_all(const std::vector<SUnit *> &Nodes) {
-      for (SUnit *SU : Nodes)
-        push(SU);
+      for (std::vector<SUnit *>::const_iterator I = Nodes.begin(),
+           E = Nodes.end(); I != E; ++I)
+        push(*I);
     }
 
     virtual SUnit *pop() = 0;

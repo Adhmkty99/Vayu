@@ -24,7 +24,7 @@ struct SymbolUsesPass
     return "Test detection of symbol uses";
   }
   WalkResult operateOnSymbol(Operation *symbol, ModuleOp module,
-                             SmallVectorImpl<func::FuncOp> &deadFunctions) {
+                             SmallVectorImpl<FuncOp> &deadFunctions) {
     // Test computing uses on a non symboltable op.
     Optional<SymbolTable::UseRange> symbolUses =
         SymbolTable::getSymbolUses(symbol);
@@ -42,7 +42,7 @@ struct SymbolUsesPass
 
     // Test the functionality of symbolKnownUseEmpty.
     if (SymbolTable::symbolKnownUseEmpty(symbol, &module.getBodyRegion())) {
-      func::FuncOp funcSymbol = dyn_cast<func::FuncOp>(symbol);
+      FuncOp funcSymbol = dyn_cast<FuncOp>(symbol);
       if (funcSymbol && funcSymbol.isExternal())
         deadFunctions.push_back(funcSymbol);
 
@@ -52,7 +52,7 @@ struct SymbolUsesPass
 
     // Test the functionality of getSymbolUses.
     symbolUses = SymbolTable::getSymbolUses(symbol, &module.getBodyRegion());
-    assert(symbolUses && "expected no unknown operations");
+    assert(symbolUses.hasValue() && "expected no unknown operations");
     for (SymbolTable::SymbolUse symbolUse : *symbolUses) {
       // Check that we can resolve back to our symbol.
       if (SymbolTable::lookupNearestSymbolFrom(
@@ -70,7 +70,7 @@ struct SymbolUsesPass
     auto module = getOperation();
 
     // Walk nested symbols.
-    SmallVector<func::FuncOp, 4> deadFunctions;
+    SmallVector<FuncOp, 4> deadFunctions;
     module.getBodyRegion().walk([&](Operation *nestedOp) {
       if (isa<SymbolOpInterface>(nestedOp))
         return operateOnSymbol(nestedOp, module, deadFunctions);

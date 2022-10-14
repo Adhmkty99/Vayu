@@ -159,7 +159,8 @@ void InefficientVectorOperationCheck::addMatcher(
 }
 
 void InefficientVectorOperationCheck::registerMatchers(MatchFinder *Finder) {
-  const auto VectorDecl = cxxRecordDecl(hasAnyName(VectorLikeClasses));
+  const auto VectorDecl = cxxRecordDecl(hasAnyName(SmallVector<StringRef, 5>(
+      VectorLikeClasses.begin(), VectorLikeClasses.end())));
   const auto AppendMethodDecl =
       cxxMethodDecl(hasAnyName("push_back", "emplace_back"));
   addMatcher(VectorDecl, VectorVarDeclName, VectorVarDeclStmtName,

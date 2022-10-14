@@ -13,7 +13,7 @@
 #include "flang/Lower/Mangler.h"
 #include "flang/Lower/PFTBuilder.h"
 #include "flang/Lower/Support/Utils.h"
-#include "flang/Optimizer/Builder/Todo.h"
+#include "flang/Lower/Todo.h"
 #include "flang/Optimizer/Dialect/FIRType.h"
 #include "flang/Semantics/tools.h"
 #include "flang/Semantics/type.h"
@@ -160,7 +160,8 @@ struct TypeBuilder {
       // Use unknown extents.
       int rank = expr.Rank();
       if (rank < 0)
-        TODO(converter.getCurrentLocation(), "assumed rank expression types");
+        TODO(converter.getCurrentLocation(),
+             "Assumed rank expression type lowering");
       for (int dim = 0; dim < rank; ++dim)
         shape.emplace_back(fir::SequenceType::getUnknownExtent());
     }
@@ -206,7 +207,7 @@ struct TypeBuilder {
               using T = std::decay_t<decltype(x)>;
               static_assert(!Fortran::common::HasMember<
                                 T, Fortran::evaluate::TypelessExpression>,
-                            "missing typeless expr handling");
+                            "missing typeless expr handling in type lowering");
               llvm::report_fatal_error("not a typeless expression");
             },
         },
@@ -224,8 +225,6 @@ struct TypeBuilder {
     // links, the fir type is built based on the ultimate symbol. This relies
     // on the fact volatile and asynchronous are not reflected in fir types.
     const Fortran::semantics::Symbol &ultimate = symbol.GetUltimate();
-    if (Fortran::semantics::IsProcedurePointer(ultimate))
-      TODO(loc, "procedure pointers");
     if (const Fortran::semantics::DeclTypeSpec *type = ultimate.GetType()) {
       if (const Fortran::semantics::IntrinsicTypeSpec *tySpec =
               type->AsIntrinsic()) {
@@ -234,7 +233,7 @@ struct TypeBuilder {
         translateLenParameters(params, tySpec->category(), ultimate);
         ty = genFIRType(context, tySpec->category(), kind, params);
       } else if (type->IsPolymorphic()) {
-        TODO(loc, "support for polymorphic types");
+        TODO(loc, "[genSymbolType] polymorphic types");
       } else if (const Fortran::semantics::DerivedTypeSpec *tySpec =
                      type->AsDerived()) {
         ty = genDerivedType(*tySpec);
@@ -248,7 +247,7 @@ struct TypeBuilder {
       auto shapeExpr = Fortran::evaluate::GetShapeHelper{
           converter.getFoldingContext()}(ultimate);
       if (!shapeExpr)
-        TODO(loc, "assumed rank symbol type");
+        TODO(loc, "assumed rank symbol type lowering");
       fir::SequenceType::Shape shape;
       translateShape(shape, std::move(*shapeExpr));
       ty = fir::SequenceType::get(shape, ty);
@@ -288,10 +287,6 @@ struct TypeBuilder {
     const Fortran::semantics::Symbol &typeSymbol = tySpec.typeSymbol();
     if (mlir::Type ty = getTypeIfDerivedAlreadyInConstruction(typeSymbol))
       return ty;
-
-    if (Fortran::semantics::IsFinalizable(tySpec))
-      TODO(converter.genLocation(tySpec.name()), "derived type finalization");
-
     auto rec = fir::RecordType::get(context,
                                     Fortran::lower::mangle::mangleName(tySpec));
     // Maintain the stack of types for recursive references.
@@ -305,8 +300,8 @@ struct TypeBuilder {
       // Catch any situations where this is not true for now.
       if (componentHasNonDefaultLowerBounds(field))
         TODO(converter.genLocation(field.name()),
-             "derived type components with non default lower bounds");
-      if (IsProcedure(field))
+             "lowering derived type components with non default lower bounds");
+      if (IsProcName(field))
         TODO(converter.genLocation(field.name()), "procedure components");
       mlir::Type ty = genSymbolType(field);
       // Do not add the parent component (component of the parents are
@@ -331,7 +326,7 @@ struct TypeBuilder {
     if (!ps.empty()) {
       // This type is a PDT (parametric derived type). Create the functions to
       // use for allocation, dereferencing, and address arithmetic here.
-      TODO(loc, "parameterized derived types");
+      TODO(loc, "parametrized derived types lowering");
     }
     LLVM_DEBUG(llvm::dbgs() << "derived type: " << rec << '\n');
 
@@ -367,7 +362,9 @@ struct TypeBuilder {
     if (category == Fortran::common::TypeCategory::Character)
       params.push_back(getCharacterLength(exprOrSym));
     else if (category == Fortran::common::TypeCategory::Derived)
-      TODO(converter.getCurrentLocation(), "derived type length parameters");
+      TODO(converter.getCurrentLocation(),
+           "lowering derived type length parameters");
+    return;
   }
   Fortran::lower::LenParameterTy
   getCharacterLength(const Fortran::semantics::Symbol &symbol) {

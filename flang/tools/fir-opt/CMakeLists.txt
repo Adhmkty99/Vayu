@@ -12,7 +12,7 @@ target_link_libraries(fir-opt PRIVATE
   # TODO: these should be transitive dependencies from a target providing
   # "registerFIRPasses()"
   MLIRIR
-  MLIRLLVMDialect
+  MLIRLLVMIR
   MLIRPass
   MLIRFuncToLLVM
   MLIRTransforms

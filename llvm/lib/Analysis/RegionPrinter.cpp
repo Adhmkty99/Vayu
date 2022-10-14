@@ -31,20 +31,28 @@ onlySimpleRegions("only-simple-regions",
                   cl::init(false));
 
 namespace llvm {
+template<>
+struct DOTGraphTraits<RegionNode*> : public DefaultDOTGraphTraits {
 
-std::string DOTGraphTraits<RegionNode *>::getNodeLabel(RegionNode *Node,
-                                                       RegionNode *Graph) {
-  if (!Node->isSubRegion()) {
-    BasicBlock *BB = Node->getNodeAs<BasicBlock>();
+  DOTGraphTraits (bool isSimple=false)
+    : DefaultDOTGraphTraits(isSimple) {}
 
-    if (isSimple())
-      return DOTGraphTraits<DOTFuncInfo *>::getSimpleNodeLabel(BB, nullptr);
-    else
-      return DOTGraphTraits<DOTFuncInfo *>::getCompleteNodeLabel(BB, nullptr);
+  std::string getNodeLabel(RegionNode *Node, RegionNode *Graph) {
+
+    if (!Node->isSubRegion()) {
+      BasicBlock *BB = Node->getNodeAs<BasicBlock>();
+
+      if (isSimple())
+        return DOTGraphTraits<DOTFuncInfo *>
+          ::getSimpleNodeLabel(BB, nullptr);
+      else
+        return DOTGraphTraits<DOTFuncInfo *>
+          ::getCompleteNodeLabel(BB, nullptr);
+    }
+
+    return "Not implemented";
   }
-
-  return "Not implemented";
-}
+};
 
 template <>
 struct DOTGraphTraits<RegionInfo *> : public DOTGraphTraits<RegionNode *> {
@@ -126,7 +134,7 @@ struct DOTGraphTraits<RegionInfo *> : public DOTGraphTraits<RegionNode *> {
     printRegionCluster(*G->getTopLevelRegion(), GW, 4);
   }
 };
-} // end namespace llvm
+} //end namespace llvm
 
 namespace {
 
@@ -137,49 +145,48 @@ struct RegionInfoPassGraphTraits {
 };
 
 struct RegionPrinter
-    : public DOTGraphTraitsPrinterWrapperPass<
-          RegionInfoPass, false, RegionInfo *, RegionInfoPassGraphTraits> {
+    : public DOTGraphTraitsPrinter<RegionInfoPass, false, RegionInfo *,
+                                   RegionInfoPassGraphTraits> {
   static char ID;
   RegionPrinter()
-      : DOTGraphTraitsPrinterWrapperPass<RegionInfoPass, false, RegionInfo *,
-                                         RegionInfoPassGraphTraits>("reg", ID) {
+      : DOTGraphTraitsPrinter<RegionInfoPass, false, RegionInfo *,
+                              RegionInfoPassGraphTraits>("reg", ID) {
     initializeRegionPrinterPass(*PassRegistry::getPassRegistry());
   }
 };
 char RegionPrinter::ID = 0;
 
 struct RegionOnlyPrinter
-    : public DOTGraphTraitsPrinterWrapperPass<
-          RegionInfoPass, true, RegionInfo *, RegionInfoPassGraphTraits> {
+    : public DOTGraphTraitsPrinter<RegionInfoPass, true, RegionInfo *,
+                                   RegionInfoPassGraphTraits> {
   static char ID;
   RegionOnlyPrinter()
-      : DOTGraphTraitsPrinterWrapperPass<RegionInfoPass, true, RegionInfo *,
-                                         RegionInfoPassGraphTraits>("reg", ID) {
+      : DOTGraphTraitsPrinter<RegionInfoPass, true, RegionInfo *,
+                              RegionInfoPassGraphTraits>("reg", ID) {
     initializeRegionOnlyPrinterPass(*PassRegistry::getPassRegistry());
   }
 };
 char RegionOnlyPrinter::ID = 0;
 
 struct RegionViewer
-    : public DOTGraphTraitsViewerWrapperPass<
-          RegionInfoPass, false, RegionInfo *, RegionInfoPassGraphTraits> {
+    : public DOTGraphTraitsViewer<RegionInfoPass, false, RegionInfo *,
+                                  RegionInfoPassGraphTraits> {
   static char ID;
   RegionViewer()
-      : DOTGraphTraitsViewerWrapperPass<RegionInfoPass, false, RegionInfo *,
-                                        RegionInfoPassGraphTraits>("reg", ID) {
+      : DOTGraphTraitsViewer<RegionInfoPass, false, RegionInfo *,
+                             RegionInfoPassGraphTraits>("reg", ID) {
     initializeRegionViewerPass(*PassRegistry::getPassRegistry());
   }
 };
 char RegionViewer::ID = 0;
 
 struct RegionOnlyViewer
-    : public DOTGraphTraitsViewerWrapperPass<RegionInfoPass, true, RegionInfo *,
-                                             RegionInfoPassGraphTraits> {
+    : public DOTGraphTraitsViewer<RegionInfoPass, true, RegionInfo *,
+                                  RegionInfoPassGraphTraits> {
   static char ID;
   RegionOnlyViewer()
-      : DOTGraphTraitsViewerWrapperPass<RegionInfoPass, true, RegionInfo *,
-                                        RegionInfoPassGraphTraits>("regonly",
-                                                                   ID) {
+      : DOTGraphTraitsViewer<RegionInfoPass, true, RegionInfo *,
+                             RegionInfoPassGraphTraits>("regonly", ID) {
     initializeRegionOnlyViewerPass(*PassRegistry::getPassRegistry());
   }
 };

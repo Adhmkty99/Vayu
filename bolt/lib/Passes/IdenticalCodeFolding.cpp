@@ -29,9 +29,12 @@ namespace opts {
 
 extern cl::OptionCategory BoltOptCategory;
 
-static cl::opt<bool> UseDFS("icf-dfs",
-                            cl::desc("use DFS ordering when using -icf option"),
-                            cl::ReallyHidden, cl::cat(BoltOptCategory));
+static cl::opt<bool>
+UseDFS("icf-dfs",
+  cl::desc("use DFS ordering when using -icf option"),
+  cl::ReallyHidden,
+  cl::ZeroOrMore,
+  cl::cat(BoltOptCategory));
 
 static cl::opt<bool>
 TimeICF("time-icf",
@@ -155,7 +158,7 @@ bool isIdenticalWith(const BinaryFunction &A, const BinaryFunction &B,
   // instruction sequences and the same index in their corresponding
   // functions. The latter is important for CFG equality.
 
-  if (A.getLayout().block_size() != B.getLayout().block_size())
+  if (A.layout_size() != B.layout_size())
     return false;
 
   // Comparing multi-entry functions could be non-trivial.
@@ -163,16 +166,10 @@ bool isIdenticalWith(const BinaryFunction &A, const BinaryFunction &B,
     return false;
 
   // Process both functions in either DFS or existing order.
-  const BinaryFunction::BasicBlockOrderType OrderA =
-      opts::UseDFS
-          ? A.dfs()
-          : BinaryFunction::BasicBlockOrderType(A.getLayout().block_begin(),
-                                                A.getLayout().block_end());
-  const BinaryFunction::BasicBlockOrderType OrderB =
-      opts::UseDFS
-          ? B.dfs()
-          : BinaryFunction::BasicBlockOrderType(B.getLayout().block_begin(),
-                                                B.getLayout().block_end());
+  const BinaryFunction::BasicBlockOrderType &OrderA =
+      opts::UseDFS ? A.dfs() : A.getLayout();
+  const BinaryFunction::BasicBlockOrderType &OrderB =
+      opts::UseDFS ? B.dfs() : B.getLayout();
 
   const BinaryContext &BC = A.getBinaryContext();
 
@@ -421,7 +418,7 @@ void IdenticalCodeFolding::runOnFunctions(BinaryContext &BC) {
                                         "ICF breakdown", opts::TimeICF);
     ParallelUtilities::WorkFuncTy WorkFun = [&](BinaryFunction &BF) {
       // Make sure indices are in-order.
-      BF.getLayout().updateLayoutIndices();
+      BF.updateLayoutIndices();
 
       // Pre-compute hash before pushing into hashtable.
       // Hash instruction operands to minimize hash collisions.
@@ -485,10 +482,11 @@ void IdenticalCodeFolding::runOnFunctions(BinaryContext &BC) {
 
         // Fold functions. Keep the order consistent across invocations with
         // different options.
-        llvm::stable_sort(
-            Twins, [](const BinaryFunction *A, const BinaryFunction *B) {
-              return A->getFunctionNumber() < B->getFunctionNumber();
-            });
+        std::stable_sort(Twins.begin(), Twins.end(),
+                         [](const BinaryFunction *A, const BinaryFunction *B) {
+                           return A->getFunctionNumber() <
+                                  B->getFunctionNumber();
+                         });
 
         BinaryFunction *ParentBF = Twins[0];
         for (unsigned I = 1; I < Twins.size(); ++I) {

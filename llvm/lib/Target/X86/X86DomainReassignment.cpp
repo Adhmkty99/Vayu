@@ -15,7 +15,6 @@
 #include "X86.h"
 #include "X86InstrInfo.h"
 #include "X86Subtarget.h"
-#include "llvm/ADT/BitVector.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseMapInfo.h"
 #include "llvm/ADT/STLExtras.h"
@@ -375,7 +374,7 @@ class X86DomainReassignment : public MachineFunctionPass {
   const X86InstrInfo *TII = nullptr;
 
   /// All edges that are included in some closure
-  BitVector EnclosedEdges{8, false};
+  DenseSet<unsigned> EnclosedEdges;
 
   /// All instructions that are included in some closure.
   DenseMap<MachineInstr *, unsigned> EnclosedInstrs;
@@ -430,10 +429,10 @@ char X86DomainReassignment::ID = 0;
 void X86DomainReassignment::visitRegister(Closure &C, Register Reg,
                                           RegDomain &Domain,
                                           SmallVectorImpl<unsigned> &Worklist) {
-  if (!Reg.isVirtual())
+  if (EnclosedEdges.count(Reg))
     return;
 
-  if (EnclosedEdges.test(Register::virtReg2Index(Reg)))
+  if (!Reg.isVirtual())
     return;
 
   if (!MRI->hasOneDef(Reg))
@@ -551,7 +550,7 @@ void X86DomainReassignment::buildClosure(Closure &C, Register Reg) {
     // Register already in this closure.
     if (!C.insertEdge(CurReg))
       continue;
-    EnclosedEdges.set(Register::virtReg2Index(Reg));
+    EnclosedEdges.insert(Reg);
 
     MachineInstr *DefMI = MRI->getVRegDef(CurReg);
     encloseInstr(C, DefMI);
@@ -743,7 +742,6 @@ bool X86DomainReassignment::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
 
   EnclosedEdges.clear();
-  EnclosedEdges.resize(MRI->getNumVirtRegs());
   EnclosedInstrs.clear();
 
   std::vector<Closure> Closures;
@@ -758,7 +756,7 @@ bool X86DomainReassignment::runOnMachineFunction(MachineFunction &MF) {
       continue;
 
     // Register already in closure.
-    if (EnclosedEdges.test(Idx))
+    if (EnclosedEdges.count(Reg))
       continue;
 
     // Calculate closure starting with Reg.

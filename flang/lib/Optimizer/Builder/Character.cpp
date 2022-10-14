@@ -11,9 +11,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "flang/Optimizer/Builder/Character.h"
+#include "flang/Lower/Todo.h"
 #include "flang/Optimizer/Builder/DoLoopHelper.h"
 #include "flang/Optimizer/Builder/FIRBuilder.h"
-#include "flang/Optimizer/Builder/Todo.h"
 #include "llvm/Support/Debug.h"
 #include <optional>
 
@@ -718,10 +718,7 @@ mlir::Value fir::factory::createCharacterProcedureTuple(
     mlir::Value addr, mlir::Value len) {
   mlir::TupleType tupleType = argTy.cast<mlir::TupleType>();
   addr = builder.createConvert(loc, tupleType.getType(0), addr);
-  if (len)
-    len = builder.createConvert(loc, tupleType.getType(1), len);
-  else
-    len = builder.create<fir::UndefOp>(loc, tupleType.getType(1));
+  len = builder.createConvert(loc, tupleType.getType(1), len);
   mlir::Value tuple = builder.create<fir::UndefOp>(loc, tupleType);
   tuple = builder.create<fir::InsertValueOp>(
       loc, tupleType, tuple, addr,

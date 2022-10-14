@@ -110,7 +110,7 @@ void XCoreAsmPrinter::emitGlobalVariable(const GlobalVariable *GV) {
     return;
 
   const DataLayout &DL = getDataLayout();
-  OutStreamer->switchSection(getObjFileLowering().SectionForGlobal(GV, TM));
+  OutStreamer->SwitchSection(getObjFileLowering().SectionForGlobal(GV, TM));
 
   MCSymbol *GVSym = getSymbol(GV);
   const Constant *C = GV->getInitializer();
@@ -256,9 +256,6 @@ bool XCoreAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
 }
 
 void XCoreAsmPrinter::emitInstruction(const MachineInstr *MI) {
-  XCore_MC::verifyInstructionPredicates(MI->getOpcode(),
-                                        getSubtargetInfo().getFeatureBits());
-
   SmallString<128> Str;
   raw_svector_ostream O(Str);
 

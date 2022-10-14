@@ -835,13 +835,6 @@ enum DiagnosticTag {
 };
 llvm::json::Value toJSON(DiagnosticTag Tag);
 
-/// Structure to capture a description for an error code.
-struct CodeDescription {
-  /// An URI to open with more information about the diagnostic error.
-  std::string href;
-};
-llvm::json::Value toJSON(const CodeDescription &);
-
 struct CodeAction;
 struct Diagnostic {
   /// The range at which the message applies.
@@ -853,9 +846,6 @@ struct Diagnostic {
 
   /// The diagnostic's code. Can be omitted.
   std::string code;
-
-  /// An optional property to describe the error code.
-  llvm::Optional<CodeDescription> codeDescription;
 
   /// A human-readable string describing the source of this
   /// diagnostic, e.g. 'typescript' or 'super lint'.
@@ -884,7 +874,7 @@ struct Diagnostic {
 
   /// A data entry field that is preserved between a
   /// `textDocument/publishDiagnostics` notification
-  /// and `textDocument/codeAction` request.
+  /// and`textDocument/codeAction` request.
   /// Mutating users should associate their data with a unique key they can use
   /// to retrieve later on.
   llvm::json::Object data;
@@ -1522,41 +1512,37 @@ struct CallHierarchyOutgoingCall {
 };
 llvm::json::Value toJSON(const CallHierarchyOutgoingCall &);
 
-/// A parameter literal used in inlay hint requests.
+/// The parameter of a `clangd/inlayHints` request.
+///
+/// This is a clangd extension.
 struct InlayHintsParams {
-  /// The text document.
+  /// The text document for which inlay hints are requested.
   TextDocumentIdentifier textDocument;
 
-  /// The visible document range for which inlay hints should be computed.
-  ///
-  /// None is a clangd extension, which hints for computing hints on the whole
-  /// file.
+  /// If set, requests inlay hints for only part of the document.
   llvm::Optional<Range> range;
 };
 bool fromJSON(const llvm::json::Value &, InlayHintsParams &, llvm::json::Path);
 
-/// Inlay hint kinds.
+/// A set of predefined hint kinds.
 enum class InlayHintKind {
-  /// An inlay hint that for a type annotation.
-  ///
-  /// An example of a type hint is a hint in this position:
-  ///    auto var ^ = expr;
-  /// which shows the deduced type of the variable.
-  Type = 1,
-
-  /// An inlay hint that is for a parameter.
-  ///
+  /// The hint corresponds to parameter information.
   /// An example of a parameter hint is a hint in this position:
   ///    func(^arg);
   /// which shows the name of the corresponding parameter.
-  Parameter = 2,
+  ParameterHint,
+
+  /// The hint corresponds to information about a deduced type.
+  /// An example of a type hint is a hint in this position:
+  ///    auto var ^ = expr;
+  /// which shows the deduced type of the variable.
+  TypeHint,
 
   /// A hint before an element of an aggregate braced initializer list,
   /// indicating what it is initializing.
   ///   Pair{^1, ^2};
   /// Uses designator syntax, e.g. `.first:`.
-  /// This is a clangd extension.
-  Designator = 3,
+  DesignatorHint,
 
   /// Other ideas for hints that are not currently implemented:
   ///
@@ -1564,48 +1550,35 @@ enum class InlayHintKind {
   ///   in a chain of function calls.
   /// * Hints indicating implicit conversions or implicit constructor calls.
 };
-llvm::json::Value toJSON(const InlayHintKind &);
+llvm::json::Value toJSON(InlayHintKind);
 
-/// Inlay hint information.
+/// An annotation to be displayed inline next to a range of source code.
+///
+/// This is a clangd extension.
 struct InlayHint {
-  /// The position of this hint.
+  /// The position between two characters where the hint should be displayed.
+  ///
+  /// For example, n parameter hint may be positioned before an argument.
   Position position;
-
-  /// The label of this hint. A human readable string or an array of
-  /// InlayHintLabelPart label parts.
-  ///
-  /// *Note* that neither the string nor the label part can be empty.
-  std::string label;
-
-  /// The kind of this hint. Can be omitted in which case the client should fall
-  /// back to a reasonable default.
-  InlayHintKind kind;
-
-  /// Render padding before the hint.
-  ///
-  /// Note: Padding should use the editor's background color, not the
-  /// background color of the hint itself. That means padding can be used
-  /// to visually align/separate an inlay hint.
-  bool paddingLeft = false;
-
-  /// Render padding after the hint.
-  ///
-  /// Note: Padding should use the editor's background color, not the
-  /// background color of the hint itself. That means padding can be used
-  /// to visually align/separate an inlay hint.
-  bool paddingRight = false;
 
   /// The range of source code to which the hint applies.
   ///
   /// For example, a parameter hint may have the argument as its range.
   /// The range allows clients more flexibility of when/how to display the hint.
-  /// This is an (unserialized) clangd extension.
   Range range;
+
+  /// The type of hint, such as a parameter hint.
+  InlayHintKind kind;
+
+  /// The label that is displayed in the editor, such as a parameter name.
+  ///
+  /// The label may contain punctuation and/or whitespace to allow it to read
+  /// naturally when placed inline with the code.
+  std::string label;
 };
 llvm::json::Value toJSON(const InlayHint &);
 bool operator==(const InlayHint &, const InlayHint &);
 bool operator<(const InlayHint &, const InlayHint &);
-llvm::raw_ostream &operator<<(llvm::raw_ostream &, InlayHintKind);
 
 struct ReferenceContext {
   /// Include the declaration of the current symbol.
@@ -1772,7 +1745,7 @@ struct FoldingRange {
   unsigned startCharacter;
   unsigned endLine = 0;
   unsigned endCharacter;
-  std::string kind;
+  llvm::Optional<std::string> kind;
 };
 llvm::json::Value toJSON(const FoldingRange &Range);
 

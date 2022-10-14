@@ -12,7 +12,6 @@
 // CHECK-NEXT: alpha.security.MmapWriteExec:MmapProtExec = 0x04
 // CHECK-NEXT: alpha.security.MmapWriteExec:MmapProtRead = 0x01
 // CHECK-NEXT: alpha.security.taint.TaintPropagation:Config = ""
-// CHECK-NEXT: alpha.unix.Errno:AllowErrnoReadOutsideConditionExpressions = true
 // CHECK-NEXT: apiModeling.StdCLibraryFunctions:DisplayLoadedSummaries = false
 // CHECK-NEXT: apiModeling.StdCLibraryFunctions:ModelPOSIX = false
 // CHECK-NEXT: apply-fixits = false
@@ -42,7 +41,6 @@
 // CHECK-NEXT: core.CallAndMessage:NilReceiver = true
 // CHECK-NEXT: core.CallAndMessage:ParameterCount = true
 // CHECK-NEXT: core.CallAndMessage:UndefReceiver = true
-// CHECK-NEXT: core.NullDereference:SuppressAddressSpaces = true
 // CHECK-NEXT: cplusplus.Move:WarnOn = KnownsAndLocals
 // CHECK-NEXT: cplusplus.SmartPtrModeling:ModelSmartPtrDereference = false
 // CHECK-NEXT: crosscheck-with-z3 = false
@@ -51,9 +49,6 @@
 // CHECK-NEXT: ctu-import-threshold = 24
 // CHECK-NEXT: ctu-index-name = externalDefMap.txt
 // CHECK-NEXT: ctu-invocation-list = invocations.yaml
-// CHECK-NEXT: ctu-max-nodes-min = 10000
-// CHECK-NEXT: ctu-max-nodes-pct = 50
-// CHECK-NEXT: ctu-phase1-inlining = small
 // CHECK-NEXT: deadcode.DeadStores:ShowFixIts = false
 // CHECK-NEXT: deadcode.DeadStores:WarnForDeadNestedAssignments = true
 // CHECK-NEXT: debug.AnalysisOrder:* = false
@@ -115,7 +110,6 @@
 // CHECK-NEXT: osx.NumberObjectConversion:Pedantic = false
 // CHECK-NEXT: osx.cocoa.RetainCount:TrackNSCFStartParam = false
 // CHECK-NEXT: prune-paths = true
-// CHECK-NEXT: region-store-small-array-limit = 5
 // CHECK-NEXT: region-store-small-struct-limit = 2
 // CHECK-NEXT: report-in-main-source-file = false
 // CHECK-NEXT: serialize-stats = false

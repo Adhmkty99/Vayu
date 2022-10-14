@@ -78,8 +78,8 @@ class ItaniumMangleContextImpl : public ItaniumMangleContext {
 public:
   explicit ItaniumMangleContextImpl(
       ASTContext &Context, DiagnosticsEngine &Diags,
-      DiscriminatorOverrideTy DiscriminatorOverride, bool IsAux = false)
-      : ItaniumMangleContext(Context, Diags, IsAux),
+      DiscriminatorOverrideTy DiscriminatorOverride)
+      : ItaniumMangleContext(Context, Diags),
         DiscriminatorOverride(DiscriminatorOverride) {}
 
   /// @name Mangler Entry Points
@@ -130,8 +130,6 @@ public:
 
   void mangleLambdaSig(const CXXRecordDecl *Lambda, raw_ostream &) override;
 
-  void mangleModuleInitializer(const Module *Module, raw_ostream &) override;
-
   bool getNextDiscriminator(const NamedDecl *ND, unsigned &disc) {
     // Lambda closure types are already numbered.
     if (isLambda(ND))
@@ -145,7 +143,7 @@ public:
 
     // Use the canonical number for externally visible decls.
     if (ND->isExternallyVisible()) {
-      unsigned discriminator = getASTContext().getManglingNumber(ND, isAux());
+      unsigned discriminator = getASTContext().getManglingNumber(ND);
       if (discriminator == 1)
         return false;
       disc = discriminator - 2;
@@ -440,12 +438,11 @@ public:
   void mangleType(QualType T);
   void mangleNameOrStandardSubstitution(const NamedDecl *ND);
   void mangleLambdaSig(const CXXRecordDecl *Lambda);
-  void mangleModuleNamePrefix(StringRef Name, bool IsPartition = false);
+  void mangleModuleNamePrefix(StringRef Name);
 
 private:
 
   bool mangleSubstitution(const NamedDecl *ND);
-  bool mangleSubstitution(NestedNameSpecifier *NNS);
   bool mangleSubstitution(QualType T);
   bool mangleSubstitution(TemplateName Template);
   bool mangleSubstitution(uintptr_t Ptr);
@@ -458,11 +455,6 @@ private:
     ND = cast<NamedDecl>(ND->getCanonicalDecl());
 
     addSubstitution(reinterpret_cast<uintptr_t>(ND));
-  }
-  void addSubstitution(NestedNameSpecifier *NNS) {
-    NNS = Context.getASTContext().getCanonicalNestedNameSpecifier(NNS);
-
-    addSubstitution(reinterpret_cast<uintptr_t>(NNS));
   }
   void addSubstitution(QualType T);
   void addSubstitution(TemplateName Template);
@@ -1059,8 +1051,8 @@ void CXXNameMangler::mangleModuleName(const NamedDecl *ND) {
 //		 ::= <module-name> <module-subname>
 //	 	 ::= <substitution>
 // <module-subname> ::= W <source-name>
-//		    ::= W P <source-name>
-void CXXNameMangler::mangleModuleNamePrefix(StringRef Name, bool IsPartition) {
+//		    ::= W P <source-name> # not (yet) needed
+void CXXNameMangler::mangleModuleNamePrefix(StringRef Name) {
   //  <substitution> ::= S <seq-id> _
   auto It = ModuleSubstitutions.find(Name);
   if (It != ModuleSubstitutions.end()) {
@@ -1074,14 +1066,10 @@ void CXXNameMangler::mangleModuleNamePrefix(StringRef Name, bool IsPartition) {
   auto Parts = Name.rsplit('.');
   if (Parts.second.empty())
     Parts.second = Parts.first;
-  else {
-    mangleModuleNamePrefix(Parts.first, IsPartition);
-    IsPartition = false;
-  }
+  else
+    mangleModuleNamePrefix(Parts.first);
 
   Out << 'W';
-  if (IsPartition)
-    Out << 'P';
   Out << Parts.second.size() << Parts.second;
   ModuleSubstitutions.insert({Name, SeqID++});
 }
@@ -1576,8 +1564,7 @@ void CXXNameMangler::mangleUnqualifiedName(
     }
 
     if (TD->isExternallyVisible()) {
-      unsigned UnnamedMangle =
-          getASTContext().getManglingNumber(TD, Context.isAux());
+      unsigned UnnamedMangle = getASTContext().getManglingNumber(TD);
       Out << "Ut";
       if (UnnamedMangle > 1)
         Out << UnnamedMangle - 2;
@@ -2049,21 +2036,12 @@ void CXXNameMangler::manglePrefix(NestedNameSpecifier *qualifier) {
     return;
 
   case NestedNameSpecifier::Identifier:
-    // Clang 14 and before did not consider this substitutable.
-    bool Clang14Compat = getASTContext().getLangOpts().getClangABICompat() <=
-                         LangOptions::ClangABI::Ver14;
-    if (!Clang14Compat && mangleSubstitution(qualifier))
-      return;
-
     // Member expressions can have these without prefixes, but that
     // should end up in mangleUnresolvedPrefix instead.
     assert(qualifier->getPrefix());
     manglePrefix(qualifier->getPrefix());
 
     mangleSourceName(qualifier->getAsIdentifier());
-
-    if (!Clang14Compat)
-      addSubstitution(qualifier);
     return;
   }
 
@@ -2226,7 +2204,9 @@ void CXXNameMangler::mangleType(TemplateName TN) {
 
   switch (TN.getKind()) {
   case TemplateName::QualifiedTemplate:
-  case TemplateName::UsingTemplate:
+    TD = TN.getAsQualifiedTemplateName()->getTemplateDecl();
+    goto HaveDecl;
+
   case TemplateName::Template:
     TD = TN.getAsTemplateDecl();
     goto HaveDecl;
@@ -2401,12 +2381,6 @@ bool CXXNameMangler::mangleUnresolvedTypeOrSimpleId(QualType Ty,
       //   template <class U...> void foo(decltype(T<U>::foo) x...);
       // };
       Out << "_SUBSTPACK_";
-      break;
-    }
-    case TemplateName::UsingTemplate: {
-      TemplateDecl *TD = TN.getAsTemplateDecl();
-      assert(TD && !isa<TemplateTemplateParmDecl>(TD));
-      mangleSourceNameWithAbiTags(TD);
       break;
     }
     }
@@ -3155,8 +3129,6 @@ StringRef CXXNameMangler::getCallingConvQualifierName(CallingConv CC) {
   case CC_AAPCS:
   case CC_AAPCS_VFP:
   case CC_AArch64VectorCall:
-  case CC_AArch64SVEPCS:
-  case CC_AMDGPUKernelCall:
   case CC_IntelOclBicc:
   case CC_SpirFunction:
   case CC_OpenCLKernel:
@@ -5646,7 +5618,8 @@ void CXXNameMangler::mangleValueInTemplateArg(QualType T, const APValue &V,
     assert(RD && "unexpected type for record value");
 
     // Drop trailing zero-initialized elements.
-    llvm::SmallVector<const FieldDecl *, 16> Fields(RD->fields());
+    llvm::SmallVector<const FieldDecl *, 16> Fields(RD->field_begin(),
+                                                    RD->field_end());
     while (
         !Fields.empty() &&
         (Fields.back()->isUnnamedBitfield() ||
@@ -6030,14 +6003,6 @@ bool CXXNameMangler::mangleSubstitution(const NamedDecl *ND) {
 
   ND = cast<NamedDecl>(ND->getCanonicalDecl());
   return mangleSubstitution(reinterpret_cast<uintptr_t>(ND));
-}
-
-bool CXXNameMangler::mangleSubstitution(NestedNameSpecifier *NNS) {
-  assert(NNS->getKind() == NestedNameSpecifier::Identifier &&
-         "mangleSubstitution(NestedNameSpecifier *) is only used for "
-         "identifier nested name specifiers.");
-  NNS = Context.getASTContext().getCanonicalNestedNameSpecifier(NNS);
-  return mangleSubstitution(reinterpret_cast<uintptr_t>(NNS));
 }
 
 /// Determine whether the given type has any qualifiers that are relevant for
@@ -6538,36 +6503,17 @@ void ItaniumMangleContextImpl::mangleLambdaSig(const CXXRecordDecl *Lambda,
   Mangler.mangleLambdaSig(Lambda);
 }
 
-void ItaniumMangleContextImpl::mangleModuleInitializer(const Module *M,
-                                                       raw_ostream &Out) {
-  // <special-name> ::= GI <module-name>  # module initializer function
-  CXXNameMangler Mangler(*this, Out);
-  Mangler.getStream() << "_ZGI";
-  Mangler.mangleModuleNamePrefix(M->getPrimaryModuleInterfaceName());
-  if (M->isModulePartition()) {
-    // The partition needs including, as partitions can have them too.
-    auto Partition = M->Name.find(':');
-    Mangler.mangleModuleNamePrefix(
-        StringRef(&M->Name[Partition + 1], M->Name.size() - Partition - 1),
-        /*IsPartition*/ true);
-  }
-}
-
 ItaniumMangleContext *ItaniumMangleContext::create(ASTContext &Context,
-                                                   DiagnosticsEngine &Diags,
-                                                   bool IsAux) {
+                                                   DiagnosticsEngine &Diags) {
   return new ItaniumMangleContextImpl(
       Context, Diags,
       [](ASTContext &, const NamedDecl *) -> llvm::Optional<unsigned> {
         return llvm::None;
-      },
-      IsAux);
+      });
 }
 
 ItaniumMangleContext *
 ItaniumMangleContext::create(ASTContext &Context, DiagnosticsEngine &Diags,
-                             DiscriminatorOverrideTy DiscriminatorOverride,
-                             bool IsAux) {
-  return new ItaniumMangleContextImpl(Context, Diags, DiscriminatorOverride,
-                                      IsAux);
+                             DiscriminatorOverrideTy DiscriminatorOverride) {
+  return new ItaniumMangleContextImpl(Context, Diags, DiscriminatorOverride);
 }

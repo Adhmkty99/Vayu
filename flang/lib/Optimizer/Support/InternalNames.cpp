@@ -38,7 +38,7 @@ static std::string doModules(llvm::ArrayRef<llvm::StringRef> mods) {
 static std::string doModulesHost(llvm::ArrayRef<llvm::StringRef> mods,
                                  llvm::Optional<llvm::StringRef> host) {
   std::string result = doModules(mods);
-  if (host)
+  if (host.hasValue())
     result.append("F").append(host->lower());
   return result;
 }
@@ -51,8 +51,8 @@ convertToStringRef(llvm::ArrayRef<std::string> from) {
 inline llvm::Optional<llvm::StringRef>
 convertToStringRef(const llvm::Optional<std::string> &from) {
   llvm::Optional<llvm::StringRef> to;
-  if (from)
-    to = *from;
+  if (from.hasValue())
+    to = from.getValue();
   return to;
 }
 

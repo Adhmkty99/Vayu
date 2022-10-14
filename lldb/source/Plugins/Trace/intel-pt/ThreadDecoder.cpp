@@ -23,32 +23,22 @@ using namespace llvm;
 ThreadDecoder::ThreadDecoder(const ThreadSP &thread_sp, TraceIntelPT &trace)
     : m_thread_sp(thread_sp), m_trace(trace) {}
 
-Expected<DecodedThreadSP> ThreadDecoder::Decode() {
-  if (!m_decoded_thread.hasValue()) {
-    if (Expected<DecodedThreadSP> decoded_thread = DoDecode()) {
-      m_decoded_thread = *decoded_thread;
-    } else {
-      return decoded_thread.takeError();
-    }
-  }
+DecodedThreadSP ThreadDecoder::Decode() {
+  if (!m_decoded_thread.hasValue())
+    m_decoded_thread = DoDecode();
   return *m_decoded_thread;
 }
 
-llvm::Expected<DecodedThreadSP> ThreadDecoder::DoDecode() {
-  return m_trace.GetThreadTimer(m_thread_sp->GetID())
-      .TimeTask(
-          "Decoding instructions", [&]() -> Expected<DecodedThreadSP> {
-            DecodedThreadSP decoded_thread_sp =
-                std::make_shared<DecodedThread>(m_thread_sp);
+DecodedThreadSP ThreadDecoder::DoDecode() {
+  DecodedThreadSP decoded_thread_sp =
+      std::make_shared<DecodedThread>(m_thread_sp);
 
-            Error err = m_trace.OnThreadBufferRead(
-                m_thread_sp->GetID(), [&](llvm::ArrayRef<uint8_t> data) {
-                  return DecodeSingleTraceForThread(*decoded_thread_sp, m_trace,
-                                                    data);
-                });
-
-            if (err)
-              return std::move(err);
-            return decoded_thread_sp;
-          });
+  Error err = m_trace.OnThreadBufferRead(
+      m_thread_sp->GetID(), [&](llvm::ArrayRef<uint8_t> data) {
+        DecodeTrace(*decoded_thread_sp, m_trace, data);
+        return Error::success();
+      });
+  if (err)
+    decoded_thread_sp->AppendError(std::move(err));
+  return decoded_thread_sp;
 }

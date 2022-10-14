@@ -18,6 +18,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "flang/Frontend/CompilerInstance.h"
 #include "flang/Frontend/FrontendActions.h"
 #include "flang/Frontend/FrontendPluginRegistry.h"
 #include "flang/Parser/dump-parse-tree.h"
@@ -65,9 +66,11 @@ class PrintFunctionNamesAction : public PluginParseTreeAction {
     bool isInSubprogram_{false};
   };
 
-  void executeAction() override {
+  void ExecuteAction() override {
+    auto &parseTree{instance().parsing().parseTree()};
+
     ParseTreeVisitor visitor;
-    Fortran::parser::Walk(getParsing().parseTree(), visitor);
+    Fortran::parser::Walk(parseTree, visitor);
 
     llvm::outs() << "\n====   Functions: " << visitor.fcounter << " ====\n";
     llvm::outs() << "==== Subroutines: " << visitor.scounter << " ====\n";

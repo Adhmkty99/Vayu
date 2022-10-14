@@ -1,5 +1,4 @@
 ; RUN: llc < %s -march=nvptx -mcpu=sm_20 | FileCheck %s
-; RUN: %if ptxas %{ llc < %s -march=nvptx -mcpu=sm_20 | %ptxas-verify %}
 
 
 declare i8 @llvm.nvvm.ldu.global.i.i8.p1i8(i8 addrspace(1)* %ptr, i32 %align)

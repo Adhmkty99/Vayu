@@ -129,7 +129,7 @@ public:
 
       // Constraints are unsatisfiable
       Optional<bool> isSat = Solver->check();
-      if (!isSat || !*isSat)
+      if (!isSat.hasValue() || !isSat.getValue())
         return nullptr;
 
       // Model does not assign interpretation
@@ -146,7 +146,7 @@ public:
       Solver->addConstraint(NotExp);
 
       Optional<bool> isNotSat = Solver->check();
-      if (!isNotSat || *isNotSat)
+      if (!isNotSat.hasValue() || isNotSat.getValue())
         return nullptr;
 
       // This is the only solution, store it
@@ -341,10 +341,10 @@ protected:
     addStateConstraints(NewState);
 
     Optional<bool> res = Solver->check();
-    if (!res)
+    if (!res.hasValue())
       Cached[hash] = ConditionTruthVal();
     else
-      Cached[hash] = ConditionTruthVal(res.value());
+      Cached[hash] = ConditionTruthVal(res.getValue());
 
     return Cached[hash];
   }

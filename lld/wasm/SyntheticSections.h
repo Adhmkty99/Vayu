@@ -290,12 +290,14 @@ public:
   bool needsRelocations() {
     if (config->extendedConst)
       return false;
-    return llvm::any_of(internalGotSymbols,
-                        [=](Symbol *sym) { return !sym->isTLS(); });
+    return llvm::find_if(internalGotSymbols, [=](Symbol *sym) {
+             return !sym->isTLS();
+           }) != internalGotSymbols.end();
   }
   bool needsTLSRelocations() {
-    return llvm::any_of(internalGotSymbols,
-                        [=](Symbol *sym) { return sym->isTLS(); });
+    return llvm::find_if(internalGotSymbols, [=](Symbol *sym) {
+             return sym->isTLS();
+           }) != internalGotSymbols.end();
   }
   void generateRelocationCode(raw_ostream &os, bool TLS) const;
 

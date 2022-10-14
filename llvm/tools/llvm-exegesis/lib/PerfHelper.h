@@ -14,6 +14,7 @@
 #ifndef LLVM_TOOLS_LLVM_EXEGESIS_PERFHELPER_H
 #define LLVM_TOOLS_LLVM_EXEGESIS_PERFHELPER_H
 
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Config/config.h"

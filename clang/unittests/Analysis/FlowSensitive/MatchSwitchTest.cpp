@@ -123,22 +123,25 @@ public:
   }
 };
 
-template <typename Matcher>
-void RunDataflow(llvm::StringRef Code, Matcher Expectations) {
-  ASSERT_THAT_ERROR(
-      test::checkDataflow<TestAnalysis>(
-          Code, "fun",
-          [](ASTContext &C, Environment &) { return TestAnalysis(C); },
-          [&Expectations](
-              llvm::ArrayRef<std::pair<
-                  std::string, DataflowAnalysisState<TestAnalysis::Lattice>>>
-                  Results,
-              ASTContext &) { EXPECT_THAT(Results, Expectations); },
-          {"-fsyntax-only", "-std=c++17"}),
-      llvm::Succeeded());
-}
+class MatchSwitchTest : public ::testing::Test {
+protected:
+  template <typename Matcher>
+  void RunDataflow(llvm::StringRef Code, Matcher Expectations) {
+    ASSERT_THAT_ERROR(
+        test::checkDataflow<TestAnalysis>(
+            Code, "fun",
+            [](ASTContext &C, Environment &) { return TestAnalysis(C); },
+            [&Expectations](
+                llvm::ArrayRef<std::pair<
+                    std::string, DataflowAnalysisState<TestAnalysis::Lattice>>>
+                    Results,
+                ASTContext &) { EXPECT_THAT(Results, Expectations); },
+            {"-fsyntax-only", "-std=c++17"}),
+        llvm::Succeeded());
+  }
+};
 
-TEST(MatchSwitchTest, JustX) {
+TEST_F(MatchSwitchTest, JustX) {
   std::string Code = R"(
     void fun() {
       int X = 1;
@@ -150,7 +153,7 @@ TEST(MatchSwitchTest, JustX) {
               UnorderedElementsAre(Pair("p", Holds(BooleanLattice(true)))));
 }
 
-TEST(MatchSwitchTest, JustFoo) {
+TEST_F(MatchSwitchTest, JustFoo) {
   std::string Code = R"(
     void Foo();
     void fun() {
@@ -162,7 +165,7 @@ TEST(MatchSwitchTest, JustFoo) {
               UnorderedElementsAre(Pair("p", Holds(BooleanLattice(false)))));
 }
 
-TEST(MatchSwitchTest, XThenFoo) {
+TEST_F(MatchSwitchTest, XThenFoo) {
   std::string Code = R"(
     void Foo();
     void fun() {
@@ -176,7 +179,7 @@ TEST(MatchSwitchTest, XThenFoo) {
               UnorderedElementsAre(Pair("p", Holds(BooleanLattice(false)))));
 }
 
-TEST(MatchSwitchTest, FooThenX) {
+TEST_F(MatchSwitchTest, FooThenX) {
   std::string Code = R"(
     void Foo();
     void fun() {
@@ -190,7 +193,7 @@ TEST(MatchSwitchTest, FooThenX) {
               UnorderedElementsAre(Pair("p", Holds(BooleanLattice(true)))));
 }
 
-TEST(MatchSwitchTest, Neither) {
+TEST_F(MatchSwitchTest, Neither) {
   std::string Code = R"(
     void Bar();
     void fun(bool b) {
@@ -200,30 +203,4 @@ TEST(MatchSwitchTest, Neither) {
   )";
   RunDataflow(Code,
               UnorderedElementsAre(Pair("p", Holds(BooleanLattice(false)))));
-}
-
-TEST(MatchSwitchTest, ReturnNonVoid) {
-  using namespace ast_matchers;
-
-  auto Unit =
-      tooling::buildASTFromCode("void f() { int x = 42; }", "input.cc",
-                                std::make_shared<PCHContainerOperations>());
-  auto &Context = Unit->getASTContext();
-  const auto *S =
-      selectFirst<FunctionDecl>(
-          "f",
-          match(functionDecl(isDefinition(), hasName("f")).bind("f"), Context))
-          ->getBody();
-
-  MatchSwitch<const int, std::vector<int>> Switch =
-      MatchSwitchBuilder<const int, std::vector<int>>()
-          .CaseOf<Stmt>(stmt(),
-                        [](const Stmt *, const MatchFinder::MatchResult &,
-                           const int &State) -> std::vector<int> {
-                          return {1, State, 3};
-                        })
-          .Build();
-  std::vector<int> Actual = Switch(*S, Context, 7);
-  std::vector<int> Expected{1, 7, 3};
-  EXPECT_EQ(Actual, Expected);
 }

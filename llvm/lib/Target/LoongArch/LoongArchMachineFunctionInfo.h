@@ -35,13 +35,6 @@ private:
 public:
   LoongArchMachineFunctionInfo(const MachineFunction &MF) {}
 
-  MachineFunctionInfo *
-  clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
-        const DenseMap<MachineBasicBlock *, MachineBasicBlock *> &Src2DstMBB)
-      const override {
-    return DestMF.cloneInfo<LoongArchMachineFunctionInfo>(*this);
-  }
-
   int getVarArgsFrameIndex() const { return VarArgsFrameIndex; }
   void setVarArgsFrameIndex(int Index) { VarArgsFrameIndex = Index; }
 

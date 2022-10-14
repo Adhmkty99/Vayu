@@ -6,8 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: !stdlib=libc++ && (c++03 || c++11 || c++14)
-
 // <string_view>
 
 // constexpr int compare(basic_string_view str) const noexcept;

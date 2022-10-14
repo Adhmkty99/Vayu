@@ -213,7 +213,7 @@ bool ARMBlockPlacement::processPostOrderLoops(MachineLoop *ML) {
 bool ARMBlockPlacement::runOnMachineFunction(MachineFunction &MF) {
   if (skipFunction(MF.getFunction()))
     return false;
-  const ARMSubtarget &ST = MF.getSubtarget<ARMSubtarget>();
+  const ARMSubtarget &ST = static_cast<const ARMSubtarget &>(MF.getSubtarget());
   if (!ST.hasLOB())
     return false;
   LLVM_DEBUG(dbgs() << DEBUG_PREFIX << "Running on " << MF.getName() << "\n");

@@ -16,7 +16,6 @@
 #include <mutex>
 #include <set>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace llvm {
@@ -26,23 +25,15 @@ namespace bolt {
 class BinaryContext;
 
 class DWARFRewriter {
-public:
   DWARFRewriter() = delete;
-  using DebugTypesSignaturesPerCUMap =
-      std::unordered_map<uint64_t, std::unordered_set<uint64_t>>;
 
-private:
   BinaryContext &BC;
 
   std::mutex DebugInfoPatcherMutex;
 
   /// Stores and serializes information that will be put into the
   /// .debug_ranges DWARF section.
-  std::unique_ptr<DebugRangesSectionWriter> LegacyRangesSectionWriter;
-
-  /// Stores and serializes information that will be put into the
-  /// .debug_rnglists DWARF section.
-  std::unique_ptr<DebugRangeListsSectionWriter> RangeListsSectionWriter;
+  std::unique_ptr<DebugRangesSectionWriter> RangesSectionWriter;
 
   /// Stores and serializes information that will be put into the
   /// .debug_aranges DWARF section.
@@ -57,22 +48,13 @@ private:
   /// Does not do de-duplication.
   std::unique_ptr<DebugStrWriter> StrWriter;
 
-  /// Stores and serializes information that will be put in to the
-  /// .debug_str_offsets DWARF section.
-  std::unique_ptr<DebugStrOffsetsWriter> StrOffstsWriter;
-
   /// .debug_abbrev section writer for the main binary.
   std::unique_ptr<DebugAbbrevWriter> AbbrevWriter;
 
-  using LocWriters = std::map<uint64_t, std::unique_ptr<DebugLocWriter>>;
+  using LocWriters =
+      std::unordered_map<uint64_t, std::unique_ptr<DebugLocWriter>>;
   /// Use a separate location list writer for each compilation unit
   LocWriters LocListWritersByCU;
-
-  using RangeListsDWOWriers =
-      std::unordered_map<uint64_t,
-                         std::unique_ptr<DebugRangeListsSectionWriter>>;
-  /// Store Rangelists writer for each DWO CU.
-  RangeListsDWOWriers RangeListsWritersByCU;
 
   using DebugAbbrevDWOWriters =
       std::unordered_map<uint64_t, std::unique_ptr<DebugAbbrevWriter>>;
@@ -84,20 +66,13 @@ private:
   /// Binary patchers for DWO debug_info sections.
   DebugInfoDWOPatchers BinaryDWODebugInfoPatchers;
 
-  /// Stores all the Type Signatures for DWO CU.
-  DebugTypesSignaturesPerCUMap TypeSignaturesPerCU;
-
   std::mutex LocListDebugInfoPatchesMutex;
-
-  /// DWARFLegacy is all DWARF versions before DWARF 5.
-  enum class DWARFVersion { DWARFLegacy, DWARF5 };
 
   /// Update debug info for all DIEs in \p Unit.
   void updateUnitDebugInfo(DWARFUnit &Unit,
                            DebugInfoBinaryPatcher &DebugInfoPatcher,
                            DebugAbbrevWriter &AbbrevWriter,
                            DebugLocWriter &DebugLocWriter,
-                           DebugRangesSectionWriter &RangesWriter,
                            Optional<uint64_t> RangesBase = None);
 
   /// Patches the binary for an object's address ranges to be updated.
@@ -116,8 +91,7 @@ private:
                                       Optional<uint64_t> RangesBase = None);
 
   std::unique_ptr<DebugBufferVector>
-  makeFinalLocListsSection(DebugInfoBinaryPatcher &DebugInfoPatcher,
-                           DWARFVersion Version);
+  makeFinalLocListsSection(SimpleBinaryPatcher &DebugInfoPatcher);
 
   /// Finalize debug sections in the main binary.
   CUOffsetMap finalizeDebugSections(DebugInfoBinaryPatcher &DebugInfoPatcher);
@@ -188,14 +162,6 @@ private:
 
     return static_cast<Patcher *>(Iter->second.get());
   }
-
-  /// Adds a \p Str to .debug_str section.
-  /// Uses \p AttrInfoVal to either update entry in a DIE for legacy DWARF using
-  /// \p DebugInfoPatcher, or for DWARF5 update an index in .debug_str_offsets
-  /// for this contribution of \p Unit.
-  void addStringHelper(DebugInfoBinaryPatcher &DebugInfoPatcher,
-                       const DWARFUnit &Unit, const AttrInfo &AttrInfoVal,
-                       StringRef Str);
 
 public:
   DWARFRewriter(BinaryContext &BC) : BC(BC) {}

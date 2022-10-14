@@ -30,7 +30,7 @@ extern cl::opt<unsigned> Verbosity;
 cl::opt<std::string> AsmDump("asm-dump",
                              cl::desc("dump function into assembly"),
                              cl::value_desc("dump folder"), cl::ValueOptional,
-                             cl::Hidden, cl::cat(BoltCategory));
+                             cl::ZeroOrMore, cl::Hidden, cl::cat(BoltCategory));
 } // end namespace opts
 
 namespace llvm {
@@ -59,10 +59,11 @@ void dumpJumpTableFdata(raw_ostream &OS, const BinaryFunction &BF,
                         const MCInst &Instr, const std::string &BranchLabel) {
   StringRef FunctionName = BF.getOneName();
   const JumpTable *JT = BF.getJumpTable(Instr);
-  for (uint32_t i = 0; i < JT->Entries.size(); ++i) {
-    StringRef TargetName = JT->Entries[i]->getName();
-    const uint64_t Mispreds = JT->Counts[i].Mispreds;
-    const uint64_t Count = JT->Counts[i].Count;
+  for (const uint64_t EntryOffset : JT->OffsetEntries) {
+    auto LI = JT->Labels.find(EntryOffset);
+    StringRef TargetName = LI->second->getName();
+    const uint64_t Mispreds = JT->Counts[EntryOffset].Mispreds;
+    const uint64_t Count = JT->Counts[EntryOffset].Count;
     OS << "# FDATA: 1 " << FunctionName << " #" << BranchLabel << "# "
        << "1 " << FunctionName << " #" << TargetName << "# " << Mispreds << " "
        << Count << '\n';
@@ -195,7 +196,7 @@ void dumpFunction(const BinaryFunction &BF) {
   std::unordered_set<const MCSymbol *> CallReferences;
 
   MAP->OutStreamer->emitCFIStartProc(/*IsSimple=*/false);
-  for (BinaryBasicBlock *BB : BF.getLayout().blocks()) {
+  for (BinaryBasicBlock *BB : BF.layout()) {
     OS << BB->getName() << ": \n";
 
     const std::string BranchLabel = Twine(BB->getName(), "_br").str();
@@ -211,7 +212,9 @@ void dumpFunction(const BinaryFunction &BF) {
 
       // Analyze symbol references (data, functions) from the instruction.
       bool IsCall = BC.MIB->isCall(Instr);
-      for (const MCOperand &Operand : MCPlus::primeOperands(Instr)) {
+      for (unsigned I = 0, E = MCPlus::getNumPrimeOperands(Instr); I != E;
+           ++I) {
+        MCOperand Operand = Instr.getOperand(I);
         if (Operand.isExpr() &&
             Operand.getExpr()->getKind() == MCExpr::SymbolRef) {
           std::pair<const MCSymbol *, uint64_t> TSI =

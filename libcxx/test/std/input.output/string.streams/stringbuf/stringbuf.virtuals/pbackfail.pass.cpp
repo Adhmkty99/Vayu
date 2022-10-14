@@ -36,7 +36,7 @@ struct testbuf
 
 int main(int, char**)
 {
-    // check pbackfail
+    // sanity check
     {
         testbuf<char> tb("");
         tb.pbackfail();

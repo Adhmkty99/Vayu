@@ -11,6 +11,8 @@ from lldbsuite.test import lldbutil
 
 class SkipSummaryDataFormatterTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @expectedFailureAll(
         oslist=["windows"],
         bugnumber="llvm.org/pr24462, Data formatters have problems on Windows")

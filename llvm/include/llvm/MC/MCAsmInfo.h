@@ -430,10 +430,6 @@ protected:
   /// hidden visibility.  Defaults to MCSA_Hidden.
   MCSymbolAttr HiddenVisibilityAttr = MCSA_Hidden;
 
-  /// This attribute, if not MCSA_Invalid, is used to declare a symbol as having
-  /// exported visibility.  Defaults to MCSA_Exported.
-  MCSymbolAttr ExportedVisibilityAttr = MCSA_Exported;
-
   /// This attribute, if not MCSA_Invalid, is used to declare an undefined
   /// symbol as having hidden visibility. Defaults to MCSA_Hidden.
   MCSymbolAttr HiddenDeclarationVisibilityAttr = MCSA_Hidden;
@@ -470,10 +466,6 @@ protected:
   /// the .loc/.file directives. Defaults to true.
   bool UsesDwarfFileAndLocDirectives = true;
 
-  /// True if DWARF `.file directory' directive syntax is used by
-  /// default.
-  bool EnableDwarfFileDirectoryDefault = true;
-
   /// True if the target needs the DWARF section length in the header (if any)
   /// of the DWARF section in the assembly file. Defaults to true.
   bool DwarfSectionSizeRequired = true;
@@ -485,10 +477,6 @@ protected:
   /// True if target uses parens to indicate the symbol variant instead of @.
   /// For example, foo(plt) instead of foo@plt.  Defaults to false.
   bool UseParensForSymbolVariant = false;
-
-  /// True if the target uses parens for symbol names starting with
-  /// '$' character to distinguish them from absolute names.
-  bool UseParensForDollarSignNames = true;
 
   /// True if the target supports flags in ".loc" directive, false if only
   /// location is allowed.
@@ -762,8 +750,6 @@ public:
 
   MCSymbolAttr getHiddenVisibilityAttr() const { return HiddenVisibilityAttr; }
 
-  MCSymbolAttr getExportedVisibilityAttr() const { return ExportedVisibilityAttr; }
-
   MCSymbolAttr getHiddenDeclarationVisibilityAttr() const {
     return HiddenDeclarationVisibilityAttr;
   }
@@ -803,9 +789,6 @@ public:
   bool doDwarfFDESymbolsUseAbsDiff() const { return DwarfFDESymbolsUseAbsDiff; }
   bool useDwarfRegNumForCFI() const { return DwarfRegNumForCFI; }
   bool useParensForSymbolVariant() const { return UseParensForSymbolVariant; }
-  bool useParensForDollarSignNames() const {
-    return UseParensForDollarSignNames;
-  }
   bool supportsExtendedDwarfLocDirective() const {
     return SupportsExtendedDwarfLocDirective;
   }
@@ -816,10 +799,6 @@ public:
 
   bool needsDwarfSectionSizeInHeader() const {
     return DwarfSectionSizeRequired;
-  }
-
-  bool enableDwarfFileDirectoryDefault() const {
-    return EnableDwarfFileDirectoryDefault;
   }
 
   void addInitialFrameState(const MCCFIInstruction &Inst);

@@ -30,7 +30,6 @@
 #include "Utils/AMDGPUBaseInfo.h"
 #include "Utils/AMDGPUMemoryUtils.h"
 #include "llvm/ADT/STLExtras.h"
-#include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/IRBuilder.h"
@@ -55,6 +54,21 @@ static cl::opt<bool> SuperAlignLDSGlobals(
     cl::init(true), cl::Hidden);
 
 namespace {
+
+SmallPtrSet<GlobalValue *, 32> getUsedList(Module &M) {
+  SmallPtrSet<GlobalValue *, 32> UsedList;
+
+  SmallVector<GlobalValue *, 32> TmpVec;
+  collectUsedGlobalVariables(M, TmpVec, true);
+  UsedList.insert(TmpVec.begin(), TmpVec.end());
+
+  TmpVec.clear();
+  collectUsedGlobalVariables(M, TmpVec, false);
+  UsedList.insert(TmpVec.begin(), TmpVec.end());
+
+  return UsedList;
+}
+
 class AMDGPULowerModuleLDS : public ModulePass {
 
   static void removeFromUsedList(Module &M, StringRef Name,
@@ -138,6 +152,9 @@ class AMDGPULowerModuleLDS : public ModulePass {
                        "");
   }
 
+private:
+  SmallPtrSet<GlobalValue *, 32> UsedList;
+
 public:
   static char ID;
 
@@ -146,11 +163,9 @@ public:
   }
 
   bool runOnModule(Module &M) override {
-    CallGraph CG = CallGraph(M);
+    UsedList = getUsedList(M);
     bool Changed = superAlignLDSGlobals(M);
-    std::vector<GlobalVariable *> ModuleScopeVariables =
-        AMDGPU::findVariablesToLower(M, nullptr);
-    Changed |= processUsedLDS(CG, M, ModuleScopeVariables);
+    Changed |= processUsedLDS(M);
 
     for (Function &F : M.functions()) {
       if (F.isDeclaration())
@@ -159,11 +174,10 @@ public:
       // Only lower compute kernels' LDS.
       if (!AMDGPU::isKernel(F.getCallingConv()))
         continue;
-      std::vector<GlobalVariable *> KernelUsedVariables =
-          AMDGPU::findVariablesToLower(M, &F);
-      Changed |= processUsedLDS(CG, M, KernelUsedVariables, &F);
+      Changed |= processUsedLDS(M, &F);
     }
 
+    UsedList.clear();
     return Changed;
   }
 
@@ -212,20 +226,22 @@ private:
     return Changed;
   }
 
-  bool processUsedLDS(CallGraph const &CG, Module &M,
-                      std::vector<GlobalVariable *> const &LDSVarsToTransform,
-                      Function *F = nullptr) {
+  bool processUsedLDS(Module &M, Function *F = nullptr) {
     LLVMContext &Ctx = M.getContext();
     const DataLayout &DL = M.getDataLayout();
 
-    if (LDSVarsToTransform.empty()) {
+    // Find variables to move into new struct instance
+    std::vector<GlobalVariable *> FoundLocalVars =
+        AMDGPU::findVariablesToLower(M, F);
+
+    if (FoundLocalVars.empty()) {
       // No variables to rewrite, no changes made.
       return false;
     }
 
     SmallVector<OptimizedStructLayoutField, 8> LayoutFields;
-    LayoutFields.reserve(LDSVarsToTransform.size());
-    for (GlobalVariable *GV : LDSVarsToTransform) {
+    LayoutFields.reserve(FoundLocalVars.size());
+    for (GlobalVariable *GV : FoundLocalVars) {
       OptimizedStructLayoutField F(GV, DL.getTypeAllocSize(GV->getValueType()),
                                    AMDGPU::getAlign(DL, GV));
       LayoutFields.emplace_back(F);
@@ -234,7 +250,7 @@ private:
     performOptimizedStructLayout(LayoutFields);
 
     std::vector<GlobalVariable *> LocalVars;
-    LocalVars.reserve(LDSVarsToTransform.size()); // will be at least this large
+    LocalVars.reserve(FoundLocalVars.size()); // will be at least this large
     {
       // This usually won't need to insert any padding, perhaps avoid the alloc
       uint64_t CurrentOffset = 0;
@@ -334,6 +350,7 @@ private:
         GV->replaceAllUsesWith(GEP);
       }
       if (GV->use_empty()) {
+        UsedList.erase(GV);
         GV->eraseFromParent();
       }
 
@@ -357,20 +374,7 @@ private:
       IRBuilder<> Builder(Ctx);
       for (Function &Func : M.functions()) {
         if (!Func.isDeclaration() && AMDGPU::isKernelCC(&Func)) {
-          const CallGraphNode *N = CG[&Func];
-          const bool CalleesRequireModuleLDS = N->size() > 0;
-
-          if (CalleesRequireModuleLDS) {
-            // If a function this kernel might call requires module LDS,
-            // annotate the kernel to let later passes know it will allocate
-            // this structure, even if not apparent from the IR.
-            markUsedByKernel(Builder, &Func, SGV);
-          } else {
-            // However if we are certain this kernel cannot call a function that
-            // requires module LDS, annotate the kernel so the backend can elide
-            // the allocation without repeating callgraph walks.
-            Func.addFnAttr("amdgpu-elide-module-lds");
-          }
+          markUsedByKernel(Builder, &Func, SGV);
         }
       }
     }

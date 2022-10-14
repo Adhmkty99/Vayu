@@ -27,7 +27,8 @@ class ImplicitSubscripts {};
 
 using PathComponent =
     std::variant<const evaluate::ArrayRef *, const evaluate::Component *,
-                 const evaluate::ComplexPart *, details::ImplicitSubscripts>;
+                 const Fortran::evaluate::ComplexPart *,
+                 details::ImplicitSubscripts>;
 
 /// Collection of components.
 ///
@@ -36,8 +37,6 @@ using PathComponent =
 /// arguments.
 class ComponentPath {
 public:
-  using ExtendRefFunc = std::function<mlir::Value(const mlir::Value &)>;
-
   ComponentPath(bool isImplicit) { setPC(isImplicit); }
   ComponentPath(bool isImplicit, const evaluate::Substring *ss)
       : substring(ss) {
@@ -45,14 +44,9 @@ public:
   }
   ComponentPath() = delete;
 
-  bool isSlice() const { return !trips.empty() || hasComponents(); }
-  bool hasComponents() const { return !suffixComponents.empty(); }
+  bool isSlice() { return !trips.empty() || hasComponents(); }
+  bool hasComponents() { return !suffixComponents.empty(); }
   void clear();
-
-  bool hasExtendCoorRef() const { return extendCoorRef.has_value(); }
-  ExtendRefFunc getExtendCoorRef() const;
-  void resetExtendCoorRef() { extendCoorRef = llvm::None; }
-  void resetPC();
 
   llvm::SmallVector<PathComponent> reversePath;
   const evaluate::Substring *substring = nullptr;
@@ -62,13 +56,6 @@ public:
   llvm::SmallVector<mlir::Value> trips;
   llvm::SmallVector<mlir::Value> suffixComponents;
   std::function<IterationSpace(const IterationSpace &)> pc;
-
-  /// In the case where a path of components involves members that are POINTER
-  /// or ALLOCATABLE, a dereference is required in FIR for semantic correctness.
-  /// This optional continuation allows the generation of those dereferences.
-  /// These accesses are always on Fortran entities of record types, which are
-  /// implicitly in-memory objects.
-  llvm::Optional<ExtendRefFunc> extendCoorRef = llvm::None;
 
 private:
   void setPC(bool isImplicit);

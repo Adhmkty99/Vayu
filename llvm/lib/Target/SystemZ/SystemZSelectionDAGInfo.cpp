@@ -88,7 +88,7 @@ static SDValue memsetStore(SelectionDAG &DAG, const SDLoc &DL, SDValue Chain,
 SDValue SystemZSelectionDAGInfo::EmitTargetCodeForMemset(
     SelectionDAG &DAG, const SDLoc &DL, SDValue Chain, SDValue Dst,
     SDValue Byte, SDValue Size, Align Alignment, bool IsVolatile,
-    bool AlwaysInline, MachinePointerInfo DstPtrInfo) const {
+    MachinePointerInfo DstPtrInfo) const {
   EVT PtrVT = Dst.getValueType();
 
   if (IsVolatile)

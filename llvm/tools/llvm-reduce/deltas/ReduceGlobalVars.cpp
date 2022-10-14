@@ -12,7 +12,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "ReduceGlobalVars.h"
-#include "Utils.h"
 #include "llvm/IR/Constants.h"
 #include <set>
 
@@ -41,7 +40,7 @@ static void extractGVsFromModule(Oracle &O, Module &Program) {
         if (auto *Inst = dyn_cast<Instruction>(U))
           InstToRemove.push_back(Inst);
 
-      GV.replaceAllUsesWith(getDefaultValue(GV.getType()));
+      GV.replaceAllUsesWith(UndefValue::get(GV.getType()));
       ToRemove.push_back(&GV);
     }
 
@@ -50,7 +49,7 @@ static void extractGVsFromModule(Oracle &O, Module &Program) {
     if (!V)
       continue;
     auto *Inst = cast<Instruction>(V);
-    Inst->replaceAllUsesWith(getDefaultValue(Inst->getType()));
+    Inst->replaceAllUsesWith(UndefValue::get(Inst->getType()));
     Inst->eraseFromParent();
   }
 

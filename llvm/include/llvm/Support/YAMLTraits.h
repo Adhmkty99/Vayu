@@ -1668,13 +1668,14 @@ template <typename T, typename Context>
 void IO::processKeyWithDefault(const char *Key, Optional<T> &Val,
                                const Optional<T> &DefaultValue, bool Required,
                                Context &Ctx) {
-  assert(!DefaultValue && "Optional<T> shouldn't have a value!");
+  assert(DefaultValue.hasValue() == false &&
+         "Optional<T> shouldn't have a value!");
   void *SaveInfo;
   bool UseDefault = true;
-  const bool sameAsDefault = outputting() && !Val;
-  if (!outputting() && !Val)
+  const bool sameAsDefault = outputting() && !Val.hasValue();
+  if (!outputting() && !Val.hasValue())
     Val = T();
-  if (Val &&
+  if (Val.hasValue() &&
       this->preflightKey(Key, Required, sameAsDefault, UseDefault, SaveInfo)) {
 
     // When reading an Optional<X> key from a YAML description, we allow the
@@ -1691,7 +1692,7 @@ void IO::processKeyWithDefault(const char *Key, Optional<T> &Val,
     if (IsNone)
       Val = DefaultValue;
     else
-      yamlize(*this, *Val, Required, Ctx);
+      yamlize(*this, Val.getValue(), Required, Ctx);
     this->postflightKey(SaveInfo);
   } else {
     if (UseDefault)

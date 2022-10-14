@@ -144,7 +144,9 @@ Module::Module(const ModuleSpec &module_spec)
               module_spec.GetArchitecture().GetArchitectureName(),
               module_spec.GetFileSpec().GetPath().c_str(),
               module_spec.GetObjectName().IsEmpty() ? "" : "(",
-              module_spec.GetObjectName().AsCString(""),
+              module_spec.GetObjectName().IsEmpty()
+                  ? ""
+                  : module_spec.GetObjectName().AsCString(""),
               module_spec.GetObjectName().IsEmpty() ? "" : ")");
 
   auto data_sp = module_spec.GetData();
@@ -252,7 +254,8 @@ Module::Module(const FileSpec &file_spec, const ArchSpec &arch,
     LLDB_LOGF(log, "%p Module::Module((%s) '%s%s%s%s')",
               static_cast<void *>(this), m_arch.GetArchitectureName(),
               m_file.GetPath().c_str(), m_object_name.IsEmpty() ? "" : "(",
-              m_object_name.AsCString(""), m_object_name.IsEmpty() ? "" : ")");
+              m_object_name.IsEmpty() ? "" : m_object_name.AsCString(""),
+              m_object_name.IsEmpty() ? "" : ")");
 }
 
 Module::Module() : m_file_has_changed(false), m_first_file_changed_log(false) {
@@ -280,7 +283,8 @@ Module::~Module() {
     LLDB_LOGF(log, "%p Module::~Module((%s) '%s%s%s%s')",
               static_cast<void *>(this), m_arch.GetArchitectureName(),
               m_file.GetPath().c_str(), m_object_name.IsEmpty() ? "" : "(",
-              m_object_name.AsCString(""), m_object_name.IsEmpty() ? "" : ")");
+              m_object_name.IsEmpty() ? "" : m_object_name.AsCString(""),
+              m_object_name.IsEmpty() ? "" : ")");
   // Release any auto pointers before we start tearing down our member
   // variables since the object file and symbol files might need to make
   // function calls back into this module object. The ordering is important
@@ -471,7 +475,6 @@ uint32_t Module::ResolveSymbolContextForAddress(
         resolve_scope & eSymbolContextBlock ||
         resolve_scope & eSymbolContextLineEntry ||
         resolve_scope & eSymbolContextVariable) {
-      symfile->SetLoadDebugInfoEnabled();
       resolved_flags |=
           symfile->ResolveSymbolContext(so_addr, resolve_scope, sc);
     }
@@ -735,25 +738,13 @@ void Module::LookupInfo::Prune(SymbolContextList &sc_list,
     while (i < sc_list.GetSize()) {
       if (!sc_list.GetContextAtIndex(i, sc))
         break;
-      
-      llvm::StringRef user_name = m_name.GetStringRef();
-      bool keep_it = true;
-      Language *language = Language::FindPlugin(sc.GetLanguage());
-      // If the symbol has a language, then let the language make the match.
-      // Otherwise just check that the demangled name contains the user name.
-      if (language)
-        keep_it = language->DemangledNameContainsPath(m_name.GetStringRef(),
-                sc.GetFunctionName());
-      else {
-        llvm::StringRef full_name = sc.GetFunctionName().GetStringRef();
-        // We always keep unnamed symbols:
-        if (!full_name.empty())
-          keep_it = full_name.contains(user_name);
-      }
-      if (keep_it)
-        ++i;
-      else
+      ConstString full_name(sc.GetFunctionName());
+      if (full_name &&
+          ::strstr(full_name.GetCString(), m_name.GetCString()) == nullptr) {
         sc_list.RemoveContextAtIndex(i);
+      } else {
+        ++i;
+      }
     }
   }
 
@@ -996,7 +987,8 @@ void Module::FindTypes(
     FindTypes_Impl(type_basename_const_str, CompilerDeclContext(), max_matches,
                    searched_symbol_files, typesmap);
     if (typesmap.GetSize())
-      typesmap.RemoveMismatchedTypes(type_scope, type_basename, type_class,
+      typesmap.RemoveMismatchedTypes(std::string(type_scope),
+                                     std::string(type_basename), type_class,
                                      exact_match);
   } else {
     // The type is not in a namespace/class scope, just search for it by
@@ -1006,13 +998,15 @@ void Module::FindTypes(
       // class prefix (like "struct", "class", "union", "typedef" etc).
       FindTypes_Impl(ConstString(type_basename), CompilerDeclContext(),
                      UINT_MAX, searched_symbol_files, typesmap);
-      typesmap.RemoveMismatchedTypes(type_scope, type_basename, type_class,
+      typesmap.RemoveMismatchedTypes(std::string(type_scope),
+                                     std::string(type_basename), type_class,
                                      exact_match);
     } else {
       FindTypes_Impl(name, CompilerDeclContext(), UINT_MAX,
                      searched_symbol_files, typesmap);
       if (exact_match) {
-        typesmap.RemoveMismatchedTypes(type_scope, name.GetStringRef(),
+        std::string name_str(name.AsCString(""));
+        typesmap.RemoveMismatchedTypes(std::string(type_scope), name_str,
                                        type_class, exact_match);
       }
     }
@@ -1100,6 +1094,27 @@ void Module::GetDescription(llvm::raw_ostream &s,
     s << llvm::formatv("({0})", object_name);
 }
 
+void Module::ReportError(const char *format, ...) {
+  if (format && format[0]) {
+    StreamString strm;
+    strm.PutCString("error: ");
+    GetDescription(strm.AsRawOstream(), lldb::eDescriptionLevelBrief);
+    strm.PutChar(' ');
+    va_list args;
+    va_start(args, format);
+    strm.PrintfVarArg(format, args);
+    va_end(args);
+
+    const int format_len = strlen(format);
+    if (format_len > 0) {
+      const char last_char = format[format_len - 1];
+      if (last_char != '\n' && last_char != '\r')
+        strm.EOL();
+    }
+    Host::SystemLog(Host::eSystemLogError, "%s", strm.GetData());
+  }
+}
+
 bool Module::FileHasChanged() const {
   // We have provided the DataBuffer for this module to avoid accessing the
   // filesystem. We never want to reload those files.
@@ -1111,38 +1126,13 @@ bool Module::FileHasChanged() const {
   return m_file_has_changed;
 }
 
-void Module::ReportWarningOptimization(
-    llvm::Optional<lldb::user_id_t> debugger_id) {
-  ConstString file_name = GetFileSpec().GetFilename();
-  if (file_name.IsEmpty())
-    return;
-
-  StreamString ss;
-  ss << file_name.GetStringRef()
-     << " was compiled with optimization - stepping may behave "
-        "oddly; variables may not be available.";
-  Debugger::ReportWarning(std::string(ss.GetString()), debugger_id,
-                          &m_optimization_warning);
-}
-
-void Module::ReportWarningUnsupportedLanguage(
-    LanguageType language, llvm::Optional<lldb::user_id_t> debugger_id) {
-  StreamString ss;
-  ss << "This version of LLDB has no plugin for the language \""
-     << Language::GetNameForLanguageType(language)
-     << "\". "
-        "Inspection of frame variables will be limited.";
-  Debugger::ReportWarning(std::string(ss.GetString()), debugger_id,
-                          &m_language_warning);
-}
-
 void Module::ReportErrorIfModifyDetected(const char *format, ...) {
   if (!m_first_file_changed_log) {
     if (FileHasChanged()) {
       m_first_file_changed_log = true;
       if (format) {
         StreamString strm;
-        strm.PutCString("the object file ");
+        strm.PutCString("error: the object file ");
         GetDescription(strm.AsRawOstream(), lldb::eDescriptionLevelFull);
         strm.PutCString(" has been modified\n");
 
@@ -1158,31 +1148,17 @@ void Module::ReportErrorIfModifyDetected(const char *format, ...) {
             strm.EOL();
         }
         strm.PutCString("The debug session should be aborted as the original "
-                        "debug information has been overwritten.");
-        Debugger::ReportError(std::string(strm.GetString()));
+                        "debug information has been overwritten.\n");
+        Host::SystemLog(Host::eSystemLogError, "%s", strm.GetData());
       }
     }
-  }
-}
-
-void Module::ReportError(const char *format, ...) {
-  if (format && format[0]) {
-    StreamString strm;
-    GetDescription(strm.AsRawOstream(), lldb::eDescriptionLevelBrief);
-    strm.PutChar(' ');
-
-    va_list args;
-    va_start(args, format);
-    strm.PrintfVarArg(format, args);
-    va_end(args);
-
-    Debugger::ReportError(std::string(strm.GetString()));
   }
 }
 
 void Module::ReportWarning(const char *format, ...) {
   if (format && format[0]) {
     StreamString strm;
+    strm.PutCString("warning: ");
     GetDescription(strm.AsRawOstream(), lldb::eDescriptionLevelFull);
     strm.PutChar(' ');
 
@@ -1191,7 +1167,13 @@ void Module::ReportWarning(const char *format, ...) {
     strm.PrintfVarArg(format, args);
     va_end(args);
 
-    Debugger::ReportWarning(std::string(strm.GetString()));
+    const int format_len = strlen(format);
+    if (format_len > 0) {
+      const char last_char = format[format_len - 1];
+      if (last_char != '\n' && last_char != '\r')
+        strm.EOL();
+    }
+    Host::SystemLog(Host::eSystemLogWarning, "%s", strm.GetData());
   }
 }
 
@@ -1398,6 +1380,7 @@ void Module::PreloadSymbols() {
   // Now let the symbol file preload its data and the symbol table will be
   // available without needing to take the module lock.
   sym_file->PreloadSymbols();
+
 }
 
 void Module::SetSymbolFileFileSpec(const FileSpec &file) {
@@ -1703,9 +1686,6 @@ DataFileCache *Module::GetIndexCache() {
     return nullptr;
   // NOTE: intentional leak so we don't crash if global destructor chain gets
   // called as other threads still use the result of this function
-  static DataFileCache *g_data_file_cache =
-      new DataFileCache(ModuleList::GetGlobalModuleListProperties()
-                            .GetLLDBIndexCachePath()
-                            .GetPath());
+  static DataFileCache *g_data_file_cache = new DataFileCache(ModuleList::GetGlobalModuleListProperties().GetLLDBIndexCachePath().GetPath());
   return g_data_file_cache;
 }

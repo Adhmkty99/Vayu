@@ -44,7 +44,6 @@ namespace llvm {
 class APFloat;
 class APInt;
 class BasicBlock;
-class BlockAddress;
 class ConstantInt;
 class DataLayout;
 class StringRef;
@@ -126,6 +125,9 @@ public:
   void setAlignment(Align Align) {
     setSubclassData<AlignmentField>(Log2(Align));
   }
+
+  // FIXME: Remove this one transition to Align is over.
+  uint64_t getAlignment() const { return getAlign().value(); }
 
   /// Return true if this alloca is in the entry block of the function and is a
   /// constant size. If so, the code generator will fold it into the
@@ -212,6 +214,11 @@ public:
 
   /// Specify whether this is a volatile load or not.
   void setVolatile(bool V) { setSubclassData<VolatileField>(V); }
+
+  /// Return the alignment of the access that is being performed.
+  /// FIXME: Remove this function once transition to Align is over.
+  /// Use getAlign() instead.
+  uint64_t getAlignment() const { return getAlign().value(); }
 
   /// Return the alignment of the access that is being performed.
   Align getAlign() const {
@@ -338,6 +345,11 @@ public:
 
   /// Transparently provide more efficient getOperand methods.
   DECLARE_TRANSPARENT_OPERAND_ACCESSORS(Value);
+
+  /// Return the alignment of the access that is being performed
+  /// FIXME: Remove this function once transition to Align is over.
+  /// Use getAlign() instead.
+  uint64_t getAlignment() const { return getAlign().value(); }
 
   Align getAlign() const {
     return Align(1ULL << (getSubclassData<AlignmentField>()));
@@ -754,16 +766,8 @@ public:
     /// *p = old - v
     FSub,
 
-    /// *p = maxnum(old, v)
-    /// \p maxnum matches the behavior of \p llvm.maxnum.*.
-    FMax,
-
-    /// *p = minnum(old, v)
-    /// \p minnum matches the behavior of \p llvm.minnum.*.
-    FMin,
-
     FIRST_BINOP = Xchg,
-    LAST_BINOP = FMin,
+    LAST_BINOP = FSub,
     BAD_BINOP
   };
 
@@ -806,8 +810,6 @@ public:
     switch (Op) {
     case AtomicRMWInst::FAdd:
     case AtomicRMWInst::FSub:
-    case AtomicRMWInst::FMax:
-    case AtomicRMWInst::FMin:
       return true;
     default:
       return false;
@@ -2135,12 +2137,6 @@ public:
   static bool isIdentityMask(ArrayRef<int> Mask);
   static bool isIdentityMask(const Constant *Mask) {
     assert(Mask->getType()->isVectorTy() && "Shuffle needs vector constant.");
-
-    // Not possible to express a shuffle mask for a scalable vector for this
-    // case.
-    if (isa<ScalableVectorType>(Mask->getType()))
-      return false;
-
     SmallVector<int, 16> MaskAsInts;
     getShuffleMask(Mask, MaskAsInts);
     return isIdentityMask(MaskAsInts);
@@ -2151,11 +2147,6 @@ public:
   /// from its input vectors.
   /// Example: shufflevector <4 x n> A, <4 x n> B, <4,undef,6,undef>
   bool isIdentity() const {
-    // Not possible to express a shuffle mask for a scalable vector for this
-    // case.
-    if (isa<ScalableVectorType>(getType()))
-      return false;
-
     return !changesLength() && isIdentityMask(ShuffleMask);
   }
 
@@ -4005,6 +3996,9 @@ class CallBrInst : public CallBase {
             ArrayRef<BasicBlock *> IndirectDests, ArrayRef<Value *> Args,
             ArrayRef<OperandBundleDef> Bundles, const Twine &NameStr);
 
+  /// Should the Indirect Destinations change, scan + update the Arg list.
+  void updateArgBlockAddresses(unsigned i, BasicBlock *B);
+
   /// Compute the number of operands to allocate.
   static int ComputeNumOperands(int NumArgs, int NumIndirectDests,
                                 int NumBundleInputs = 0) {
@@ -4152,6 +4146,7 @@ public:
     *(&Op<-1>() - getNumIndirectDests() - 1) = reinterpret_cast<Value *>(B);
   }
   void setIndirectDest(unsigned i, BasicBlock *B) {
+    updateArgBlockAddresses(i, B);
     *(&Op<-1>() - getNumIndirectDests() + i) = reinterpret_cast<Value *>(B);
   }
 
@@ -4168,8 +4163,6 @@ public:
   }
 
   unsigned getNumSuccessors() const { return getNumIndirectDests() + 1; }
-
-  BlockAddress *getBlockAddressForIndirectDest(unsigned DestNo) const;
 
   // Methods for support type inquiry through isa, cast, and dyn_cast:
   static bool classof(const Instruction *I) {

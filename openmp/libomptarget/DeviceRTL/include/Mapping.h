@@ -18,7 +18,7 @@ namespace _OMP {
 
 namespace mapping {
 
-#pragma omp begin declare target device_type(nohost)
+#pragma omp declare target
 
 inline constexpr uint32_t MaxThreadsPerTeam = 1024;
 

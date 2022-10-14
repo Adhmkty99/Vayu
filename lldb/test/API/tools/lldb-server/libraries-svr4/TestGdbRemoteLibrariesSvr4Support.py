@@ -5,6 +5,8 @@ from lldbsuite.test.lldbtest import *
 
 class TestGdbRemoteLibrariesSvr4Support(gdbremote_testcase.GdbRemoteTestCaseBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     FEATURE_NAME = "qXfer:libraries-svr4:read"
 
     def setup_test(self):

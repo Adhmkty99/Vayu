@@ -6,13 +6,13 @@ add_mlir_translation_library(MLIRTargetCpp
   ${EMITC_MAIN_INCLUDE_DIR}/emitc/Target/Cpp
 
   LINK_LIBS PUBLIC
-  MLIRArithmeticDialect
-  MLIRControlFlowDialect
-  MLIREmitCDialect
-  MLIRFuncDialect
+  MLIRArithmetic
+  MLIRControlFlow
+  MLIREmitC
+  MLIRFunc
   MLIRIR
-  MLIRMathDialect
-  MLIRSCFDialect
+  MLIRMath
+  MLIRSCF
   MLIRSupport
   MLIRTranslateLib
   )

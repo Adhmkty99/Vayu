@@ -140,7 +140,10 @@ void RegAllocBase::allocatePhysRegs() {
 
       // Keep going after reporting the error.
       VRM->assignVirt2Phys(VirtReg->reg(), AllocOrder.front());
-    } else if (AvailablePhysReg)
+      continue;
+    }
+
+    if (AvailablePhysReg)
       Matrix->assign(*VirtReg, AvailablePhysReg);
 
     for (Register Reg : SplitVRegs) {
@@ -166,7 +169,7 @@ void RegAllocBase::allocatePhysRegs() {
 
 void RegAllocBase::postOptimization() {
   spiller().postOptimization();
-  for (auto *DeadInst : DeadRemats) {
+  for (auto DeadInst : DeadRemats) {
     LIS->RemoveMachineInstrFromMaps(*DeadInst);
     DeadInst->eraseFromParent();
   }

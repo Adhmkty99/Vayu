@@ -57,17 +57,19 @@ class RegularField final : public FieldNode {
 public:
   RegularField(const FieldRegion *FR) : FieldNode(FR) {}
 
-  void printNoteMsg(llvm::raw_ostream &Out) const override {
+  virtual void printNoteMsg(llvm::raw_ostream &Out) const override {
     Out << "uninitialized field ";
   }
 
-  void printPrefix(llvm::raw_ostream &Out) const override {}
+  virtual void printPrefix(llvm::raw_ostream &Out) const override {}
 
-  void printNode(llvm::raw_ostream &Out) const override {
+  virtual void printNode(llvm::raw_ostream &Out) const override {
     Out << getVariableName(getDecl());
   }
 
-  void printSeparator(llvm::raw_ostream &Out) const override { Out << '.'; }
+  virtual void printSeparator(llvm::raw_ostream &Out) const override {
+    Out << '.';
+  }
 };
 
 /// Represents that the FieldNode that comes after this is declared in a base
@@ -83,20 +85,20 @@ public:
     assert(T->getAsCXXRecordDecl());
   }
 
-  void printNoteMsg(llvm::raw_ostream &Out) const override {
+  virtual void printNoteMsg(llvm::raw_ostream &Out) const override {
     llvm_unreachable("This node can never be the final node in the "
                      "fieldchain!");
   }
 
-  void printPrefix(llvm::raw_ostream &Out) const override {}
+  virtual void printPrefix(llvm::raw_ostream &Out) const override {}
 
-  void printNode(llvm::raw_ostream &Out) const override {
+  virtual void printNode(llvm::raw_ostream &Out) const override {
     Out << BaseClassT->getAsCXXRecordDecl()->getName() << "::";
   }
 
-  void printSeparator(llvm::raw_ostream &Out) const override {}
+  virtual void printSeparator(llvm::raw_ostream &Out) const override {}
 
-  bool isBase() const override { return true; }
+  virtual bool isBase() const override { return true; }
 };
 
 } // end of anonymous namespace
@@ -328,7 +330,7 @@ bool FindUninitializedFields::isNonUnionUninit(const TypedValueRegion *R,
 
     SVal V = State->getSVal(FieldVal);
 
-    if (isDereferencableType(T) || isa<nonloc::LocAsInteger>(V)) {
+    if (isDereferencableType(T) || V.getAs<nonloc::LocAsInteger>()) {
       if (isDereferencableUninit(FR, LocalChain))
         ContainsUninitField = true;
       continue;

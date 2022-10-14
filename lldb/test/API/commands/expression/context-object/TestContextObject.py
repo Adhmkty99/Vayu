@@ -8,6 +8,8 @@ from lldbsuite.test.lldbtest import *
 
 class ContextObjectTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_context_object(self):
         """Tests expression evaluation in context of an object."""
         self.build()
@@ -16,34 +18,34 @@ class ContextObjectTestCase(TestBase):
         frame = thread.GetFrameAtIndex(0)
 
         #
-        # Test C++ struct variable and reference-to-struct variable
+        # Test C++ struct variable
         #
-        for obj in "cpp_struct", "cpp_struct_ref":
-            obj_val = frame.FindVariable(obj)
-            self.assertTrue(obj_val.IsValid())
 
-            # Test an empty expression evaluation
-            value = obj_val.EvaluateExpression("")
-            self.assertFalse(value.IsValid())
-            self.assertFalse(value.GetError().Success())
+        obj_val = frame.FindVariable("cpp_struct")
+        self.assertTrue(obj_val.IsValid())
 
-            # Test retrieveing of a field (not a local with the same name)
-            value = obj_val.EvaluateExpression("field")
-            self.assertTrue(value.IsValid())
-            self.assertSuccess(value.GetError())
-            self.assertEqual(value.GetValueAsSigned(), 1111)
+        # Test an empty expression evaluation
+        value = obj_val.EvaluateExpression("")
+        self.assertFalse(value.IsValid())
+        self.assertFalse(value.GetError().Success())
 
-            # Test functions evaluation
-            value = obj_val.EvaluateExpression("function()")
-            self.assertTrue(value.IsValid())
-            self.assertSuccess(value.GetError())
-            self.assertEqual(value.GetValueAsSigned(), 2222)
+        # Test retrieveing of a field (not a local with the same name)
+        value = obj_val.EvaluateExpression("field")
+        self.assertTrue(value.IsValid())
+        self.assertSuccess(value.GetError())
+        self.assertEqual(value.GetValueAsSigned(), 1111)
 
-            # Test that we retrieve the right global
-            value = obj_val.EvaluateExpression("global.field")
-            self.assertTrue(value.IsValid())
-            self.assertSuccess(value.GetError())
-            self.assertEqual(value.GetValueAsSigned(), 1111)
+        # Test functions evaluation
+        value = obj_val.EvaluateExpression("function()")
+        self.assertTrue(value.IsValid())
+        self.assertSuccess(value.GetError())
+        self.assertEqual(value.GetValueAsSigned(), 2222)
+
+        # Test that we retrieve the right global
+        value = obj_val.EvaluateExpression("global.field")
+        self.assertTrue(value.IsValid())
+        self.assertSuccess(value.GetError())
+        self.assertEqual(value.GetValueAsSigned(), 1111)
 
         #
         # Test C++ union variable

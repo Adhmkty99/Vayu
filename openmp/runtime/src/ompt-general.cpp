@@ -790,7 +790,7 @@ OMPT_API_ROUTINE int ompt_get_partition_place_nums(int place_nums_size,
 OMPT_API_ROUTINE int ompt_get_proc_id(void) {
   if (!ompt_enabled.enabled || __kmp_get_gtid() < 0)
     return -1;
-#if KMP_HAVE_SCHED_GETCPU
+#if KMP_OS_LINUX
   return sched_getcpu();
 #elif KMP_OS_WINDOWS
   PROCESSOR_NUMBER pn;

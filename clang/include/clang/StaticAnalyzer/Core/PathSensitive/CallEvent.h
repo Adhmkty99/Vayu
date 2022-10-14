@@ -113,18 +113,12 @@ class RuntimeDefinition {
   /// precise.
   const MemRegion *R = nullptr;
 
-  /// A definition is foreign if it has been imported and newly created by the
-  /// ASTImporter. This can be true only if CTU is enabled.
-  const bool Foreign = false;
-
 public:
   RuntimeDefinition() = default;
   RuntimeDefinition(const Decl *InD): D(InD) {}
-  RuntimeDefinition(const Decl *InD, bool Foreign) : D(InD), Foreign(Foreign) {}
   RuntimeDefinition(const Decl *InD, const MemRegion *InR): D(InD), R(InR) {}
 
   const Decl *getDecl() { return D; }
-  bool isForeign() const { return Foreign; }
 
   /// Check if the definition we have is precise.
   /// If not, it is possible that the call dispatches to another definition at
@@ -153,7 +147,6 @@ private:
   ProgramStateRef State;
   const LocationContext *LCtx;
   llvm::PointerUnion<const Expr *, const Decl *> Origin;
-  mutable Optional<bool> Foreign; // Set by CTU analysis.
 
 protected:
   // This is user data for subclasses.
@@ -214,12 +207,6 @@ public:
   virtual const Decl *getDecl() const {
     return Origin.dyn_cast<const Decl *>();
   }
-
-  bool isForeign() const {
-    assert(Foreign && "Foreign must be set before querying");
-    return *Foreign;
-  }
-  void setForeign(bool B) const { Foreign = B; }
 
   /// The state in which the call is being evaluated.
   const ProgramStateRef &getState() const {
@@ -414,8 +401,7 @@ public:
   bool isArgumentConstructedDirectly(unsigned Index) const {
     // This assumes that the object was not yet removed from the state.
     return ExprEngine::getObjectUnderConstruction(
-               getState(), {getOriginExpr(), Index}, getLocationContext())
-        .has_value();
+        getState(), {getOriginExpr(), Index}, getLocationContext()).hasValue();
   }
 
   /// Some calls have parameter numbering mismatched from argument numbering.
@@ -1019,7 +1005,7 @@ public:
   SVal getObjectUnderConstruction() const {
     return ExprEngine::getObjectUnderConstruction(getState(), getOriginExpr(),
                                                   getLocationContext())
-        .value();
+        .getValue();
   }
 
   /// Number of non-placement arguments to the call. It is equal to 2 for
@@ -1290,7 +1276,7 @@ public:
   getCaller(const StackFrameContext *CalleeCtx, ProgramStateRef State);
 
   /// Gets a call event for a function call, Objective-C method call,
-  /// a 'new', or a 'delete' call.
+  /// or a 'new' call.
   CallEventRef<>
   getCall(const Stmt *S, ProgramStateRef State,
           const LocationContext *LC);

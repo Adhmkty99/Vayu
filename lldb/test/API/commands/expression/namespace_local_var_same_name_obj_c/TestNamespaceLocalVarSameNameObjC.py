@@ -5,6 +5,8 @@ from lldbsuite.test import lldbutil
 
 class TestNamespaceLocalVarSameNameObjC(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @add_test_categories(["gmodules", "objc"])
     def test_namespace_local_var_same_name_obj_c(self):
         self.build()

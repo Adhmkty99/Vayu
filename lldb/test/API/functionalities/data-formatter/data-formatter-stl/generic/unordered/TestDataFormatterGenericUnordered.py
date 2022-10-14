@@ -6,6 +6,7 @@ USE_LIBSTDCPP = "USE_LIBSTDCPP"
 USE_LIBCPP = "USE_LIBCPP"
 
 class GenericUnorderedDataFormatterTestCase(TestBase):
+    mydir = TestBase.compute_mydir(__file__)
 
     def setUp(self):
         TestBase.setUp(self)

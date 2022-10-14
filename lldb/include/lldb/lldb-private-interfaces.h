@@ -115,8 +115,8 @@ typedef int (*ComparisonFunction)(const void *, const void *);
 typedef void (*DebuggerInitializeCallback)(Debugger &debugger);
 /// Trace
 /// \{
-typedef llvm::Expected<lldb::TraceSP> (*TraceCreateInstanceFromBundle)(
-    const llvm::json::Value &trace_bundle_description,
+typedef llvm::Expected<lldb::TraceSP> (*TraceCreateInstanceForSessionFile)(
+    const llvm::json::Value &trace_session_file,
     llvm::StringRef session_file_dir, lldb_private::Debugger &debugger);
 typedef llvm::Expected<lldb::TraceSP> (*TraceCreateInstanceForLiveProcess)(
     Process &process);

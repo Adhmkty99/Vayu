@@ -17,25 +17,16 @@ class Pass;
 class RewritePatternSet;
 
 /// Patterns to transform vector ops into a canonical form to convert to MMA
-/// matrix operations. If `useNvGpu` is true, then the patterns will populated
-/// will prepare for conversion to `nvgpu` mma operations rather than the `gpu`
-/// dialect WMMA operations.
-void populatePrepareVectorToMMAPatterns(RewritePatternSet &patterns,
-                                        bool useNvGpu = false);
+/// matrix operations.
+void populatePrepareVectorToMMAPatterns(RewritePatternSet &patterns);
 
 /// Convert vector ops to MMA matrix operations nested under `rootOp`. This will
 /// convert slice of operations that can be legally converted to MMA operations.
 /// The rest of the vector operations are left untouched.
 void convertVectorToMMAOps(Operation *rootOp);
 
-/// Convert vector ops ops nested under `rootOp` to vector and GPU operaitons
-/// compatible with the `nvvm.mma.sync` lowering path. This will convert a slice
-/// of operations that can be legally lowered on this path while the rest of
-/// the vector operations are left untouched.
-LogicalResult convertVectorToNVVMCompatibleMMASync(Operation *rootOp);
-
 /// Convert from vector to GPU ops.
-std::unique_ptr<Pass> createConvertVectorToGPUPass(bool useNvGpu = false);
+std::unique_ptr<Pass> createConvertVectorToGPUPass();
 
 } // namespace mlir
 

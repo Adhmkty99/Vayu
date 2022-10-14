@@ -12,6 +12,8 @@ import lldbsuite.test.lldbutil as lldbutil
 
 class UnsignedTypesTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test(self):
         """Test that variables with unsigned types display correctly."""
         self.build()

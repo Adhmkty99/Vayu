@@ -396,7 +396,7 @@ bool ARMConstantIslands::runOnMachineFunction(MachineFunction &mf) {
                     << MCP->getConstants().size() << " CP entries, aligned to "
                     << MCP->getConstantPoolAlign().value() << " bytes *****\n");
 
-  STI = &MF->getSubtarget<ARMSubtarget>();
+  STI = &static_cast<const ARMSubtarget &>(MF->getSubtarget());
   TII = STI->getInstrInfo();
   isPositionIndependentOrROPI =
       STI->getTargetLowering()->isPositionIndependent() || STI->isROPI();

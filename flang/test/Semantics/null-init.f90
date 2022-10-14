@@ -95,8 +95,3 @@ subroutine m12
   integer, pointer :: p
   data p/null(j)/ ! ok
 end subroutine
-
-subroutine s13
-  integer, external, pointer :: p1 => null()
-  procedure(), pointer :: p2 => null()
-end subroutine

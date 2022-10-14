@@ -13,5 +13,3 @@ add_llvm_unittest(JITLinkTests
   )
 
 target_link_libraries(JITLinkTests PRIVATE LLVMTestingSupport)
-
-set_property(TARGET JITLinkTests PROPERTY FOLDER "Tests/UnitTests/ExecutionTests")

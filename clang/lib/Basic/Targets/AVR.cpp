@@ -380,9 +380,6 @@ void AVRTargetInfo::getTargetDefines(const LangOptions &Opts,
   Builder.defineMacro("__AVR__");
   Builder.defineMacro("__ELF__");
 
-  if (ABI == "avrtiny")
-    Builder.defineMacro("__AVR_TINY__", "1");
-
   if (!this->CPU.empty()) {
     auto It = llvm::find_if(
         AVRMcus, [&](const MCUInfo &Info) { return Info.Name == this->CPU; });

@@ -11,7 +11,6 @@
 
 include "mlir/Dialect/Arithmetic/IR/ArithmeticBase.td"
 include "mlir/Interfaces/CastInterfaces.td"
-include "mlir/Interfaces/InferIntRangeInterface.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Interfaces/VectorInterfaces.td"
@@ -50,8 +49,7 @@ class Arith_TernaryOp<string mnemonic, list<Trait> traits = []> :
 
 // Base class for integer binary operations.
 class Arith_IntBinaryOp<string mnemonic, list<Trait> traits = []> :
-    Arith_BinaryOp<mnemonic, traits #
-      [DeclareOpInterfaceMethods<InferIntRangeInterface>]>,
+    Arith_BinaryOp<mnemonic, traits>,
     Arguments<(ins SignlessIntegerLike:$lhs, SignlessIntegerLike:$rhs)>,
     Results<(outs SignlessIntegerLike:$result)>;
 
@@ -72,7 +70,7 @@ class Arith_FloatBinaryOp<string mnemonic, list<Trait> traits = []> :
 class Arith_CastOp<string mnemonic, TypeConstraint From, TypeConstraint To,
                    list<Trait> traits = []> :
     Arith_Op<mnemonic, traits # [SameOperandsAndResultShape,
-      DeclareOpInterfaceMethods<CastOpInterface>]>,
+    DeclareOpInterfaceMethods<CastOpInterface>]>,
     Arguments<(ins From:$in)>,
     Results<(outs To:$out)> {
   let assemblyFormat = "$in attr-dict `:` type($in) `to` type($out)";
@@ -89,9 +87,7 @@ def SignlessFixedWidthIntegerLike : TypeConstraint<Or<[
 // Cast from an integer type to another integer type.
 class Arith_IToICastOp<string mnemonic, list<Trait> traits = []> :
     Arith_CastOp<mnemonic, SignlessFixedWidthIntegerLike,
-                           SignlessFixedWidthIntegerLike,
-                           traits #
-                           [DeclareOpInterfaceMethods<InferIntRangeInterface>]>;
+                           SignlessFixedWidthIntegerLike, traits>;
 // Cast from an integer type to a floating point type.
 class Arith_IToFCastOp<string mnemonic, list<Trait> traits = []> :
     Arith_CastOp<mnemonic, SignlessFixedWidthIntegerLike, FloatLike, traits>;
@@ -128,8 +124,9 @@ class Arith_CompareOpOfAnyRank<string mnemonic, list<Trait> traits = []> :
 def Arith_ConstantOp : Op<Arithmetic_Dialect, "constant",
     [ConstantLike, NoSideEffect,
      DeclareOpInterfaceMethods<OpAsmOpInterface, ["getAsmResultNames"]>,
-     AllTypesMatch<["value", "result"]>,
-     DeclareOpInterfaceMethods<InferIntRangeInterface>]> {
+     TypesMatchWith<
+    "result and attribute have the same type",
+    "value", "result", "$_self">]> {
   let summary = "integer or floating point constant";
   let description = [{
     The `constant` operation produces an SSA value equal to some integer or
@@ -157,6 +154,8 @@ def Arith_ConstantOp : Op<Arithmetic_Dialect, "constant",
   let results = (outs /*SignlessIntegerOrFloatLike*/AnyType:$result);
 
   let builders = [
+    OpBuilder<(ins "Attribute":$value),
+    [{ build($_builder, $_state, value.getType(), value); }]>,
     OpBuilder<(ins "Attribute":$value, "Type":$type),
     [{ build($_builder, $_state, type, value); }]>,
   ];
@@ -769,7 +768,6 @@ def Arith_MulFOp : Arith_FloatBinaryOp<"mulf", [Commutative]> {
     math, contraction, rounding mode, and other controls.
   }];
   let hasFolder = 1;
-  let hasCanonicalizer = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -779,7 +777,6 @@ def Arith_MulFOp : Arith_FloatBinaryOp<"mulf", [Commutative]> {
 def Arith_DivFOp : Arith_FloatBinaryOp<"divf"> {
   let summary = "floating point division operation";
   let hasFolder = 1;
-  let hasCanonicalizer = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -788,7 +785,6 @@ def Arith_DivFOp : Arith_FloatBinaryOp<"divf"> {
 
 def Arith_RemFOp : Arith_FloatBinaryOp<"remf"> {
   let summary = "floating point division remainder operation";
-  let hasFolder = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -976,9 +972,8 @@ def IndexCastTypeConstraint : TypeConstraint<Or<[
         MemRefOf<[AnySignlessInteger, Index]>.predicate]>,
     "signless-integer-like or memref of signless-integer">;
 
-def Arith_IndexCastOp
-  : Arith_CastOp<"index_cast", IndexCastTypeConstraint, IndexCastTypeConstraint,
-                 [DeclareOpInterfaceMethods<InferIntRangeInterface>]> {
+def Arith_IndexCastOp : Arith_CastOp<"index_cast", IndexCastTypeConstraint,
+                                                   IndexCastTypeConstraint> {
   let summary = "cast between index and integer types";
   let description = [{
     Casts between scalar or vector integers and corresponding 'index' scalar or
@@ -1030,9 +1025,7 @@ def Arith_BitcastOp : Arith_CastOp<"bitcast", BitcastTypeConstraint,
 // CmpIOp
 //===----------------------------------------------------------------------===//
 
-def Arith_CmpIOp
-  : Arith_CompareOpOfAnyRank<"cmpi",
-                             [DeclareOpInterfaceMethods<InferIntRangeInterface>]> {
+def Arith_CmpIOp : Arith_CompareOpOfAnyRank<"cmpi"> {
   let summary = "integer comparison operation";
   let description = [{
     The `cmpi` operation is a generic comparison for integer-like types. Its two
@@ -1173,8 +1166,7 @@ def Arith_CmpFOp : Arith_CompareOp<"cmpf"> {
 //===----------------------------------------------------------------------===//
 
 def SelectOp : Arith_Op<"select", [
-    AllTypesMatch<["true_value", "false_value", "result"]>,
-    DeclareOpInterfaceMethods<InferIntRangeInterface>,
+    AllTypesMatch<["true_value", "false_value", "result"]>
   ] # ElementwiseMappable.traits> {
   let summary = "select operation";
   let description = [{
@@ -1214,7 +1206,7 @@ def SelectOp : Arith_Op<"select", [
   let hasCanonicalizer = 1;
   let hasFolder = 1;
   let hasVerifier = 1;
-
+  
   // FIXME: Switch this to use the declarative assembly format.
   let hasCustomAssemblyFormat = 1;
 }

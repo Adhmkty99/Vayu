@@ -14,7 +14,6 @@
 #define LLVM_TRANSFORMS_UTILS_LOOPUTILS_H
 
 #include "llvm/Analysis/IVDescriptors.h"
-#include "llvm/Analysis/LoopAccessAnalysis.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
 
 namespace llvm {
@@ -413,10 +412,8 @@ Value *createOrderedReduction(IRBuilderBase &B,
 /// of each scalar operation (VL) that will be converted into a vector (I).
 /// If OpValue is non-null, we only consider operations similar to OpValue
 /// when intersecting.
-/// Flag set: NSW, NUW (if IncludeWrapFlags is true), exact, and all of
-/// fast-math.
-void propagateIRFlags(Value *I, ArrayRef<Value *> VL, Value *OpValue = nullptr,
-                      bool IncludeWrapFlags = true);
+/// Flag set: NSW, NUW, exact, and all of fast-math.
+void propagateIRFlags(Value *I, ArrayRef<Value *> VL, Value *OpValue = nullptr);
 
 /// Returns true if we can prove that \p S is defined and always negative in
 /// loop \p L.
@@ -435,13 +432,7 @@ bool cannotBeMaxInLoop(const SCEV *S, const Loop *L, ScalarEvolution &SE,
 bool cannotBeMinInLoop(const SCEV *S, const Loop *L, ScalarEvolution &SE,
                        bool Signed);
 
-enum ReplaceExitVal {
-  NeverRepl,
-  OnlyCheapRepl,
-  NoHardUse,
-  UnusedIndVarInLoop,
-  AlwaysRepl
-};
+enum ReplaceExitVal { NeverRepl, OnlyCheapRepl, NoHardUse, AlwaysRepl };
 
 /// If the final value of any expressions that are recurrent in the loop can
 /// be computed, substitute the exit values from the loop into any instructions
@@ -507,12 +498,6 @@ Value *
 addRuntimeChecks(Instruction *Loc, Loop *TheLoop,
                  const SmallVectorImpl<RuntimePointerCheck> &PointerChecks,
                  SCEVExpander &Expander);
-
-Value *
-addDiffRuntimeChecks(Instruction *Loc, Loop *TheLoop,
-                     ArrayRef<PointerDiffInfo> Checks, SCEVExpander &Expander,
-                     function_ref<Value *(IRBuilderBase &, unsigned)> GetVF,
-                     unsigned IC);
 
 /// Struct to hold information about a partially invariant condition.
 struct IVConditionInfo {

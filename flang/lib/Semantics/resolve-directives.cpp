@@ -279,18 +279,6 @@ public:
     return true;
   }
 
-  bool Pre(const parser::StmtFunctionStmt &x) {
-    const auto &parsedExpr{std::get<parser::Scalar<parser::Expr>>(x.t)};
-    if (const auto *expr{GetExpr(context_, parsedExpr)}) {
-      for (const Symbol &symbol : evaluate::CollectSymbols(*expr)) {
-        if (!IsStmtFunctionDummy(symbol)) {
-          stmtFunctionExprSymbols_.insert(symbol.GetUltimate());
-        }
-      }
-    }
-    return true;
-  }
-
   bool Pre(const parser::OpenMPBlockConstruct &);
   void Post(const parser::OpenMPBlockConstruct &);
 
@@ -364,18 +352,18 @@ public:
     return false;
   }
   bool Pre(const parser::OmpLinearClause &x) {
-    common::visit(common::visitors{
-                      [&](const parser::OmpLinearClause::WithoutModifier
-                              &linearWithoutModifier) {
-                        ResolveOmpNameList(linearWithoutModifier.names,
-                            Symbol::Flag::OmpLinear);
-                      },
-                      [&](const parser::OmpLinearClause::WithModifier
-                              &linearWithModifier) {
-                        ResolveOmpNameList(
-                            linearWithModifier.names, Symbol::Flag::OmpLinear);
-                      },
-                  },
+    std::visit(common::visitors{
+                   [&](const parser::OmpLinearClause::WithoutModifier
+                           &linearWithoutModifier) {
+                     ResolveOmpNameList(
+                         linearWithoutModifier.names, Symbol::Flag::OmpLinear);
+                   },
+                   [&](const parser::OmpLinearClause::WithModifier
+                           &linearWithModifier) {
+                     ResolveOmpNameList(
+                         linearWithModifier.names, Symbol::Flag::OmpLinear);
+                   },
+               },
         x.u);
     return false;
   }
@@ -476,8 +464,7 @@ private:
   static constexpr Symbol::Flags ompFlagsRequireNewSymbol{
       Symbol::Flag::OmpPrivate, Symbol::Flag::OmpLinear,
       Symbol::Flag::OmpFirstPrivate, Symbol::Flag::OmpLastPrivate,
-      Symbol::Flag::OmpReduction, Symbol::Flag::OmpCriticalLock,
-      Symbol::Flag::OmpCopyIn};
+      Symbol::Flag::OmpReduction, Symbol::Flag::OmpCriticalLock};
 
   static constexpr Symbol::Flags ompFlagsRequireMark{
       Symbol::Flag::OmpThreadprivate};
@@ -581,10 +568,6 @@ Symbol *DirectiveAttributeVisitor<T>::DeclarePrivateAccessEntity(
   if (object.owner() != currScope()) {
     auto &symbol{MakeAssocSymbol(object.name(), object, scope)};
     symbol.set(flag);
-    if (flag == Symbol::Flag::OmpCopyIn) {
-      // The symbol in copyin clause must be threadprivate entity.
-      symbol.set(Symbol::Flag::OmpThreadprivate);
-    }
     return &symbol;
   } else {
     object.set(flag);
@@ -761,7 +744,7 @@ bool AccAttributeVisitor::Pre(const parser::OpenACCCombinedConstruct &x) {
 static bool IsLastNameArray(const parser::Designator &designator) {
   const auto &name{GetLastName(designator)};
   const evaluate::DataRef dataRef{*(name.symbol)};
-  return common::visit(
+  return std::visit(
       common::visitors{
           [](const evaluate::SymbolRef &ref) { return ref->Rank() > 0; },
           [](const evaluate::ArrayRef &aref) {
@@ -776,7 +759,7 @@ static bool IsLastNameArray(const parser::Designator &designator) {
 void AccAttributeVisitor::AllowOnlyArrayAndSubArray(
     const parser::AccObjectList &objectList) {
   for (const auto &accObject : objectList.v) {
-    common::visit(
+    std::visit(
         common::visitors{
             [&](const parser::Designator &designator) {
               if (!IsLastNameArray(designator)) {
@@ -803,7 +786,7 @@ void AccAttributeVisitor::AllowOnlyArrayAndSubArray(
 void AccAttributeVisitor::DoNotAllowAssumedSizedArray(
     const parser::AccObjectList &objectList) {
   for (const auto &accObject : objectList.v) {
-    common::visit(
+    std::visit(
         common::visitors{
             [&](const parser::Designator &designator) {
               const auto &name{GetLastName(designator)};
@@ -888,7 +871,7 @@ void AccAttributeVisitor::PrivatizeAssociatedLoopIndex(
 void AccAttributeVisitor::EnsureAllocatableOrPointer(
     const llvm::acc::Clause clause, const parser::AccObjectList &objectList) {
   for (const auto &accObject : objectList.v) {
-    common::visit(
+    std::visit(
         common::visitors{
             [&](const parser::Designator &designator) {
               const auto &lastName{GetLastName(designator)};
@@ -982,7 +965,7 @@ void AccAttributeVisitor::ResolveAccObjectList(
 
 void AccAttributeVisitor::ResolveAccObject(
     const parser::AccObject &accObject, Symbol::Flag accFlag) {
-  common::visit(
+  std::visit(
       common::visitors{
           [&](const parser::Designator &designator) {
             if (const auto *name{GetDesignatorNameIfDataRef(designator)}) {
@@ -1475,7 +1458,7 @@ void OmpAttributeVisitor::Post(const parser::Name &name) {
   auto *symbol{name.symbol};
   if (symbol && !dirContext_.empty() && GetContext().withinConstruct) {
     if (!symbol->owner().IsDerivedType() && !symbol->has<ProcEntityDetails>() &&
-        !IsObjectWithDSA(*symbol) && !IsNamedConstant(*symbol)) {
+        !IsObjectWithDSA(*symbol)) {
       // TODO: create a separate function to go through the rules for
       //       predetermined, explicitly determined, and implicitly
       //       determined data-sharing attributes (2.15.1.1).
@@ -1577,7 +1560,7 @@ void OmpAttributeVisitor::ResolveOmpObjectList(
 
 void OmpAttributeVisitor::ResolveOmpObject(
     const parser::OmpObject &ompObject, Symbol::Flag ompFlag) {
-  common::visit(
+  std::visit(
       common::visitors{
           [&](const parser::Designator &designator) {
             if (const auto *name{GetDesignatorNameIfDataRef(designator)}) {

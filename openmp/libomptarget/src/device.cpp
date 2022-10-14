@@ -58,8 +58,8 @@ DeviceTy::~DeviceTy() {
   if (DeviceID == -1 || !(getInfoLevel() & OMP_INFOTYPE_DUMP_TABLE))
     return;
 
-  ident_t Loc = {0, 0, 0, 0, ";libomptarget;libomptarget;0;0;;"};
-  dumpTargetPointerMappings(&Loc, *this);
+  ident_t loc = {0, 0, 0, 0, ";libomptarget;libomptarget;0;0;;"};
+  dumpTargetPointerMappings(&loc, *this);
 }
 
 int DeviceTy::associatePtr(void *HstPtrBegin, void *TgtPtrBegin, int64_t Size) {
@@ -70,20 +70,21 @@ int DeviceTy::associatePtr(void *HstPtrBegin, void *TgtPtrBegin, int64_t Size) {
   if (It != HDTTMap->end()) {
     HostDataToTargetTy &HDTT = *It->HDTT;
     // Mapping already exists
-    bool IsValid = HDTT.HstPtrEnd == (uintptr_t)HstPtrBegin + Size &&
+    bool isValid = HDTT.HstPtrEnd == (uintptr_t)HstPtrBegin + Size &&
                    HDTT.TgtPtrBegin == (uintptr_t)TgtPtrBegin;
-    if (IsValid) {
+    if (isValid) {
       DP("Attempt to re-associate the same device ptr+offset with the same "
          "host ptr, nothing to do\n");
       return OFFLOAD_SUCCESS;
+    } else {
+      REPORT("Not allowed to re-associate a different device ptr+offset with "
+             "the same host ptr\n");
+      return OFFLOAD_FAIL;
     }
-    REPORT("Not allowed to re-associate a different device ptr+offset with "
-           "the same host ptr\n");
-    return OFFLOAD_FAIL;
   }
 
   // Mapping does not exist, allocate it with refCount=INF
-  const HostDataToTargetTy &NewEntry =
+  const HostDataToTargetTy &newEntry =
       *HDTTMap
            ->emplace(new HostDataToTargetTy(
                /*HstPtrBase=*/(uintptr_t)HstPtrBegin,
@@ -96,10 +97,10 @@ int DeviceTy::associatePtr(void *HstPtrBegin, void *TgtPtrBegin, int64_t Size) {
   DP("Creating new map entry: HstBase=" DPxMOD ", HstBegin=" DPxMOD
      ", HstEnd=" DPxMOD ", TgtBegin=" DPxMOD ", DynRefCount=%s, "
      "HoldRefCount=%s\n",
-     DPxPTR(NewEntry.HstPtrBase), DPxPTR(NewEntry.HstPtrBegin),
-     DPxPTR(NewEntry.HstPtrEnd), DPxPTR(NewEntry.TgtPtrBegin),
-     NewEntry.dynRefCountToStr().c_str(), NewEntry.holdRefCountToStr().c_str());
-  (void)NewEntry;
+     DPxPTR(newEntry.HstPtrBase), DPxPTR(newEntry.HstPtrBegin),
+     DPxPTR(newEntry.HstPtrEnd), DPxPTR(newEntry.TgtPtrBegin),
+     newEntry.dynRefCountToStr().c_str(), newEntry.holdRefCountToStr().c_str());
+  (void)newEntry;
 
   return OFFLOAD_SUCCESS;
 }
@@ -140,71 +141,71 @@ int DeviceTy::disassociatePtr(void *HstPtrBegin) {
 LookupResult DeviceTy::lookupMapping(HDTTMapAccessorTy &HDTTMap,
                                      void *HstPtrBegin, int64_t Size) {
 
-  uintptr_t HP = (uintptr_t)HstPtrBegin;
-  LookupResult LR;
+  uintptr_t hp = (uintptr_t)HstPtrBegin;
+  LookupResult lr;
 
   DP("Looking up mapping(HstPtrBegin=" DPxMOD ", Size=%" PRId64 ")...\n",
-     DPxPTR(HP), Size);
+     DPxPTR(hp), Size);
 
   if (HDTTMap->empty())
-    return LR;
+    return lr;
 
-  auto Upper = HDTTMap->upper_bound(HP);
+  auto upper = HDTTMap->upper_bound(hp);
 
   if (Size == 0) {
     // specification v5.1 Pointer Initialization for Device Data Environments
     // upper_bound satisfies
     //   std::prev(upper)->HDTT.HstPtrBegin <= hp < upper->HDTT.HstPtrBegin
-    if (Upper != HDTTMap->begin()) {
-      LR.Entry = std::prev(Upper)->HDTT;
-      auto &HT = *LR.Entry;
+    if (upper != HDTTMap->begin()) {
+      lr.Entry = std::prev(upper)->HDTT;
+      auto &HT = *lr.Entry;
       // the left side of extended address range is satisified.
       // hp >= HT.HstPtrBegin || hp >= HT.HstPtrBase
-      LR.Flags.IsContained = HP < HT.HstPtrEnd || HP < HT.HstPtrBase;
+      lr.Flags.IsContained = hp < HT.HstPtrEnd || hp < HT.HstPtrBase;
     }
 
-    if (!LR.Flags.IsContained && Upper != HDTTMap->end()) {
-      LR.Entry = Upper->HDTT;
-      auto &HT = *LR.Entry;
+    if (!lr.Flags.IsContained && upper != HDTTMap->end()) {
+      lr.Entry = upper->HDTT;
+      auto &HT = *lr.Entry;
       // the right side of extended address range is satisified.
       // hp < HT.HstPtrEnd || hp < HT.HstPtrBase
-      LR.Flags.IsContained = HP >= HT.HstPtrBase;
+      lr.Flags.IsContained = hp >= HT.HstPtrBase;
     }
   } else {
     // check the left bin
-    if (Upper != HDTTMap->begin()) {
-      LR.Entry = std::prev(Upper)->HDTT;
-      auto &HT = *LR.Entry;
+    if (upper != HDTTMap->begin()) {
+      lr.Entry = std::prev(upper)->HDTT;
+      auto &HT = *lr.Entry;
       // Is it contained?
-      LR.Flags.IsContained = HP >= HT.HstPtrBegin && HP < HT.HstPtrEnd &&
-                             (HP + Size) <= HT.HstPtrEnd;
+      lr.Flags.IsContained = hp >= HT.HstPtrBegin && hp < HT.HstPtrEnd &&
+                             (hp + Size) <= HT.HstPtrEnd;
       // Does it extend beyond the mapped region?
-      LR.Flags.ExtendsAfter = HP < HT.HstPtrEnd && (HP + Size) > HT.HstPtrEnd;
+      lr.Flags.ExtendsAfter = hp < HT.HstPtrEnd && (hp + Size) > HT.HstPtrEnd;
     }
 
     // check the right bin
-    if (!(LR.Flags.IsContained || LR.Flags.ExtendsAfter) &&
-        Upper != HDTTMap->end()) {
-      LR.Entry = Upper->HDTT;
-      auto &HT = *LR.Entry;
+    if (!(lr.Flags.IsContained || lr.Flags.ExtendsAfter) &&
+        upper != HDTTMap->end()) {
+      lr.Entry = upper->HDTT;
+      auto &HT = *lr.Entry;
       // Does it extend into an already mapped region?
-      LR.Flags.ExtendsBefore =
-          HP < HT.HstPtrBegin && (HP + Size) > HT.HstPtrBegin;
+      lr.Flags.ExtendsBefore =
+          hp < HT.HstPtrBegin && (hp + Size) > HT.HstPtrBegin;
       // Does it extend beyond the mapped region?
-      LR.Flags.ExtendsAfter = HP < HT.HstPtrEnd && (HP + Size) > HT.HstPtrEnd;
+      lr.Flags.ExtendsAfter = hp < HT.HstPtrEnd && (hp + Size) > HT.HstPtrEnd;
     }
 
-    if (LR.Flags.ExtendsBefore) {
+    if (lr.Flags.ExtendsBefore) {
       DP("WARNING: Pointer is not mapped but section extends into already "
          "mapped data\n");
     }
-    if (LR.Flags.ExtendsAfter) {
+    if (lr.Flags.ExtendsAfter) {
       DP("WARNING: Pointer is already mapped but section extends beyond mapped "
          "region\n");
     }
   }
 
-  return LR;
+  return lr;
 }
 
 TargetPointerResultTy DeviceTy::getTargetPointer(
@@ -296,7 +297,7 @@ TargetPointerResultTy DeviceTy::getTargetPointer(
                     HstPtrName))
                 .first->HDTT;
     INFO(OMP_INFOTYPE_MAPPING_CHANGED, DeviceID,
-         "Creating new map entry with HstPtrBase=" DPxMOD
+         "Creating new map entry with HstPtrBase= " DPxMOD
          ", HstPtrBegin=" DPxMOD ", TgtPtrBegin=" DPxMOD ", Size=%ld, "
          "DynRefCount=%s, HoldRefCount=%s, Name=%s\n",
          DPxPTR(HstPtrBase), DPxPTR(HstPtrBegin), DPxPTR(Ptr), Size,
@@ -367,11 +368,11 @@ DeviceTy::getTgtPtrBegin(void *HstPtrBegin, int64_t Size, bool &IsLast,
   bool IsNew = false;
   IsHostPtr = false;
   IsLast = false;
-  LookupResult LR = lookupMapping(HDTTMap, HstPtrBegin, Size);
+  LookupResult lr = lookupMapping(HDTTMap, HstPtrBegin, Size);
 
-  if (LR.Flags.IsContained ||
-      (!MustContain && (LR.Flags.ExtendsBefore || LR.Flags.ExtendsAfter))) {
-    auto &HT = *LR.Entry;
+  if (lr.Flags.IsContained ||
+      (!MustContain && (lr.Flags.ExtendsBefore || lr.Flags.ExtendsAfter))) {
+    auto &HT = *lr.Entry;
     IsLast = HT.decShouldRemove(UseHoldRefCount, ForceDelete);
 
     if (ForceDelete) {
@@ -402,13 +403,13 @@ DeviceTy::getTgtPtrBegin(void *HstPtrBegin, int64_t Size, bool &IsLast,
     }
     const char *DynRefCountAction = UseHoldRefCount ? "" : RefCountAction;
     const char *HoldRefCountAction = UseHoldRefCount ? RefCountAction : "";
-    uintptr_t TP = HT.TgtPtrBegin + ((uintptr_t)HstPtrBegin - HT.HstPtrBegin);
+    uintptr_t tp = HT.TgtPtrBegin + ((uintptr_t)HstPtrBegin - HT.HstPtrBegin);
     INFO(OMP_INFOTYPE_MAPPING_EXISTS, DeviceID,
          "Mapping exists with HstPtrBegin=" DPxMOD ", TgtPtrBegin=" DPxMOD ", "
          "Size=%" PRId64 ", DynRefCount=%s%s, HoldRefCount=%s%s\n",
-         DPxPTR(HstPtrBegin), DPxPTR(TP), Size, HT.dynRefCountToStr().c_str(),
+         DPxPTR(HstPtrBegin), DPxPTR(tp), Size, HT.dynRefCountToStr().c_str(),
          DynRefCountAction, HT.holdRefCountToStr().c_str(), HoldRefCountAction);
-    TargetPointer = (void *)TP;
+    TargetPointer = (void *)tp;
   } else if (PM->RTLs.RequiresFlags & OMP_REQ_UNIFIED_SHARED_MEMORY) {
     // If the value isn't found in the mapping and unified shared memory
     // is on then it means we have stumbled upon a value which we need to
@@ -420,18 +421,18 @@ DeviceTy::getTgtPtrBegin(void *HstPtrBegin, int64_t Size, bool &IsLast,
     TargetPointer = HstPtrBegin;
   }
 
-  return {{IsNew, IsHostPtr}, LR.Entry, TargetPointer};
+  return {{IsNew, IsHostPtr}, lr.Entry, TargetPointer};
 }
 
 // Return the target pointer begin (where the data will be moved).
 void *DeviceTy::getTgtPtrBegin(HDTTMapAccessorTy &HDTTMap, void *HstPtrBegin,
                                int64_t Size) {
-  uintptr_t HP = (uintptr_t)HstPtrBegin;
-  LookupResult LR = lookupMapping(HDTTMap, HstPtrBegin, Size);
-  if (LR.Flags.IsContained || LR.Flags.ExtendsBefore || LR.Flags.ExtendsAfter) {
-    auto &HT = *LR.Entry;
-    uintptr_t TP = HT.TgtPtrBegin + (HP - HT.HstPtrBegin);
-    return (void *)TP;
+  uintptr_t hp = (uintptr_t)HstPtrBegin;
+  LookupResult lr = lookupMapping(HDTTMap, HstPtrBegin, Size);
+  if (lr.Flags.IsContained || lr.Flags.ExtendsBefore || lr.Flags.ExtendsAfter) {
+    auto &HT = *lr.Entry;
+    uintptr_t tp = HT.TgtPtrBegin + (hp - HT.HstPtrBegin);
+    return (void *)tp;
   }
 
   return NULL;
@@ -499,7 +500,8 @@ int32_t DeviceTy::initOnce() {
   // is still false, return OFFLOAD_FAIL.
   if (IsInit)
     return OFFLOAD_SUCCESS;
-  return OFFLOAD_FAIL;
+  else
+    return OFFLOAD_FAIL;
 }
 
 void DeviceTy::deinit() {
@@ -508,9 +510,10 @@ void DeviceTy::deinit() {
 }
 
 // Load binary to device.
-__tgt_target_table *DeviceTy::loadBinary(void *Img) {
+__tgt_target_table *DeviceTy::load_binary(void *Img) {
   std::lock_guard<decltype(RTL->Mtx)> LG(RTL->Mtx);
-  return RTL->load_binary(RTLDeviceID, Img);
+  __tgt_target_table *rc = RTL->load_binary(RTLDeviceID, Img);
+  return rc;
 }
 
 void *DeviceTy::allocData(int64_t Size, void *HstPtr, int32_t Kind) {
@@ -539,8 +542,9 @@ int32_t DeviceTy::submitData(void *TgtPtrBegin, void *HstPtrBegin, int64_t Size,
 
   if (!AsyncInfo || !RTL->data_submit_async || !RTL->synchronize)
     return RTL->data_submit(RTLDeviceID, TgtPtrBegin, HstPtrBegin, Size);
-  return RTL->data_submit_async(RTLDeviceID, TgtPtrBegin, HstPtrBegin, Size,
-                                AsyncInfo);
+  else
+    return RTL->data_submit_async(RTLDeviceID, TgtPtrBegin, HstPtrBegin, Size,
+                                  AsyncInfo);
 }
 
 // Retrieve data from device
@@ -560,8 +564,9 @@ int32_t DeviceTy::retrieveData(void *HstPtrBegin, void *TgtPtrBegin,
 
   if (!RTL->data_retrieve_async || !RTL->synchronize)
     return RTL->data_retrieve(RTLDeviceID, HstPtrBegin, TgtPtrBegin, Size);
-  return RTL->data_retrieve_async(RTLDeviceID, HstPtrBegin, TgtPtrBegin, Size,
-                                  AsyncInfo);
+  else
+    return RTL->data_retrieve_async(RTLDeviceID, HstPtrBegin, TgtPtrBegin, Size,
+                                    AsyncInfo);
 }
 
 // Copy data from current device to destination device directly
@@ -571,9 +576,9 @@ int32_t DeviceTy::dataExchange(void *SrcPtr, DeviceTy &DstDev, void *DstPtr,
     assert(RTL->data_exchange && "RTL->data_exchange is nullptr");
     return RTL->data_exchange(RTLDeviceID, SrcPtr, DstDev.RTLDeviceID, DstPtr,
                               Size);
-  }
-  return RTL->data_exchange_async(RTLDeviceID, SrcPtr, DstDev.RTLDeviceID,
-                                  DstPtr, Size, AsyncInfo);
+  } else
+    return RTL->data_exchange_async(RTLDeviceID, SrcPtr, DstDev.RTLDeviceID,
+                                    DstPtr, Size, AsyncInfo);
 }
 
 // Run region on device
@@ -583,8 +588,9 @@ int32_t DeviceTy::runRegion(void *TgtEntryPtr, void **TgtVarsPtr,
   if (!RTL->run_region || !RTL->synchronize)
     return RTL->run_region(RTLDeviceID, TgtEntryPtr, TgtVarsPtr, TgtOffsets,
                            TgtVarsSize);
-  return RTL->run_region_async(RTLDeviceID, TgtEntryPtr, TgtVarsPtr, TgtOffsets,
-                               TgtVarsSize, AsyncInfo);
+  else
+    return RTL->run_region_async(RTLDeviceID, TgtEntryPtr, TgtVarsPtr,
+                                 TgtOffsets, TgtVarsSize, AsyncInfo);
 }
 
 // Run region on device
@@ -605,9 +611,10 @@ int32_t DeviceTy::runTeamRegion(void *TgtEntryPtr, void **TgtVarsPtr,
     return RTL->run_team_region(RTLDeviceID, TgtEntryPtr, TgtVarsPtr,
                                 TgtOffsets, TgtVarsSize, NumTeams, ThreadLimit,
                                 LoopTripCount);
-  return RTL->run_team_region_async(RTLDeviceID, TgtEntryPtr, TgtVarsPtr,
-                                    TgtOffsets, TgtVarsSize, NumTeams,
-                                    ThreadLimit, LoopTripCount, AsyncInfo);
+  else
+    return RTL->run_team_region_async(RTLDeviceID, TgtEntryPtr, TgtVarsPtr,
+                                      TgtOffsets, TgtVarsSize, NumTeams,
+                                      ThreadLimit, LoopTripCount, AsyncInfo);
 }
 
 // Whether data can be copied to DstDevice directly
@@ -665,8 +672,8 @@ int32_t DeviceTy::destroyEvent(void *Event) {
 
 /// Check whether a device has an associated RTL and initialize it if it's not
 /// already initialized.
-bool deviceIsReady(int DeviceNum) {
-  DP("Checking whether device %d is ready.\n", DeviceNum);
+bool device_is_ready(int device_num) {
+  DP("Checking whether device %d is ready.\n", device_num);
   // Devices.size() can only change while registering a new
   // library, so try to acquire the lock of RTLs' mutex.
   size_t DevicesSize;
@@ -674,24 +681,24 @@ bool deviceIsReady(int DeviceNum) {
     std::lock_guard<decltype(PM->RTLsMtx)> LG(PM->RTLsMtx);
     DevicesSize = PM->Devices.size();
   }
-  if (DevicesSize <= (size_t)DeviceNum) {
-    DP("Device ID  %d does not have a matching RTL\n", DeviceNum);
+  if (DevicesSize <= (size_t)device_num) {
+    DP("Device ID  %d does not have a matching RTL\n", device_num);
     return false;
   }
 
   // Get device info
-  DeviceTy &Device = *PM->Devices[DeviceNum];
+  DeviceTy &Device = *PM->Devices[device_num];
 
-  DP("Is the device %d (local ID %d) initialized? %d\n", DeviceNum,
+  DP("Is the device %d (local ID %d) initialized? %d\n", device_num,
      Device.RTLDeviceID, Device.IsInit);
 
   // Init the device if not done before
   if (!Device.IsInit && Device.initOnce() != OFFLOAD_SUCCESS) {
-    DP("Failed to init device %d\n", DeviceNum);
+    DP("Failed to init device %d\n", device_num);
     return false;
   }
 
-  DP("Device %d is ready to use.\n", DeviceNum);
+  DP("Device %d is ready to use.\n", device_num);
 
   return true;
 }

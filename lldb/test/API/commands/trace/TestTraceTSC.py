@@ -6,6 +6,8 @@ from lldbsuite.test.decorators import *
 
 class TestTraceTimestampCounters(TraceIntelPTTestCaseBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @testSBAPIAndCommands
     @skipIf(oslist=no_match(['linux']), archs=no_match(['i386', 'x86_64']))
     def testTscPerThread(self):
@@ -17,7 +19,7 @@ class TestTraceTimestampCounters(TraceIntelPTTestCaseBase):
 
         self.expect("n")
         self.expect("thread trace dump instructions --tsc -c 1",
-            patterns=["0: \[tsc=\d+\] 0x0000000000400511    movl"])
+            patterns=["0: \[tsc=0x[0-9a-fA-F]+\] 0x0000000000400511    movl"])
 
     @testSBAPIAndCommands
     @skipIf(oslist=no_match(['linux']), archs=no_match(['i386', 'x86_64']))
@@ -29,23 +31,23 @@ class TestTraceTimestampCounters(TraceIntelPTTestCaseBase):
         self.traceStartThread(enableTsc=True)
 
         # After each stop there'll be a new TSC
-        self.expect("si")
-        self.expect("si")
-        self.expect("si")
+        self.expect("n")
+        self.expect("n")
+        self.expect("n")
 
         # We'll get the most recent instructions, with at least 3 different TSCs
-        self.runCmd("thread trace dump instructions --tsc --raw --forward")
+        self.runCmd("thread trace dump instructions --tsc --raw")
         id_to_tsc = {}
         for line in self.res.GetOutput().splitlines():
             m = re.search("    (.+): \[tsc=(.+)\].*", line)
             if m:
                 id_to_tsc[int(m.group(1))] = m.group(2)
-        self.assertEqual(len(id_to_tsc), 3)
+        self.assertEqual(len(id_to_tsc), 6)
 
         # We check that the values are right when dumping a specific id
-        for id, tsc in id_to_tsc.items():
+        for id in range(0, 6):
             self.expect(f"thread trace dump instructions --tsc --id {id} -c 1",
-                substrs=[f"{id}: [tsc={tsc}"])
+                substrs=[f"{id}: [tsc={id_to_tsc[id]}]"])
 
     @testSBAPIAndCommands
     @skipIf(oslist=no_match(['linux']), archs=no_match(['i386', 'x86_64']))
@@ -58,10 +60,7 @@ class TestTraceTimestampCounters(TraceIntelPTTestCaseBase):
 
         self.expect("n")
         self.expect("thread trace dump instructions --tsc -c 1",
-            patterns=["0: \[tsc=\d+\] 0x0000000000400511    movl"])
-
-        self.expect("thread trace dump instructions --tsc -c 1 --pretty-json",
-            patterns=['''"tsc": "\d+"'''])
+            patterns=["0: \[tsc=0x[0-9a-fA-F]+\] 0x0000000000400511    movl"])
 
     @testSBAPIAndCommands
     @skipIf(oslist=no_match(['linux']), archs=no_match(['i386', 'x86_64']))
@@ -75,9 +74,6 @@ class TestTraceTimestampCounters(TraceIntelPTTestCaseBase):
         self.expect("n")
         self.expect("thread trace dump instructions --tsc -c 1",
             patterns=["0: \[tsc=unavailable\] 0x0000000000400511    movl"])
-
-        self.expect("thread trace dump instructions --tsc -c 1 --json",
-            substrs=['''"tsc":null'''])
 
     @testSBAPIAndCommands
     @skipIf(oslist=no_match(['linux']), archs=no_match(['i386', 'x86_64']))

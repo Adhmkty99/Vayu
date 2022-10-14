@@ -9,12 +9,15 @@
 // NetBSD does not support LC_TIME at the moment
 // XFAIL: netbsd
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 // REQUIRES: locale.en_US.UTF-8
 // REQUIRES: locale.fr_FR.UTF-8
 // REQUIRES: locale.ru_RU.UTF-8
 // REQUIRES: locale.zh_CN.UTF-8
+
+// GLIBC fails on the zh_CN test.
+// XFAIL: linux
 
 // <locale>
 
@@ -62,7 +65,7 @@ int main(int, char**)
     }
     {
         const my_facet f(LOCALE_fr_FR_UTF_8, 1);
-#if defined(_WIN32) || defined(TEST_HAS_GLIBC) || defined(_AIX)
+#if defined(_WIN32) || defined(TEST_HAS_GLIBC)
         const wchar_t in[] = L"10/06/2009";
 #else
         const wchar_t in[] = L"10.06.2009";
@@ -90,12 +93,7 @@ int main(int, char**)
     }
     {
         const my_facet f(LOCALE_zh_CN_UTF_8, 1);
-#ifdef TEST_HAS_GLIBC
-        // There's no separator between month and day.
-        const wchar_t in[] = L"2009\u5e740610";
-#else
         const wchar_t in[] = L"2009/06/10";
-#endif
         err = std::ios_base::goodbit;
         t = std::tm();
         I i = f.get_date(I(in), I(in+sizeof(in)/sizeof(in[0])-1), ios, err, &t);
@@ -105,5 +103,6 @@ int main(int, char**)
         assert(t.tm_year == 109);
         assert(err == std::ios_base::eofbit);
     }
+
   return 0;
 }

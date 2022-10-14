@@ -7,6 +7,8 @@ from lldbsuite.test import lldbutil
 
 class TestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     NO_DEBUG_INFO_TESTCASE = True
 
     def test_enable_disable(self):

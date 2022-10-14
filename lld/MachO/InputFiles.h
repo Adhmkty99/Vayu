@@ -12,7 +12,6 @@
 #include "MachOStructs.h"
 #include "Target.h"
 
-#include "lld/Common/DWARF.h"
 #include "lld/Common/LLVM.h"
 #include "lld/Common/Memory.h"
 #include "llvm/ADT/CachedHashString.h"
@@ -22,7 +21,6 @@
 #include "llvm/DebugInfo/DWARF/DWARFUnit.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Support/Threading.h"
 #include "llvm/TextAPI/TextAPIReader.h"
 
 #include <vector>
@@ -62,8 +60,7 @@ struct Subsection {
 using Subsections = std::vector<Subsection>;
 class InputFile;
 
-class Section {
-public:
+struct Section {
   InputFile *file;
   StringRef segname;
   StringRef name;
@@ -79,13 +76,6 @@ public:
   Section &operator=(const Section &) = delete;
   Section(Section &&) = delete;
   Section &operator=(Section &&) = delete;
-
-private:
-  // Whether we have already split this section into individual subsections.
-  // For sections that cannot be split (e.g. literal sections), this is always
-  // false.
-  bool doneSplitting = false;
-  friend class ObjFile;
 };
 
 // Represents a call graph profile edge.
@@ -120,7 +110,6 @@ public:
 
   std::vector<Symbol *> symbols;
   std::vector<Section *> sections;
-  ArrayRef<uint8_t> objCImageInfo;
 
   // If not empty, this stores the name of the archive containing this file.
   // We use this string for creating error messages.
@@ -146,12 +135,6 @@ private:
   static int idCount;
 };
 
-struct FDE {
-  uint32_t funcLength;
-  Symbol *personality;
-  InputSection *lsda;
-};
-
 // .o file
 class ObjFile final : public InputFile {
 public:
@@ -162,22 +145,14 @@ public:
 
   static bool classof(const InputFile *f) { return f->kind() == ObjKind; }
 
-  std::string sourceFile() const;
-  // Parses line table information for diagnostics. compileUnit should be used
-  // for other purposes.
-  lld::DWARFCache *getDwarf();
-
   llvm::DWARFUnit *compileUnit = nullptr;
-  std::unique_ptr<lld::DWARFCache> dwarfCache;
-  Section *addrSigSection = nullptr;
   const uint32_t modTime;
   std::vector<ConcatInputSection *> debugSections;
   std::vector<CallGraphEntry> callGraph;
-  llvm::DenseMap<ConcatInputSection *, FDE> fdes;
-  std::vector<OptimizationHint> optimizationHints;
 
 private:
-  llvm::once_flag initDwarf;
+  Section *compactUnwindSection = nullptr;
+
   template <class LP> void parseLazy();
   template <class SectionHeader> void parseSections(ArrayRef<SectionHeader>);
   template <class LP>
@@ -190,10 +165,7 @@ private:
   void parseRelocations(ArrayRef<SectionHeader> sectionHeaders,
                         const SectionHeader &, Section &);
   void parseDebugInfo();
-  void parseOptimizationHints(ArrayRef<uint8_t> data);
-  void splitEhFrames(ArrayRef<uint8_t> dataArr, Section &ehFrameSection);
-  void registerCompactUnwind(Section &compactUnwindSection);
-  void registerEhFrames(Section &ehFrameSection);
+  void registerCompactUnwind();
 };
 
 // command-line -sectcreate file
@@ -214,10 +186,10 @@ public:
   // to the root. On the other hand, if a dylib is being directly loaded
   // (through an -lfoo flag), then `umbrella` should be a nullptr.
   explicit DylibFile(MemoryBufferRef mb, DylibFile *umbrella,
-                     bool isBundleLoader, bool explicitlyLinked);
+                     bool isBundleLoader = false);
   explicit DylibFile(const llvm::MachO::InterfaceFile &interface,
-                     DylibFile *umbrella, bool isBundleLoader,
-                     bool explicitlyLinked);
+                     DylibFile *umbrella = nullptr,
+                     bool isBundleLoader = false);
 
   void parseLoadCommands(MemoryBufferRef mb);
   void parseReexports(const llvm::MachO::InterfaceFile &interface);
@@ -251,7 +223,6 @@ private:
   void handleLDInstallNameSymbol(StringRef name, StringRef originalName);
   void handleLDHideSymbol(StringRef name, StringRef originalName);
   void checkAppExtensionSafety(bool dylibIsAppExtensionSafe) const;
-  void parseExportedSymbols(uint32_t offset, uint32_t size);
 
   llvm::DenseSet<llvm::CachedHashStringRef> hiddenSymbols;
 };

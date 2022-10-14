@@ -36,11 +36,13 @@ using namespace polly;
 
 static cl::opt<bool> CheckParallel("polly-check-parallel",
                                    cl::desc("Check for parallel loops"),
-                                   cl::Hidden, cl::cat(PollyCategory));
+                                   cl::Hidden, cl::init(false), cl::ZeroOrMore,
+                                   cl::cat(PollyCategory));
 
 static cl::opt<bool> CheckVectorizable("polly-check-vectorizable",
                                        cl::desc("Check for vectorizable loops"),
-                                       cl::Hidden, cl::cat(PollyCategory));
+                                       cl::Hidden, cl::init(false),
+                                       cl::ZeroOrMore, cl::cat(PollyCategory));
 
 void PolyhedralInfo::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequiredTransitive<DependenceInfoWrapperPass>();
@@ -168,7 +170,7 @@ INITIALIZE_PASS_END(PolyhedralInfo, "polyhedral-info",
 
 namespace {
 /// Print result from PolyhedralInfo.
-class PolyhedralInfoPrinterLegacyPass final : public FunctionPass {
+class PolyhedralInfoPrinterLegacyPass : public FunctionPass {
 public:
   static char ID;
 

@@ -21,37 +21,37 @@
 #include "flang/Optimizer/Builder/LowLevelIntrinsics.h"
 #include "flang/Optimizer/Builder/FIRBuilder.h"
 
-mlir::func::FuncOp fir::factory::getLlvmMemcpy(fir::FirOpBuilder &builder) {
+mlir::FuncOp fir::factory::getLlvmMemcpy(fir::FirOpBuilder &builder) {
   auto ptrTy = builder.getRefType(builder.getIntegerType(8));
   llvm::SmallVector<mlir::Type> args = {ptrTy, ptrTy, builder.getI64Type(),
                                         builder.getI1Type()};
   auto memcpyTy =
       mlir::FunctionType::get(builder.getContext(), args, llvm::None);
   return builder.addNamedFunction(builder.getUnknownLoc(),
-                                  "llvm.memcpy.p0.p0.i64", memcpyTy);
+                                  "llvm.memcpy.p0i8.p0i8.i64", memcpyTy);
 }
 
-mlir::func::FuncOp fir::factory::getLlvmMemmove(fir::FirOpBuilder &builder) {
+mlir::FuncOp fir::factory::getLlvmMemmove(fir::FirOpBuilder &builder) {
   auto ptrTy = builder.getRefType(builder.getIntegerType(8));
   llvm::SmallVector<mlir::Type> args = {ptrTy, ptrTy, builder.getI64Type(),
                                         builder.getI1Type()};
   auto memmoveTy =
       mlir::FunctionType::get(builder.getContext(), args, llvm::None);
   return builder.addNamedFunction(builder.getUnknownLoc(),
-                                  "llvm.memmove.p0.p0.i64", memmoveTy);
+                                  "llvm.memmove.p0i8.p0i8.i64", memmoveTy);
 }
 
-mlir::func::FuncOp fir::factory::getLlvmMemset(fir::FirOpBuilder &builder) {
+mlir::FuncOp fir::factory::getLlvmMemset(fir::FirOpBuilder &builder) {
   auto ptrTy = builder.getRefType(builder.getIntegerType(8));
   llvm::SmallVector<mlir::Type> args = {ptrTy, ptrTy, builder.getI64Type(),
                                         builder.getI1Type()};
   auto memsetTy =
       mlir::FunctionType::get(builder.getContext(), args, llvm::None);
   return builder.addNamedFunction(builder.getUnknownLoc(),
-                                  "llvm.memset.p0.p0.i64", memsetTy);
+                                  "llvm.memset.p0i8.p0i8.i64", memsetTy);
 }
 
-mlir::func::FuncOp fir::factory::getRealloc(fir::FirOpBuilder &builder) {
+mlir::FuncOp fir::factory::getRealloc(fir::FirOpBuilder &builder) {
   auto ptrTy = builder.getRefType(builder.getIntegerType(8));
   llvm::SmallVector<mlir::Type> args = {ptrTy, builder.getI64Type()};
   auto reallocTy = mlir::FunctionType::get(builder.getContext(), args, {ptrTy});
@@ -59,7 +59,7 @@ mlir::func::FuncOp fir::factory::getRealloc(fir::FirOpBuilder &builder) {
                                   reallocTy);
 }
 
-mlir::func::FuncOp fir::factory::getLlvmStackSave(fir::FirOpBuilder &builder) {
+mlir::FuncOp fir::factory::getLlvmStackSave(fir::FirOpBuilder &builder) {
   auto ptrTy = builder.getRefType(builder.getIntegerType(8));
   auto funcTy =
       mlir::FunctionType::get(builder.getContext(), llvm::None, {ptrTy});
@@ -67,8 +67,7 @@ mlir::func::FuncOp fir::factory::getLlvmStackSave(fir::FirOpBuilder &builder) {
                                   funcTy);
 }
 
-mlir::func::FuncOp
-fir::factory::getLlvmStackRestore(fir::FirOpBuilder &builder) {
+mlir::FuncOp fir::factory::getLlvmStackRestore(fir::FirOpBuilder &builder) {
   auto ptrTy = builder.getRefType(builder.getIntegerType(8));
   auto funcTy =
       mlir::FunctionType::get(builder.getContext(), {ptrTy}, llvm::None);
@@ -76,8 +75,7 @@ fir::factory::getLlvmStackRestore(fir::FirOpBuilder &builder) {
                                   funcTy);
 }
 
-mlir::func::FuncOp
-fir::factory::getLlvmInitTrampoline(fir::FirOpBuilder &builder) {
+mlir::FuncOp fir::factory::getLlvmInitTrampoline(fir::FirOpBuilder &builder) {
   auto ptrTy = builder.getRefType(builder.getIntegerType(8));
   auto funcTy = mlir::FunctionType::get(builder.getContext(),
                                         {ptrTy, ptrTy, ptrTy}, llvm::None);
@@ -85,8 +83,7 @@ fir::factory::getLlvmInitTrampoline(fir::FirOpBuilder &builder) {
                                   "llvm.init.trampoline", funcTy);
 }
 
-mlir::func::FuncOp
-fir::factory::getLlvmAdjustTrampoline(fir::FirOpBuilder &builder) {
+mlir::FuncOp fir::factory::getLlvmAdjustTrampoline(fir::FirOpBuilder &builder) {
   auto ptrTy = builder.getRefType(builder.getIntegerType(8));
   auto funcTy = mlir::FunctionType::get(builder.getContext(), {ptrTy}, {ptrTy});
   return builder.addNamedFunction(builder.getUnknownLoc(),

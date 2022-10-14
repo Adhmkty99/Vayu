@@ -13,6 +13,8 @@ class FreeBSDKernelVMCoreTestCase(TestBase):
     NO_DEBUG_INFO_TESTCASE = True
     maxDiff = None
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def make_target(self, src_filename):
         src = self.getSourcePath(src_filename)
         dest = self.getBuildArtifact("kernel")

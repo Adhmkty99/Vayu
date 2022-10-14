@@ -68,10 +68,9 @@ Property::Property(const PropertyDefinition &definition)
   }
   case OptionValue::eTypeDictionary:
     // "definition.default_uint_value" is always a OptionValue::Type
-    m_value_sp = std::make_shared<OptionValueDictionary>(
-        OptionValue::ConvertTypeToMask(
-            (OptionValue::Type)definition.default_uint_value),
-        definition.enum_values);
+    m_value_sp =
+        std::make_shared<OptionValueDictionary>(OptionValue::ConvertTypeToMask(
+            (OptionValue::Type)definition.default_uint_value));
     break;
 
   case OptionValue::eTypeEnum:

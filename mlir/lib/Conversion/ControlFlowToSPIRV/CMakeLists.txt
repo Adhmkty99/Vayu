@@ -11,9 +11,9 @@ add_mlir_conversion_library(MLIRControlFlowToSPIRV
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRControlFlowDialect
+  MLIRControlFlow
   MLIRPass
-  MLIRSPIRVDialect
+  MLIRSPIRV
   MLIRSPIRVConversion
   MLIRSupport
   MLIRTransformUtils

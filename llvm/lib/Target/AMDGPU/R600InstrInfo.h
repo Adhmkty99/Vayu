@@ -320,6 +320,9 @@ public:
   bool isRegisterLoad(const MachineInstr &MI) const {
     return get(MI.getOpcode()).TSFlags & R600InstrFlags::REGISTER_LOAD;
   }
+
+  unsigned getAddressSpaceForPseudoSourceKind(
+      unsigned Kind) const override;
 };
 
 namespace R600 {

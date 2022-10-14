@@ -61,7 +61,8 @@ static cl::opt<int> DbgNVJCount("nvj-count", cl::init(-1), cl::Hidden,
     "New Value Jump"));
 
 static cl::opt<bool> DisableNewValueJumps("disable-nvjump", cl::Hidden,
-                                          cl::desc("Disable New Value Jumps"));
+    cl::ZeroOrMore, cl::init(false),
+    cl::desc("Disable New Value Jumps"));
 
 namespace llvm {
 

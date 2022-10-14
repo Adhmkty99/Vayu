@@ -137,6 +137,7 @@ mlir::tosa::buildConvOpQuantizationAttr(OpBuilder &builder, Value input,
          "Inputs and weights must be all quantized or all not quantized");
 
   if (inputQType) {
+
     int64_t inputZp = inputQType.getZeroPoint();
     int64_t weightZp = 0;
 
@@ -146,7 +147,11 @@ mlir::tosa::buildConvOpQuantizationAttr(OpBuilder &builder, Value input,
       weightZp = weightPerAxisQType.getZeroPoints().front();
     }
 
-    return builder.getAttr<tosa::ConvOpQuantizationAttr>(inputZp, weightZp);
+    auto quantAttr = tosa::ConvOpQuantizationAttr::get(
+        builder.getI32IntegerAttr(inputZp), builder.getI32IntegerAttr(weightZp),
+        builder.getContext());
+
+    return quantAttr;
   }
 
   return nullptr;
@@ -174,8 +179,15 @@ mlir::tosa::buildMatMulOpQuantizationAttr(OpBuilder &builder, Value a,
          "Matmul operands must be all quantized or all not quantized");
 
   if (aQType) {
-    return builder.getAttr<tosa::MatMulOpQuantizationAttr>(
-        aQType.getZeroPoint(), bQType.getZeroPoint());
+
+    int64_t aZp = aQType.getZeroPoint();
+    int64_t bZp = bQType.getZeroPoint();
+
+    auto quantAttr = tosa::MatMulOpQuantizationAttr::get(
+        builder.getI32IntegerAttr(aZp), builder.getI32IntegerAttr(bZp),
+        builder.getContext());
+
+    return quantAttr;
   }
 
   return nullptr;
@@ -203,8 +215,15 @@ mlir::tosa::buildUnaryOpQuantizationAttr(OpBuilder &builder, Value input,
          "Unary inputs/outputs must be all quantized or all not quantized");
 
   if (inputQType) {
-    return builder.getAttr<UnaryOpQuantizationAttr>(inputQType.getZeroPoint(),
-                                                    outputQType.getZeroPoint());
+
+    int64_t inputZp = inputQType.getZeroPoint();
+    int64_t outputZp = outputQType.getZeroPoint();
+
+    auto quantAttr = tosa::UnaryOpQuantizationAttr::get(
+        builder.getI32IntegerAttr(inputZp), builder.getI32IntegerAttr(outputZp),
+        builder.getContext());
+
+    return quantAttr;
   }
 
   return nullptr;
@@ -223,8 +242,13 @@ PadOpQuantizationAttr mlir::tosa::buildPadOpQuantizationAttr(OpBuilder &builder,
   auto inputQType = GET_UQTYPE(inputType);
 
   if (inputQType) {
-    return builder.getAttr<tosa::PadOpQuantizationAttr>(
-        inputQType.getZeroPoint());
+
+    int64_t inputZp = inputQType.getZeroPoint();
+
+    auto quantAttr = tosa::PadOpQuantizationAttr::get(
+        builder.getI32IntegerAttr(inputZp), builder.getContext());
+
+    return quantAttr;
   }
 
   return nullptr;

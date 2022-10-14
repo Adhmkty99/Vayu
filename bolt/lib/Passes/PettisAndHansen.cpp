@@ -207,7 +207,7 @@ std::vector<Cluster> pettisAndHansen(const CallGraph &Cg) {
   for (Cluster *C : LiveClusters)
     OutClusters.push_back(std::move(*C));
 
-  llvm::sort(OutClusters, compareClustersDensity);
+  std::sort(OutClusters.begin(), OutClusters.end(), compareClustersDensity);
 
   return OutClusters;
 }

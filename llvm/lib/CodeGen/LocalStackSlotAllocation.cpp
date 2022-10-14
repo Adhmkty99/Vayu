@@ -23,6 +23,7 @@
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineOperand.h"
+#include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/TargetFrameLowering.h"
 #include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/CodeGen/TargetRegisterInfo.h"
@@ -343,7 +344,7 @@ bool LocalStackSlotPass::insertFrameReferenceRegisters(MachineFunction &Fn) {
 
   MachineBasicBlock *Entry = &Fn.front();
 
-  Register BaseReg;
+  unsigned BaseReg = 0;
   int64_t BaseOffset = 0;
 
   // Loop through the frame references and allocate for them as necessary.
@@ -413,14 +414,20 @@ bool LocalStackSlotPass::insertFrameReferenceRegisters(MachineFunction &Fn) {
         continue;
       }
 
+      const MachineFunction *MF = MI.getMF();
+      const TargetRegisterClass *RC = TRI->getPointerRegClass(*MF);
+      BaseReg = Fn.getRegInfo().createVirtualRegister(RC);
+
+      LLVM_DEBUG(dbgs() << "  Materializing base register"
+                        << " at frame local offset "
+                        << LocalOffset + InstrOffset);
+
       // Tell the target to insert the instruction to initialize
       // the base register.
       //            MachineBasicBlock::iterator InsertionPt = Entry->begin();
       BaseReg = TRI->materializeFrameBaseRegister(Entry, FrameIdx, InstrOffset);
 
-      LLVM_DEBUG(dbgs() << "  Materialized base register at frame local offset "
-                        << LocalOffset + InstrOffset
-                        << " into " << printReg(BaseReg, TRI) << '\n');
+      LLVM_DEBUG(dbgs() << " into " << printReg(BaseReg, TRI) << '\n');
 
       // The base register already includes any offset specified
       // by the instruction, so account for that so it doesn't get
@@ -430,7 +437,7 @@ bool LocalStackSlotPass::insertFrameReferenceRegisters(MachineFunction &Fn) {
       ++NumBaseRegisters;
       UsedBaseReg = true;
     }
-    assert(BaseReg && "Unable to allocate virtual base register!");
+    assert(BaseReg != 0 && "Unable to allocate virtual base register!");
 
     // Modify the instruction to use the new base register rather
     // than the frame index operand.

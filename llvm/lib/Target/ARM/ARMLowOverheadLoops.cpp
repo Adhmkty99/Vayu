@@ -1299,7 +1299,7 @@ bool LowOverheadLoop::ValidateMVEInst(MachineInstr *MI) {
 }
 
 bool ARMLowOverheadLoops::runOnMachineFunction(MachineFunction &mf) {
-  const ARMSubtarget &ST = mf.getSubtarget<ARMSubtarget>();
+  const ARMSubtarget &ST = static_cast<const ARMSubtarget&>(mf.getSubtarget());
   if (!ST.hasLOB())
     return false;
 

@@ -11,14 +11,9 @@ from lldbsuite.test import lldbutil
 
 
 class WatchLocationUsingWatchpointSetTestCase(TestBase):
-    NO_DEBUG_INFO_TESTCASE = True
 
-    # on arm64 targets, lldb has incorrect hit-count / ignore-counts
-    # for watchpoints when they are hit with multiple threads at
-    # the same time.  Tracked as llvm.org/pr49433
-    # or rdar://93863107 inside Apple.
-    def affected_by_radar_93863107(self):
-        return (self.getArchitecture() in ['arm64', 'arm64e']) and self.platformIsDarwin()
+    mydir = TestBase.compute_mydir(__file__)
+    NO_DEBUG_INFO_TESTCASE = True
 
     def setUp(self):
         # Call super's setUp().
@@ -107,9 +102,7 @@ class WatchLocationUsingWatchpointSetTestCase(TestBase):
         # stopped on a watchpoint.
         threads = lldbutil.get_stopped_threads(
             self.process(), lldb.eStopReasonWatchpoint)
-
-        if not self.affected_by_radar_93863107():
-          self.expect("watchpoint list -v",
-                      substrs=['hit_count = %d' % len(threads)])
+        self.expect("watchpoint list -v",
+                    substrs=['hit_count = %d' % len(threads)])
 
         self.runCmd("thread backtrace all")

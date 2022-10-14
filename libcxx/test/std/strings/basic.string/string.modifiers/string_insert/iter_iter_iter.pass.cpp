@@ -9,7 +9,7 @@
 // <string>
 
 // template<class InputIterator>
-//   iterator insert(const_iterator p, InputIterator first, InputIterator last); // constexpr since C++20
+//   iterator insert(const_iterator p, InputIterator first, InputIterator last);
 
 #include <string>
 #include <cassert>
@@ -56,7 +56,7 @@ test_exceptions(S s, typename S::difference_type pos, It first, It last)
 }
 #endif
 
-TEST_CONSTEXPR_CXX20 bool test() {
+bool test() {
   {
     typedef std::string S;
     const char* s = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -150,7 +150,7 @@ TEST_CONSTEXPR_CXX20 bool test() {
   }
 #endif
 #ifndef TEST_HAS_NO_EXCEPTIONS
-  if (!TEST_IS_CONSTANT_EVALUATED) { // test iterator operations that throw
+  { // test iterator operations that throw
     typedef std::string S;
     typedef ThrowingIterator<char> TIter;
     typedef cpp17_input_iterator<TIter> IIter;
@@ -193,7 +193,7 @@ TEST_CONSTEXPR_CXX20 bool test() {
     assert(s == "ABCD");
   }
 
-  if (!TEST_IS_CONSTANT_EVALUATED) { // regression-test inserting into self in sneaky ways
+  { // regression-test inserting into self in sneaky ways
     std::string s_short = "hello";
     std::string s_long = "Lorem ipsum dolor sit amet, consectetur/";
     std::string s_othertype = "hello";
@@ -238,7 +238,7 @@ int main(int, char**)
 {
   test();
 #if TEST_STD_VER > 17
-  static_assert(test());
+  // static_assert(test());
 #endif
 
   return 0;

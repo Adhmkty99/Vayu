@@ -8,6 +8,7 @@
 
 #include "llvm/Support/BinaryStreamWriter.h"
 
+#include "llvm/Support/BinaryStreamError.h"
 #include "llvm/Support/BinaryStreamReader.h"
 #include "llvm/Support/BinaryStreamRef.h"
 #include "llvm/Support/LEB128.h"
@@ -93,11 +94,10 @@ BinaryStreamWriter::split(uint64_t Off) const {
 
 Error BinaryStreamWriter::padToAlignment(uint32_t Align) {
   uint64_t NewOffset = alignTo(Offset, Align);
-  const uint64_t ZerosSize = 64;
-  static constexpr char Zeros[ZerosSize] = {};
+  if (NewOffset > getLength())
+    return make_error<BinaryStreamError>(stream_error_code::stream_too_short);
   while (Offset < NewOffset)
-    if (auto E = writeArray(
-            ArrayRef<char>(Zeros, std::min(ZerosSize, NewOffset - Offset))))
-      return E;
+    if (auto EC = writeInteger('\0'))
+      return EC;
   return Error::success();
 }

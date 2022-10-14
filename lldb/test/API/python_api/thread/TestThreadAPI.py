@@ -14,6 +14,8 @@ from lldbsuite.test.lldbutil import get_stopped_thread, get_caller_symbol
 
 class ThreadAPITestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_get_process(self):
         """Test Python SBThread.GetProcess() API."""
         self.build()
@@ -195,7 +197,7 @@ class ThreadAPITestCase(TestBase):
         self.assertTrue(process, PROCESS_IS_VALID)
 
         # Frame #0 should be on self.step_out_of_malloc.
-        self.assertState(process.GetState(), lldb.eStateStopped)
+        self.assertEqual(process.GetState(), lldb.eStateStopped)
         thread = get_stopped_thread(process, lldb.eStopReasonBreakpoint)
         self.assertTrue(
             thread.IsValid(),
@@ -241,7 +243,7 @@ class ThreadAPITestCase(TestBase):
         self.assertTrue(process, PROCESS_IS_VALID)
 
         # Frame #0 should be on self.step_out_of_malloc.
-        self.assertState(process.GetState(), lldb.eStateStopped)
+        self.assertEqual(process.GetState(), lldb.eStateStopped)
         thread = get_stopped_thread(process, lldb.eStopReasonBreakpoint)
         self.assertTrue(
             thread.IsValid(),

@@ -5,6 +5,8 @@ from lldbsuite.test import lldbutil
 
 class TestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @no_debug_info_test
     def test_file_close_invalid_arg(self):
         self.expect("platform file close y", error=True,

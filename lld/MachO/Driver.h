@@ -49,8 +49,7 @@ std::string createResponseFile(const llvm::opt::InputArgList &args);
 llvm::Optional<StringRef> resolveDylibPath(llvm::StringRef path);
 
 DylibFile *loadDylib(llvm::MemoryBufferRef mbref, DylibFile *umbrella = nullptr,
-                     bool isBundleLoader = false,
-                     bool explicitlyLinked = false);
+                     bool isBundleLoader = false);
 void resetLoadedDylibs();
 
 // Search for all possible combinations of `{root}/{name}.{extension}`.

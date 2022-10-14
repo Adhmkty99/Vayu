@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 class TestInterruptThreadNames(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipUnlessDarwin
     @add_test_categories(['pyapi'])
     def test_with_python_api(self):

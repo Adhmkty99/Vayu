@@ -16,8 +16,6 @@ add_llvm_component_library(LLVMMC
   MCCodeView.cpp
   MCContext.cpp
   MCDwarf.cpp
-  MCDXContainerStreamer.cpp
-  MCDXContainerWriter.cpp
   MCELFObjectTargetWriter.cpp
   MCELFStreamer.cpp
   MCExpr.cpp
@@ -40,13 +38,11 @@ add_llvm_component_library(LLVMMC
   MCSchedule.cpp
   MCSection.cpp
   MCSectionCOFF.cpp
-  MCSectionDXContainer.cpp
   MCSectionELF.cpp
   MCSectionMachO.cpp
   MCSectionWasm.cpp
   MCSectionXCOFF.cpp
   MCStreamer.cpp
-  MCSPIRVStreamer.cpp
   MCSubtargetInfo.cpp
   MCSymbol.cpp
   MCSymbolELF.cpp
@@ -62,7 +58,6 @@ add_llvm_component_library(LLVMMC
   MCXCOFFObjectTargetWriter.cpp
   MCXCOFFStreamer.cpp
   MachObjectWriter.cpp
-  SPIRVObjectWriter.cpp
   StringTableBuilder.cpp
   SubtargetFeature.cpp
   TargetRegistry.cpp

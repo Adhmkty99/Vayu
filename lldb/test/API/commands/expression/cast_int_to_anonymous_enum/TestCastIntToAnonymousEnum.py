@@ -11,6 +11,8 @@ from lldbsuite.test import lldbutil
 
 class TestCastIntToAnonymousEnum(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_cast_int_to_anonymous_enum(self):
         self.build()
 

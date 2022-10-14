@@ -33,13 +33,6 @@ class CSKYMachineFunctionInfo : public MachineFunctionInfo {
 public:
   CSKYMachineFunctionInfo(MachineFunction &) {}
 
-  MachineFunctionInfo *
-  clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
-        const DenseMap<MachineBasicBlock *, MachineBasicBlock *> &Src2DstMBB)
-      const override {
-    return DestMF.cloneInfo<CSKYMachineFunctionInfo>(*this);
-  }
-
   Register getGlobalBaseReg() const { return GlobalBaseReg; }
   void setGlobalBaseReg(Register Reg) { GlobalBaseReg = Reg; }
 

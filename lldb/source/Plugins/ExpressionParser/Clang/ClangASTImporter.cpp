@@ -240,7 +240,7 @@ public:
     m_delegate->SetImportListener(this);
   }
 
-  ~CompleteTagDeclsScope() override {
+  virtual ~CompleteTagDeclsScope() {
     ClangASTImporter::ASTContextMetadataSP to_context_md =
         importer.GetContextMetadata(m_dst_ctx);
 

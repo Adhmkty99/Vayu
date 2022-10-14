@@ -13,7 +13,6 @@ add_llvm_tool(llvm-cxxfilt
 
   DEPENDS
   CxxfiltOptsTableGen
-  GENERATE_DRIVER
   )
 
 if(LLVM_INSTALL_BINUTILS_SYMLINKS)

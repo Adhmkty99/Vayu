@@ -207,13 +207,6 @@ int FormatControl<CONTEXT>::CueUpNextDataEdit(Context &context, bool stop) {
             maybeReversionPoint);
         return 0;
       }
-      if (height_ != 1) {
-        ReportBadFormat(context,
-            "Invalid FORMAT: '*' must be nested in exactly one set of "
-            "parentheses",
-            maybeReversionPoint);
-        return 0;
-      }
     }
     ch = Capitalize(ch);
     if (ch == '(') {
@@ -258,20 +251,12 @@ int FormatControl<CONTEXT>::CueUpNextDataEdit(Context &context, bool stop) {
         ++restart;
       }
       if (stack_[height_ - 1].remaining == Iteration::unlimited) {
-        if (height_ > 1 && GetNextChar(context) != ')') {
-          ReportBadFormat(context,
-              "Unlimited repetition in FORMAT may not be followed by more "
-              "items",
-              restart);
-          return 0;
-        }
+        offset_ = restart;
         if (offset_ == unlimitedLoopCheck) {
           ReportBadFormat(context,
               "Unlimited repetition in FORMAT lacks data edit descriptors",
               restart);
-          return 0;
         }
-        offset_ = restart;
       } else if (stack_[height_ - 1].remaining-- > 0) {
         offset_ = restart;
       } else {
@@ -293,7 +278,7 @@ int FormatControl<CONTEXT>::CueUpNextDataEdit(Context &context, bool stop) {
       ++offset_;
       std::size_t chars{
           static_cast<std::size_t>(&format_[offset_] - &format_[start])};
-      if (offset_ < formatLength_ && format_[offset_] == quote) {
+      if (PeekNext() == quote) {
         // subtle: handle doubled quote character in a literal by including
         // the first in the output, then treating the second as the start
         // of another character literal.
@@ -433,11 +418,6 @@ DataEdit FormatControl<CONTEXT>::GetNextDataEdit(
     }
   } else if (edit.descriptor != DataEdit::DefinedDerivedType) {
     edit.width = GetIntField(context);
-  }
-  if constexpr (std::is_base_of_v<InputStatementState, CONTEXT>) {
-    if (edit.width.value_or(-1) == 0) {
-      ReportBadFormat(context, "Input field width is zero", start);
-    }
   }
   if (edit.descriptor != DataEdit::DefinedDerivedType && PeekNext() == '.') {
     ++offset_;

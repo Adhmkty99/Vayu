@@ -310,13 +310,7 @@ bool LoopRotate::rotateLoop(Loop *L, bool SimplifiedLatch) {
                    L->dump());
         return Rotated;
       }
-      if (!Metrics.NumInsts.isValid()) {
-        LLVM_DEBUG(dbgs() << "LoopRotation: NOT rotating - contains instructions"
-                   " with invalid cost: ";
-                   L->dump());
-        return Rotated;
-      }
-      if (*Metrics.NumInsts.getValue() > MaxHeaderSize) {
+      if (Metrics.NumInsts > MaxHeaderSize) {
         LLVM_DEBUG(dbgs() << "LoopRotation: NOT rotating - contains "
                           << Metrics.NumInsts
                           << " instructions, which is more than the threshold ("
@@ -445,7 +439,7 @@ bool LoopRotate::rotateLoop(Loop *L, bool SimplifiedLatch) {
       // With the operands remapped, see if the instruction constant folds or is
       // otherwise simplifyable.  This commonly occurs because the entry from PHI
       // nodes allows icmps and other instructions to fold.
-      Value *V = simplifyInstruction(C, SQ);
+      Value *V = SimplifyInstruction(C, SQ);
       if (V && LI->replacementPreservesLCSSAForm(C, V)) {
         // If so, then delete the temporary instruction and stick the folded value
         // in the map.
@@ -622,7 +616,7 @@ bool LoopRotate::rotateLoop(Loop *L, bool SimplifiedLatch) {
         // We only need to split loop exit edges.
         Loop *PredLoop = LI->getLoopFor(ExitPred);
         if (!PredLoop || PredLoop->contains(Exit) ||
-            isa<IndirectBrInst>(ExitPred->getTerminator()))
+            ExitPred->getTerminator()->isIndirectTerminator())
           continue;
         SplitLatchEdge |= L->getLoopLatch() == ExitPred;
         BasicBlock *ExitSplit = SplitCriticalEdge(

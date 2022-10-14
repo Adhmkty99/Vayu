@@ -1302,7 +1302,7 @@ bool ObjectFileMachO::IsStripped() {
       for (uint32_t i = 0; i < m_header.ncmds; ++i) {
         const lldb::offset_t load_cmd_offset = offset;
 
-        llvm::MachO::load_command lc = {};
+        llvm::MachO::load_command lc;
         if (m_data.GetU32(&offset, &lc.cmd, 2) == nullptr)
           break;
         if (lc.cmd == LC_DYSYMTAB) {
@@ -1932,10 +1932,10 @@ public:
           if (first_section_sp)
             filename = first_section_sp->GetObjectFile()->GetFileSpec().GetPath();
 
-          Debugger::ReportError(
-              llvm::formatv("unable to find section {0} for a symbol in "
-                            "{1}, corrupt file?",
-                            n_sect, filename));
+          Host::SystemLog(Host::eSystemLogError,
+                          "error: unable to find section %d for a symbol in "
+                          "%s, corrupt file?\n",
+                          n_sect, filename.c_str());
         }
       }
       if (m_section_infos[n_sect].vm_range.Contains(file_addr)) {
@@ -2712,7 +2712,7 @@ void ObjectFileMachO::ParseSymtab(Symtab &symtab) {
         if (process_shared_cache_uuid.IsValid() &&
           process_shared_cache_uuid != UUID::fromOptionalData(&cache_uuid, 16))
         return;
-
+      const bool pinned = dyld_shared_cache_pin_mapping(shared_cache);
       dyld_shared_cache_for_each_image(shared_cache, ^(dyld_image_t image) {
         uuid_t dsc_image_uuid;
         if (found_image)
@@ -2769,6 +2769,8 @@ void ObjectFileMachO::ParseSymtab(Symtab &symtab) {
               nlist_count = nlistCount;
             });
       });
+      if (pinned)
+        dyld_shared_cache_unpin_mapping(shared_cache);
     });
     if (nlist_buffer) {
       DataExtractor dsc_local_symbols_data(nlist_buffer,
@@ -2804,11 +2806,12 @@ void ObjectFileMachO::ParseSymtab(Symtab &symtab) {
                       // No symbol should be NULL, even the symbols with no
                       // string values should have an offset zero which
                       // points to an empty C-string
-                      Debugger::ReportError(llvm::formatv(
-                          "DSC unmapped local symbol[{0}] has invalid "
-                          "string table offset {1:x} in {2}, ignoring symbol",
+                      Host::SystemLog(
+                          Host::eSystemLogError,
+                          "error: DSC unmapped local symbol[%u] has invalid "
+                          "string table offset 0x%x in %s, ignoring symbol\n",
                           nlist_index, nlist.n_strx,
-                          module_sp->GetFileSpec().GetPath());
+                          module_sp->GetFileSpec().GetPath().c_str());
                       continue;
                     }
                     if (symbol_name[0] == '\0')
@@ -3729,10 +3732,11 @@ void ObjectFileMachO::ParseSymtab(Symtab &symtab) {
         if (symbol_name == nullptr) {
           // No symbol should be NULL, even the symbols with no string values
           // should have an offset zero which points to an empty C-string
-          Debugger::ReportError(llvm::formatv(
-              "symbol[{0}] has invalid string table offset {1:x} in {2}, "
-              "ignoring symbol",
-              nlist_idx, nlist.n_strx, module_sp->GetFileSpec().GetPath()));
+          Host::SystemLog(Host::eSystemLogError,
+                          "error: symbol[%u] has invalid string table offset "
+                          "0x%x in %s, ignoring symbol\n",
+                          nlist_idx, nlist.n_strx,
+                          module_sp->GetFileSpec().GetPath().c_str());
           return true;
         }
         if (symbol_name[0] == '\0')
@@ -5421,7 +5425,7 @@ std::string ObjectFileMachO::GetIdentifierString() {
     lldb::offset_t offset = MachHeaderSizeFromMagic(m_header.magic);
     for (uint32_t i = 0; i < m_header.ncmds; ++i) {
       const uint32_t cmd_offset = offset;
-      llvm::MachO::load_command lc = {};
+      llvm::MachO::load_command lc;
       if (m_data.GetU32(&offset, &lc.cmd, 2) == nullptr)
         break;
       if (lc.cmd == LC_NOTE) {
@@ -5488,7 +5492,7 @@ addr_t ObjectFileMachO::GetAddressMask() {
     lldb::offset_t offset = MachHeaderSizeFromMagic(m_header.magic);
     for (uint32_t i = 0; i < m_header.ncmds; ++i) {
       const uint32_t cmd_offset = offset;
-      llvm::MachO::load_command lc = {};
+      llvm::MachO::load_command lc;
       if (m_data.GetU32(&offset, &lc.cmd, 2) == nullptr)
         break;
       if (lc.cmd == LC_NOTE) {
@@ -5535,7 +5539,7 @@ bool ObjectFileMachO::GetCorefileMainBinaryInfo(addr_t &value,
     lldb::offset_t offset = MachHeaderSizeFromMagic(m_header.magic);
     for (uint32_t i = 0; i < m_header.ncmds; ++i) {
       const uint32_t cmd_offset = offset;
-      llvm::MachO::load_command lc = {};
+      llvm::MachO::load_command lc;
       if (m_data.GetU32(&offset, &lc.cmd, 2) == nullptr)
         break;
       if (lc.cmd == LC_NOTE) {
@@ -5945,7 +5949,7 @@ llvm::VersionTuple ObjectFileMachO::GetMinimumOSVersion() {
     for (uint32_t i = 0; i < m_header.ncmds; ++i) {
       const lldb::offset_t load_cmd_offset = offset;
 
-      llvm::MachO::version_min_command lc = {};
+      llvm::MachO::version_min_command lc;
       if (m_data.GetU32(&offset, &lc.cmd, 2) == nullptr)
         break;
       if (lc.cmd == llvm::MachO::LC_VERSION_MIN_MACOSX ||
@@ -6001,12 +6005,12 @@ llvm::VersionTuple ObjectFileMachO::GetMinimumOSVersion() {
 }
 
 llvm::VersionTuple ObjectFileMachO::GetSDKVersion() {
-  if (!m_sdk_versions) {
+  if (!m_sdk_versions.hasValue()) {
     lldb::offset_t offset = MachHeaderSizeFromMagic(m_header.magic);
     for (uint32_t i = 0; i < m_header.ncmds; ++i) {
       const lldb::offset_t load_cmd_offset = offset;
 
-      llvm::MachO::version_min_command lc = {};
+      llvm::MachO::version_min_command lc;
       if (m_data.GetU32(&offset, &lc.cmd, 2) == nullptr)
         break;
       if (lc.cmd == llvm::MachO::LC_VERSION_MIN_MACOSX ||
@@ -6030,12 +6034,12 @@ llvm::VersionTuple ObjectFileMachO::GetSDKVersion() {
       offset = load_cmd_offset + lc.cmdsize;
     }
 
-    if (!m_sdk_versions) {
+    if (!m_sdk_versions.hasValue()) {
       offset = MachHeaderSizeFromMagic(m_header.magic);
       for (uint32_t i = 0; i < m_header.ncmds; ++i) {
         const lldb::offset_t load_cmd_offset = offset;
 
-        llvm::MachO::version_min_command lc = {};
+        llvm::MachO::version_min_command lc;
         if (m_data.GetU32(&offset, &lc.cmd, 2) == nullptr)
           break;
         if (lc.cmd == llvm::MachO::LC_BUILD_VERSION) {
@@ -6067,11 +6071,11 @@ llvm::VersionTuple ObjectFileMachO::GetSDKVersion() {
       }
     }
 
-    if (!m_sdk_versions)
+    if (!m_sdk_versions.hasValue())
       m_sdk_versions = llvm::VersionTuple();
   }
 
-  return *m_sdk_versions;
+  return m_sdk_versions.getValue();
 }
 
 bool ObjectFileMachO::GetIsDynamicLinkEditor() {
@@ -6516,8 +6520,8 @@ bool ObjectFileMachO::SaveCore(const lldb::ProcessSP &process_sp,
             addr_t pagesize = range_info.GetPageSize();
             const llvm::Optional<std::vector<addr_t>> &dirty_page_list =
                 range_info.GetDirtyPageList();
-            if (dirty_pages_only && dirty_page_list) {
-              for (addr_t dirtypage : dirty_page_list.value()) {
+            if (dirty_pages_only && dirty_page_list.hasValue()) {
+              for (addr_t dirtypage : dirty_page_list.getValue()) {
                 page_object obj;
                 obj.addr = dirtypage;
                 obj.size = pagesize;
@@ -6864,7 +6868,7 @@ ObjectFileMachO::GetCorefileAllImageInfos() {
   lldb::offset_t offset = MachHeaderSizeFromMagic(m_header.magic);
   for (uint32_t i = 0; i < m_header.ncmds; ++i) {
     const uint32_t cmd_offset = offset;
-    llvm::MachO::load_command lc = {};
+    llvm::MachO::load_command lc;
     if (m_data.GetU32(&offset, &lc.cmd, 2) == nullptr)
       break;
     if (lc.cmd == LC_NOTE) {
@@ -6965,8 +6969,7 @@ bool ObjectFileMachO::LoadCoreFileImages(lldb_private::Process &process) {
       module_spec.GetFileSpec() = FileSpec(image.filename.c_str());
     }
     if (image.currently_executing) {
-      Status error;
-      Symbols::DownloadObjectAndSymbolFile(module_spec, error, true);
+      Symbols::DownloadObjectAndSymbolFile(module_spec, true);
       if (FileSystem::Instance().Exists(module_spec.GetFileSpec())) {
         process.GetTarget().GetOrCreateModule(module_spec, false);
       }

@@ -19,7 +19,7 @@
 
 using namespace _OMP;
 
-#pragma omp begin declare target device_type(nohost)
+#pragma omp declare target
 
 static void inititializeRuntime(bool IsSPMD) {
   // Order is important here.

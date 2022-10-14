@@ -8,12 +8,10 @@
 //
 // Pluggable Frontend Action Interface
 //
-// Coding style: https://mlir.llvm.org/getting_started/DeveloperGuide/
-//
 //===----------------------------------------------------------------------===//
 
-#ifndef FORTRAN_FRONTEND_FRONTENDPLUGINREGISTRY_H
-#define FORTRAN_FRONTEND_FRONTENDPLUGINREGISTRY_H
+#ifndef FLANG_FRONTEND_FRONTENDPLUGINREGISTRY_H
+#define FLANG_FRONTEND_FRONTENDPLUGINREGISTRY_H
 
 #include "flang/Frontend/FrontendActions.h"
 #include "llvm/Support/Registry.h"
@@ -25,4 +23,4 @@ using FrontendPluginRegistry = llvm::Registry<PluginParseTreeAction>;
 
 } // namespace Fortran::frontend
 
-#endif // FORTRAN_FRONTEND_FRONTENDPLUGINREGISTRY_H
+#endif // FLANG_FRONTEND_FRONTENDPLUGINREGISTRY_H

@@ -70,7 +70,9 @@ TEST(DebugActionTest, DebugCounterHandler) {
 
   // Handler that uses the number of action executions as the decider.
   struct DebugCounterHandler : public SimpleAction::Handler {
-    FailureOr<bool> shouldExecute() final { return numExecutions++ < 3; }
+    FailureOr<bool> shouldExecute() final {
+      return numExecutions++ < 3;
+    }
     unsigned numExecutions = 0;
   };
   manager.registerActionHandler<DebugCounterHandler>();

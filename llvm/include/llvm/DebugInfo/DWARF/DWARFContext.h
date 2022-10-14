@@ -333,10 +333,6 @@ public:
   getLineTableForUnit(DWARFUnit *U,
                       function_ref<void(Error)> RecoverableErrorHandler);
 
-  // Clear the line table object corresponding to a compile unit for memory
-  // management purpose. When it's referred to again, it'll be re-populated.
-  void clearLineTableForUnit(DWARFUnit *U);
-
   DataExtractor getStringExtractor() const {
     return DataExtractor(DObj->getStrSection(), false, 0);
   }
@@ -364,8 +360,6 @@ public:
   DILineInfo getLineInfoForAddress(
       object::SectionedAddress Address,
       DILineInfoSpecifier Specifier = DILineInfoSpecifier()) override;
-  DILineInfo
-  getLineInfoForDataAddress(object::SectionedAddress Address) override;
   DILineInfoTable getLineInfoForAddressRange(
       object::SectionedAddress Address, uint64_t Size,
       DILineInfoSpecifier Specifier = DILineInfoSpecifier()) override;

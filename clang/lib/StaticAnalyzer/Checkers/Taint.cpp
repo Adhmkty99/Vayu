@@ -10,7 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "clang/StaticAnalyzer/Checkers/Taint.h"
+#include "Taint.h"
 #include "clang/StaticAnalyzer/Core/BugReporter/BugReporter.h"
 #include "clang/StaticAnalyzer/Core/PathSensitive/ProgramStateTrait.h"
 
@@ -37,9 +37,7 @@ void taint::printTaint(ProgramStateRef State, raw_ostream &Out, const char *NL,
     Out << I.first << " : " << I.second << NL;
 }
 
-void taint::dumpTaint(ProgramStateRef State) {
-  printTaint(State, llvm::errs());
-}
+void dumpTaint(ProgramStateRef State) { printTaint(State, llvm::errs()); }
 
 ProgramStateRef taint::addTaint(ProgramStateRef State, const Stmt *S,
                                 const LocationContext *LCtx,

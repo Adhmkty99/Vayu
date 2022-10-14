@@ -6,7 +6,7 @@ set(LLVM_LINK_COMPONENTS
   TransformUtils
   )
 
-set(MLGO_TESTS TFUtilsTest.cpp)
+set(MLGO_TESTS TFUtilsTest.cpp MLModelRunnerTest.cpp)
 if (DEFINED LLVM_HAVE_TF_API)
   LIST(APPEND EXTRA_TESTS ${MLGO_TESTS})
 else()
@@ -38,16 +38,13 @@ add_llvm_unittest_with_input_files(AnalysisTests
   LoopInfoTest.cpp
   LoopNestTest.cpp
   MemoryBuiltinsTest.cpp
-  MemoryProfileInfoTest.cpp
   MemorySSATest.cpp
-  MLModelRunnerTest.cpp
   PhiValuesTest.cpp
   ProfileSummaryInfoTest.cpp
   ScalarEvolutionTest.cpp
   VectorFunctionABITest.cpp
   SparsePropagation.cpp
   TargetLibraryInfoTest.cpp
-  TensorSpecTest.cpp
   TBAATest.cpp
   UnrollAnalyzerTest.cpp
   ValueLatticeTest.cpp

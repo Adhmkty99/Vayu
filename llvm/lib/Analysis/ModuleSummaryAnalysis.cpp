@@ -367,7 +367,7 @@ static void computeFunctionSummary(
         // We should have named any anonymous globals
         assert(CalledFunction->hasName());
         auto ScaledCount = PSI->getProfileCount(*CB, BFI);
-        auto Hotness = ScaledCount ? getHotness(*ScaledCount, PSI)
+        auto Hotness = ScaledCount ? getHotness(ScaledCount.getValue(), PSI)
                                    : CalleeInfo::HotnessType::Unknown;
         if (ForceSummaryEdgesCold != FunctionSummary::FSHT_None)
           Hotness = CalleeInfo::HotnessType::Cold;
@@ -400,7 +400,7 @@ static void computeFunctionSummary(
         // to enable importing for subsequent indirect call promotion and
         // inlining.
         if (auto *MD = I.getMetadata(LLVMContext::MD_callees)) {
-          for (const auto &Op : MD->operands()) {
+          for (auto &Op : MD->operands()) {
             Function *Callee = mdconst::extract_or_null<Function>(Op);
             if (Callee)
               CallGraphEdges[Index.getOrInsertValueInfo(Callee)];
@@ -412,7 +412,7 @@ static void computeFunctionSummary(
         auto CandidateProfileData =
             ICallAnalysis.getPromotionCandidatesForInstruction(
                 &I, NumVals, TotalCount, NumCandidates);
-        for (const auto &Candidate : CandidateProfileData)
+        for (auto &Candidate : CandidateProfileData)
           CallGraphEdges[Index.getOrInsertValueInfo(Candidate.Value)]
               .updateHotness(getHotness(Candidate.Count, PSI));
       }
@@ -451,7 +451,7 @@ static void computeFunctionSummary(
     // If both load and store instruction reference the same variable
     // we won't be able to optimize it. Add all such reference edges
     // to RefEdges set.
-    for (const auto &VI : StoreRefEdges)
+    for (auto &VI : StoreRefEdges)
       if (LoadRefEdges.remove(VI))
         RefEdges.insert(VI);
 
@@ -459,11 +459,11 @@ static void computeFunctionSummary(
     // All new reference edges inserted in two loops below are either
     // read or write only. They will be grouped in the end of RefEdges
     // vector, so we can use a single integer value to identify them.
-    for (const auto &VI : LoadRefEdges)
+    for (auto &VI : LoadRefEdges)
       RefEdges.insert(VI);
 
     unsigned FirstWORef = RefEdges.size();
-    for (const auto &VI : StoreRefEdges)
+    for (auto &VI : StoreRefEdges)
       RefEdges.insert(VI);
 
     Refs = RefEdges.takeVector();
@@ -646,18 +646,15 @@ static void computeVariableSummary(ModuleSummaryIndex &Index,
   Index.addGlobalValueSummary(V, std::move(GVarSummary));
 }
 
-static void computeAliasSummary(ModuleSummaryIndex &Index, const GlobalAlias &A,
-                                DenseSet<GlobalValue::GUID> &CantBePromoted) {
-  // Skip summary for indirect function aliases as summary for aliasee will not
-  // be emitted.
-  const GlobalObject *Aliasee = A.getAliaseeObject();
-  if (isa<GlobalIFunc>(Aliasee))
-    return;
+static void
+computeAliasSummary(ModuleSummaryIndex &Index, const GlobalAlias &A,
+                    DenseSet<GlobalValue::GUID> &CantBePromoted) {
   bool NonRenamableLocal = isNonRenamableLocal(A);
   GlobalValueSummary::GVFlags Flags(
       A.getLinkage(), A.getVisibility(), NonRenamableLocal,
       /* Live = */ false, A.isDSOLocal(), A.canBeOmittedFromSymbolTable());
   auto AS = std::make_unique<AliasSummary>(Flags);
+  auto *Aliasee = A.getAliaseeObject();
   auto AliaseeVI = Index.getValueInfo(Aliasee->getGUID());
   assert(AliaseeVI && "Alias expects aliasee summary to be available");
   assert(AliaseeVI.getSummaryList().size() == 1 &&
@@ -671,7 +668,7 @@ static void computeAliasSummary(ModuleSummaryIndex &Index, const GlobalAlias &A,
 // Set LiveRoot flag on entries matching the given value name.
 static void setLiveRoot(ModuleSummaryIndex &Index, StringRef Name) {
   if (ValueInfo VI = Index.getValueInfo(GlobalValue::getGUID(Name)))
-    for (const auto &Summary : VI.getSummaryList())
+    for (auto &Summary : VI.getSummaryList())
       Summary->setLive(true);
 }
 
@@ -779,7 +776,7 @@ ModuleSummaryIndex llvm::buildModuleSummaryIndex(
 
   // Compute summaries for all functions defined in module, and save in the
   // index.
-  for (const auto &F : M) {
+  for (auto &F : M) {
     if (F.isDeclaration())
       continue;
 
@@ -813,13 +810,6 @@ ModuleSummaryIndex llvm::buildModuleSummaryIndex(
   // index.
   for (const GlobalAlias &A : M.aliases())
     computeAliasSummary(Index, A, CantBePromoted);
-
-  // Iterate through ifuncs, set their resolvers all alive.
-  for (const GlobalIFunc &I : M.ifuncs()) {
-    I.applyAlongResolverPath([&Index](const GlobalValue &GV) {
-      Index.getGlobalValueSummary(GV)->setLive(true);
-    });
-  }
 
   for (auto *V : LocalsUsed) {
     auto *Summary = Index.getGlobalValueSummary(*V);

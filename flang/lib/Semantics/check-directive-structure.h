@@ -58,6 +58,7 @@ public:
       CheckConstructNameBranching("EXIT");
     }
   }
+  void Post(const parser::StopStmt &) { EmitBranchOutError("STOP"); }
   void Post(const parser::CycleStmt &cycleStmt) {
     if (const auto &cycleName{cycleStmt.v}) {
       CheckConstructNameBranching("CYCLE", cycleName.value());
@@ -142,6 +143,7 @@ private:
     // did not found an enclosing looping construct within the OpenMP/OpenACC
     // directive
     EmitUnlabelledBranchOutError(stmt);
+    return;
   }
 
   SemanticsContext &context_;
@@ -248,12 +250,9 @@ protected:
   }
 
   // Check if the given clause is present in the current context
-  const PC *FindClause(C type) { return FindClause(GetContext(), type); }
-
-  // Check if the given clause is present in the given context
-  const PC *FindClause(DirectiveContext &context, C type) {
-    auto it{context.clauseInfo.find(type)};
-    if (it != context.clauseInfo.end()) {
+  const PC *FindClause(C type) {
+    auto it{GetContext().clauseInfo.find(type)};
+    if (it != GetContext().clauseInfo.end()) {
       return it->second;
     }
     return nullptr;

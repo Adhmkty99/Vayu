@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "sanitizer_platform.h"
-#if SANITIZER_APPLE
+#if SANITIZER_MAC
 
 #include "sanitizer_allocator_internal.h"
 #include "sanitizer_mac.h"
@@ -202,4 +202,4 @@ bool AtosSymbolizer::SymbolizeData(uptr addr, DataInfo *info) {
 
 }  // namespace __sanitizer
 
-#endif  // SANITIZER_APPLE
+#endif  // SANITIZER_MAC

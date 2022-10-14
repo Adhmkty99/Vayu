@@ -251,9 +251,12 @@ define float @fsub_fneg_n0_fnX_ebmaytrap(float %a) #0 {
   ret float %ret
 }
 
+; TODO: This will fold if we allow non-default floating point environments.
 define float @fsub_fneg_nnan_n0_fnX_ebmaytrap(float %a) #0 {
 ; CHECK-LABEL: @fsub_fneg_nnan_n0_fnX_ebmaytrap(
-; CHECK-NEXT:    ret float [[A:%.*]]
+; CHECK-NEXT:    [[NEGA:%.*]] = fneg float [[A:%.*]]
+; CHECK-NEXT:    [[RET:%.*]] = call nnan float @llvm.experimental.constrained.fsub.f32(float -0.000000e+00, float [[NEGA]], metadata !"round.tonearest", metadata !"fpexcept.maytrap") #[[ATTR0]]
+; CHECK-NEXT:    ret float [[RET]]
 ;
   %nega = fneg float %a
   %ret = call nnan float @llvm.experimental.constrained.fsub.f32(float -0.0, float %nega, metadata !"round.tonearest", metadata !"fpexcept.maytrap") #0
@@ -272,12 +275,13 @@ define float @fsub_fneg_n0_fnX_ebstrict(float %a) #0 {
   ret float %ret
 }
 
-; NOTE: The instruction is expected to remain, but the result isn't used.
+; TODO: This will fold if we allow non-default floating point environments.
+; TODO: The instruction is expected to remain, but the result isn't used.
 define float @fsub_fneg_nnan_n0_fnX_ebstrict(float %a) #0 {
 ; CHECK-LABEL: @fsub_fneg_nnan_n0_fnX_ebstrict(
 ; CHECK-NEXT:    [[NEGA:%.*]] = fneg float [[A:%.*]]
 ; CHECK-NEXT:    [[RET:%.*]] = call nnan float @llvm.experimental.constrained.fsub.f32(float -0.000000e+00, float [[NEGA]], metadata !"round.tonearest", metadata !"fpexcept.strict") #[[ATTR0]]
-; CHECK-NEXT:    ret float [[A]]
+; CHECK-NEXT:    ret float [[RET]]
 ;
   %nega = fneg float %a
   %ret = call nnan float @llvm.experimental.constrained.fsub.f32(float -0.0, float %nega, metadata !"round.tonearest", metadata !"fpexcept.strict") #0

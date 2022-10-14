@@ -85,13 +85,15 @@ void EmitOptRST(RecordKeeper &Records, raw_ostream &OS) {
       if (!isa<UnsetInit>(R->getValueInit("Values"))) {
         SmallVector<StringRef> Values;
         SplitString(R->getValueAsString("Values"), Values, ",");
-        HelpText += (" " + MetaVarName + " must be '").str();
+        HelpText += (" " + MetaVarName + " can be ").str();
 
-        if (Values.size() > 1) {
+        if (Values.size() == 1) {
+          HelpText += ("'" + Values.front() + "'.").str();
+        } else {
+          HelpText += "one of '";
           HelpText += join(Values.begin(), Values.end() - 1, "', '");
-          HelpText += "' or '";
+          HelpText += ("' or '" + Values.back() + "'.").str();
         }
-        HelpText += (Values.front() + "'.").str();
       }
 
       if (!HelpText.empty()) {

@@ -9,6 +9,8 @@ class TestIdTestCase(TestBase):
 
     NO_DEBUG_INFO_TESTCASE = True
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_id_exists(self):
         self.assertIsNotNone(self.id(), "Test instance should have an id()")
 

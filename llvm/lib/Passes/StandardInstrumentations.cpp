@@ -28,14 +28,12 @@
 #include "llvm/IR/PrintPasses.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Support/CommandLine.h"
-#include "llvm/Support/CrashRecoveryContext.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/Program.h"
 #include "llvm/Support/Regex.h"
-#include "llvm/Support/Signals.h"
 #include "llvm/Support/raw_ostream.h"
 #include <unordered_map>
 #include <unordered_set>
@@ -81,35 +79,36 @@ cl::opt<bool> PreservedCFGCheckerInstrumentation::VerifyPreservedCFG(
 // facilities, the error message will be shown in place of the expected output.
 //
 enum class ChangePrinter {
-  None,
-  Verbose,
-  Quiet,
-  DiffVerbose,
-  DiffQuiet,
-  ColourDiffVerbose,
-  ColourDiffQuiet,
-  DotCfgVerbose,
-  DotCfgQuiet,
+  NoChangePrinter,
+  PrintChangedVerbose,
+  PrintChangedQuiet,
+  PrintChangedDiffVerbose,
+  PrintChangedDiffQuiet,
+  PrintChangedColourDiffVerbose,
+  PrintChangedColourDiffQuiet,
+  PrintChangedDotCfgVerbose,
+  PrintChangedDotCfgQuiet
 };
 static cl::opt<ChangePrinter> PrintChanged(
     "print-changed", cl::desc("Print changed IRs"), cl::Hidden,
-    cl::ValueOptional, cl::init(ChangePrinter::None),
+    cl::ValueOptional, cl::init(ChangePrinter::NoChangePrinter),
     cl::values(
-        clEnumValN(ChangePrinter::Quiet, "quiet", "Run in quiet mode"),
-        clEnumValN(ChangePrinter::DiffVerbose, "diff",
+        clEnumValN(ChangePrinter::PrintChangedQuiet, "quiet",
+                   "Run in quiet mode"),
+        clEnumValN(ChangePrinter::PrintChangedDiffVerbose, "diff",
                    "Display patch-like changes"),
-        clEnumValN(ChangePrinter::DiffQuiet, "diff-quiet",
+        clEnumValN(ChangePrinter::PrintChangedDiffQuiet, "diff-quiet",
                    "Display patch-like changes in quiet mode"),
-        clEnumValN(ChangePrinter::ColourDiffVerbose, "cdiff",
+        clEnumValN(ChangePrinter::PrintChangedColourDiffVerbose, "cdiff",
                    "Display patch-like changes with color"),
-        clEnumValN(ChangePrinter::ColourDiffQuiet, "cdiff-quiet",
+        clEnumValN(ChangePrinter::PrintChangedColourDiffQuiet, "cdiff-quiet",
                    "Display patch-like changes in quiet mode with color"),
-        clEnumValN(ChangePrinter::DotCfgVerbose, "dot-cfg",
+        clEnumValN(ChangePrinter::PrintChangedDotCfgVerbose, "dot-cfg",
                    "Create a website with graphical changes"),
-        clEnumValN(ChangePrinter::DotCfgQuiet, "dot-cfg-quiet",
+        clEnumValN(ChangePrinter::PrintChangedDotCfgQuiet, "dot-cfg-quiet",
                    "Create a website with graphical changes in quiet mode"),
         // Sentinel value for unspecified option.
-        clEnumValN(ChangePrinter::Verbose, "", "")));
+        clEnumValN(ChangePrinter::PrintChangedVerbose, "", "")));
 
 // An option that supports the -print-changed option.  See
 // the description for -print-changed for an explanation of the use
@@ -165,12 +164,6 @@ static cl::opt<std::string> DotCfgDir(
     "dot-cfg-dir",
     cl::desc("Generate dot files into specified directory for changed IRs"),
     cl::Hidden, cl::init("./"));
-
-// An option to print the IR that was being processed when a pass crashes.
-static cl::opt<bool>
-    PrintCrashIR("print-on-crash",
-                 cl::desc("Print the last form of the IR before crash"),
-                 cl::init(false), cl::Hidden);
 
 namespace {
 
@@ -472,7 +465,7 @@ bool isInteresting(Any IR, StringRef PassID) {
 
 } // namespace
 
-template <typename T> ChangeReporter<T>::~ChangeReporter() {
+template <typename T> ChangeReporter<T>::~ChangeReporter<T>() {
   assert(BeforeStack.empty() && "Problem with Change Printer stack.");
 }
 
@@ -595,8 +588,8 @@ void TextChangeReporter<T>::handleIgnored(StringRef PassID, std::string &Name) {
 IRChangedPrinter::~IRChangedPrinter() = default;
 
 void IRChangedPrinter::registerCallbacks(PassInstrumentationCallbacks &PIC) {
-  if (PrintChanged == ChangePrinter::Verbose ||
-      PrintChanged == ChangePrinter::Quiet)
+  if (PrintChanged == ChangePrinter::PrintChangedVerbose ||
+      PrintChanged == ChangePrinter::PrintChangedQuiet)
     TextChangeReporter<std::string>::registerRequiredCallbacks(PIC);
 }
 
@@ -900,11 +893,10 @@ bool OptNoneInstrumentation::shouldRun(StringRef PassID, Any IR) {
 
 void OptBisectInstrumentation::registerCallbacks(
     PassInstrumentationCallbacks &PIC) {
-  if (!getOptBisector().isEnabled())
+  if (!OptBisector->isEnabled())
     return;
   PIC.registerShouldRunOptionalPassCallback([](StringRef PassID, Any IR) {
-    return isIgnored(PassID) ||
-           getOptBisector().checkPass(PassID, getIRName(IR));
+    return isIgnored(PassID) || OptBisector->checkPass(PassID, getIRName(IR));
   });
 }
 
@@ -939,22 +931,7 @@ void PrintPassInstrumentation::registerCallbacks(
     if (isSpecialPass(PassID, SpecialPasses))
       return;
 
-    auto &OS = print();
-    OS << "Running pass: " << PassID << " on " << getIRName(IR);
-    if (any_isa<const Function *>(IR)) {
-      unsigned Count = any_cast<const Function *>(IR)->getInstructionCount();
-      OS << " (" << Count << " instruction";
-      if (Count != 1)
-        OS << 's';
-      OS << ')';
-    } else if (any_isa<const LazyCallGraph::SCC *>(IR)) {
-      int Count = any_cast<const LazyCallGraph::SCC *>(IR)->size();
-      OS << " (" << Count << " node";
-      if (Count != 1)
-        OS << 's';
-      OS << ')';
-    }
-    OS << "\n";
+    print() << "Running pass: " << PassID << " on " << getIRName(IR) << "\n";
     Indent += 2;
   });
   PIC.registerAfterPassCallback(
@@ -1207,7 +1184,7 @@ void VerifyInstrumentation::registerCallbacks(
           if (DebugLogging)
             dbgs() << "Verifying function " << F->getName() << "\n";
 
-          if (verifyFunction(*F, &errs()))
+          if (verifyFunction(*F))
             report_fatal_error("Broken function found, compilation aborted!");
         } else if (any_isa<const Module *>(IR) ||
                    any_isa<const LazyCallGraph::SCC *>(IR)) {
@@ -1222,7 +1199,7 @@ void VerifyInstrumentation::registerCallbacks(
           if (DebugLogging)
             dbgs() << "Verifying module " << M->getName() << "\n";
 
-          if (verifyModule(*M, &errs()))
+          if (verifyModule(*M))
             report_fatal_error("Broken module found, compilation aborted!");
         }
       });
@@ -1274,10 +1251,10 @@ void InLineChangePrinter::handleFunctionCompare(
 }
 
 void InLineChangePrinter::registerCallbacks(PassInstrumentationCallbacks &PIC) {
-  if (PrintChanged == ChangePrinter::DiffVerbose ||
-      PrintChanged == ChangePrinter::DiffQuiet ||
-      PrintChanged == ChangePrinter::ColourDiffVerbose ||
-      PrintChanged == ChangePrinter::ColourDiffQuiet)
+  if (PrintChanged == ChangePrinter::PrintChangedDiffVerbose ||
+      PrintChanged == ChangePrinter::PrintChangedDiffQuiet ||
+      PrintChanged == ChangePrinter::PrintChangedColourDiffVerbose ||
+      PrintChanged == ChangePrinter::PrintChangedColourDiffQuiet)
     TextChangeReporter<IRDataT<EmptyData>>::registerRequiredCallbacks(PIC);
 }
 
@@ -2110,8 +2087,8 @@ DotCfgChangeReporter::~DotCfgChangeReporter() {
 
 void DotCfgChangeReporter::registerCallbacks(
     PassInstrumentationCallbacks &PIC) {
-  if (PrintChanged == ChangePrinter::DotCfgVerbose ||
-       PrintChanged == ChangePrinter::DotCfgQuiet) {
+  if ((PrintChanged == ChangePrinter::PrintChangedDotCfgVerbose ||
+       PrintChanged == ChangePrinter::PrintChangedDotCfgQuiet)) {
     SmallString<128> OutputDir;
     sys::fs::expand_tilde(DotCfgDir, OutputDir);
     sys::fs::make_absolute(OutputDir);
@@ -2128,58 +2105,15 @@ void DotCfgChangeReporter::registerCallbacks(
 StandardInstrumentations::StandardInstrumentations(
     bool DebugLogging, bool VerifyEach, PrintPassOptions PrintPassOpts)
     : PrintPass(DebugLogging, PrintPassOpts), OptNone(DebugLogging),
-      PrintChangedIR(PrintChanged == ChangePrinter::Verbose),
-      PrintChangedDiff(PrintChanged == ChangePrinter::DiffVerbose ||
-                           PrintChanged == ChangePrinter::ColourDiffVerbose,
-                       PrintChanged == ChangePrinter::ColourDiffVerbose ||
-                           PrintChanged == ChangePrinter::ColourDiffQuiet),
-      WebsiteChangeReporter(PrintChanged == ChangePrinter::DotCfgVerbose),
+      PrintChangedIR(PrintChanged == ChangePrinter::PrintChangedVerbose),
+      PrintChangedDiff(
+          PrintChanged == ChangePrinter::PrintChangedDiffVerbose ||
+              PrintChanged == ChangePrinter::PrintChangedColourDiffVerbose,
+          PrintChanged == ChangePrinter::PrintChangedColourDiffVerbose ||
+              PrintChanged == ChangePrinter::PrintChangedColourDiffQuiet),
+      WebsiteChangeReporter(PrintChanged ==
+                            ChangePrinter::PrintChangedDotCfgVerbose),
       Verify(DebugLogging), VerifyEach(VerifyEach) {}
-
-PrintCrashIRInstrumentation *PrintCrashIRInstrumentation::CrashReporter =
-    nullptr;
-
-void PrintCrashIRInstrumentation::reportCrashIR() { dbgs() << SavedIR; }
-
-void PrintCrashIRInstrumentation::SignalHandler(void *) {
-  // Called by signal handlers so do not lock here
-  // Is the PrintCrashIRInstrumentation still alive?
-  if (!CrashReporter)
-    return;
-
-  assert(PrintCrashIR && "Did not expect to get here without option set.");
-  CrashReporter->reportCrashIR();
-}
-
-PrintCrashIRInstrumentation::~PrintCrashIRInstrumentation() {
-  if (!CrashReporter)
-    return;
-
-  assert(PrintCrashIR && "Did not expect to get here without option set.");
-  CrashReporter = nullptr;
-}
-
-void PrintCrashIRInstrumentation::registerCallbacks(
-    PassInstrumentationCallbacks &PIC) {
-  if (!PrintCrashIR || CrashReporter)
-    return;
-
-  sys::AddSignalHandler(SignalHandler, nullptr);
-  CrashReporter = this;
-
-  PIC.registerBeforeNonSkippedPassCallback([this](StringRef PassID, Any IR) {
-    SavedIR.clear();
-    raw_string_ostream OS(SavedIR);
-    OS << formatv("*** Dump of {0}IR Before Last Pass {1}",
-                  llvm::forcePrintModuleIR() ? "Module " : "", PassID);
-    if (!isInteresting(IR, PassID)) {
-      OS << " Filtered Out ***\n";
-      return;
-    }
-    OS << " Started ***\n";
-    unwrapAndPrint(OS, IR);
-  });
-}
 
 void StandardInstrumentations::registerCallbacks(
     PassInstrumentationCallbacks &PIC, FunctionAnalysisManager *FAM) {
@@ -2196,7 +2130,6 @@ void StandardInstrumentations::registerCallbacks(
     Verify.registerCallbacks(PIC);
   PrintChangedDiff.registerCallbacks(PIC);
   WebsiteChangeReporter.registerCallbacks(PIC);
-  PrintCrashIR.registerCallbacks(PIC);
 }
 
 template class ChangeReporter<std::string>;

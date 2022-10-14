@@ -223,11 +223,11 @@ public:
     eBroadcastBitAsynchronousErrorData = (1 << 4)
   };
 
-  /// Tristate boolean to manage children omission warnings.
-  enum ChildrenOmissionWarningStatus {
-    eNoOmission = 0,       ///< No children were omitted.
-    eUnwarnedOmission = 1, ///< Children omitted, and not yet notified.
-    eWarnedOmission = 2    ///< Children omitted and notified.
+  enum ChildrenTruncatedWarningStatus // tristate boolean to manage children
+                                      // truncation warning
+  { eNoTruncation = 0,                // never truncated
+    eUnwarnedTruncation = 1,          // truncated but did not notify
+    eWarnedTruncation = 2             // truncated and notified
   };
 
   enum CommandTypes {
@@ -496,33 +496,21 @@ public:
   }
 
   void ChildrenTruncated() {
-    if (m_truncation_warning == eNoOmission)
-      m_truncation_warning = eUnwarnedOmission;
+    if (m_truncation_warning == eNoTruncation)
+      m_truncation_warning = eUnwarnedTruncation;
   }
 
-  void SetReachedMaximumDepth() {
-    if (m_max_depth_warning == eNoOmission)
-      m_max_depth_warning = eUnwarnedOmission;
+  bool TruncationWarningNecessary() {
+    return (m_truncation_warning == eUnwarnedTruncation);
   }
 
-  void PrintWarningsIfNecessary(Stream &s, const std::string &cmd_name) {
-    if (m_truncation_warning == eUnwarnedOmission) {
-      s.Printf("*** Some of the displayed variables have more members than the "
-               "debugger will show by default. To show all of them, you can "
-               "either use the --show-all-children option to %s or raise the "
-               "limit by changing the target.max-children-count setting.\n",
-               cmd_name.c_str());
-      m_truncation_warning = eWarnedOmission;
-    }
+  void TruncationWarningGiven() { m_truncation_warning = eWarnedTruncation; }
 
-    if (m_max_depth_warning == eUnwarnedOmission) {
-      s.Printf("*** Some of the displayed variables have a greater depth of "
-               "members than the debugger will show by default. To increase "
-               "the limit, use the --depth option to %s, or raise the limit by "
-               "changing the target.max-children-depth setting.\n",
-               cmd_name.c_str());
-      m_max_depth_warning = eWarnedOmission;
-    }
+  const char *TruncationWarningText() {
+    return "*** Some of your variables have more members than the debugger "
+           "will show by default. To show all of them, you can either use the "
+           "--show-all-children option to %s or raise the limit by changing "
+           "the target.max-children-count setting.\n";
   }
 
   CommandHistory &GetCommandHistory() { return m_command_history; }
@@ -713,12 +701,9 @@ private:
   lldb::IOHandlerSP m_command_io_handler_sp;
   char m_comment_char;
   bool m_batch_command_mode;
-  /// Whether we truncated a value's list of children and whether the user has
-  /// been told.
-  ChildrenOmissionWarningStatus m_truncation_warning;
-  /// Whether we reached the maximum child nesting depth and whether the user
-  /// has been told.
-  ChildrenOmissionWarningStatus m_max_depth_warning;
+  ChildrenTruncatedWarningStatus m_truncation_warning; // Whether we truncated
+                                                       // children and whether
+                                                       // the user has been told
 
   // FIXME: Stop using this to control adding to the history and then replace
   // this with m_command_source_dirs.size().

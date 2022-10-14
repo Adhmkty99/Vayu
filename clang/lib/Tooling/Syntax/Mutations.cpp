@@ -77,8 +77,7 @@ public:
   }
 };
 
-void syntax::removeStatement(syntax::Arena &A, TokenBufferTokenManager &TBTM,
-                             syntax::Statement *S) {
+void syntax::removeStatement(syntax::Arena &A, syntax::Statement *S) {
   assert(S);
   assert(S->canModify());
 
@@ -91,5 +90,5 @@ void syntax::removeStatement(syntax::Arena &A, TokenBufferTokenManager &TBTM,
   if (isa<EmptyStatement>(S))
     return; // already an empty statement, nothing to do.
 
-  MutationsImpl::replace(S, createEmptyStatement(A, TBTM));
+  MutationsImpl::replace(S, createEmptyStatement(A));
 }

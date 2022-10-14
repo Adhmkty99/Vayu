@@ -10,7 +10,7 @@ declare i8* @malloc(i64)
 declare void @print(i32)
 declare void @consume.i8(i8)
 
-define void @a() presplitcoroutine {
+define void @a() "coroutine.presplit"="1" {
 entry:
   %ref.tmp7 = alloca %"struct.lean_future<int>::Awaiter", align 8
   %testval = alloca i8

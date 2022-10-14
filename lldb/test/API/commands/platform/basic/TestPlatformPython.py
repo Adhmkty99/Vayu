@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class PlatformPythonTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @add_test_categories(['pyapi'])
     @no_debug_info_test
     def test_platform_list(self):

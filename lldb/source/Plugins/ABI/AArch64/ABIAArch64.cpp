@@ -80,7 +80,8 @@ static void addPartialRegisters(
     uint32_t partial_reg_size, lldb::Encoding encoding, lldb::Format format) {
   for (auto it : llvm::enumerate(full_reg_indices)) {
     llvm::Optional<uint32_t> full_reg_index = it.value();
-    if (!full_reg_index || regs[*full_reg_index].byte_size != full_reg_size)
+    if (!full_reg_index ||
+        regs[full_reg_index.getValue()].byte_size != full_reg_size)
       return;
 
     lldb_private::DynamicRegisterInfo::Register partial_reg{
@@ -96,7 +97,7 @@ static void addPartialRegisters(
         LLDB_INVALID_REGNUM,
         LLDB_INVALID_REGNUM,
         LLDB_INVALID_REGNUM,
-        {*full_reg_index},
+        {full_reg_index.getValue()},
         {}};
     addSupplementaryRegister(regs, partial_reg);
   }

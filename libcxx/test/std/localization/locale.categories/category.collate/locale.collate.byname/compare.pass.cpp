@@ -22,6 +22,8 @@
 // https://llvm.org/PR41018
 // XFAIL: windows-dll && msvc
 
+// XFAIL: LIBCXX-AIX-FIXME
+
 #include <locale>
 #include <string>
 #include <cassert>

@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 class RvalueReferencesTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     # rdar://problem/11479676
     @expectedFailureAll(
         compiler="icc",

@@ -1298,12 +1298,6 @@ public:
                     (Flags, CC, TypeArray))
 
   TempDISubroutineType clone() const { return cloneImpl(); }
-  // Returns a new temporary DISubroutineType with updated CC
-  TempDISubroutineType cloneWithCC(uint8_t CC) const {
-    auto NewTy = clone();
-    NewTy->CC = CC;
-    return NewTy;
-  }
 
   uint8_t getCC() const { return CC; }
 
@@ -1857,14 +1851,13 @@ private:
           DISPFlags SPFlags, DICompileUnit *Unit,
           DITemplateParameterArray TemplateParams, DISubprogram *Declaration,
           DINodeArray RetainedNodes, DITypeArray ThrownTypes,
-          DINodeArray Annotations, StringRef TargetFuncName,
-          StorageType Storage, bool ShouldCreate = true) {
+          DINodeArray Annotations, StorageType Storage,
+          bool ShouldCreate = true) {
     return getImpl(Context, Scope, getCanonicalMDString(Context, Name),
                    getCanonicalMDString(Context, LinkageName), File, Line, Type,
                    ScopeLine, ContainingType, VirtualIndex, ThisAdjustment,
                    Flags, SPFlags, Unit, TemplateParams.get(), Declaration,
                    RetainedNodes.get(), ThrownTypes.get(), Annotations.get(),
-                   getCanonicalMDString(Context, TargetFuncName),
                    Storage, ShouldCreate);
   }
   static DISubprogram *
@@ -1874,8 +1867,7 @@ private:
           int ThisAdjustment, DIFlags Flags, DISPFlags SPFlags, Metadata *Unit,
           Metadata *TemplateParams, Metadata *Declaration,
           Metadata *RetainedNodes, Metadata *ThrownTypes, Metadata *Annotations,
-          MDString *TargetFuncName, StorageType Storage,
-          bool ShouldCreate = true);
+          StorageType Storage, bool ShouldCreate = true);
 
   TempDISubprogram cloneImpl() const {
     return getTemporary(getContext(), getScope(), getName(), getLinkageName(),
@@ -1883,8 +1875,7 @@ private:
                         getContainingType(), getVirtualIndex(),
                         getThisAdjustment(), getFlags(), getSPFlags(),
                         getUnit(), getTemplateParams(), getDeclaration(),
-                        getRetainedNodes(), getThrownTypes(), getAnnotations(),
-                        getTargetFuncName());
+                        getRetainedNodes(), getThrownTypes(), getAnnotations());
   }
 
 public:
@@ -1896,11 +1887,10 @@ public:
        DIFlags Flags, DISPFlags SPFlags, DICompileUnit *Unit,
        DITemplateParameterArray TemplateParams = nullptr,
        DISubprogram *Declaration = nullptr, DINodeArray RetainedNodes = nullptr,
-       DITypeArray ThrownTypes = nullptr, DINodeArray Annotations = nullptr,
-       StringRef TargetFuncName = ""),
+       DITypeArray ThrownTypes = nullptr, DINodeArray Annotations = nullptr),
       (Scope, Name, LinkageName, File, Line, Type, ScopeLine, ContainingType,
        VirtualIndex, ThisAdjustment, Flags, SPFlags, Unit, TemplateParams,
-       Declaration, RetainedNodes, ThrownTypes, Annotations, TargetFuncName))
+       Declaration, RetainedNodes, ThrownTypes, Annotations))
 
   DEFINE_MDNODE_GET(
       DISubprogram,
@@ -1910,10 +1900,10 @@ public:
        DIFlags Flags, DISPFlags SPFlags, Metadata *Unit,
        Metadata *TemplateParams = nullptr, Metadata *Declaration = nullptr,
        Metadata *RetainedNodes = nullptr, Metadata *ThrownTypes = nullptr,
-       Metadata *Annotations = nullptr, MDString *TargetFuncName = nullptr),
+       Metadata *Annotations = nullptr),
       (Scope, Name, LinkageName, File, Line, Type, ScopeLine, ContainingType,
        VirtualIndex, ThisAdjustment, Flags, SPFlags, Unit, TemplateParams,
-       Declaration, RetainedNodes, ThrownTypes, Annotations, TargetFuncName))
+       Declaration, RetainedNodes, ThrownTypes, Annotations))
 
   TempDISubprogram clone() const { return cloneImpl(); }
 
@@ -2002,10 +1992,6 @@ public:
   DIType *getContainingType() const {
     return cast_or_null<DIType>(getRawContainingType());
   }
-  void replaceType(DISubroutineType *Ty) {
-    assert(isDistinct() && "Only distinct nodes can mutate");
-    replaceOperandWith(4, Ty);
-  }
 
   DICompileUnit *getUnit() const {
     return cast_or_null<DICompileUnit>(getRawUnit());
@@ -2026,9 +2012,6 @@ public:
   DINodeArray getAnnotations() const {
     return cast_or_null<MDTuple>(getRawAnnotations());
   }
-  StringRef getTargetFuncName() const {
-    return (getRawTargetFuncName()) ? getStringOperand(12) : StringRef();
-  }
 
   Metadata *getRawScope() const { return getOperand(1); }
   MDString *getRawName() const { return getOperandAs<MDString>(2); }
@@ -2048,9 +2031,6 @@ public:
   }
   Metadata *getRawAnnotations() const {
     return getNumOperands() > 11 ? getOperandAs<Metadata>(11) : nullptr;
-  }
-  MDString *getRawTargetFuncName() const {
-    return getNumOperands() > 12 ? getOperandAs<MDString>(12) : nullptr;
   }
 
   void replaceRawLinkageName(MDString *LinkageName) {
@@ -2732,7 +2712,7 @@ public:
   }
 
   /// Return whether this is a piece of an aggregate variable.
-  bool isFragment() const { return getFragmentInfo().has_value(); }
+  bool isFragment() const { return getFragmentInfo().hasValue(); }
 
   /// Return whether this is an implicit location description.
   bool isImplicit() const;
@@ -3644,7 +3624,7 @@ public:
   const DILocation *getInlinedAt() const { return InlinedAt; }
 
   FragmentInfo getFragmentOrDefault() const {
-    return Fragment.value_or(DefaultFragment);
+    return Fragment.getValueOr(DefaultFragment);
   }
 
   static bool isDefaultFragment(const FragmentInfo F) {

@@ -261,8 +261,10 @@ TypeRange mlir::function_interface_impl::insertTypesInto(
   return storage;
 }
 
-TypeRange mlir::function_interface_impl::filterTypesOut(
-    TypeRange types, const BitVector &indices, SmallVectorImpl<Type> &storage) {
+TypeRange
+mlir::function_interface_impl::filterTypesOut(TypeRange types,
+                                              const BitVector &indices,
+                                              SmallVectorImpl<Type> &storage) {
   if (indices.none())
     return types;
 

@@ -109,8 +109,7 @@ public:
   /// Returns an AliasMap containing the default aliases for the ELFNixPlatform.
   /// This can be modified by clients when constructing the platform to add
   /// or remove aliases.
-  static Expected<SymbolAliasMap> standardPlatformAliases(ExecutionSession &ES,
-                                                          JITDylib &PlatformJD);
+  static SymbolAliasMap standardPlatformAliases(ExecutionSession &ES);
 
   /// Returns the array of required CXX aliases.
   static ArrayRef<std::pair<const char *, const char *>> requiredCXXAliases();

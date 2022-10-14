@@ -2,7 +2,6 @@ add_mlir_dialect_library(MLIRArithmeticTransforms
   BufferizableOpInterfaceImpl.cpp
   Bufferize.cpp
   ExpandOps.cpp
-  UnsignedWhenEquivalent.cpp
 
   ADDITIONAL_HEADER_DIRS
   {$MLIR_MAIN_INCLUDE_DIR}/mlir/Dialect/Arithmetic/Transforms
@@ -11,13 +10,11 @@ add_mlir_dialect_library(MLIRArithmeticTransforms
   MLIRArithmeticTransformsIncGen
 
   LINK_LIBS PUBLIC
-  MLIRAnalysis
-  MLIRArithmeticDialect
-  MLIRBufferizationDialect
+  MLIRArithmetic
+  MLIRBufferization
   MLIRBufferizationTransforms
-  MLIRInferIntRangeInterface
   MLIRIR
-  MLIRMemRefDialect
+  MLIRMemRef
   MLIRPass
   MLIRTransforms
   )

@@ -129,13 +129,13 @@ void JSONEmitter::run(raw_ostream &OS) {
   // construct the array for each one.
   std::map<std::string, json::Array> instance_lists;
   for (const auto &C : Records.getClasses()) {
-    const auto Name = C.second->getNameInitAsString();
+    auto &Name = C.second->getNameInitAsString();
     (void)instance_lists[Name];
   }
 
   // Main iteration over the defs.
   for (const auto &D : Records.getDefs()) {
-    const auto Name = D.second->getNameInitAsString();
+    auto &Name = D.second->getNameInitAsString();
     auto &Def = *D.second;
 
     json::Object obj;

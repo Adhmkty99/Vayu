@@ -38,7 +38,9 @@ static std::string computeDataLayout(const Triple &TT) {
 
 static Reloc::Model getEffectiveRelocModel(const Triple &TT,
                                            Optional<Reloc::Model> RM) {
-  return RM.value_or(Reloc::Static);
+  if (!RM.hasValue())
+    return Reloc::Static;
+  return *RM;
 }
 
 LoongArchTargetMachine::LoongArchTargetMachine(
@@ -100,7 +102,6 @@ public:
     return getTM<LoongArchTargetMachine>();
   }
 
-  void addIRPasses() override;
   bool addInstSelector() override;
 };
 } // namespace
@@ -108,12 +109,6 @@ public:
 TargetPassConfig *
 LoongArchTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new LoongArchPassConfig(*this, PM);
-}
-
-void LoongArchPassConfig::addIRPasses() {
-  addPass(createAtomicExpandPass());
-
-  TargetPassConfig::addIRPasses();
 }
 
 bool LoongArchPassConfig::addInstSelector() {

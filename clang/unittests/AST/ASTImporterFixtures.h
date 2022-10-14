@@ -276,10 +276,9 @@ class TestImportBase
     auto Imported = importNode(FromAST.get(), ToAST.get(), Importer, ToImport);
     if (!Imported) {
       std::string ErrorText;
-      handleAllErrors(Imported.takeError(),
-                      [&ErrorText](const ASTImportError &Err) {
-                        ErrorText = Err.message();
-                      });
+      handleAllErrors(
+          Imported.takeError(),
+          [&ErrorText](const ImportError &Err) { ErrorText = Err.message(); });
       return testing::AssertionFailure()
              << "Import failed, error: \"" << ErrorText << "\"!";
     }
@@ -438,7 +437,7 @@ template <class T>
 
 template <class T>
 ::testing::AssertionResult isImportError(llvm::Expected<T> &ValOrErr,
-                                         ASTImportError::ErrorKind Kind) {
+                                         ImportError::ErrorKind Kind) {
   if (ValOrErr) {
     return ::testing::AssertionFailure() << "Expected<> is expected to contain "
                                             "error but does contain value \""
@@ -447,7 +446,7 @@ template <class T>
     std::ostringstream OS;
     bool Result = false;
     auto Err = llvm::handleErrors(
-        ValOrErr.takeError(), [&OS, &Result, Kind](clang::ASTImportError &IE) {
+        ValOrErr.takeError(), [&OS, &Result, Kind](clang::ImportError &IE) {
           if (IE.Error == Kind) {
             Result = true;
             OS << "Expected<> contains an ImportError " << IE.toString();

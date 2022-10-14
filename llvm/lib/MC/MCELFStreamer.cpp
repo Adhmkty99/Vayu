@@ -90,11 +90,11 @@ void MCELFStreamer::mergeFragment(MCDataFragment *DF,
 
 void MCELFStreamer::initSections(bool NoExecStack, const MCSubtargetInfo &STI) {
   MCContext &Ctx = getContext();
-  switchSection(Ctx.getObjectFileInfo()->getTextSection());
+  SwitchSection(Ctx.getObjectFileInfo()->getTextSection());
   emitCodeAlignment(Ctx.getObjectFileInfo()->getTextSectionAlignment(), &STI);
 
   if (NoExecStack)
-    switchSection(Ctx.getAsmInfo()->getNonexecutableStackSection(Ctx));
+    SwitchSection(Ctx.getAsmInfo()->getNonexecutableStackSection(Ctx));
 }
 
 void MCELFStreamer::emitLabel(MCSymbol *S, SMLoc Loc) {
@@ -215,7 +215,6 @@ bool MCELFStreamer::emitSymbolAttribute(MCSymbol *S, MCSymbolAttr Attribute) {
   case MCSA_WeakDefAutoPrivate:
   case MCSA_Invalid:
   case MCSA_IndirectSymbol:
-  case MCSA_Exported:
     return false;
 
   case MCSA_NoDeadStrip:
@@ -318,13 +317,13 @@ void MCELFStreamer::emitCommonSymbol(MCSymbol *S, uint64_t Size,
     MCSection &Section = *getAssembler().getContext().getELFSection(
         ".bss", ELF::SHT_NOBITS, ELF::SHF_WRITE | ELF::SHF_ALLOC);
     MCSectionSubPair P = getCurrentSection();
-    switchSection(&Section);
+    SwitchSection(&Section);
 
     emitValueToAlignment(ByteAlignment, 0, 1, 0);
     emitLabel(Symbol);
     emitZeros(Size);
 
-    switchSection(P.first, P.second);
+    SwitchSection(P.first, P.second);
   } else {
     if(Symbol->declareCommon(Size, ByteAlignment))
       report_fatal_error(Twine("Symbol: ") + Symbol->getName() +
@@ -382,15 +381,15 @@ void MCELFStreamer::emitCGProfileEntry(const MCSymbolRefExpr *From,
 void MCELFStreamer::emitIdent(StringRef IdentString) {
   MCSection *Comment = getAssembler().getContext().getELFSection(
       ".comment", ELF::SHT_PROGBITS, ELF::SHF_MERGE | ELF::SHF_STRINGS, 1);
-  pushSection();
-  switchSection(Comment);
+  PushSection();
+  SwitchSection(Comment);
   if (!SeenIdent) {
     emitInt8(0);
     SeenIdent = true;
   }
   emitBytes(IdentString);
   emitInt8(0);
-  popSection();
+  PopSection();
 }
 
 void MCELFStreamer::fixSymbolsInTLSFixups(const MCExpr *expr) {
@@ -512,8 +511,8 @@ void MCELFStreamer::finalizeCGProfile() {
   MCSection *CGProfile = getAssembler().getContext().getELFSection(
       ".llvm.call-graph-profile", ELF::SHT_LLVM_CALL_GRAPH_PROFILE,
       ELF::SHF_EXCLUDE, /*sizeof(Elf_CGProfile_Impl<>)=*/8);
-  pushSection();
-  switchSection(CGProfile);
+  PushSection();
+  SwitchSection(CGProfile);
   uint64_t Offset = 0;
   for (MCAssembler::CGProfileEntry &E : Asm.CGProfile) {
     finalizeCGProfileEntry(E.From, Offset);
@@ -521,7 +520,7 @@ void MCELFStreamer::finalizeCGProfile() {
     emitIntValue(E.Count, sizeof(uint64_t));
     Offset += sizeof(uint64_t);
   }
-  popSection();
+  PopSection();
 }
 
 void MCELFStreamer::emitInstToFragment(const MCInst &Inst,
@@ -833,10 +832,10 @@ void MCELFStreamer::createAttributesSection(
 
   // Switch section to AttributeSection or get/create the section.
   if (AttributeSection) {
-    switchSection(AttributeSection);
+    SwitchSection(AttributeSection);
   } else {
     AttributeSection = getContext().getELFSection(Section, Type, 0);
-    switchSection(AttributeSection);
+    SwitchSection(AttributeSection);
 
     // Format version
     emitInt8(0x41);

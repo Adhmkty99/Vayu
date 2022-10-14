@@ -5,7 +5,7 @@
 # RUN: llvm-objdump -s %t1 | FileCheck %s
 
 # CHECK:      Contents of section .comment:
-# CHECK-NEXT: .LLD 1.0.foo.bar
+# CHECK-NEXT: foo..LLD 1.0.bar
 
 .ident "foo"
 

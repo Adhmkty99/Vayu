@@ -13,6 +13,8 @@ from lldbsuite.test.lldbpexpect import PExpectTest
 
 class EditlineTest(PExpectTest):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfAsan
     @skipIfEditlineSupportMissing
     @skipIf(oslist=["linux"], archs=["arm", "aarch64"])

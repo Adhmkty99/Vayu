@@ -544,13 +544,15 @@ public:
   /// flag may have been previously set, at which point it will not
   /// be reset unless one specifies to do so.
   void setPrunable(bool isPrunable, bool override = false) {
-    if (IsPrunable && !override)
-      return;
+    if (IsPrunable.hasValue() && !override)
+     return;
     IsPrunable = isPrunable;
   }
 
   /// Return true if the diagnostic piece is prunable.
-  bool isPrunable() const { return IsPrunable.value_or(false); }
+  bool isPrunable() const {
+    return IsPrunable.getValueOr(false);
+  }
 
   void dump() const override;
 

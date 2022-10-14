@@ -487,7 +487,7 @@ Expected<bool> TypeStreamMerger::shouldRemapType(const CVType &Type) {
     if (auto EC = TypeDeserializer::deserializeAs(const_cast<CVType &>(Type),
                                                   EP))
       return joinErrors(std::move(EC), errorCorruptRecord());
-    if (PCHSignature)
+    if (PCHSignature.hasValue())
       return errorCorruptRecord();
     PCHSignature.emplace(EP.getSignature());
     return false;

@@ -12,13 +12,11 @@
 
 #include <algorithm>
 #include <cstdint>
-#include <memory>
 #include <type_traits>
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/ADT/StringExtras.h"
 #include "llvm/DebugInfo/DWARF/DWARFContext.h"
 #include "llvm/DebugInfo/Symbolize/SymbolizableModule.h"
 #include "llvm/DebugInfo/Symbolize/SymbolizableObjectFile.h"
@@ -37,10 +35,32 @@
 namespace llvm {
 namespace memprof {
 namespace {
+
+struct Summary {
+  uint64_t Version;
+  uint64_t TotalSizeBytes;
+  uint64_t NumSegments;
+  uint64_t NumMIBInfo;
+  uint64_t NumStackOffsets;
+};
+
 template <class T = uint64_t> inline T alignedRead(const char *Ptr) {
   static_assert(std::is_pod<T>::value, "Not a pod type.");
   assert(reinterpret_cast<size_t>(Ptr) % sizeof(T) == 0 && "Unaligned Read");
   return *reinterpret_cast<const T *>(Ptr);
+}
+
+Summary computeSummary(const char *Start) {
+  auto *H = reinterpret_cast<const Header *>(Start);
+
+  // Check alignment while reading the number of items in each section.
+  return Summary{
+      H->Version,
+      H->TotalSize,
+      alignedRead(Start + H->SegmentOffset),
+      alignedRead(Start + H->MIBOffset),
+      alignedRead(Start + H->StackOffset),
+  };
 }
 
 Error checkBuffer(const MemoryBuffer &Buffer) {
@@ -151,26 +171,10 @@ bool isRuntimePath(const StringRef Path) {
   return StringRef(llvm::sys::path::convert_to_slash(Path))
       .contains("memprof/memprof_");
 }
-
-std::string getBuildIdString(const SegmentEntry &Entry) {
-  constexpr size_t Size = sizeof(Entry.BuildId) / sizeof(uint8_t);
-  constexpr uint8_t Zeros[Size] = {0};
-  // If the build id is unset print a helpful string instead of all zeros.
-  if (memcmp(Entry.BuildId, Zeros, Size) == 0)
-    return "<None>";
-
-  std::string Str;
-  raw_string_ostream OS(Str);
-  for (size_t I = 0; I < Size; I++) {
-    OS << format_hex_no_prefix(Entry.BuildId[I], 2);
-  }
-  return OS.str();
-}
 } // namespace
 
 Expected<std::unique_ptr<RawMemProfReader>>
-RawMemProfReader::create(const Twine &Path, const StringRef ProfiledBinary,
-                         bool KeepName) {
+RawMemProfReader::create(const Twine &Path, const StringRef ProfiledBinary) {
   auto BufferOr = MemoryBuffer::getFileOrSTDIN(Path);
   if (std::error_code EC = BufferOr.getError())
     return report(errorCodeToError(EC), Path.getSingleStringRef());
@@ -189,10 +193,9 @@ RawMemProfReader::create(const Twine &Path, const StringRef ProfiledBinary,
     return report(BinaryOr.takeError(), ProfiledBinary);
   }
 
-  // Use new here since constructor is private.
   std::unique_ptr<RawMemProfReader> Reader(
-      new RawMemProfReader(std::move(BinaryOr.get()), KeepName));
-  if (Error E = Reader->initialize(std::move(Buffer))) {
+      new RawMemProfReader(std::move(Buffer), std::move(BinaryOr.get())));
+  if (Error E = Reader->initialize()) {
     return std::move(E);
   }
   return std::move(Reader);
@@ -217,31 +220,11 @@ bool RawMemProfReader::hasFormat(const MemoryBuffer &Buffer) {
 }
 
 void RawMemProfReader::printYAML(raw_ostream &OS) {
-  uint64_t NumAllocFunctions = 0, NumMibInfo = 0;
-  for (const auto &KV : FunctionProfileData) {
-    const size_t NumAllocSites = KV.second.AllocSites.size();
-    if (NumAllocSites > 0) {
-      NumAllocFunctions++;
-      NumMibInfo += NumAllocSites;
-    }
-  }
-
   OS << "MemprofProfile:\n";
-  OS << "  Summary:\n";
-  OS << "    Version: " << MEMPROF_RAW_VERSION << "\n";
-  OS << "    NumSegments: " << SegmentInfo.size() << "\n";
-  OS << "    NumMibInfo: " << NumMibInfo << "\n";
-  OS << "    NumAllocFunctions: " << NumAllocFunctions << "\n";
-  OS << "    NumStackOffsets: " << StackMap.size() << "\n";
-  // Print out the segment information.
-  OS << "  Segments:\n";
-  for (const auto &Entry : SegmentInfo) {
-    OS << "  -\n";
-    OS << "    BuildId: " << getBuildIdString(Entry) << "\n";
-    OS << "    Start: 0x" << llvm::utohexstr(Entry.Start) << "\n";
-    OS << "    End: 0x" << llvm::utohexstr(Entry.End) << "\n";
-    OS << "    Offset: 0x" << llvm::utohexstr(Entry.Offset) << "\n";
-  }
+  // TODO: Update printSummaries to print out the data after the profile has
+  // been symbolized and pruned. We can parse some raw profile characteristics
+  // from the data buffer for additional information.
+  printSummaries(OS);
   // Print out the merged contents of the profiles.
   OS << "  Records:\n";
   for (const auto &Entry : *this) {
@@ -251,7 +234,26 @@ void RawMemProfReader::printYAML(raw_ostream &OS) {
   }
 }
 
-Error RawMemProfReader::initialize(std::unique_ptr<MemoryBuffer> DataBuffer) {
+void RawMemProfReader::printSummaries(raw_ostream &OS) const {
+  const char *Next = DataBuffer->getBufferStart();
+  while (Next < DataBuffer->getBufferEnd()) {
+    auto Summary = computeSummary(Next);
+    OS << "  -\n";
+    OS << "  Header:\n";
+    OS << "    Version: " << Summary.Version << "\n";
+    OS << "    TotalSizeBytes: " << Summary.TotalSizeBytes << "\n";
+    OS << "    NumSegments: " << Summary.NumSegments << "\n";
+    OS << "    NumMibInfo: " << Summary.NumMIBInfo << "\n";
+    OS << "    NumStackOffsets: " << Summary.NumStackOffsets << "\n";
+    // TODO: Print the build ids once we can record them using the
+    // sanitizer_procmaps library for linux.
+
+    auto *H = reinterpret_cast<const Header *>(Next);
+    Next += H->TotalSize;
+  }
+}
+
+Error RawMemProfReader::initialize() {
   const StringRef FileName = Binary.getBinary()->getFileName();
 
   auto *ElfObject = dyn_cast<object::ELFObjectFileBase>(Binary.getBinary());
@@ -260,24 +262,6 @@ Error RawMemProfReader::initialize(std::unique_ptr<MemoryBuffer> DataBuffer) {
                                           inconvertibleErrorCode()),
                   FileName);
   }
-
-  // Check whether the profiled binary was built with position independent code
-  // (PIC). For now we provide a error message until symbolization support
-  // is added for pic.
-  auto* Elf64LEObject = llvm::cast<llvm::object::ELF64LEObjectFile>(ElfObject);
-  const llvm::object::ELF64LEFile& ElfFile = Elf64LEObject->getELFFile();
-  auto PHdrsOr = ElfFile.program_headers();
-  if(!PHdrsOr) 
-    return report(make_error<StringError>(Twine("Could not read program headers: "),
-                                          inconvertibleErrorCode()),
-                  FileName);
-  auto FirstLoadHeader = PHdrsOr->begin();
-  while (FirstLoadHeader->p_type != llvm::ELF::PT_LOAD)
-    ++FirstLoadHeader;
-  if(FirstLoadHeader->p_vaddr == 0)
-    return report(make_error<StringError>(Twine("Unsupported position independent code"),
-                                          inconvertibleErrorCode()),
-                  FileName);
 
   auto Triple = ElfObject->makeTriple();
   if (!Triple.isX86())
@@ -296,7 +280,7 @@ Error RawMemProfReader::initialize(std::unique_ptr<MemoryBuffer> DataBuffer) {
     return report(SOFOr.takeError(), FileName);
   Symbolizer = std::move(SOFOr.get());
 
-  if (Error E = readRawProfile(std::move(DataBuffer)))
+  if (Error E = readRawProfile())
     return E;
 
   if (Error E = symbolizeAndFilterStackFrames())
@@ -423,28 +407,30 @@ Error RawMemProfReader::symbolizeAndFilterStackFrames() {
       for (size_t I = 0, NumFrames = DI.getNumberOfFrames(); I < NumFrames;
            I++) {
         const auto &DIFrame = DI.getFrame(I);
-        const uint64_t Guid =
-            IndexedMemProfRecord::getGUID(DIFrame.FunctionName);
-        const Frame F(Guid, DIFrame.Line - DIFrame.StartLine, DIFrame.Column,
+        LLVM_DEBUG(
+            // Print out the name to guid mapping for debugging.
+            llvm::dbgs() << "FunctionName: " << DIFrame.FunctionName
+                         << " GUID: "
+                         << IndexedMemProfRecord::getGUID(DIFrame.FunctionName)
+                         << "\n";);
+
+        const Frame F(IndexedMemProfRecord::getGUID(DIFrame.FunctionName),
+                      DIFrame.Line - DIFrame.StartLine, DIFrame.Column,
                       // Only the last entry is not an inlined location.
                       I != NumFrames - 1);
-        // Here we retain a mapping from the GUID to symbol name instead of
-        // adding it to the frame object directly to reduce memory overhead.
-        // This is because there can be many unique frames, particularly for
-        // callsite frames.
-        if (KeepSymbolName)
-          GuidToSymbolName.insert({Guid, DIFrame.FunctionName});
 
-        const FrameId Hash = F.hash();
-        IdToFrame.insert({Hash, F});
-        SymbolizedFrame[VAddr].push_back(Hash);
+        const FrameId Id = F.hash();
+        IdToFrame.insert({Id, F});
+        SymbolizedFrame[VAddr].push_back(Id);
       }
     }
 
     auto &CallStack = Entry.getSecond();
-    llvm::erase_if(CallStack, [&AllVAddrsToDiscard](const uint64_t A) {
-      return AllVAddrsToDiscard.contains(A);
-    });
+    CallStack.erase(std::remove_if(CallStack.begin(), CallStack.end(),
+                                   [&AllVAddrsToDiscard](const uint64_t A) {
+                                     return AllVAddrsToDiscard.contains(A);
+                                   }),
+                    CallStack.end());
     if (CallStack.empty())
       EntriesToErase.push_back(Entry.getFirst());
   }
@@ -463,8 +449,7 @@ Error RawMemProfReader::symbolizeAndFilterStackFrames() {
   return Error::success();
 }
 
-Error RawMemProfReader::readRawProfile(
-    std::unique_ptr<MemoryBuffer> DataBuffer) {
+Error RawMemProfReader::readRawProfile() {
   const char *Next = DataBuffer->getBufferStart();
 
   while (Next < DataBuffer->getBufferEnd()) {
@@ -540,15 +525,8 @@ Error RawMemProfReader::readNextRecord(GuidMemProfRecordPair &GuidRecord) {
     return make_error<InstrProfError>(instrprof_error::eof);
 
   auto IdToFrameCallback = [this](const FrameId Id) {
-    Frame F = this->idToFrame(Id);
-    if (!this->KeepSymbolName)
-      return F;
-    auto Iter = this->GuidToSymbolName.find(F.Function);
-    assert(Iter != this->GuidToSymbolName.end());
-    F.SymbolName = Iter->getSecond();
-    return F;
+    return this->idToFrame(Id);
   };
-
   const IndexedMemProfRecord &IndexedRecord = Iter->second;
   GuidRecord = {Iter->first, MemProfRecord(IndexedRecord, IdToFrameCallback)};
   Iter++;

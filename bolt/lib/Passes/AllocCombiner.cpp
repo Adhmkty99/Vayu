@@ -29,9 +29,9 @@ namespace {
 
 bool getStackAdjustmentSize(const BinaryContext &BC, const MCInst &Inst,
                             int64_t &Adjustment) {
-  return BC.MIB->evaluateStackOffsetExpr(
-      Inst, Adjustment, std::make_pair(BC.MIB->getStackPointer(), 0LL),
-      std::make_pair(0, 0LL));
+  return BC.MIB->evaluateSimple(Inst, Adjustment,
+                                std::make_pair(BC.MIB->getStackPointer(), 0LL),
+                                std::make_pair(0, 0LL));
 }
 
 bool isIndifferentToSP(const MCInst &Inst, const BinaryContext &BC) {
@@ -44,9 +44,11 @@ bool isIndifferentToSP(const MCInst &Inst, const BinaryContext &BC) {
       II.hasImplicitUseOfPhysReg(BC.MIB->getStackPointer()))
     return false;
 
-  for (const MCOperand &Operand : MCPlus::primeOperands(Inst))
+  for (int I = 0, E = MCPlus::getNumPrimeOperands(Inst); I != E; ++I) {
+    const MCOperand &Operand = Inst.getOperand(I);
     if (Operand.isReg() && Operand.getReg() == BC.MIB->getStackPointer())
       return false;
+  }
   return true;
 }
 
@@ -101,7 +103,6 @@ void AllocCombinerPass::combineAdjustments(BinaryFunction &BF) {
 
       BB.eraseInstruction(BB.findInstruction(Prev));
       ++NumCombined;
-      DynamicCountCombined += BB.getKnownExecutionCount();
       FuncsChanged.insert(&BF);
       Prev = &Inst;
     }
@@ -117,8 +118,7 @@ void AllocCombinerPass::runOnFunctions(BinaryContext &BC) {
   });
 
   outs() << "BOLT-INFO: Allocation combiner: " << NumCombined
-         << " empty spaces coalesced (dyn count: " << DynamicCountCombined
-         << ").\n";
+         << " empty spaces coalesced.\n";
 }
 
 } // end namespace bolt

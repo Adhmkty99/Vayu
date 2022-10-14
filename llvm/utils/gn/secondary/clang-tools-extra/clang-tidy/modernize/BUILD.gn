@@ -18,7 +18,6 @@ static_library("modernize") {
     "ConcatNestedNamespacesCheck.cpp",
     "DeprecatedHeadersCheck.cpp",
     "DeprecatedIosBaseAliasesCheck.cpp",
-    "IntegralLiteralExpressionMatcher.cpp",
     "LoopConvertCheck.cpp",
     "LoopConvertUtils.cpp",
     "MacroToEnumCheck.cpp",

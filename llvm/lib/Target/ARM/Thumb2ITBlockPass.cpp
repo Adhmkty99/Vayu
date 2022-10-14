@@ -284,7 +284,8 @@ bool Thumb2ITBlock::InsertITInstructions(MachineBasicBlock &MBB) {
 }
 
 bool Thumb2ITBlock::runOnMachineFunction(MachineFunction &Fn) {
-  const ARMSubtarget &STI = Fn.getSubtarget<ARMSubtarget>();
+  const ARMSubtarget &STI =
+      static_cast<const ARMSubtarget &>(Fn.getSubtarget());
   if (!STI.isThumb2())
     return false;
   AFI = Fn.getInfo<ARMFunctionInfo>();

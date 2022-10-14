@@ -259,10 +259,6 @@ TEST_MACROS();
 #endif
 #include <stack>
 TEST_MACROS();
-#if __cplusplus > 202002L && !defined(_LIBCPP_HAS_NO_THREADS)
-#   include <stdatomic.h>
-TEST_MACROS();
-#endif
 #include <stdbool.h>
 TEST_MACROS();
 #include <stddef.h>
@@ -329,11 +325,9 @@ TEST_MACROS();
 #   include <wctype.h>
 TEST_MACROS();
 #endif
-#if __cplusplus >= 201103L
-#   include <experimental/algorithm>
+#include <experimental/algorithm>
 TEST_MACROS();
-#endif
-#if __cplusplus >= 201103L && !defined(_LIBCPP_HAS_NO_EXPERIMENTAL_COROUTINES)
+#if !defined(_LIBCPP_HAS_NO_EXPERIMENTAL_COROUTINES)
 #   include <experimental/coroutine>
 TEST_MACROS();
 #endif
@@ -345,14 +339,10 @@ TEST_MACROS();
 #   include <experimental/forward_list>
 TEST_MACROS();
 #endif
-#if __cplusplus >= 201103L
-#   include <experimental/functional>
+#include <experimental/functional>
 TEST_MACROS();
-#endif
-#if __cplusplus >= 201103L
-#   include <experimental/iterator>
+#include <experimental/iterator>
 TEST_MACROS();
-#endif
 #if __cplusplus >= 201103L
 #   include <experimental/list>
 TEST_MACROS();
@@ -365,10 +355,8 @@ TEST_MACROS();
 #   include <experimental/memory_resource>
 TEST_MACROS();
 #endif
-#if __cplusplus >= 201103L
-#   include <experimental/propagate_const>
+#include <experimental/propagate_const>
 TEST_MACROS();
-#endif
 #if !defined(_LIBCPP_HAS_NO_LOCALIZATION) && __cplusplus >= 201103L
 #   include <experimental/regex>
 TEST_MACROS();
@@ -377,18 +365,14 @@ TEST_MACROS();
 #   include <experimental/set>
 TEST_MACROS();
 #endif
-#if __cplusplus >= 201103L
-#   include <experimental/simd>
+#include <experimental/simd>
 TEST_MACROS();
-#endif
 #if __cplusplus >= 201103L
 #   include <experimental/string>
 TEST_MACROS();
 #endif
-#if __cplusplus >= 201103L
-#   include <experimental/type_traits>
+#include <experimental/type_traits>
 TEST_MACROS();
-#endif
 #if __cplusplus >= 201103L
 #   include <experimental/unordered_map>
 TEST_MACROS();
@@ -397,10 +381,8 @@ TEST_MACROS();
 #   include <experimental/unordered_set>
 TEST_MACROS();
 #endif
-#if __cplusplus >= 201103L
-#   include <experimental/utility>
+#include <experimental/utility>
 TEST_MACROS();
-#endif
 #if __cplusplus >= 201103L
 #   include <experimental/vector>
 TEST_MACROS();

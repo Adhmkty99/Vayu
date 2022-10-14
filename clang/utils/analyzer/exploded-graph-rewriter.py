@@ -144,8 +144,7 @@ class EnvironmentFrame:
 
 
 # A deserialized Environment. This class can also hold other entities that
-# are similar to Environment, such as Objects Under Construction or 
-# Indices Of Elements Under Construction.
+# are similar to Environment, such as Objects Under Construction.
 class GenericEnvironment:
     def __init__(self, json_e):
         self.frames = [EnvironmentFrame(f) for f in json_e]
@@ -270,7 +269,6 @@ class ProgramState:
                 'constraints': None,
                 'dynamic_types': None,
                 'constructing_objects': None,
-                'index_of_element': None,
                 'checker_messages': None
             }
 
@@ -297,10 +295,6 @@ class ProgramState:
         self.constructing_objects = \
             GenericEnvironment(json_ps['constructing_objects']) \
             if json_ps['constructing_objects'] is not None else None
-
-        self.index_of_element = \
-            GenericEnvironment(json_ps['index_of_element']) \
-            if json_ps['index_of_element'] is not None else None
 
         self.checker_messages = CheckerMessages(json_ps['checker_messages']) \
             if json_ps['checker_messages'] is not None else None
@@ -801,9 +795,6 @@ class DotDumpVisitor:
                                         s, prev_s)
         self.visit_environment_in_state('constructing_objects',
                                         'Objects Under Construction',
-                                        s, prev_s)
-        self.visit_environment_in_state('index_of_element',
-                                        'Indices Of Elements Under Construction',
                                         s, prev_s)
         self.visit_checker_messages_in_state(s, prev_s)
 

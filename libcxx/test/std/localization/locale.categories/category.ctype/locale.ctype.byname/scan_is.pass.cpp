@@ -13,7 +13,7 @@
 // const charT* scan_is(mask m, const charT* low, const charT* high) const;
 
 // REQUIRES: locale.en_US.UTF-8
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 #include <locale>
 #include <string>

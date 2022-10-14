@@ -171,6 +171,13 @@ Pass *createLoopStrengthReducePass();
 
 //===----------------------------------------------------------------------===//
 //
+// LoopUnswitch - This pass is a simple loop unswitching pass.
+//
+Pass *createLoopUnswitchPass(bool OptimizeForSize = false,
+                             bool hasBranchDivergence = false);
+
+//===----------------------------------------------------------------------===//
+//
 // LoopInstSimplify - This pass simplifies instructions in a loop's body.
 //
 Pass *createLoopInstSimplifyPass();
@@ -240,10 +247,12 @@ FunctionPass *createReassociatePass();
 //===----------------------------------------------------------------------===//
 //
 // JumpThreading - Thread control through mult-pred/multi-succ blocks where some
-// preds always go to some succ. Thresholds other than minus one
+// preds always go to some succ. If FreezeSelectCond is true, unfold the
+// condition of a select that unfolds to branch. Thresholds other than minus one
 // override the internal BB duplication default threshold.
 //
-FunctionPass *createJumpThreadingPass(int Threshold = -1);
+FunctionPass *createJumpThreadingPass(bool FreezeSelectCond = false,
+                                      int Threshold = -1);
 
 //===----------------------------------------------------------------------===//
 //
@@ -520,6 +529,10 @@ FunctionPass *createLoopVersioningPass();
 // LoopDataPrefetch - Perform data prefetching in loops.
 //
 FunctionPass *createLoopDataPrefetchPass();
+
+///===---------------------------------------------------------------------===//
+ModulePass *createNameAnonGlobalPass();
+ModulePass *createCanonicalizeAliasesPass();
 
 //===----------------------------------------------------------------------===//
 //

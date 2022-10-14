@@ -75,7 +75,7 @@ namespace til {
 class BasicBlock;
 
 /// Enum for the different distinct classes of SExpr
-enum TIL_Opcode : unsigned char {
+enum TIL_Opcode {
 #define TIL_OPCODE_DEF(X) COP_##X,
 #include "ThreadSafetyOps.def"
 #undef TIL_OPCODE_DEF
@@ -278,7 +278,7 @@ class SExpr {
 public:
   SExpr() = delete;
 
-  TIL_Opcode opcode() const { return Opcode; }
+  TIL_Opcode opcode() const { return static_cast<TIL_Opcode>(Opcode); }
 
   // Subclasses of SExpr must define the following:
   //
@@ -321,7 +321,7 @@ protected:
   SExpr(TIL_Opcode Op) : Opcode(Op) {}
   SExpr(const SExpr &E) : Opcode(E.Opcode), Flags(E.Flags) {}
 
-  const TIL_Opcode Opcode;
+  const unsigned char Opcode;
   unsigned char Reserved = 0;
   unsigned short Flags = 0;
   unsigned SExprID = 0;
@@ -332,7 +332,7 @@ protected:
 namespace ThreadSafetyTIL {
 
 inline bool isTrivial(const SExpr *E) {
-  TIL_Opcode Op = E->opcode();
+  unsigned Op = E->opcode();
   return Op == COP_Variable || Op == COP_Literal || Op == COP_LiteralPtr;
 }
 

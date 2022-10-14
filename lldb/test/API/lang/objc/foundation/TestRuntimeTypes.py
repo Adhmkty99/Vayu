@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class RuntimeTypesTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @expectedFailureAll(
         oslist=["macosx"],
         debug_info="gmodules",

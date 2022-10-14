@@ -193,7 +193,7 @@ public:
     m_collection_sp->Initialize(g_platformdarwinkernel_properties);
   }
 
-  ~PlatformDarwinKernelProperties() override = default;
+  virtual ~PlatformDarwinKernelProperties() = default;
 
   FileSpecList GetKextDirectories() const {
     const uint32_t idx = ePropertyKextDirectories;

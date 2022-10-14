@@ -19,8 +19,5 @@ program test_size
     print *, size(array)
     print *, ubound(array)
     print *, lbound(array)
-    print *, size(arg(:,1))
-    print *, ubound(arg(:,1))
-    print *, shape(arg(:,1))
   end subroutine
 end

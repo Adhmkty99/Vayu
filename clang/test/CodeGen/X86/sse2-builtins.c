@@ -1,8 +1,6 @@
-// RUN: %clang_cc1 -no-opaque-pointers -flax-vector-conversions=none -ffreestanding %s -triple=x86_64-apple-darwin -target-feature +sse2 -emit-llvm -o - -Wall -Werror | FileCheck %s --check-prefixes=CHECK,X64
-// RUN: %clang_cc1 -no-opaque-pointers -flax-vector-conversions=none -ffreestanding %s -triple=x86_64-apple-darwin -target-feature +sse2 -fno-signed-char -emit-llvm -o - -Wall -Werror | FileCheck %s --check-prefixes=CHECK,X64
-// RUN: %clang_cc1 -no-opaque-pointers -flax-vector-conversions=none -ffreestanding %s -triple=i386-apple-darwin -target-feature +sse2 -emit-llvm -o - -Wall -Werror | FileCheck %s --check-prefixes=CHECK,X86
-// RUN: %clang_cc1 -no-opaque-pointers -flax-vector-conversions=none -ffreestanding %s -triple=i386-apple-darwin -target-feature +sse2 -fno-signed-char -emit-llvm -o - -Wall -Werror | FileCheck %s --check-prefixes=CHECK,X86
-// RUN: %clang_cc1 -no-opaque-pointers -flax-vector-conversions=none -fms-extensions -fms-compatibility -ffreestanding %s -triple=x86_64-windows-msvc -target-feature +sse2 -emit-llvm -o - -Wall -Werror | FileCheck %s --check-prefixes=CHECK,X64
+// RUN: %clang_cc1 -no-opaque-pointers -flax-vector-conversions=none -ffreestanding %s -triple=x86_64-apple-darwin -target-feature +sse2 -emit-llvm -o - -Wall -Werror | FileCheck %s
+// RUN: %clang_cc1 -no-opaque-pointers -flax-vector-conversions=none -ffreestanding %s -triple=x86_64-apple-darwin -target-feature +sse2 -fno-signed-char -emit-llvm -o - -Wall -Werror | FileCheck %s
+// RUN: %clang_cc1 -no-opaque-pointers -flax-vector-conversions=none -fms-extensions -fms-compatibility -ffreestanding %s -triple=x86_64-windows-msvc -target-feature +sse2 -emit-llvm -o - -Wall -Werror | FileCheck %s
 
 
 #include <immintrin.h>
@@ -189,6 +187,7 @@ __m128d test_mm_cmpeq_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp oeq <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpeq_pd(A, B);
 }
 
@@ -203,6 +202,7 @@ __m128d test_mm_cmpge_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp ole <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpge_pd(A, B);
 }
 
@@ -239,6 +239,7 @@ __m128d test_mm_cmpgt_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp olt <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpgt_pd(A, B);
 }
 
@@ -257,6 +258,7 @@ __m128d test_mm_cmple_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp ole <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmple_pd(A, B);
 }
 
@@ -289,6 +291,7 @@ __m128d test_mm_cmplt_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp olt <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmplt_pd(A, B);
 }
 
@@ -303,6 +306,7 @@ __m128d test_mm_cmpneq_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp une <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpneq_pd(A, B);
 }
 
@@ -317,6 +321,7 @@ __m128d test_mm_cmpnge_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp ugt <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpnge_pd(A, B);
 }
 
@@ -335,6 +340,7 @@ __m128d test_mm_cmpngt_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp uge <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpngt_pd(A, B);
 }
 
@@ -353,6 +359,7 @@ __m128d test_mm_cmpnle_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp ugt <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpnle_pd(A, B);
 }
 
@@ -367,6 +374,7 @@ __m128d test_mm_cmpnlt_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp uge <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpnlt_pd(A, B);
 }
 
@@ -381,6 +389,7 @@ __m128d test_mm_cmpord_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp ord <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpord_pd(A, B);
 }
 
@@ -395,6 +404,7 @@ __m128d test_mm_cmpunord_pd(__m128d A, __m128d B) {
   // CHECK:         [[CMP:%.*]] = fcmp uno <2 x double>
   // CHECK-NEXT:    [[SEXT:%.*]] = sext <2 x i1> [[CMP]] to <2 x i64>
   // CHECK-NEXT:    [[BC:%.*]] = bitcast <2 x i64> [[SEXT]] to <2 x double>
+  // CHECK-NEXT:    ret <2 x double> [[BC]]
   return _mm_cmpunord_pd(A, B);
 }
 
@@ -492,8 +502,8 @@ int test_mm_cvtsd_si32(__m128d A) {
 
 #ifdef __x86_64__
 long long test_mm_cvtsd_si64(__m128d A) {
-  // X64-LABEL: test_mm_cvtsd_si64
-  // X64: call i64 @llvm.x86.sse2.cvtsd2si64(<2 x double> %{{.*}})
+  // CHECK-LABEL: test_mm_cvtsd_si64
+  // CHECK: call i64 @llvm.x86.sse2.cvtsd2si64(<2 x double> %{{.*}})
   return _mm_cvtsd_si64(A);
 }
 #endif
@@ -510,11 +520,13 @@ int test_mm_cvtsi128_si32(__m128i A) {
   return _mm_cvtsi128_si32(A);
 }
 
+#ifdef __x86_64__
 long long test_mm_cvtsi128_si64(__m128i A) {
   // CHECK-LABEL: test_mm_cvtsi128_si64
   // CHECK: extractelement <2 x i64> %{{.*}}, i32 0
   return _mm_cvtsi128_si64(A);
 }
+#endif
 
 __m128d test_mm_cvtsi32_sd(__m128d A, int B) {
   // CHECK-LABEL: test_mm_cvtsi32_sd
@@ -534,12 +546,11 @@ __m128i test_mm_cvtsi32_si128(int A) {
 
 #ifdef __x86_64__
 __m128d test_mm_cvtsi64_sd(__m128d A, long long B) {
-  // X64-LABEL: test_mm_cvtsi64_sd
-  // X64: sitofp i64 %{{.*}} to double
-  // X64: insertelement <2 x double> %{{.*}}, double %{{.*}}, i32 0
+  // CHECK-LABEL: test_mm_cvtsi64_sd
+  // CHECK: sitofp i64 %{{.*}} to double
+  // CHECK: insertelement <2 x double> %{{.*}}, double %{{.*}}, i32 0
   return _mm_cvtsi64_sd(A, B);
 }
-#endif
 
 __m128i test_mm_cvtsi64_si128(long long A) {
   // CHECK-LABEL: test_mm_cvtsi64_si128
@@ -547,6 +558,7 @@ __m128i test_mm_cvtsi64_si128(long long A) {
   // CHECK: insertelement <2 x i64> %{{.*}}, i64 0, i32 1
   return _mm_cvtsi64_si128(A);
 }
+#endif
 
 __m128d test_mm_cvtss_sd(__m128d A, __m128 B) {
   // CHECK-LABEL: test_mm_cvtss_sd
@@ -576,8 +588,8 @@ int test_mm_cvttsd_si32(__m128d A) {
 
 #ifdef __x86_64__
 long long test_mm_cvttsd_si64(__m128d A) {
-  // X64-LABEL: test_mm_cvttsd_si64
-  // X64: call i64 @llvm.x86.sse2.cvttsd2si64(<2 x double> %{{.*}})
+  // CHECK-LABEL: test_mm_cvttsd_si64
+  // CHECK: call i64 @llvm.x86.sse2.cvttsd2si64(<2 x double> %{{.*}})
   return _mm_cvttsd_si64(A);
 }
 #endif
@@ -1503,8 +1515,8 @@ void test_mm_stream_si32(int *A, int B) {
 
 #ifdef __x86_64__
 void test_mm_stream_si64(long long *A, long long B) {
-  // X64-LABEL: test_mm_stream_si64
-  // X64: store i64 %{{.*}}, i64* %{{.*}}, align 1, !nontemporal
+  // CHECK-LABEL: test_mm_stream_si64
+  // CHECK: store i64 %{{.*}}, i64* %{{.*}}, align 1, !nontemporal
   _mm_stream_si64(A, B);
 }
 #endif
@@ -1617,11 +1629,8 @@ int test_mm_ucomineq_sd(__m128d A, __m128d B) {
 }
 
 __m128d test_mm_undefined_pd(void) {
-  // X64-LABEL: test_mm_undefined_pd
-  // X64: ret <2 x double> zeroinitializer
-  //
-  // X86-LABEL: test_mm_undefined_pd
-  // X86: store <2 x double> zeroinitializer
+  // CHECK-LABEL: test_mm_undefined_pd
+  // CHECK: ret <2 x double> zeroinitializer
   return _mm_undefined_pd();
 }
 

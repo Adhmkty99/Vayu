@@ -21,6 +21,16 @@ namespace clang {
 namespace tidy {
 namespace cppcoreguidelines {
 
+// FIXME: Copied from 'NoMallocCheck.cpp'. Has to be refactored into 'util' or
+// something like that.
+namespace {
+Matcher<FunctionDecl> hasAnyListedName(const std::string &FunctionNames) {
+  const std::vector<std::string> NameList =
+      utils::options::parseStringList(FunctionNames);
+  return hasAnyName(std::vector<StringRef>(NameList.begin(), NameList.end()));
+}
+} // namespace
+
 void OwningMemoryCheck::storeOptions(ClangTidyOptions::OptionMap &Opts) {
   Options.store(Opts, "LegacyResourceProducers", LegacyResourceProducers);
   Options.store(Opts, "LegacyResourceConsumers", LegacyResourceConsumers);
@@ -32,10 +42,9 @@ void OwningMemoryCheck::registerMatchers(MatchFinder *Finder) {
   const auto OwnerDecl = typeAliasTemplateDecl(hasName("::gsl::owner"));
   const auto IsOwnerType = hasType(OwnerDecl);
 
-  const auto LegacyCreatorFunctions =
-      hasAnyName(utils::options::parseStringList(LegacyResourceProducers));
+  const auto LegacyCreatorFunctions = hasAnyListedName(LegacyResourceProducers);
   const auto LegacyConsumerFunctions =
-      hasAnyName(utils::options::parseStringList(LegacyResourceConsumers));
+      hasAnyListedName(LegacyResourceConsumers);
 
   // Legacy functions that are use for resource management but cannot be
   // updated to use `gsl::owner<>`, like standard C memory management.

@@ -8,9 +8,9 @@ add_mlir_conversion_library(MLIRComplexToStandard
   MLIRConversionPassIncGen
 
   LINK_LIBS PUBLIC
-  MLIRArithmeticDialect
-  MLIRComplexDialect
+  MLIRArithmetic
+  MLIRComplex
   MLIRIR
-  MLIRMathDialect
+  MLIRMath
   MLIRTransforms
   )

@@ -512,8 +512,6 @@
 #CHECK: error: offset out of range
 #CHECK: brasl	%r0, -0x1000000002
 #CHECK: error: offset out of range
-#CHECK: brasl	%r0, .-0x1000000002
-#CHECK: error: offset out of range
 #CHECK: brasl	%r0, -1
 #CHECK: error: offset out of range
 #CHECK: brasl	%r0, 1
@@ -522,8 +520,6 @@
 #CHECK: error: offset out of range
 #CHECK: jasl	%r0, -0x1000000002
 #CHECK: error: offset out of range
-#CHECK: jasl	%r0, .-0x1000000002
-#CHECK: error: offset out of range
 #CHECK: jasl	%r0, -1
 #CHECK: error: offset out of range
 #CHECK: jasl	%r0, 1
@@ -531,12 +527,10 @@
 #CHECK: jasl	%r0, 0x100000000
 
 	brasl	%r0, -0x1000000002
-	brasl	%r0, .-0x1000000002
 	brasl	%r0, -1
 	brasl	%r0, 1
 	brasl	%r0, 0x100000000
 	jasl	%r0, -0x1000000002
-	jasl	%r0, .-0x1000000002
 	jasl	%r0, -1
 	jasl	%r0, 1
 	jasl	%r0, 0x100000000

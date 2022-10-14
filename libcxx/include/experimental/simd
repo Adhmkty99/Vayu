@@ -650,16 +650,10 @@ public:
 */
 
 #include <__assert> // all public C++ headers provide the assertion handler
-#include <__functional/operations.h>
 #include <array>
 #include <cstddef>
 #include <experimental/__config>
-#include <tuple>
-
-#ifndef _LIBCPP_REMOVE_TRANSITIVE_INCLUDES
-#  include <algorithm>
-#  include <functional>
-#endif
+#include <functional>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #  pragma GCC system_header
@@ -1242,32 +1236,32 @@ _Tp reduce(const simd<_Tp, _Abi>&, _BinaryOp = _BinaryOp());
 template <class _MaskType, class _SimdType, class _BinaryOp>
 typename _SimdType::value_type
 reduce(const const_where_expression<_MaskType, _SimdType>&,
-       typename _SimdType::value_type __neutral_element, _BinaryOp);
+       typename _SimdType::value_type neutral_element, _BinaryOp binary_op);
 
 template <class _MaskType, class _SimdType>
 typename _SimdType::value_type
 reduce(const const_where_expression<_MaskType, _SimdType>&,
-       plus<typename _SimdType::value_type> = {});
+       plus<typename _SimdType::value_type> binary_op = {});
 
 template <class _MaskType, class _SimdType>
 typename _SimdType::value_type
 reduce(const const_where_expression<_MaskType, _SimdType>&,
-       multiplies<typename _SimdType::value_type>);
+       multiplies<typename _SimdType::value_type> binary_op);
 
 template <class _MaskType, class _SimdType>
 typename _SimdType::value_type
 reduce(const const_where_expression<_MaskType, _SimdType>&,
-       bit_and<typename _SimdType::value_type>);
+       bit_and<typename _SimdType::value_type> binary_op);
 
 template <class _MaskType, class _SimdType>
 typename _SimdType::value_type
 reduce(const const_where_expression<_MaskType, _SimdType>&,
-       bit_or<typename _SimdType::value_type>);
+       bit_or<typename _SimdType::value_type> binary_op);
 
 template <class _MaskType, class _SimdType>
 typename _SimdType::value_type
 reduce(const const_where_expression<_MaskType, _SimdType>&,
-       bit_xor<typename _SimdType::value_type>);
+       bit_xor<typename _SimdType::value_type> binary_op);
 
 template <class _Tp, class _Abi>
 _Tp hmin(const simd<_Tp, _Abi>&);

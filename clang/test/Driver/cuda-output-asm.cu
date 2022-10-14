@@ -1,5 +1,6 @@
 // Tests CUDA compilation with -S and -emit-llvm.
 
+// REQUIRES: clang-driver
 // REQUIRES: x86-registered-target
 // REQUIRES: nvptx-registered-target
 

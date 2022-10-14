@@ -419,7 +419,8 @@ public:
   getNumRegisters(LLVMContext &Context, EVT VT,
                   Optional<MVT> RegisterVT) const override {
     // i128 inline assembly operand.
-    if (VT == MVT::i128 && RegisterVT && *RegisterVT == MVT::Untyped)
+    if (VT == MVT::i128 &&
+        RegisterVT.hasValue() && RegisterVT.getValue() == MVT::Untyped)
       return 1;
     return TargetLowering::getNumRegisters(Context, VT);
   }
@@ -456,12 +457,6 @@ public:
   bool allowsMisalignedMemoryAccesses(EVT VT, unsigned AS, Align Alignment,
                                       MachineMemOperand::Flags Flags,
                                       bool *Fast) const override;
-  bool
-  findOptimalMemOpLowering(std::vector<EVT> &MemOps, unsigned Limit,
-                           const MemOp &Op, unsigned DstAS, unsigned SrcAS,
-                           const AttributeList &FuncAttributes) const override;
-  EVT getOptimalMemOpType(const MemOp &Op,
-                          const AttributeList &FuncAttributes) const override;
   bool isTruncateFree(Type *, Type *) const override;
   bool isTruncateFree(EVT, EVT) const override;
 
@@ -471,8 +466,6 @@ public:
     // users of the math result.
     return VT == MVT::i32 || VT == MVT::i64;
   }
-
-  bool shouldConsiderGEPOffsetSplit() const override { return true; }
 
   const char *getTargetNodeName(unsigned Opcode) const override;
   std::pair<unsigned, const TargetRegisterClass *>
@@ -503,19 +496,6 @@ public:
         return InlineAsm::Constraint_S;
       case 'T':
         return InlineAsm::Constraint_T;
-      }
-    } else if (ConstraintCode.size() == 2 && ConstraintCode[0] == 'Z') {
-      switch (ConstraintCode[1]) {
-      default:
-        break;
-      case 'Q':
-        return InlineAsm::Constraint_ZQ;
-      case 'R':
-        return InlineAsm::Constraint_ZR;
-      case 'S':
-        return InlineAsm::Constraint_ZS;
-      case 'T':
-        return InlineAsm::Constraint_ZT;
       }
     }
     return TargetLowering::getInlineAsmMemConstraint(ConstraintCode);
@@ -687,7 +667,6 @@ private:
   SDValue lowerSIGN_EXTEND_VECTOR_INREG(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerZERO_EXTEND_VECTOR_INREG(SDValue Op, SelectionDAG &DAG) const;
   SDValue lowerShift(SDValue Op, SelectionDAG &DAG, unsigned ByScalar) const;
-  SDValue lowerIS_FPCLASS(SDValue Op, SelectionDAG &DAG) const;
 
   bool canTreatAsByteVector(EVT VT) const;
   SDValue combineExtract(const SDLoc &DL, EVT ElemVT, EVT VecVT, SDValue OrigOp,
@@ -774,15 +753,12 @@ private:
   APInt SplatUndef;          // Bits correspoding to undef operands of the BVN.
   unsigned SplatBitSize = 0;
   bool isFP128 = false;
+
 public:
   unsigned Opcode = 0;
   SmallVector<unsigned, 2> OpVals;
   MVT VecVT;
-  SystemZVectorConstantInfo(APInt IntImm);
-  SystemZVectorConstantInfo(APFloat FPImm)
-      : SystemZVectorConstantInfo(FPImm.bitcastToAPInt()) {
-    isFP128 = (&FPImm.getSemantics() == &APFloat::IEEEquad());
-  }
+  SystemZVectorConstantInfo(APFloat FPImm);
   SystemZVectorConstantInfo(BuildVectorSDNode *BVN);
   bool isVectorConstantLegal(const SystemZSubtarget &Subtarget);
 };

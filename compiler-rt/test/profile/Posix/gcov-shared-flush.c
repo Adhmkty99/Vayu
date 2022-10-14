@@ -83,7 +83,6 @@ void foo(int n) {
 extern void foo(int n);
 extern void __gcov_dump(void);
 extern void __gcov_reset(void);
-extern void _exit(int) __attribute__((noreturn));
 
 int bar1 = 0;
 int bar2 = 1;

@@ -8,7 +8,6 @@
 
 #include "llvm/Analysis/EHPersonalities.h"
 #include "llvm/ADT/StringSwitch.h"
-#include "llvm/ADT/Triple.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/Function.h"
@@ -68,10 +67,7 @@ StringRef llvm::getEHPersonalityName(EHPersonality Pers) {
 }
 
 EHPersonality llvm::getDefaultEHPersonality(const Triple &T) {
-  if (T.isPS5())
-    return EHPersonality::GNU_CXX;
-  else
-    return EHPersonality::GNU_C;
+  return EHPersonality::GNU_C;
 }
 
 bool llvm::canSimplifyInvokeNoUnwind(const Function *F) {

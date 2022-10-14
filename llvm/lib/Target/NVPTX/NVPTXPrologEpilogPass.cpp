@@ -36,8 +36,6 @@ public:
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
-  StringRef getPassName() const override { return "NVPTX Prolog Epilog Pass"; }
-
 private:
   void calculateFrameObjectOffsets(MachineFunction &Fn);
 };

@@ -1,5 +1,4 @@
-; RUN: opt -mtriple=amdgcn-- -mcpu=gfx600 -S -amdgpu-unify-divergent-exit-nodes -verify -structurizecfg -verify -si-annotate-control-flow -simplifycfg-require-and-preserve-domtree=1 %s | FileCheck -check-prefix=IR %s
-; RUN: opt -mtriple=amdgcn-- -mcpu=gfx1100 -mattr=-wavefrontsize32,+wavefrontsize64 -S -amdgpu-unify-divergent-exit-nodes -verify -structurizecfg -verify -si-annotate-control-flow -simplifycfg-require-and-preserve-domtree=1 %s | FileCheck -check-prefix=IR %s
+; RUN: opt -mtriple=amdgcn-- -S -amdgpu-unify-divergent-exit-nodes -verify -structurizecfg -verify -si-annotate-control-flow -simplifycfg-require-and-preserve-domtree=1 %s | FileCheck -check-prefix=IR %s
 ; RUN: llc -march=amdgcn -verify-machineinstrs -simplifycfg-require-and-preserve-domtree=1 < %s | FileCheck -check-prefix=GCN %s
 
 ; Add an extra verifier runs. There were some cases where invalid IR
@@ -73,7 +72,8 @@
 ; GCN-NEXT: s_and_b64           [[EXIT1]], vcc, exec
 
 ; GCN: ; %Flow
-; GCN-NEXT: s_andn2_saveexec_b64
+; GCN-NEXT: s_or_saveexec_b64
+; GCN-NEXT: s_xor_b64
 
 ; GCN: ; %LeafBlock
 ; GCN-DAG:  v_cmp_eq_u32_e32    vcc, 1,

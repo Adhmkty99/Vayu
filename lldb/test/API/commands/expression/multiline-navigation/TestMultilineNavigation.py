@@ -9,6 +9,8 @@ from lldbsuite.test.lldbpexpect import PExpectTest
 
 class TestCase(PExpectTest):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     arrow_up = "\033[A"
     arrow_down = "\033[B"
 
@@ -72,6 +74,7 @@ class TestCase(PExpectTest):
 
     @skipIfAsan
     @skipIfEditlineSupportMissing
+    @expectedFailureAll(oslist=['freebsd'], bugnumber='llvm.org/pr48316')
     @skipIf(oslist=["linux"], archs=["arm", "aarch64"]) # Randomly fails on buildbot
     def test_nav_arrow_up_empty(self):
         """

@@ -15,6 +15,8 @@ exe_name = 'find-bundle-with-dots-in-fn'  # must match Makefile
 
 class BundleWithDotInFilenameTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         TestBase.setUp(self)
         self.source = 'main.c'

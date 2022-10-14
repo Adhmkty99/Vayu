@@ -107,7 +107,7 @@ Error DWARFRecordSectionSplitter::processBlock(
     }
 
     uint64_t BlockSize = BlockReader.getOffset() - RecordStartOffset;
-    auto &NewBlock = G.splitBlock(B, BlockSize, &Cache);
+    auto &NewBlock = G.splitBlock(B, BlockSize);
     (void)NewBlock;
     LLVM_DEBUG(dbgs() << "      Extracted " << NewBlock << "\n");
   }

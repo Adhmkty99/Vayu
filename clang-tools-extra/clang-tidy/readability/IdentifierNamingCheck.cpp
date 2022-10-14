@@ -253,33 +253,36 @@ IdentifierNamingCheck::FileStyle IdentifierNamingCheck::getFileStyleFromOptions(
   Styles.resize(SK_Count);
   SmallString<64> StyleString;
   for (unsigned I = 0; I < SK_Count; ++I) {
-    size_t StyleSize = StyleNames[I].size();
-    StyleString.assign({StyleNames[I], "HungarianPrefix"});
+    StyleString = StyleNames[I];
+    size_t StyleSize = StyleString.size();
 
+    StyleString.append("HungarianPrefix");
     auto HPTOpt =
         Options.get<IdentifierNamingCheck::HungarianPrefixType>(StyleString);
-    if (HPTOpt && !HungarianNotation.checkOptionValid(I))
+    if (!HungarianNotation.checkOptionValid(I, StyleString) &&
+        HPTOpt.hasValue())
       configurationDiag("invalid identifier naming option '%0'") << StyleString;
+    StyleString.resize(StyleSize);
 
-    memcpy(&StyleString[StyleSize], "IgnoredRegexp", 13);
-    StyleString.truncate(StyleSize + 13);
-    StringRef IgnoredRegexpStr = Options.get(StyleString, "");
-    memcpy(&StyleString[StyleSize], "Prefix", 6);
-    StyleString.truncate(StyleSize + 6);
+    StyleString.append("IgnoredRegexp");
+    std::string IgnoredRegexpStr = Options.get(StyleString, "");
+    StyleString.resize(StyleSize);
+    StyleString.append("Prefix");
     std::string Prefix(Options.get(StyleString, ""));
     // Fast replacement of [Pre]fix -> [Suf]fix.
     memcpy(&StyleString[StyleSize], "Suf", 3);
     std::string Postfix(Options.get(StyleString, ""));
     memcpy(&StyleString[StyleSize], "Case", 4);
-    StyleString.pop_back_n(2);
+    StyleString.pop_back();
+    StyleString.pop_back();
     auto CaseOptional =
         Options.get<IdentifierNamingCheck::CaseType>(StyleString);
 
     if (CaseOptional || !Prefix.empty() || !Postfix.empty() ||
         !IgnoredRegexpStr.empty() || HPTOpt)
       Styles[I].emplace(std::move(CaseOptional), std::move(Prefix),
-                        std::move(Postfix), IgnoredRegexpStr.str(),
-                        HPTOpt.value_or(IdentifierNamingCheck::HPT_Off));
+                        std::move(Postfix), std::move(IgnoredRegexpStr),
+                        HPTOpt.getValueOr(IdentifierNamingCheck::HPT_Off));
   }
   bool IgnoreMainLike = Options.get("IgnoreMainLikeFunctions", false);
   return {std::move(Styles), std::move(HNOption), IgnoreMainLike};
@@ -308,8 +311,9 @@ std::string IdentifierNamingCheck::HungarianNotation::getDeclTypeName(
   if (!EOL)
     EOL = Begin + strlen(Begin);
 
-  const char *PosList[] = {strchr(Begin, '='), strchr(Begin, ';'),
-                           strchr(Begin, ','), strchr(Begin, ')'), EOL};
+  const std::vector<const char *> PosList = {
+      strchr(Begin, '='), strchr(Begin, ';'), strchr(Begin, ','),
+      strchr(Begin, ')'), EOL};
   for (const auto &Pos : PosList) {
     if (Pos > Begin)
       EOL = std::min(EOL, Pos);
@@ -404,7 +408,7 @@ IdentifierNamingCheck::IdentifierNamingCheck(StringRef Name,
 IdentifierNamingCheck::~IdentifierNamingCheck() = default;
 
 bool IdentifierNamingCheck::HungarianNotation::checkOptionValid(
-    int StyleKindIndex) const {
+    int StyleKindIndex, StringRef StyleString) const {
   if ((StyleKindIndex >= SK_EnumConstant) &&
       (StyleKindIndex <= SK_ConstantParameter))
     return true;
@@ -438,24 +442,19 @@ void IdentifierNamingCheck::HungarianNotation::loadFileConfig(
 
   StringRef Section = "HungarianNotation.";
 
-  SmallString<128> Buffer = {Section, "General."};
-  size_t DefSize = Buffer.size();
+  SmallString<128> Buffer;
   for (const auto &Opt : HNOpts) {
-    Buffer.truncate(DefSize);
-    Buffer.append(Opt);
-    StringRef Val = Options.get(Buffer, "");
+    Buffer.assign({Section, "General.", Opt});
+    std::string Val = Options.get(Buffer, "");
     if (!Val.empty())
-      HNOption.General[Opt] = Val.str();
+      HNOption.General[Opt] = std::move(Val);
   }
 
-  Buffer = {Section, "DerivedType."};
-  DefSize = Buffer.size();
   for (const auto &Type : HNDerivedTypes) {
-    Buffer.truncate(DefSize);
-    Buffer.append(Type);
-    StringRef Val = Options.get(Buffer, "");
+    Buffer.assign({Section, "DerivedType.", Type});
+    std::string Val = Options.get(Buffer, "");
     if (!Val.empty())
-      HNOption.DerivedType[Type] = Val.str();
+      HNOption.DerivedType[Type] = std::move(Val);
   }
 
   static constexpr std::pair<StringRef, StringRef> HNCStrings[] = {
@@ -464,37 +463,28 @@ void IdentifierNamingCheck::HungarianNotation::loadFileConfig(
       {"WideCharPrinter", "wchar_t*"},
       {"WideCharArray", "wchar_t[]"}};
 
-  Buffer = {Section, "CString."};
-  DefSize = Buffer.size();
   for (const auto &CStr : HNCStrings) {
-    Buffer.truncate(DefSize);
-    Buffer.append(CStr.first);
-    StringRef Val = Options.get(Buffer, "");
+    Buffer.assign({Section, "CString.", CStr.first});
+    std::string Val = Options.get(Buffer, "");
     if (!Val.empty())
-      HNOption.CString[CStr.first] = Val.str();
+      HNOption.CString[CStr.first] = std::move(Val);
   }
 
-  Buffer = {Section, "PrimitiveType."};
-  DefSize = Buffer.size();
   for (const auto &PrimType : HungarainNotationPrimitiveTypes) {
-    Buffer.truncate(DefSize);
-    Buffer.append(PrimType);
-    StringRef Val = Options.get(Buffer, "");
+    Buffer.assign({Section, "PrimitiveType.", PrimType});
+    std::string Val = Options.get(Buffer, "");
     if (!Val.empty()) {
       std::string Type = PrimType.str();
       std::replace(Type.begin(), Type.end(), '-', ' ');
-      HNOption.PrimitiveType[Type] = Val.str();
+      HNOption.PrimitiveType[Type] = std::move(Val);
     }
   }
 
-  Buffer = {Section, "UserDefinedType."};
-  DefSize = Buffer.size();
   for (const auto &Type : HungarainNotationUserDefinedTypes) {
-    Buffer.truncate(DefSize);
-    Buffer.append(Type);
-    StringRef Val = Options.get(Buffer, "");
+    Buffer.assign({Section, "UserDefinedType.", Type});
+    std::string Val = Options.get(Buffer, "");
     if (!Val.empty())
-      HNOption.UserDefinedType[Type] = Val.str();
+      HNOption.UserDefinedType[Type] = std::move(Val);
   }
 }
 
@@ -806,23 +796,24 @@ void IdentifierNamingCheck::storeOptions(ClangTidyOptions::OptionMap &Opts) {
   for (size_t I = 0; I < SK_Count; ++I) {
     if (!Styles[I])
       continue;
-    size_t StyleSize = StyleNames[I].size();
-    StyleString.assign({StyleNames[I], "HungarianPrefix"});
+    StyleString = StyleNames[I];
+    size_t StyleSize = StyleString.size();
 
-    Options.store(Opts, StyleString, Styles[I]->HPType);
+    Options.store(Opts, (StyleString + "HungarianPrefix").str(),
+                  Styles[I]->HPType);
 
-    memcpy(&StyleString[StyleSize], "IgnoredRegexp", 13);
-    StyleString.truncate(StyleSize + 13);
+    StyleString.append("IgnoredRegexp");
     Options.store(Opts, StyleString, Styles[I]->IgnoredRegexpStr);
-    memcpy(&StyleString[StyleSize], "Prefix", 6);
-    StyleString.truncate(StyleSize + 6);
+    StyleString.resize(StyleSize);
+    StyleString.append("Prefix");
     Options.store(Opts, StyleString, Styles[I]->Prefix);
     // Fast replacement of [Pre]fix -> [Suf]fix.
     memcpy(&StyleString[StyleSize], "Suf", 3);
     Options.store(Opts, StyleString, Styles[I]->Suffix);
     if (Styles[I]->Case) {
       memcpy(&StyleString[StyleSize], "Case", 4);
-      StyleString.pop_back_n(2);
+      StyleString.pop_back();
+      StyleString.pop_back();
       Options.store(Opts, StyleString, *Styles[I]->Case);
     }
   }
@@ -1045,7 +1036,7 @@ std::string IdentifierNamingCheck::fixupWithStyle(
   Name.consume_back(Style.Suffix);
   std::string Fixed = fixupWithCase(
       Type, Name, D, Style, HNOption,
-      Style.Case.value_or(IdentifierNamingCheck::CaseType::CT_AnyCase));
+      Style.Case.getValueOr(IdentifierNamingCheck::CaseType::CT_AnyCase));
 
   std::string HungarianPrefix;
   using HungarianPrefixType = IdentifierNamingCheck::HungarianPrefixType;

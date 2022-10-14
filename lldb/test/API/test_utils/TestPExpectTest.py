@@ -5,6 +5,8 @@ Test the PExpectTest test functions.
 from lldbsuite.test.lldbpexpect import *
 
 class TestPExpectTestCase(PExpectTest):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def assert_expect_fails_with(self, cmd, expect_args, expected_msg):

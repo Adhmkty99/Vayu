@@ -26,6 +26,7 @@
 #include "llvm/MC/MCTargetOptions.h"
 #include "llvm/MC/MCValue.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/EndianStream.h"
 #include "llvm/Support/ErrorHandling.h"
 using namespace llvm;
 
@@ -470,7 +471,7 @@ bool AArch64AsmBackend::writeNopData(raw_ostream &OS, uint64_t Count,
   // We are properly aligned, so write NOPs as requested.
   Count /= 4;
   for (uint64_t i = 0; i != Count; ++i)
-    OS.write("\x1f\x20\x03\xd5", 4);
+    support::endian::write<uint32_t>(OS, 0xd503201f, Endian);
   return true;
 }
 
@@ -592,18 +593,17 @@ public:
         if (XReg != AArch64::FP)
           return CU::UNWIND_ARM64_MODE_DWARF;
 
-        if (i + 2 >= e)
-          return CU::UNWIND_ARM64_MODE_DWARF;
+        assert(XReg == AArch64::FP && "Invalid frame pointer!");
+        assert(i + 2 < e && "Insufficient CFI instructions to define a frame!");
 
         const MCCFIInstruction &LRPush = Instrs[++i];
-        if (LRPush.getOperation() != MCCFIInstruction::OpOffset)
-          return CU::UNWIND_ARM64_MODE_DWARF;
+        assert(LRPush.getOperation() == MCCFIInstruction::OpOffset &&
+               "Link register not pushed!");
         const MCCFIInstruction &FPPush = Instrs[++i];
-        if (FPPush.getOperation() != MCCFIInstruction::OpOffset)
-          return CU::UNWIND_ARM64_MODE_DWARF;
+        assert(FPPush.getOperation() == MCCFIInstruction::OpOffset &&
+               "Frame pointer not pushed!");
 
-        if (FPPush.getOffset() + 8 != LRPush.getOffset())
-          return CU::UNWIND_ARM64_MODE_DWARF;
+        assert(FPPush.getOffset() + 8 == LRPush.getOffset());
         CurOffset = FPPush.getOffset();
 
         unsigned LRReg = *MRI.getLLVMRegNum(LRPush.getRegister(), true);
@@ -612,8 +612,8 @@ public:
         LRReg = getXRegFromWReg(LRReg);
         FPReg = getXRegFromWReg(FPReg);
 
-        if (LRReg != AArch64::LR || FPReg != AArch64::FP)
-          return CU::UNWIND_ARM64_MODE_DWARF;
+        assert(LRReg == AArch64::LR && FPReg == AArch64::FP &&
+               "Pushing invalid registers for frame!");
 
         // Indicate that the function has a frame.
         CompactUnwindEncoding |= CU::UNWIND_ARM64_MODE_FRAME;

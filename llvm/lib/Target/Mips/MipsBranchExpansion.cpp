@@ -534,7 +534,7 @@ void MipsBranchExpansion::expandToLongBranch(MBBInfo &I) {
       }
       if (hasDelaySlot) {
         if (STI->isTargetNaCl()) {
-          TII->insertNop(*BalTgtMBB, Pos, DL);
+          BuildMI(*BalTgtMBB, Pos, DL, TII->get(Mips::NOP));
         } else {
           BuildMI(*BalTgtMBB, Pos, DL, TII->get(Mips::ADDiu), Mips::SP)
               .addReg(Mips::SP)
@@ -677,8 +677,9 @@ void MipsBranchExpansion::expandToLongBranch(MBBInfo &I) {
       //  nop
       // $fallthrough:
       //
-      BuildMI(*LongBrMBB, Pos, DL, TII->get(Mips::J)).addMBB(TgtMBB);
-      TII->insertNop(*LongBrMBB, Pos, DL)->bundleWithPred();
+      MIBundleBuilder(*LongBrMBB, Pos)
+          .append(BuildMI(*MFp, DL, TII->get(Mips::J)).addMBB(TgtMBB))
+          .append(BuildMI(*MFp, DL, TII->get(Mips::NOP)));
     } else {
       // At this point, offset where we need to branch does not fit into
       // immediate field of the branch instruction and is not in the same
@@ -767,8 +768,8 @@ bool MipsBranchExpansion::handleSlot(Pred Predicate, Safe SafeInSlot) {
         if (std::next(Iit) == FI->end() ||
             std::next(Iit)->getOpcode() != Mips::NOP) {
           Changed = true;
-          TII->insertNop(*(I->getParent()), std::next(I), I->getDebugLoc())
-              ->bundleWithPred();
+          MIBundleBuilder(&*I).append(
+              BuildMI(*MFp, I->getDebugLoc(), TII->get(Mips::NOP)));
           NumInsertedNops++;
         }
       }
@@ -879,7 +880,7 @@ bool MipsBranchExpansion::runOnMachineFunction(MachineFunction &MF) {
   const TargetMachine &TM = MF.getTarget();
   IsPIC = TM.isPositionIndependent();
   ABI = static_cast<const MipsTargetMachine &>(TM).getABI();
-  STI = &MF.getSubtarget<MipsSubtarget>();
+  STI = &static_cast<const MipsSubtarget &>(MF.getSubtarget());
   TII = static_cast<const MipsInstrInfo *>(STI->getInstrInfo());
 
   if (IsPIC && ABI.IsO32() &&

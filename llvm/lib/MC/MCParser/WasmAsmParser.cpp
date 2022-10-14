@@ -93,7 +93,7 @@ public:
 
   bool parseSectionDirectiveData(StringRef, SMLoc) {
     auto *S = getContext().getObjectFileInfo()->getDataSection();
-    getStreamer().switchSection(S);
+    getStreamer().SwitchSection(S);
     return false;
   }
 
@@ -188,7 +188,7 @@ public:
 
     // TODO: Parse UniqueID
     MCSectionWasm *WS = getContext().getWasmSection(
-        Name, *Kind, Flags, GroupName, MCContext::GenericSectionID);
+        Name, Kind.getValue(), Flags, GroupName, MCContext::GenericSectionID);
 
     if (WS->getSegmentFlags() != Flags)
       Parser->Error(loc, "changed section flags for " + Name +
@@ -201,7 +201,7 @@ public:
       WS->setPassive();
     }
 
-    getStreamer().switchSection(WS);
+    getStreamer().SwitchSection(WS);
     return false;
   }
 

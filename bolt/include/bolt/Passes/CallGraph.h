@@ -9,10 +9,9 @@
 #ifndef BOLT_PASSES_CALLGRAPH_H
 #define BOLT_PASSES_CALLGRAPH_H
 
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <cstdint>
+#include <cstdio>
 #include <unordered_set>
 #include <vector>
 
@@ -161,31 +160,31 @@ private:
 };
 
 template <class L> void CallGraph::printDot(char *FileName, L GetLabel) const {
-  std::error_code EC;
-  raw_fd_ostream OS(std::string(FileName), EC, sys::fs::OF_None);
-  if (EC)
+  FILE *File = fopen(FileName, "wt");
+  if (!File)
     return;
 
-  OS << "digraph g {\n";
+  fprintf(File, "digraph g {\n");
   for (NodeId F = 0; F < Nodes.size(); F++) {
     if (Nodes[F].samples() == 0)
       continue;
-    OS << "f" << F << " [label=\"" << GetLabel(F)
-       << "\\nsamples=" << Nodes[F].samples() << "\\nsize=" << Nodes[F].size()
-       << "\"];\n";
+    fprintf(File, "f%lu [label=\"%s\\nsamples=%u\\nsize=%u\"];\n", F,
+            GetLabel(F), Nodes[F].samples(), Nodes[F].size());
   }
   for (NodeId F = 0; F < Nodes.size(); F++) {
     if (Nodes[F].samples() == 0)
       continue;
     for (NodeId Dst : Nodes[F].successors()) {
       ArcConstIterator Arc = findArc(F, Dst);
-      OS << "f" << F << " -> f" << Dst
-         << " [label=\"normWgt=" << format("%.3lf", Arc->normalizedWeight())
-         << ",weight=" << format("%.0lf", Arc->weight())
-         << ",callOffset=" << format("%.1lf", Arc->avgCallOffset()) << "\"];\n";
+      fprintf(
+          File,
+          "f%lu -> f%u [label=\"normWgt=%.3lf,weight=%.0lf,callOffset=%.1lf\"];"
+          "\n",
+          F, Dst, Arc->normalizedWeight(), Arc->weight(), Arc->avgCallOffset());
     }
   }
-  OS << "}\n";
+  fprintf(File, "}\n");
+  fclose(File);
 }
 
 } // namespace bolt

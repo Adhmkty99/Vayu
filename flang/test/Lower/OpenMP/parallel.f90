@@ -1,5 +1,5 @@
 !RUN: %flang_fc1 -emit-fir -fopenmp %s -o - | FileCheck %s --check-prefixes="FIRDialect,OMPDialect"
-!RUN: %flang_fc1 -emit-fir -fopenmp %s -o - | fir-opt --fir-to-llvm-ir | FileCheck %s --check-prefixes="LLVMDialect,OMPDialect"
+!RUN: %flang_fc1 -emit-fir -fopenmp %s -o - | fir-opt --fir-to-llvm-ir | FileCheck %s --check-prefixes="OMPDialect"
 
 !FIRDialect-LABEL: func @_QPparallel_simple
 subroutine parallel_simple()
@@ -15,13 +15,8 @@ end subroutine parallel_simple
 !===============================================================================
 
 !FIRDialect-LABEL: func @_QPparallel_if
-subroutine parallel_if(alpha, beta, gamma)
+subroutine parallel_if(alpha)
    integer, intent(in) :: alpha
-   logical, intent(in) :: beta
-   logical(1) :: logical1
-   logical(2) :: logical2
-   logical(4) :: logical4
-   logical(8) :: logical8
 
    !OMPDialect: omp.parallel if(%{{.*}} : i1) {
    !$omp parallel if(alpha .le. 0)
@@ -48,41 +43,6 @@ subroutine parallel_if(alpha, beta, gamma)
    !$omp parallel if(.true.)
    !FIRDialect: fir.call
    call f4()
-   !OMPDialect: omp.terminator
-   !$omp end parallel
-
-   !OMPDialect: omp.parallel if(%{{.*}} : i1) {
-   !$omp parallel if(beta)
-   !FIRDialect: fir.call
-   call f1()
-   !OMPDialect: omp.terminator
-   !$omp end parallel
-
-   !OMPDialect: omp.parallel if(%{{.*}} : i1) {
-   !$omp parallel if(logical1)
-   !FIRDialect: fir.call
-   call f1()
-   !OMPDialect: omp.terminator
-   !$omp end parallel
-
-   !OMPDialect: omp.parallel if(%{{.*}} : i1) {
-   !$omp parallel if(logical2)
-   !FIRDialect: fir.call
-   call f1()
-   !OMPDialect: omp.terminator
-   !$omp end parallel
-
-   !OMPDialect: omp.parallel if(%{{.*}} : i1) {
-   !$omp parallel if(logical4)
-   !FIRDialect: fir.call
-   call f1()
-   !OMPDialect: omp.terminator
-   !$omp end parallel
-
-   !OMPDialect: omp.parallel if(%{{.*}} : i1) {
-   !$omp parallel if(logical8)
-   !FIRDialect: fir.call
-   call f1()
    !OMPDialect: omp.terminator
    !$omp end parallel
 
@@ -152,10 +112,7 @@ end subroutine parallel_proc_bind
 subroutine parallel_allocate()
    use omp_lib
    integer :: x
-   !OMPDialect: omp.parallel allocate(
-   !FIRDialect: %{{.+}} : i32 -> %{{.+}} : !fir.ref<i32>
-   !LLVMDialect: %{{.+}} : i32 -> %{{.+}} : !llvm.ptr<i32>
-   !OMPDialect: ) {
+   !OMPDialect: omp.parallel allocate(%{{.+}} : i32 -> %{{.+}} : !fir.ref<i32>) {
    !$omp parallel allocate(omp_high_bw_mem_alloc: x) private(x)
    !FIRDialect: arith.addi
    x = x + 12
@@ -194,10 +151,7 @@ subroutine parallel_multiple_clauses(alpha, num_threads)
    !OMPDialect: omp.terminator
    !$omp end parallel
 
-   !OMPDialect: omp.parallel if({{.*}} : i1) num_threads({{.*}} : i32) allocate(
-   !FIRDialect: %{{.+}} : i32 -> %{{.+}} : !fir.ref<i32>
-   !LLVMDialect: %{{.+}} : i32 -> %{{.+}} : !llvm.ptr<i32>
-   !OMPDialect: ) {
+   !OMPDialect: omp.parallel if({{.*}} : i1) num_threads({{.*}} : i32) allocate(%{{.+}} : i32 -> %{{.+}} : !fir.ref<i32>) {
    !$omp parallel num_threads(num_threads) if(alpha .le. 0) allocate(omp_high_bw_mem_alloc: alpha) private(alpha)
    !FIRDialect: fir.call
    call f3()

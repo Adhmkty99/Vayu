@@ -11,22 +11,14 @@
 
 #include <stdio.h>
 
-#include "Standalone-c/Dialects.h"
 #include "mlir-c/IR.h"
-#include "mlir-c/RegisterEverything.h"
-
-static void registerAllUpstreamDialects(MlirContext ctx) {
-  MlirDialectRegistry registry = mlirDialectRegistryCreate();
-  mlirRegisterAllDialects(registry);
-  mlirContextAppendDialectRegistry(ctx, registry);
-  mlirDialectRegistryDestroy(registry);
-}
+#include "Standalone-c/Dialects.h"
 
 int main(int argc, char **argv) {
   MlirContext ctx = mlirContextCreate();
   // TODO: Create the dialect handles for the builtin dialects and avoid this.
   // This adds dozens of MB of binary size over just the standalone dialect.
-  registerAllUpstreamDialects(ctx);
+  mlirRegisterAllDialects(ctx);
   mlirDialectHandleRegisterDialect(mlirGetDialectHandle__standalone__(), ctx);
 
   MlirModule module = mlirModuleCreateParse(

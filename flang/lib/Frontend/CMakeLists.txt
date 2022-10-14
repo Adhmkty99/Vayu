@@ -3,7 +3,6 @@ get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
 add_flang_library(flangFrontend
   CompilerInstance.cpp
   CompilerInvocation.cpp
-  CodeGenOptions.cpp
   FrontendAction.cpp
   FrontendActions.cpp
   FrontendOptions.cpp
@@ -39,9 +38,7 @@ add_flang_library(flangFrontend
   ${dialect_libs}
 
   LINK_COMPONENTS
-  Passes
   Analysis
-  IRReader
   Option
   Support
   Target

@@ -28,14 +28,3 @@ add_entrypoint_object(
     libc.include.inttypes
     libc.src.__support.integer_operations
 )
-
-add_entrypoint_object(
-  imaxabs
-  SRCS
-    imaxabs.cpp
-  HDRS
-    imaxabs.h
-  DEPENDS
-    libc.include.inttypes
-    libc.src.__support.integer_operations
-)

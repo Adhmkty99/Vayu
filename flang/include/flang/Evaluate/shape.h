@@ -161,13 +161,13 @@ public:
 private:
   static Result ScalarShape() { return Shape{}; }
   static Shape ConstantShape(const Constant<ExtentType> &);
-  Result AsShapeResult(ExtentExpr &&) const;
+  Result AsShape(ExtentExpr &&) const;
   static Shape CreateShape(int rank, NamedEntity &);
 
   template <typename T>
   MaybeExtentExpr GetArrayConstructorValueExtent(
       const ArrayConstructorValue<T> &value) const {
-    return common::visit(
+    return std::visit(
         common::visitors{
             [&](const Expr<T> &x) -> MaybeExtentExpr {
               if (auto xShape{

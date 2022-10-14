@@ -11,7 +11,6 @@ add_flang_library(flangFrontendTool
   flangFrontend
   clangBasic
   clangDriver
-  MLIRPass
 
   LINK_COMPONENTS
   Option

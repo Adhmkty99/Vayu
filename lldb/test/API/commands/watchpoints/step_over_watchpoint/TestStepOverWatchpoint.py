@@ -9,6 +9,8 @@ from lldbsuite.test import lldbutil
 
 
 class TestStepOverWatchpoint(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     @expectedFailureAll(
@@ -34,8 +36,8 @@ class TestStepOverWatchpoint(TestBase):
         process = target.LaunchSimple(None, None,
                                       self.get_process_working_directory())
         self.assertTrue(process.IsValid(), PROCESS_IS_VALID)
-        self.assertState(process.GetState(), lldb.eStateStopped,
-                         PROCESS_STOPPED)
+        self.assertEquals(process.GetState(), lldb.eStateStopped,
+                        PROCESS_STOPPED)
 
         thread = lldbutil.get_stopped_thread(process,
                                              lldb.eStopReasonBreakpoint)
@@ -61,8 +63,8 @@ class TestStepOverWatchpoint(TestBase):
         self.assertEquals(thread.GetStopDescription(20), 'watchpoint 1')
 
         process.Continue()
-        self.assertState(process.GetState(), lldb.eStateStopped,
-                         PROCESS_STOPPED)
+        self.assertEquals(process.GetState(), lldb.eStateStopped,
+                        PROCESS_STOPPED)
         self.assertEquals(thread.GetStopDescription(20), 'step over')
 
         self.step_inst_for_watchpoint(1)
@@ -88,8 +90,8 @@ class TestStepOverWatchpoint(TestBase):
         self.assertEquals(thread.GetStopDescription(20), 'watchpoint 2')
 
         process.Continue()
-        self.assertState(process.GetState(), lldb.eStateStopped,
-                         PROCESS_STOPPED)
+        self.assertEquals(process.GetState(), lldb.eStateStopped,
+                        PROCESS_STOPPED)
         self.assertEquals(thread.GetStopDescription(20), 'step over')
 
         self.step_inst_for_watchpoint(2)

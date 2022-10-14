@@ -32,13 +32,15 @@ using namespace __ubsan;
 // Windows.
 // TODO(yln): This is a temporary workaround. GetStackTrace functions will be
 // removed in the future.
-void ubsan_GetStackTrace(BufferedStackTrace *stack, uptr max_depth, uptr pc,
-                         uptr bp, void *context, bool request_fast) {
+void ubsan_GetStackTrace(BufferedStackTrace *stack, uptr max_depth,
+                         uptr pc, uptr bp, void *context, bool fast) {
   uptr top = 0;
   uptr bottom = 0;
-  GetThreadStackTopAndBottom(false, &top, &bottom);
-  bool fast = StackTrace::WillUseFastUnwind(request_fast);
-  stack->Unwind(max_depth, pc, bp, context, top, bottom, fast);
+  if (StackTrace::WillUseFastUnwind(fast)) {
+    GetThreadStackTopAndBottom(false, &top, &bottom);
+    stack->Unwind(max_depth, pc, bp, nullptr, top, bottom, true);
+  } else
+    stack->Unwind(max_depth, pc, bp, context, 0, 0, false);
 }
 
 static void MaybePrintStackTrace(uptr pc, uptr bp) {

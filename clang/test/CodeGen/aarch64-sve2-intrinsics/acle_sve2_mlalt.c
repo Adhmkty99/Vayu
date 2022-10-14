@@ -5,6 +5,8 @@
 // RUN: %clang_cc1 -triple aarch64-none-linux-gnu -target-feature +sve2 -fallow-half-arguments-and-returns -S -O1 -Werror -Wall -emit-llvm -o - -x c++ %s | FileCheck %s -check-prefix=CPP-CHECK
 // RUN: %clang_cc1 -DSVE_OVERLOADED_FORMS -triple aarch64-none-linux-gnu -target-feature +sve2 -fallow-half-arguments-and-returns -S -O1 -Werror -Wall -emit-llvm -o - %s | FileCheck %s
 // RUN: %clang_cc1 -DSVE_OVERLOADED_FORMS -triple aarch64-none-linux-gnu -target-feature +sve2 -fallow-half-arguments-and-returns -S -O1 -Werror -Wall -emit-llvm -o - -x c++ %s | FileCheck %s -check-prefix=CPP-CHECK
+// RUN: %clang_cc1 -triple aarch64-none-linux-gnu -target-feature +sve -fallow-half-arguments-and-returns -fsyntax-only -std=c99 -verify -verify-ignore-unexpected=error %s
+// RUN: %clang_cc1 -DSVE_OVERLOADED_FORMS -triple aarch64-none-linux-gnu -target-feature +sve -fallow-half-arguments-and-returns -fsyntax-only -std=c99 -verify=overload -verify-ignore-unexpected=error %s
 
 #include <arm_sve.h>
 
@@ -27,6 +29,8 @@
 //
 svint16_t test_svmlalt_s16(svint16_t op1, svint8_t op2, svint8_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_s16'}}
   return SVE_ACLE_FUNC(svmlalt,_s16,,)(op1, op2, op3);
 }
 
@@ -42,6 +46,8 @@ svint16_t test_svmlalt_s16(svint16_t op1, svint8_t op2, svint8_t op3)
 //
 svint32_t test_svmlalt_s32(svint32_t op1, svint16_t op2, svint16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_s32'}}
   return SVE_ACLE_FUNC(svmlalt,_s32,,)(op1, op2, op3);
 }
 
@@ -57,6 +63,8 @@ svint32_t test_svmlalt_s32(svint32_t op1, svint16_t op2, svint16_t op3)
 //
 svint64_t test_svmlalt_s64(svint64_t op1, svint32_t op2, svint32_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_s64'}}
   return SVE_ACLE_FUNC(svmlalt,_s64,,)(op1, op2, op3);
 }
 
@@ -72,6 +80,8 @@ svint64_t test_svmlalt_s64(svint64_t op1, svint32_t op2, svint32_t op3)
 //
 svuint16_t test_svmlalt_u16(svuint16_t op1, svuint8_t op2, svuint8_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_u16'}}
   return SVE_ACLE_FUNC(svmlalt,_u16,,)(op1, op2, op3);
 }
 
@@ -87,6 +97,8 @@ svuint16_t test_svmlalt_u16(svuint16_t op1, svuint8_t op2, svuint8_t op3)
 //
 svuint32_t test_svmlalt_u32(svuint32_t op1, svuint16_t op2, svuint16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_u32'}}
   return SVE_ACLE_FUNC(svmlalt,_u32,,)(op1, op2, op3);
 }
 
@@ -102,6 +114,8 @@ svuint32_t test_svmlalt_u32(svuint32_t op1, svuint16_t op2, svuint16_t op3)
 //
 svuint64_t test_svmlalt_u64(svuint64_t op1, svuint32_t op2, svuint32_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_u64'}}
   return SVE_ACLE_FUNC(svmlalt,_u64,,)(op1, op2, op3);
 }
 
@@ -121,6 +135,8 @@ svuint64_t test_svmlalt_u64(svuint64_t op1, svuint32_t op2, svuint32_t op3)
 //
 svint16_t test_svmlalt_n_s16(svint16_t op1, svint8_t op2, int8_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_n_s16'}}
   return SVE_ACLE_FUNC(svmlalt,_n_s16,,)(op1, op2, op3);
 }
 
@@ -140,6 +156,8 @@ svint16_t test_svmlalt_n_s16(svint16_t op1, svint8_t op2, int8_t op3)
 //
 svint32_t test_svmlalt_n_s32(svint32_t op1, svint16_t op2, int16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_n_s32'}}
   return SVE_ACLE_FUNC(svmlalt,_n_s32,,)(op1, op2, op3);
 }
 
@@ -159,6 +177,8 @@ svint32_t test_svmlalt_n_s32(svint32_t op1, svint16_t op2, int16_t op3)
 //
 svint64_t test_svmlalt_n_s64(svint64_t op1, svint32_t op2, int32_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_n_s64'}}
   return SVE_ACLE_FUNC(svmlalt,_n_s64,,)(op1, op2, op3);
 }
 
@@ -178,6 +198,8 @@ svint64_t test_svmlalt_n_s64(svint64_t op1, svint32_t op2, int32_t op3)
 //
 svuint16_t test_svmlalt_n_u16(svuint16_t op1, svuint8_t op2, uint8_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_n_u16'}}
   return SVE_ACLE_FUNC(svmlalt,_n_u16,,)(op1, op2, op3);
 }
 
@@ -197,6 +219,8 @@ svuint16_t test_svmlalt_n_u16(svuint16_t op1, svuint8_t op2, uint8_t op3)
 //
 svuint32_t test_svmlalt_n_u32(svuint32_t op1, svuint16_t op2, uint16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_n_u32'}}
   return SVE_ACLE_FUNC(svmlalt,_n_u32,,)(op1, op2, op3);
 }
 
@@ -216,6 +240,8 @@ svuint32_t test_svmlalt_n_u32(svuint32_t op1, svuint16_t op2, uint16_t op3)
 //
 svuint64_t test_svmlalt_n_u64(svuint64_t op1, svuint32_t op2, uint32_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_n_u64'}}
   return SVE_ACLE_FUNC(svmlalt,_n_u64,,)(op1, op2, op3);
 }
 
@@ -231,6 +257,8 @@ svuint64_t test_svmlalt_n_u64(svuint64_t op1, svuint32_t op2, uint32_t op3)
 //
 svint32_t test_svmlalt_lane_s32(svint32_t op1, svint16_t op2, svint16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_s32'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_s32,,)(op1, op2, op3, 0);
 }
 
@@ -246,6 +274,8 @@ svint32_t test_svmlalt_lane_s32(svint32_t op1, svint16_t op2, svint16_t op3)
 //
 svint32_t test_svmlalt_lane_s32_1(svint32_t op1, svint16_t op2, svint16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_s32'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_s32,,)(op1, op2, op3, 7);
 }
 
@@ -261,6 +291,8 @@ svint32_t test_svmlalt_lane_s32_1(svint32_t op1, svint16_t op2, svint16_t op3)
 //
 svint64_t test_svmlalt_lane_s64(svint64_t op1, svint32_t op2, svint32_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_s64'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_s64,,)(op1, op2, op3, 0);
 }
 
@@ -276,6 +308,8 @@ svint64_t test_svmlalt_lane_s64(svint64_t op1, svint32_t op2, svint32_t op3)
 //
 svint64_t test_svmlalt_lane_s64_1(svint64_t op1, svint32_t op2, svint32_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_s64'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_s64,,)(op1, op2, op3, 3);
 }
 
@@ -291,6 +325,8 @@ svint64_t test_svmlalt_lane_s64_1(svint64_t op1, svint32_t op2, svint32_t op3)
 //
 svuint32_t test_svmlalt_lane_u32(svuint32_t op1, svuint16_t op2, svuint16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_u32'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_u32,,)(op1, op2, op3, 0);
 }
 
@@ -306,6 +342,8 @@ svuint32_t test_svmlalt_lane_u32(svuint32_t op1, svuint16_t op2, svuint16_t op3)
 //
 svuint32_t test_svmlalt_lane_u32_1(svuint32_t op1, svuint16_t op2, svuint16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_u32'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_u32,,)(op1, op2, op3, 7);
 }
 
@@ -321,6 +359,8 @@ svuint32_t test_svmlalt_lane_u32_1(svuint32_t op1, svuint16_t op2, svuint16_t op
 //
 svuint64_t test_svmlalt_lane_u64(svuint64_t op1, svuint32_t op2, svuint32_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_u64'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_u64,,)(op1, op2, op3, 0);
 }
 
@@ -336,6 +376,8 @@ svuint64_t test_svmlalt_lane_u64(svuint64_t op1, svuint32_t op2, svuint32_t op3)
 //
 svuint64_t test_svmlalt_lane_u64_1(svuint64_t op1, svuint32_t op2, svuint32_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_u64'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_u64,,)(op1, op2, op3, 3);
 }
 
@@ -351,6 +393,8 @@ svuint64_t test_svmlalt_lane_u64_1(svuint64_t op1, svuint32_t op2, svuint32_t op
 //
 svfloat32_t test_svmlalt_f32(svfloat32_t op1, svfloat16_t op2, svfloat16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_f32'}}
   return SVE_ACLE_FUNC(svmlalt,_f32,,)(op1, op2, op3);
 }
 
@@ -370,6 +414,8 @@ svfloat32_t test_svmlalt_f32(svfloat32_t op1, svfloat16_t op2, svfloat16_t op3)
 //
 svfloat32_t test_svmlalt_n_f32(svfloat32_t op1, svfloat16_t op2, float16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_n_f32'}}
   return SVE_ACLE_FUNC(svmlalt,_n_f32,,)(op1, op2, op3);
 }
 
@@ -385,6 +431,8 @@ svfloat32_t test_svmlalt_n_f32(svfloat32_t op1, svfloat16_t op2, float16_t op3)
 //
 svfloat32_t test_svmlalt_lane_f32(svfloat32_t op1, svfloat16_t op2, svfloat16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_f32'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_f32,,)(op1, op2, op3, 0);
 }
 
@@ -400,5 +448,7 @@ svfloat32_t test_svmlalt_lane_f32(svfloat32_t op1, svfloat16_t op2, svfloat16_t 
 //
 svfloat32_t test_svmlalt_lane_f32_1(svfloat32_t op1, svfloat16_t op2, svfloat16_t op3)
 {
+  // overload-warning@+2 {{implicit declaration of function 'svmlalt_lane'}}
+  // expected-warning@+1 {{implicit declaration of function 'svmlalt_lane_f32'}}
   return SVE_ACLE_FUNC(svmlalt_lane,_f32,,)(op1, op2, op3, 7);
 }

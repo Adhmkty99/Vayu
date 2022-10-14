@@ -10,6 +10,7 @@
 // integer kinds.
 
 #include "reduction-templates.h"
+#include "flang/Common/long-double.h"
 #include "flang/Runtime/character.h"
 #include "flang/Runtime/reduction.h"
 #include <cinttypes>

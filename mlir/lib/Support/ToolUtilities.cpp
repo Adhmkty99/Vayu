@@ -21,12 +21,7 @@ using namespace mlir;
 LogicalResult
 mlir::splitAndProcessBuffer(std::unique_ptr<llvm::MemoryBuffer> originalBuffer,
                             ChunkBufferHandler processChunkBuffer,
-                            raw_ostream &os, bool enableSplitting,
-                            bool insertMarkerInOutput) {
-  // If splitting is disabled, we process the full input buffer.
-  if (!enableSplitting)
-    return processChunkBuffer(std::move(originalBuffer), os);
-
+                            raw_ostream &os) {
   const char splitMarkerConst[] = "// -----";
   StringRef splitMarker(splitMarkerConst);
   const int splitMarkerLen = splitMarker.size();
@@ -78,7 +73,7 @@ mlir::splitAndProcessBuffer(std::unique_ptr<llvm::MemoryBuffer> originalBuffer,
 
   // Process each chunk in turn.
   bool hadFailure = false;
-  auto interleaveFn = [&](StringRef subBuffer) {
+  for (auto &subBuffer : sourceBuffers) {
     auto splitLoc = SMLoc::getFromPointer(subBuffer.data());
     unsigned splitLine = fileSourceMgr.getLineAndColumn(splitLoc).first;
     auto subMemBuffer = llvm::MemoryBuffer::getMemBufferCopy(
@@ -87,9 +82,7 @@ mlir::splitAndProcessBuffer(std::unique_ptr<llvm::MemoryBuffer> originalBuffer,
                        Twine(splitLine) + " offset ");
     if (failed(processChunkBuffer(std::move(subMemBuffer), os)))
       hadFailure = true;
-  };
-  llvm::interleave(sourceBuffers, os, interleaveFn,
-                   insertMarkerInOutput ? "\n// -----\n" : "");
+  }
 
   // If any fails, then return a failure of the tool.
   return failure(hadFailure);

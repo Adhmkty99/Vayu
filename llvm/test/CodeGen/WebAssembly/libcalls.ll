@@ -49,8 +49,7 @@ define fp128 @fp128libcalls(fp128 %x, fp128 %y, i32 %z) {
 ; CHECK-LABEL: i128libcalls:
 define i128 @i128libcalls(i128 %x, i128 %y) {
   ; Basic ops should be expanded
-  ; CHECK: .local
-  ; CHECK-NOT: call
+  ; CHECK_NOT: call
   %a = add i128 %x, %y
   ; CHECK: call __multi3
   %b = mul i128 %a, %y

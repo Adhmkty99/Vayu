@@ -163,7 +163,7 @@ defm ADDX    : F3_12<"add", 0b000000, add, I64Regs, i64, i64imm>;
 defm SUBX    : F3_12<"sub", 0b000100, sub, I64Regs, i64, i64imm>;
 
 def TLS_ADDXrr : F3_1<2, 0b000000, (outs I64Regs:$rd),
-                   (ins I64Regs:$rs1, I64Regs:$rs2, TailRelocSymTLSAdd:$sym),
+                   (ins I64Regs:$rs1, I64Regs:$rs2, TLSSym:$sym),
                    "add $rs1, $rs2, $rd, $sym",
                    [(set i64:$rd,
                        (tlsadd i64:$rs1, i64:$rs2, tglobaltlsaddr:$sym))]>;
@@ -238,20 +238,12 @@ let Predicates = [Is64Bit] in {
 let DecoderMethod = "DecodeLoadInt" in
   defm LDX   : Load<"ldx", 0b001011, load, I64Regs, i64>;
 
-let mayLoad = 1, isAsmParserOnly = 1 in {
+let mayLoad = 1, isAsmParserOnly = 1 in
   def TLS_LDXrr : F3_1<3, 0b001011,
-                       (outs IntRegs:$dst),
-                       (ins MEMrr:$addr, TailRelocSymTLSLoad:$sym),
+                       (outs IntRegs:$dst), (ins MEMrr:$addr, TLSSym:$sym),
                        "ldx [$addr], $dst, $sym",
                        [(set i64:$dst,
                            (tlsld ADDRrr:$addr, tglobaltlsaddr:$sym))]>;
-  def GDOP_LDXrr : F3_1<3, 0b001011,
-                       (outs I64Regs:$dst),
-                       (ins MEMrr:$addr, TailRelocSymGOTLoad:$sym),
-                       "ldx [$addr], $dst, $sym",
-                       [(set i64:$dst,
-                           (load_gdop ADDRrr:$addr, tglobaladdr:$sym))]>;
-}
 
 // Extending loads to i64.
 def : Pat<(i64 (zextloadi1 ADDRrr:$addr)), (LDUBrr ADDRrr:$addr)>;
@@ -344,7 +336,6 @@ def FMOVD_XCC : F4_3<0b110101, 0b000010, (outs DFPRegs:$rd),
                       "fmovd$cond %xcc, $rs2, $rd",
                       [(set f64:$rd,
                        (SPselectxcc f64:$rs2, f64:$f, imm:$cond))]>;
-let Predicates = [Is64Bit, HasHardQuad] in
 def FMOVQ_XCC : F4_3<0b110101, 0b000011, (outs QFPRegs:$rd),
                       (ins QFPRegs:$rs2, QFPRegs:$f, CCOp:$cond),
                       "fmovq$cond %xcc, $rs2, $rd",
@@ -445,11 +436,11 @@ def FXTOD : F3_3u<2, 0b110100, 0b010001000,
                  (outs DFPRegs:$rd), (ins DFPRegs:$rs2),
                  "fxtod $rs2, $rd",
                  [(set DFPRegs:$rd, (SPxtof DFPRegs:$rs2))]>;
-let Predicates = [Is64Bit, HasHardQuad] in
 def FXTOQ : F3_3u<2, 0b110100, 0b010001100,
                  (outs QFPRegs:$rd), (ins DFPRegs:$rs2),
                  "fxtoq $rs2, $rd",
-                 [(set QFPRegs:$rd, (SPxtof DFPRegs:$rs2))]>;
+                 [(set QFPRegs:$rd, (SPxtof DFPRegs:$rs2))]>,
+                 Requires<[HasHardQuad]>;
 
 def FSTOX : F3_3u<2, 0b110100, 0b010000001,
                  (outs DFPRegs:$rd), (ins FPRegs:$rs2),
@@ -459,11 +450,11 @@ def FDTOX : F3_3u<2, 0b110100, 0b010000010,
                  (outs DFPRegs:$rd), (ins DFPRegs:$rs2),
                  "fdtox $rs2, $rd",
                  [(set DFPRegs:$rd, (SPftox DFPRegs:$rs2))]>;
-let Predicates = [Is64Bit, HasHardQuad] in
 def FQTOX : F3_3u<2, 0b110100, 0b010000011,
                  (outs DFPRegs:$rd), (ins QFPRegs:$rs2),
                  "fqtox $rs2, $rd",
-                 [(set DFPRegs:$rd, (SPftox QFPRegs:$rs2))]>;
+                 [(set DFPRegs:$rd, (SPftox QFPRegs:$rs2))]>,
+                 Requires<[HasHardQuad]>;
 
 } // Predicates = [Is64Bit]
 

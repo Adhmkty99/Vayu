@@ -30,14 +30,6 @@
 namespace clang {
 namespace dataflow {
 
-struct DataflowAnalysisOptions {
-  /// Determines whether to apply the built-in transfer functions.
-  // FIXME: Remove this option once the framework supports composing analyses
-  // (at which point the built-in transfer functions can be simply a standalone
-  // analysis).
-  bool ApplyBuiltinTransfer = true;
-};
-
 /// Type-erased lattice element container.
 ///
 /// Requirements:
@@ -50,17 +42,16 @@ struct TypeErasedLattice {
 
 /// Type-erased base class for dataflow analyses built on a single lattice type.
 class TypeErasedDataflowAnalysis : public Environment::ValueModel {
-  DataflowAnalysisOptions Options;
+  /// Determines whether to apply the built-in transfer functions.
+  // FIXME: Remove this option once the framework supports composing analyses
+  // (at which point the built-in transfer functions can be simply a standalone
+  // analysis).
+  bool ApplyBuiltinTransfer;
 
 public:
-  TypeErasedDataflowAnalysis() : Options({}) {}
-
-  /// Deprecated. Use the `DataflowAnalysisOptions` constructor instead.
+  TypeErasedDataflowAnalysis() : ApplyBuiltinTransfer(true) {}
   TypeErasedDataflowAnalysis(bool ApplyBuiltinTransfer)
-      : Options({ApplyBuiltinTransfer}) {}
-
-  TypeErasedDataflowAnalysis(DataflowAnalysisOptions Options)
-      : Options(Options) {}
+      : ApplyBuiltinTransfer(ApplyBuiltinTransfer) {}
 
   virtual ~TypeErasedDataflowAnalysis() {}
 
@@ -89,7 +80,7 @@ public:
 
   /// Determines whether to apply the built-in transfer functions, which model
   /// the heap and stack in the `Environment`.
-  bool applyBuiltinTransfer() const { return Options.ApplyBuiltinTransfer; }
+  bool applyBuiltinTransfer() const { return ApplyBuiltinTransfer; }
 };
 
 /// Type-erased model of the program at a given program point.
@@ -124,17 +115,13 @@ TypeErasedDataflowAnalysisState transferBlock(
         HandleTransferredStmt = nullptr);
 
 /// Performs dataflow analysis and returns a mapping from basic block IDs to
-/// dataflow analysis states that model the respective basic blocks. Indices of
-/// the returned vector correspond to basic block IDs. Returns an error if the
-/// dataflow analysis cannot be performed successfully. Otherwise, calls
-/// `PostVisitStmt` on each statement with the final analysis results at that
-/// program point.
+/// dataflow analysis states that model the respective basic blocks. Indices
+/// of the returned vector correspond to basic block IDs. Returns an error if
+/// the dataflow analysis cannot be performed successfully.
 llvm::Expected<std::vector<llvm::Optional<TypeErasedDataflowAnalysisState>>>
-runTypeErasedDataflowAnalysis(
-    const ControlFlowContext &CFCtx, TypeErasedDataflowAnalysis &Analysis,
-    const Environment &InitEnv,
-    std::function<void(const Stmt *, const TypeErasedDataflowAnalysisState &)>
-        PostVisitStmt = nullptr);
+runTypeErasedDataflowAnalysis(const ControlFlowContext &CFCtx,
+                              TypeErasedDataflowAnalysis &Analysis,
+                              const Environment &InitEnv);
 
 } // namespace dataflow
 } // namespace clang

@@ -8,6 +8,8 @@ from lldbsuite.test import lldbutil
 
 class TestMacros(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @expectedFailureAll(
         compiler="clang",
         bugnumber="clang does not emit .debug_macro[.dwo] sections.")

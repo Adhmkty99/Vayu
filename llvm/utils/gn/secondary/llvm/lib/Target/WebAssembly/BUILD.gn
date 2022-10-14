@@ -60,6 +60,7 @@ static_library("LLVMWebAssemblyCodeGen") {
     "WebAssemblyOptimizeLiveIntervals.cpp",
     "WebAssemblyOptimizeReturned.cpp",
     "WebAssemblyPeephole.cpp",
+    "WebAssemblyPrepareForLiveIntervals.cpp",
     "WebAssemblyRegColoring.cpp",
     "WebAssemblyRegNumbering.cpp",
     "WebAssemblyRegStackify.cpp",

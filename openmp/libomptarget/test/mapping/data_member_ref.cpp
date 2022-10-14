@@ -2,8 +2,7 @@
 
 // Wrong results on amdgpu
 // XFAIL: amdgcn-amd-amdhsa
-// XFAIL: amdgcn-amd-amdhsa-oldDriver
-// XFAIL: amdgcn-amd-amdhsa-LTO
+// XFAIL: amdgcn-amd-amdhsa-newDriver
 
 #include <stdio.h>
 

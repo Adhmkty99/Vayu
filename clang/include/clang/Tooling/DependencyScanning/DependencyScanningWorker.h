@@ -13,6 +13,7 @@
 #include "clang/Basic/FileManager.h"
 #include "clang/Basic/LLVM.h"
 #include "clang/Frontend/PCHContainerOperations.h"
+#include "clang/Lex/PreprocessorExcludedConditionalDirectiveSkipMapping.h"
 #include "clang/Tooling/DependencyScanning/DependencyScanningService.h"
 #include "clang/Tooling/DependencyScanning/ModuleDepCollector.h"
 #include "llvm/Support/Error.h"
@@ -52,8 +53,7 @@ public:
 /// using the regular processing run.
 class DependencyScanningWorker {
 public:
-  DependencyScanningWorker(DependencyScanningService &Service,
-                           llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> FS);
+  DependencyScanningWorker(DependencyScanningService &Service);
 
   /// Run the dependency scanning tool for a given clang driver command-line,
   /// and report the discovered dependencies to the provided consumer. If \p
@@ -69,6 +69,7 @@ public:
 
 private:
   std::shared_ptr<PCHContainerOperations> PCHContainerOps;
+  std::unique_ptr<ExcludedPreprocessorDirectiveSkipMapping> PPSkipMappings;
 
   /// The physical filesystem overlaid by `InMemoryFS`.
   llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> RealFS;

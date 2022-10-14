@@ -1055,7 +1055,8 @@ def SKXWriteResGroup58 : SchedWriteRes<[SKXPort23]> {
   let ResourceCycles = [1];
 }
 def: InstRW<[SKXWriteResGroup58], (instregex "MOVSX(16|32|64)rm(8|16|32)",
-                                             "MOVZX(16|32|64)rm(8|16)")>;
+                                             "MOVZX(16|32|64)rm(8|16)",
+                                             "(V?)MOVDDUPrm")>;  // TODO: Should this be SKXWriteResGroup71?
 
 def SKXWriteResGroup61 : SchedWriteRes<[SKXPort5,SKXPort015]> {
   let Latency = 5;
@@ -1158,10 +1159,11 @@ def SKXWriteResGroup71 : SchedWriteRes<[SKXPort23]> {
 }
 def: InstRW<[SKXWriteResGroup71], (instrs VBROADCASTSSrm,
                                           VPBROADCASTDrm,
-                                          VPBROADCASTQrm)>;
-def: InstRW<[SKXWriteResGroup71], (instregex "(V?)MOVSHDUPrm",
-                                             "(V?)MOVSLDUPrm",
-                                             "(V?)MOVDDUPrm")>;
+                                          VPBROADCASTQrm,
+                                          VMOVSHDUPrm,
+                                          VMOVSLDUPrm,
+                                          MOVSHDUPrm,
+                                          MOVSLDUPrm)>;
 
 def SKXWriteResGroup72 : SchedWriteRes<[SKXPort5]> {
   let Latency = 6;

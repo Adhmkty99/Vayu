@@ -1,4 +1,4 @@
-// REQUIRES: amdgpu-registered-target
+// REQUIRES: clang-driver, amdgpu-registered-target
 // RUN: %clang -E -dM --offload-arch=gfx906 -mwavefrontsize64 \
 // RUN:   --cuda-device-only -nogpuinc -nogpulib \
 // RUN:   %s 2>&1 | FileCheck --check-prefixes=WAVE64 %s

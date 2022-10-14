@@ -475,20 +475,6 @@ void SwitchOp::build(OpBuilder &builder, OperationState &result, Value value,
         caseValuesAttr, caseDestinations, caseOperands);
 }
 
-void SwitchOp::build(OpBuilder &builder, OperationState &result, Value value,
-                     Block *defaultDestination, ValueRange defaultOperands,
-                     ArrayRef<int32_t> caseValues, BlockRange caseDestinations,
-                     ArrayRef<ValueRange> caseOperands) {
-  DenseIntElementsAttr caseValuesAttr;
-  if (!caseValues.empty()) {
-    ShapedType caseValueType = VectorType::get(
-        static_cast<int64_t>(caseValues.size()), value.getType());
-    caseValuesAttr = DenseIntElementsAttr::get(caseValueType, caseValues);
-  }
-  build(builder, result, value, defaultDestination, defaultOperands,
-        caseValuesAttr, caseDestinations, caseOperands);
-}
-
 /// <cases> ::= `default` `:` bb-id (`(` ssa-use-and-type-list `)`)?
 ///             ( `,` integer `:` bb-id (`(` ssa-use-and-type-list `)`)? )*
 static ParseResult parseSwitchOpCases(
@@ -503,8 +489,7 @@ static ParseResult parseSwitchOpCases(
       parser.parseSuccessor(defaultDestination))
     return failure();
   if (succeeded(parser.parseOptionalLParen())) {
-    if (parser.parseOperandList(defaultOperands, OpAsmParser::Delimiter::None,
-                                /*allowResultNumber=*/false) ||
+    if (parser.parseRegionArgumentList(defaultOperands) ||
         parser.parseColonTypeList(defaultOperandTypes) || parser.parseRParen())
       return failure();
   }
@@ -524,8 +509,7 @@ static ParseResult parseSwitchOpCases(
         failed(parser.parseSuccessor(destination)))
       return failure();
     if (succeeded(parser.parseOptionalLParen())) {
-      if (failed(parser.parseOperandList(operands, OpAsmParser::Delimiter::None,
-                                         /*allowResultNumber=*/false)) ||
+      if (failed(parser.parseRegionArgumentList(operands)) ||
           failed(parser.parseColonTypeList(operandTypes)) ||
           failed(parser.parseRParen()))
         return failure();
@@ -719,7 +703,6 @@ static LogicalResult simplifyPassThroughSwitch(SwitchOp op,
   SmallVector<ValueRange> newCaseOperands;
   SmallVector<SmallVector<Value>> argStorage;
   auto caseValues = op.getCaseValues();
-  argStorage.reserve(caseValues->size() + 1);
   auto caseDests = op.getCaseDestinations();
   bool requiresChange = false;
   for (int64_t i = 0, size = caseValues->size(); i < size; ++i) {
@@ -745,7 +728,7 @@ static LogicalResult simplifyPassThroughSwitch(SwitchOp op,
     return failure();
 
   rewriter.replaceOpWithNewOp<SwitchOp>(op, op.getFlag(), defaultDest,
-                                        defaultOperands, *caseValues,
+                                        defaultOperands, caseValues.getValue(),
                                         newCaseDests, newCaseOperands);
   return success();
 }

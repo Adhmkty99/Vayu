@@ -12,6 +12,8 @@ from lldbsuite.test.lldbtest import *
 
 class AssertingInferiorTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @expectedFailureAll(
         oslist=["windows"],
         bugnumber="llvm.org/pr21793: need to implement support for detecting assertion / abort on Windows")

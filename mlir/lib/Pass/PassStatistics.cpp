@@ -21,7 +21,7 @@ namespace {
 /// Information pertaining to a specific statistic.
 struct Statistic {
   const char *name, *desc;
-  uint64_t value;
+  unsigned value;
 };
 } // namespace
 
@@ -33,10 +33,11 @@ static void printPassEntry(raw_ostream &os, unsigned indent, StringRef pass,
     return;
 
   // Make sure to sort the statistics by name.
-  llvm::array_pod_sort(
-      stats.begin(), stats.end(), [](const auto *lhs, const auto *rhs) {
-        return StringRef{lhs->name}.compare(StringRef{rhs->name});
-      });
+  llvm::array_pod_sort(stats.begin(), stats.end(),
+                       [](const auto *lhs, const auto *rhs) {
+                         return llvm::array_pod_sort_comparator<const char *>(
+                             &lhs->name, &rhs->name);
+                       });
 
   // Collect the largest name and value length from each of the statistics.
   size_t largestName = 0, largestValue = 0;
@@ -119,7 +120,7 @@ static void printResultsAsPipeline(raw_ostream &os, OpPassManager &pm) {
 
       // Print each of the children passes.
       for (OpPassManager &mgr : mgrs) {
-        auto name = ("'" + mgr.getOpAnchorName() + "' Pipeline").str();
+        auto name = ("'" + mgr.getOpName() + "' Pipeline").str();
         printPassEntry(os, indent, name);
         for (Pass &pass : mgr.getPasses())
           printPass(indent + 2, &pass);

@@ -26,7 +26,9 @@ exception:
 ; verifier prevents duplicating callbr destinations.
 define void @callbr() {
 entry:
-  callbr i32 asm "", "=r,r,!i,!i"(i32 0)
+  callbr i32 asm "", "=r,r,i,i"(i32 0,
+                                i8 *blockaddress(@callbr, %two),
+                                i8 *blockaddress(@callbr, %three))
               to label %one [label %two, label %three]
 one:
   ret void

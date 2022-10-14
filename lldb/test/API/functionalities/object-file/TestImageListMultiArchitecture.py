@@ -17,6 +17,8 @@ from lldbsuite.test import lldbutil
 
 class TestImageListMultiArchitecture(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @no_debug_info_test
     @skipIfRemote
     def test_image_list_shows_multiple_architectures(self):

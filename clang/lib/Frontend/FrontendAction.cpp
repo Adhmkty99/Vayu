@@ -24,7 +24,6 @@
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Lex/PreprocessorOptions.h"
 #include "clang/Parse/ParseAST.h"
-#include "clang/Sema/HLSLExternalSemaSource.h"
 #include "clang/Serialization/ASTDeserializationListener.h"
 #include "clang/Serialization/ASTReader.h"
 #include "clang/Serialization/GlobalModuleIndex.h"
@@ -414,7 +413,11 @@ static std::error_code collectModuleHeaderIncludes(
 
     // Sort header paths and make the header inclusion order deterministic
     // across different OSs and filesystems.
-    llvm::sort(Headers, llvm::less_first());
+    llvm::sort(Headers.begin(), Headers.end(), [](
+      const std::pair<std::string, const FileEntry *> &LHS,
+      const std::pair<std::string, const FileEntry *> &RHS) {
+        return LHS.first < RHS.first;
+    });
     for (auto &H : Headers) {
       // Include this header as part of the umbrella directory.
       Module->addTopHeader(H.second);
@@ -581,7 +584,6 @@ bool FrontendAction::BeginSourceFile(CompilerInstance &CI,
   auto FailureCleanup = llvm::make_scope_exit([&]() {
     if (HasBegunSourceFile)
       CI.getDiagnosticClient().EndSourceFile();
-    CI.setASTConsumer(nullptr);
     CI.clearOutputFiles(/*EraseFiles=*/true);
     CI.getLangOpts().setCompilingModule(LangOptions::CMK_None);
     setCurrentInput(FrontendInputFile());
@@ -759,10 +761,10 @@ bool FrontendAction::BeginSourceFile(CompilerInstance &CI,
     PreprocessorOptions &PPOpts = CI.getPreprocessorOpts();
     StringRef PCHInclude = PPOpts.ImplicitPCHInclude;
     std::string SpecificModuleCachePath = CI.getSpecificModuleCachePath();
-    if (auto PCHDir = FileMgr.getOptionalDirectoryRef(PCHInclude)) {
+    if (auto PCHDir = FileMgr.getDirectory(PCHInclude)) {
       std::error_code EC;
       SmallString<128> DirNative;
-      llvm::sys::path::native(PCHDir->getName(), DirNative);
+      llvm::sys::path::native((*PCHDir)->getName(), DirNative);
       bool Found = false;
       llvm::vfs::FileSystem &FS = FileMgr.getVirtualFileSystem();
       for (llvm::vfs::directory_iterator Dir = FS.dir_begin(DirNative, EC),
@@ -1016,13 +1018,6 @@ bool FrontendAction::BeginSourceFile(CompilerInstance &CI,
     CI.getASTContext().setExternalSource(Override);
   }
 
-  // Setup HLSL External Sema Source
-  if (CI.getLangOpts().HLSL && CI.hasASTContext()) {
-    IntrusiveRefCntPtr<ExternalASTSource> HLSLSema(
-        new HLSLExternalSemaSource());
-    CI.getASTContext().setExternalSource(HLSLSema);
-  }
-
   FailureCleanup.release();
   return true;
 }
@@ -1084,7 +1079,7 @@ void FrontendAction::EndSourceFile() {
   }
 
   if (CI.getFrontendOpts().ShowStats) {
-    llvm::errs() << "\nSTATISTICS FOR '" << getCurrentFileOrBufferName() << "':\n";
+    llvm::errs() << "\nSTATISTICS FOR '" << getCurrentFile() << "':\n";
     CI.getPreprocessor().PrintStats();
     CI.getPreprocessor().getIdentifierTable().PrintStats();
     CI.getPreprocessor().getHeaderSearchInfo().PrintStats();
@@ -1205,3 +1200,4 @@ bool WrapperFrontendAction::hasCodeCompletionSupport() const {
 WrapperFrontendAction::WrapperFrontendAction(
     std::unique_ptr<FrontendAction> WrappedAction)
   : WrappedAction(std::move(WrappedAction)) {}
+

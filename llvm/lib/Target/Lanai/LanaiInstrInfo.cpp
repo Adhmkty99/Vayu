@@ -592,7 +592,9 @@ bool LanaiInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       }
 
       // If the block has any instructions after a branch, delete them.
-      MBB.erase(std::next(Instruction), MBB.end());
+      while (std::next(Instruction) != MBB.end()) {
+        std::next(Instruction)->eraseFromParent();
+      }
 
       Condition.clear();
       FalseBlock = nullptr;

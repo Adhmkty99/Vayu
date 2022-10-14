@@ -189,17 +189,7 @@ llvm::Value *CodeGenFunction::EvaluateExprAsBool(const Expr *E) {
 /// ignoring the result.
 void CodeGenFunction::EmitIgnoredExpr(const Expr *E) {
   if (E->isPRValue())
-    return (void)EmitAnyExpr(E, AggValueSlot::ignored(), true);
-
-  // if this is a bitfield-resulting conditional operator, we can special case
-  // emit this. The normal 'EmitLValue' version of this is particularly
-  // difficult to codegen for, since creating a single "LValue" for two
-  // different sized arguments here is not particularly doable.
-  if (const auto *CondOp = dyn_cast<AbstractConditionalOperator>(
-          E->IgnoreParenNoopCasts(getContext()))) {
-    if (CondOp->getObjectKind() == OK_BitField)
-      return EmitIgnoredConditionalOperator(CondOp);
-  }
+    return (void) EmitAnyExpr(E, AggValueSlot::ignored(), true);
 
   // Just emit it as an l-value and drop the result.
   EmitLValue(E);
@@ -757,23 +747,23 @@ void CodeGenFunction::EmitTypeCheck(TypeCheckKind TCK, SourceLocation Loc,
     }
   }
 
-  llvm::MaybeAlign AlignVal;
+  uint64_t AlignVal = 0;
   llvm::Value *PtrAsInt = nullptr;
 
   if (SanOpts.has(SanitizerKind::Alignment) &&
       !SkippedChecks.has(SanitizerKind::Alignment)) {
-    AlignVal = Alignment.getAsMaybeAlign();
+    AlignVal = Alignment.getQuantity();
     if (!Ty->isIncompleteType() && !AlignVal)
       AlignVal = CGM.getNaturalTypeAlignment(Ty, nullptr, nullptr,
                                              /*ForPointeeType=*/true)
-                     .getAsMaybeAlign();
+                     .getQuantity();
 
     // The glvalue must be suitably aligned.
-    if (AlignVal && *AlignVal > llvm::Align(1) &&
-        (!PtrToAlloca || PtrToAlloca->getAlign() < *AlignVal)) {
+    if (AlignVal > 1 &&
+        (!PtrToAlloca || PtrToAlloca->getAlignment() < AlignVal)) {
       PtrAsInt = Builder.CreatePtrToInt(Ptr, IntPtrTy);
       llvm::Value *Align = Builder.CreateAnd(
-          PtrAsInt, llvm::ConstantInt::get(IntPtrTy, AlignVal->value() - 1));
+          PtrAsInt, llvm::ConstantInt::get(IntPtrTy, AlignVal - 1));
       llvm::Value *Aligned =
           Builder.CreateICmpEQ(Align, llvm::ConstantInt::get(IntPtrTy, 0));
       if (Aligned != True)
@@ -782,9 +772,12 @@ void CodeGenFunction::EmitTypeCheck(TypeCheckKind TCK, SourceLocation Loc,
   }
 
   if (Checks.size() > 0) {
+    // Make sure we're not losing information. Alignment needs to be a power of
+    // 2
+    assert(!AlignVal || (uint64_t)1 << llvm::Log2_64(AlignVal) == AlignVal);
     llvm::Constant *StaticData[] = {
         EmitCheckSourceLocation(Loc), EmitCheckTypeDescriptor(Ty),
-        llvm::ConstantInt::get(Int8Ty, AlignVal ? llvm::Log2(*AlignVal) : 1),
+        llvm::ConstantInt::get(Int8Ty, AlignVal ? llvm::Log2_64(AlignVal) : 1),
         llvm::ConstantInt::get(Int8Ty, TCK)};
     EmitCheck(Checks, SanitizerHandler::TypeMismatch, StaticData,
               PtrAsInt ? PtrAsInt : Ptr);
@@ -877,8 +870,7 @@ void CodeGenFunction::EmitTypeCheck(TypeCheckKind TCK, SourceLocation Loc,
 
 /// Determine whether this expression refers to a flexible array member in a
 /// struct. We disable array bounds checks for such members.
-static bool isFlexibleArrayMemberExpr(const Expr *E,
-                                      unsigned StrictFlexArraysLevel) {
+static bool isFlexibleArrayMemberExpr(const Expr *E) {
   // For compatibility with existing code, we treat arrays of length 0 or
   // 1 as flexible array members.
   // FIXME: This is inconsistent with the warning code in SemaChecking. Unify
@@ -887,11 +879,6 @@ static bool isFlexibleArrayMemberExpr(const Expr *E,
   if (const auto *CAT = dyn_cast<ConstantArrayType>(AT)) {
     // FIXME: Sema doesn't treat [1] as a flexible array member if the bound
     // was produced by macro expansion.
-    if (StrictFlexArraysLevel >= 2 && CAT->getSize().ugt(0))
-      return false;
-    // FIXME: While the default -fstrict-flex-arrays=0 permits Size>1 trailing
-    // arrays to be treated as flexible-array-members, we still emit ubsan
-    // checks as if they are not.
     if (CAT->getSize().ugt(1))
       return false;
   } else if (!isa<IncompleteArrayType>(AT))
@@ -906,10 +893,8 @@ static bool isFlexibleArrayMemberExpr(const Expr *E,
     if (const auto *FD = dyn_cast<FieldDecl>(ME->getMemberDecl())) {
       // FIXME: Sema doesn't treat a T[1] union member as a flexible array
       // member, only a T[0] or T[] member gets that treatment.
-      // Under StrictFlexArraysLevel, obey c99+ that disallows FAM in union, see
-      // C11 6.7.2.1 §18
       if (FD->getParent()->isUnion())
-        return StrictFlexArraysLevel < 2;
+        return true;
       RecordDecl::field_iterator FI(
           DeclContext::decl_iterator(const_cast<FieldDecl *>(FD)));
       return ++FI == FD->getParent()->field_end();
@@ -962,10 +947,8 @@ llvm::Value *CodeGenFunction::LoadPassedObjectSize(const Expr *E,
 
 /// If Base is known to point to the start of an array, return the length of
 /// that array. Return 0 if the length cannot be determined.
-static llvm::Value *getArrayIndexingBound(CodeGenFunction &CGF,
-                                          const Expr *Base,
-                                          QualType &IndexedType,
-                                          unsigned StrictFlexArraysLevel) {
+static llvm::Value *getArrayIndexingBound(
+    CodeGenFunction &CGF, const Expr *Base, QualType &IndexedType) {
   // For the vector indexing extension, the bound is the number of elements.
   if (const VectorType *VT = Base->getType()->getAs<VectorType>()) {
     IndexedType = Base->getType();
@@ -976,7 +959,7 @@ static llvm::Value *getArrayIndexingBound(CodeGenFunction &CGF,
 
   if (const auto *CE = dyn_cast<CastExpr>(Base)) {
     if (CE->getCastKind() == CK_ArrayToPointerDecay &&
-        !isFlexibleArrayMemberExpr(CE->getSubExpr(), StrictFlexArraysLevel)) {
+        !isFlexibleArrayMemberExpr(CE->getSubExpr())) {
       IndexedType = CE->getSubExpr()->getType();
       const ArrayType *AT = IndexedType->castAsArrayTypeUnsafe();
       if (const auto *CAT = dyn_cast<ConstantArrayType>(AT))
@@ -1003,11 +986,8 @@ void CodeGenFunction::EmitBoundsCheck(const Expr *E, const Expr *Base,
          "should not be called unless adding bounds checks");
   SanitizerScope SanScope(this);
 
-  const unsigned StrictFlexArraysLevel = getLangOpts().StrictFlexArrays;
-
   QualType IndexedType;
-  llvm::Value *Bound =
-      getArrayIndexingBound(*this, Base, IndexedType, StrictFlexArraysLevel);
+  llvm::Value *Bound = getArrayIndexingBound(*this, Base, IndexedType);
   if (!Bound)
     return;
 
@@ -1177,22 +1157,6 @@ Address CodeGenFunction::EmitPointerWithAlignment(const Expr *E,
       if (BaseInfo) *BaseInfo = LV.getBaseInfo();
       if (TBAAInfo) *TBAAInfo = LV.getTBAAInfo();
       return LV.getAddress(*this);
-    }
-  }
-
-  // std::addressof and variants.
-  if (auto *Call = dyn_cast<CallExpr>(E)) {
-    switch (Call->getBuiltinCallee()) {
-    default:
-      break;
-    case Builtin::BIaddressof:
-    case Builtin::BI__addressof:
-    case Builtin::BI__builtin_addressof: {
-      LValue LV = EmitLValue(Call->getArg(0));
-      if (BaseInfo) *BaseInfo = LV.getBaseInfo();
-      if (TBAAInfo) *TBAAInfo = LV.getTBAAInfo();
-      return LV.getAddress(*this);
-    }
     }
   }
 
@@ -4606,100 +4570,8 @@ static Optional<LValue> EmitLValueOrThrowExpression(CodeGenFunction &CGF,
   return CGF.EmitLValue(Operand);
 }
 
-namespace {
-// Handle the case where the condition is a constant evaluatable simple integer,
-// which means we don't have to separately handle the true/false blocks.
-llvm::Optional<LValue> HandleConditionalOperatorLValueSimpleCase(
-    CodeGenFunction &CGF, const AbstractConditionalOperator *E) {
-  const Expr *condExpr = E->getCond();
-  bool CondExprBool;
-  if (CGF.ConstantFoldsToSimpleInteger(condExpr, CondExprBool)) {
-    const Expr *Live = E->getTrueExpr(), *Dead = E->getFalseExpr();
-    if (!CondExprBool)
-      std::swap(Live, Dead);
-
-    if (!CGF.ContainsLabel(Dead)) {
-      // If the true case is live, we need to track its region.
-      if (CondExprBool)
-        CGF.incrementProfileCounter(E);
-      // If a throw expression we emit it and return an undefined lvalue
-      // because it can't be used.
-      if (auto *ThrowExpr = dyn_cast<CXXThrowExpr>(Live->IgnoreParens())) {
-        CGF.EmitCXXThrowExpr(ThrowExpr);
-        llvm::Type *ElemTy = CGF.ConvertType(Dead->getType());
-        llvm::Type *Ty = llvm::PointerType::getUnqual(ElemTy);
-        return CGF.MakeAddrLValue(
-            Address(llvm::UndefValue::get(Ty), ElemTy, CharUnits::One()),
-            Dead->getType());
-      }
-      return CGF.EmitLValue(Live);
-    }
-  }
-  return llvm::None;
-}
-struct ConditionalInfo {
-  llvm::BasicBlock *lhsBlock, *rhsBlock;
-  Optional<LValue> LHS, RHS;
-};
-
-// Create and generate the 3 blocks for a conditional operator.
-// Leaves the 'current block' in the continuation basic block.
-template<typename FuncTy>
-ConditionalInfo EmitConditionalBlocks(CodeGenFunction &CGF,
-                                      const AbstractConditionalOperator *E,
-                                      const FuncTy &BranchGenFunc) {
-  ConditionalInfo Info{CGF.createBasicBlock("cond.true"),
-                       CGF.createBasicBlock("cond.false"), llvm::None,
-                       llvm::None};
-  llvm::BasicBlock *endBlock = CGF.createBasicBlock("cond.end");
-
-  CodeGenFunction::ConditionalEvaluation eval(CGF);
-  CGF.EmitBranchOnBoolExpr(E->getCond(), Info.lhsBlock, Info.rhsBlock,
-                           CGF.getProfileCount(E));
-
-  // Any temporaries created here are conditional.
-  CGF.EmitBlock(Info.lhsBlock);
-  CGF.incrementProfileCounter(E);
-  eval.begin(CGF);
-  Info.LHS = BranchGenFunc(CGF, E->getTrueExpr());
-  eval.end(CGF);
-  Info.lhsBlock = CGF.Builder.GetInsertBlock();
-
-  if (Info.LHS)
-    CGF.Builder.CreateBr(endBlock);
-
-  // Any temporaries created here are conditional.
-  CGF.EmitBlock(Info.rhsBlock);
-  eval.begin(CGF);
-  Info.RHS = BranchGenFunc(CGF, E->getFalseExpr());
-  eval.end(CGF);
-  Info.rhsBlock = CGF.Builder.GetInsertBlock();
-  CGF.EmitBlock(endBlock);
-
-  return Info;
-}
-} // namespace
-
-void CodeGenFunction::EmitIgnoredConditionalOperator(
-    const AbstractConditionalOperator *E) {
-  if (!E->isGLValue()) {
-    // ?: here should be an aggregate.
-    assert(hasAggregateEvaluationKind(E->getType()) &&
-           "Unexpected conditional operator!");
-    return (void)EmitAggExprToLValue(E);
-  }
-
-  OpaqueValueMapping binding(*this, E);
-  if (HandleConditionalOperatorLValueSimpleCase(*this, E))
-    return;
-
-  EmitConditionalBlocks(*this, E, [](CodeGenFunction &CGF, const Expr *E) {
-    CGF.EmitIgnoredExpr(E);
-    return LValue{};
-  });
-}
-LValue CodeGenFunction::EmitConditionalOperatorLValue(
-    const AbstractConditionalOperator *expr) {
+LValue CodeGenFunction::
+EmitConditionalOperatorLValue(const AbstractConditionalOperator *expr) {
   if (!expr->isGLValue()) {
     // ?: here should be an aggregate.
     assert(hasAggregateEvaluationKind(expr->getType()) &&
@@ -4708,38 +4580,84 @@ LValue CodeGenFunction::EmitConditionalOperatorLValue(
   }
 
   OpaqueValueMapping binding(*this, expr);
-  if (llvm::Optional<LValue> Res =
-          HandleConditionalOperatorLValueSimpleCase(*this, expr))
-    return *Res;
 
-  ConditionalInfo Info = EmitConditionalBlocks(
-      *this, expr, [](CodeGenFunction &CGF, const Expr *E) {
-        return EmitLValueOrThrowExpression(CGF, E);
-      });
+  const Expr *condExpr = expr->getCond();
+  bool CondExprBool;
+  if (ConstantFoldsToSimpleInteger(condExpr, CondExprBool)) {
+    const Expr *live = expr->getTrueExpr(), *dead = expr->getFalseExpr();
+    if (!CondExprBool) std::swap(live, dead);
 
-  if ((Info.LHS && !Info.LHS->isSimple()) ||
-      (Info.RHS && !Info.RHS->isSimple()))
+    if (!ContainsLabel(dead)) {
+      // If the true case is live, we need to track its region.
+      if (CondExprBool)
+        incrementProfileCounter(expr);
+      // If a throw expression we emit it and return an undefined lvalue
+      // because it can't be used.
+      if (auto *ThrowExpr = dyn_cast<CXXThrowExpr>(live->IgnoreParens())) {
+        EmitCXXThrowExpr(ThrowExpr);
+        llvm::Type *ElemTy = ConvertType(dead->getType());
+        llvm::Type *Ty = llvm::PointerType::getUnqual(ElemTy);
+        return MakeAddrLValue(
+            Address(llvm::UndefValue::get(Ty), ElemTy, CharUnits::One()),
+            dead->getType());
+      }
+      return EmitLValue(live);
+    }
+  }
+
+  llvm::BasicBlock *lhsBlock = createBasicBlock("cond.true");
+  llvm::BasicBlock *rhsBlock = createBasicBlock("cond.false");
+  llvm::BasicBlock *contBlock = createBasicBlock("cond.end");
+
+  ConditionalEvaluation eval(*this);
+  EmitBranchOnBoolExpr(condExpr, lhsBlock, rhsBlock, getProfileCount(expr));
+
+  // Any temporaries created here are conditional.
+  EmitBlock(lhsBlock);
+  incrementProfileCounter(expr);
+  eval.begin(*this);
+  Optional<LValue> lhs =
+      EmitLValueOrThrowExpression(*this, expr->getTrueExpr());
+  eval.end(*this);
+
+  if (lhs && !lhs->isSimple())
     return EmitUnsupportedLValue(expr, "conditional operator");
 
-  if (Info.LHS && Info.RHS) {
-    Address lhsAddr = Info.LHS->getAddress(*this);
-    Address rhsAddr = Info.RHS->getAddress(*this);
+  lhsBlock = Builder.GetInsertBlock();
+  if (lhs)
+    Builder.CreateBr(contBlock);
+
+  // Any temporaries created here are conditional.
+  EmitBlock(rhsBlock);
+  eval.begin(*this);
+  Optional<LValue> rhs =
+      EmitLValueOrThrowExpression(*this, expr->getFalseExpr());
+  eval.end(*this);
+  if (rhs && !rhs->isSimple())
+    return EmitUnsupportedLValue(expr, "conditional operator");
+  rhsBlock = Builder.GetInsertBlock();
+
+  EmitBlock(contBlock);
+
+  if (lhs && rhs) {
+    Address lhsAddr = lhs->getAddress(*this);
+    Address rhsAddr = rhs->getAddress(*this);
     llvm::PHINode *phi = Builder.CreatePHI(lhsAddr.getType(), 2, "cond-lvalue");
-    phi->addIncoming(lhsAddr.getPointer(), Info.lhsBlock);
-    phi->addIncoming(rhsAddr.getPointer(), Info.rhsBlock);
+    phi->addIncoming(lhsAddr.getPointer(), lhsBlock);
+    phi->addIncoming(rhsAddr.getPointer(), rhsBlock);
     Address result(phi, lhsAddr.getElementType(),
                    std::min(lhsAddr.getAlignment(), rhsAddr.getAlignment()));
     AlignmentSource alignSource =
-        std::max(Info.LHS->getBaseInfo().getAlignmentSource(),
-                 Info.RHS->getBaseInfo().getAlignmentSource());
+      std::max(lhs->getBaseInfo().getAlignmentSource(),
+               rhs->getBaseInfo().getAlignmentSource());
     TBAAAccessInfo TBAAInfo = CGM.mergeTBAAInfoForConditionalOperator(
-        Info.LHS->getTBAAInfo(), Info.RHS->getTBAAInfo());
+        lhs->getTBAAInfo(), rhs->getTBAAInfo());
     return MakeAddrLValue(result, expr->getType(), LValueBaseInfo(alignSource),
                           TBAAInfo);
   } else {
-    assert((Info.LHS || Info.RHS) &&
+    assert((lhs || rhs) &&
            "both operands of glvalue conditional are throw-expressions?");
-    return Info.LHS ? *Info.LHS : *Info.RHS;
+    return lhs ? *lhs : *rhs;
   }
 }
 
@@ -5044,16 +4962,7 @@ static CGCallee EmitDirectCallee(CodeGenFunction &CGF, GlobalDecl GD) {
   const FunctionDecl *FD = cast<FunctionDecl>(GD.getDecl());
 
   if (auto builtinID = FD->getBuiltinID()) {
-    std::string NoBuiltinFD = ("no-builtin-" + FD->getName()).str();
-    std::string NoBuiltins = "no-builtins";
     std::string FDInlineName = (FD->getName() + ".inline").str();
-
-    bool IsPredefinedLibFunction =
-        CGF.getContext().BuiltinInfo.isPredefinedLibFunction(builtinID);
-    bool HasAttributeNoBuiltin =
-        CGF.CurFn->getAttributes().hasFnAttr(NoBuiltinFD) ||
-        CGF.CurFn->getAttributes().hasFnAttr(NoBuiltins);
-
     // When directing calling an inline builtin, call it through it's mangled
     // name to make it clear it's not the actual builtin.
     if (CGF.CurFn->getName() != FDInlineName &&
@@ -5073,11 +4982,8 @@ static CGCallee EmitDirectCallee(CodeGenFunction &CGF, GlobalDecl GD) {
 
     // Replaceable builtins provide their own implementation of a builtin. If we
     // are in an inline builtin implementation, avoid trivial infinite
-    // recursion. Honor __attribute__((no_builtin("foo"))) or
-    // __attribute__((no_builtin)) on the current function unless foo is
-    // not a predefined library function which means we must generate the
-    // builtin no matter what.
-    else if (!IsPredefinedLibFunction || !HasAttributeNoBuiltin)
+    // recursion.
+    else
       return CGCallee::forBuiltin(builtinID, FD);
   }
 

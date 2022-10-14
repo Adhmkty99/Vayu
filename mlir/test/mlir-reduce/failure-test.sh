@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Tests for the keyword "failure" in the stderr of the optimization pass
 mlir-opt $1 -test-mlir-reducer > /tmp/stdout.$$ 2>/tmp/stderr.$$
 

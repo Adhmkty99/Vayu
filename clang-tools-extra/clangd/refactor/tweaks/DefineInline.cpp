@@ -385,7 +385,7 @@ addInlineIfInHeader(const FunctionDecl *FD) {
 ///
 class DefineInline : public Tweak {
 public:
-  const char *id() const final;
+  const char *id() const override final;
 
   llvm::StringLiteral kind() const override {
     return CodeAction::REFACTOR_KIND;

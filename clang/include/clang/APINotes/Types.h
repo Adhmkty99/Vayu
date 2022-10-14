@@ -76,8 +76,8 @@ public:
   }
 
   void setSwiftPrivate(llvm::Optional<bool> Private) {
-    SwiftPrivateSpecified = Private.has_value();
-    SwiftPrivate = Private.value_or(0);
+    SwiftPrivateSpecified = Private.hasValue();
+    SwiftPrivate = Private.hasValue() ? *Private : 0;
   }
 
   friend bool operator==(const CommonEntityInfo &, const CommonEntityInfo &);
@@ -238,8 +238,8 @@ public:
                : llvm::None;
   }
   void setSwiftImportAsNonGeneric(llvm::Optional<bool> Value) {
-    SwiftImportAsNonGenericSpecified = Value.has_value();
-    SwiftImportAsNonGeneric = Value.value_or(false);
+    SwiftImportAsNonGenericSpecified = Value.hasValue();
+    SwiftImportAsNonGeneric = Value.getValueOr(false);
   }
 
   llvm::Optional<bool> getSwiftObjCMembers() const {
@@ -247,8 +247,8 @@ public:
                                      : llvm::None;
   }
   void setSwiftObjCMembers(llvm::Optional<bool> Value) {
-    SwiftObjCMembersSpecified = Value.has_value();
-    SwiftObjCMembers = Value.value_or(false);
+    SwiftObjCMembersSpecified = Value.hasValue();
+    SwiftObjCMembers = Value.getValueOr(false);
   }
 
   /// Strip off any information within the class information structure that is
@@ -365,8 +365,8 @@ public:
                : llvm::None;
   }
   void setSwiftImportAsAccessors(llvm::Optional<bool> Value) {
-    SwiftImportAsAccessorsSpecified = Value.has_value();
-    SwiftImportAsAccessors = Value.value_or(false);
+    SwiftImportAsAccessorsSpecified = Value.hasValue();
+    SwiftImportAsAccessors = Value.getValueOr(false);
   }
 
   friend bool operator==(const ObjCPropertyInfo &, const ObjCPropertyInfo &);
@@ -429,8 +429,8 @@ public:
     return NoEscape;
   }
   void setNoEscape(llvm::Optional<bool> Value) {
-    NoEscapeSpecified = Value.has_value();
-    NoEscape = Value.value_or(false);
+    NoEscapeSpecified = Value.hasValue();
+    NoEscape = Value.getValueOr(false);
   }
 
   llvm::Optional<RetainCountConventionKind> getRetainCountConvention() const {
@@ -440,7 +440,8 @@ public:
   }
   void
   setRetainCountConvention(llvm::Optional<RetainCountConventionKind> Value) {
-    RawRetainCountConvention = Value ? static_cast<unsigned>(*Value) + 1 : 0;
+    RawRetainCountConvention =
+        Value.hasValue() ? static_cast<unsigned>(Value.getValue()) + 1 : 0;
     assert(getRetainCountConvention() == Value && "bitfield too small");
   }
 
@@ -558,7 +559,8 @@ public:
   }
   void
   setRetainCountConvention(llvm::Optional<RetainCountConventionKind> Value) {
-    RawRetainCountConvention = Value ? static_cast<unsigned>(*Value) + 1 : 0;
+    RawRetainCountConvention =
+        Value.hasValue() ? static_cast<unsigned>(Value.getValue()) + 1 : 0;
     assert(getRetainCountConvention() == Value && "bitfield too small");
   }
 
@@ -664,17 +666,17 @@ public:
     return llvm::None;
   }
   void setFlagEnum(llvm::Optional<bool> Value) {
-    HasFlagEnum = Value.has_value();
-    IsFlagEnum = Value.value_or(false);
+    HasFlagEnum = Value.hasValue();
+    IsFlagEnum = Value.getValueOr(false);
   }
 
   TagInfo &operator|=(const TagInfo &RHS) {
     static_cast<CommonTypeInfo &>(*this) |= RHS;
 
-    if (!HasFlagEnum)
+    if (!HasFlagEnum && HasFlagEnum)
       setFlagEnum(RHS.isFlagEnum());
 
-    if (!EnumExtensibility)
+    if (!EnumExtensibility.hasValue())
       EnumExtensibility = RHS.EnumExtensibility;
 
     return *this;
@@ -704,7 +706,7 @@ public:
 
   TypedefInfo &operator|=(const TypedefInfo &RHS) {
     static_cast<CommonTypeInfo &>(*this) |= RHS;
-    if (!SwiftWrapper)
+    if (!SwiftWrapper.hasValue())
       SwiftWrapper = RHS.SwiftWrapper;
     return *this;
   }

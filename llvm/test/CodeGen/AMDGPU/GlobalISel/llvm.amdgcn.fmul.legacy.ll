@@ -4,7 +4,6 @@
 ; RUN: llc -global-isel -march=amdgcn -mcpu=gfx900  -verify-machineinstrs < %s | FileCheck --check-prefix=GFX9 %s
 ; RUN: llc -global-isel -march=amdgcn -mcpu=gfx1010 -verify-machineinstrs < %s | FileCheck --check-prefix=GFX101 %s
 ; RUN: llc -global-isel -march=amdgcn -mcpu=gfx1030 -verify-machineinstrs < %s | FileCheck --check-prefix=GFX103 %s
-; RUN: llc -global-isel -march=amdgcn -mcpu=gfx1100 -verify-machineinstrs < %s | FileCheck --check-prefix=GFX11 %s
 
 define float @v_mul_legacy_f32(float %a, float %b) {
 ; GFX6-LABEL: v_mul_legacy_f32:
@@ -38,13 +37,6 @@ define float @v_mul_legacy_f32(float %a, float %b) {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e32 v0, v0, v1
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e32 v0, v0, v1
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %result = call float @llvm.amdgcn.fmul.legacy(float %a, float %b)
   ret float %result
 }
@@ -81,13 +73,6 @@ define float @v_mul_legacy_undef0_f32(float %a) {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e32 v0, s4, v0
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_undef0_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e32 v0, s0, v0
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %result = call float @llvm.amdgcn.fmul.legacy(float undef, float %a)
   ret float %result
 }
@@ -124,13 +109,6 @@ define float @v_mul_legacy_undef1_f32(float %a) {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e32 v0, s4, v0
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_undef1_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e32 v0, s0, v0
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %result = call float @llvm.amdgcn.fmul.legacy(float %a, float undef)
   ret float %result
 }
@@ -167,13 +145,6 @@ define float @v_mul_legacy_undef_f32() {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e64 v0, s4, s4
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_undef_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e64 v0, s0, s0
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %result = call float @llvm.amdgcn.fmul.legacy(float undef, float undef)
   ret float %result
 }
@@ -210,13 +181,6 @@ define float @v_mul_legacy_fabs_f32(float %a, float %b) {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e64 v0, |v0|, |v1|
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_fabs_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e64 v0, |v0|, |v1|
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %a.fabs = call float @llvm.fabs.f32(float %a)
   %b.fabs = call float @llvm.fabs.f32(float %b)
   %result = call float @llvm.amdgcn.fmul.legacy(float %a.fabs, float %b.fabs)
@@ -255,13 +219,6 @@ define float @v_mul_legacy_fneg_f32(float %a, float %b) {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e64 v0, -v0, -v1
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_fneg_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e64 v0, -v0, -v1
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %a.fneg = fneg float %a
   %b.fneg = fneg float %b
   %result = call float @llvm.amdgcn.fmul.legacy(float %a.fneg, float %b.fneg)
@@ -306,15 +263,6 @@ define float @v_add_mul_legacy_f32(float %a, float %b, float %c) {
 ; GFX103-NEXT:    v_mul_legacy_f32_e32 v0, v0, v1
 ; GFX103-NEXT:    v_add_f32_e32 v0, v0, v2
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_add_mul_legacy_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e32 v0, v0, v1
-; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX11-NEXT:    v_add_f32_e32 v0, v0, v2
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %mul = call float @llvm.amdgcn.fmul.legacy(float %a, float %b)
   %add = fadd float %mul, %c
   ret float %add
@@ -353,15 +301,6 @@ define float @v_mad_legacy_f32(float %a, float %b, float %c) #2 {
 ; GFX103-NEXT:    v_mul_legacy_f32_e32 v0, v0, v1
 ; GFX103-NEXT:    v_add_f32_e32 v0, v0, v2
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mad_legacy_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e32 v0, v0, v1
-; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX11-NEXT:    v_add_f32_e32 v0, v0, v2
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %mul = call float @llvm.amdgcn.fmul.legacy(float %a, float %b)
   %add = fadd float %mul, %c
   ret float %add
@@ -400,15 +339,6 @@ define float @v_mad_legacy_fneg_f32(float %a, float %b, float %c) #2 {
 ; GFX103-NEXT:    v_mul_legacy_f32_e64 v0, -v0, -v1
 ; GFX103-NEXT:    v_add_f32_e32 v0, v0, v2
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mad_legacy_fneg_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e64 v0, -v0, -v1
-; GFX11-NEXT:    s_delay_alu instid0(VALU_DEP_1)
-; GFX11-NEXT:    v_add_f32_e32 v0, v0, v2
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %a.fneg = fneg float %a
   %b.fneg = fneg float %b
   %mul = call float @llvm.amdgcn.fmul.legacy(float %a.fneg, float %b.fneg)
@@ -444,11 +374,6 @@ define amdgpu_ps float @s_mul_legacy_f32(float inreg %a, float inreg %b) {
 ; GFX103:       ; %bb.0:
 ; GFX103-NEXT:    v_mul_legacy_f32_e64 v0, s0, s1
 ; GFX103-NEXT:    ; return to shader part epilog
-;
-; GFX11-LABEL: s_mul_legacy_f32:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e64 v0, s0, s1
-; GFX11-NEXT:    ; return to shader part epilog
   %result = call float @llvm.amdgcn.fmul.legacy(float %a, float %b)
   ret float %result
 }
@@ -485,13 +410,6 @@ define float @v_mul_legacy_f32_1.0(float %a) {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e32 v0, 1.0, v0
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_f32_1.0:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e32 v0, 1.0, v0
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %result = call float @llvm.amdgcn.fmul.legacy(float %a, float 1.0)
   ret float %result
 }
@@ -528,13 +446,6 @@ define float @v_mul_legacy_f32_1.0_swap(float %b) {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e32 v0, 1.0, v0
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_f32_1.0_swap:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e32 v0, 1.0, v0
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %result = call float @llvm.amdgcn.fmul.legacy(float 1.0, float %b)
   ret float %result
 }
@@ -571,13 +482,6 @@ define float @v_mul_legacy_f32_2.0(float %a) {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e32 v0, 2.0, v0
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_f32_2.0:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e32 v0, 2.0, v0
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %result = call float @llvm.amdgcn.fmul.legacy(float %a, float 2.0)
   ret float %result
 }
@@ -614,13 +518,6 @@ define float @v_mul_legacy_f32_2.0_swap(float %b) {
 ; GFX103-NEXT:    s_waitcnt_vscnt null, 0x0
 ; GFX103-NEXT:    v_mul_legacy_f32_e32 v0, 2.0, v0
 ; GFX103-NEXT:    s_setpc_b64 s[30:31]
-;
-; GFX11-LABEL: v_mul_legacy_f32_2.0_swap:
-; GFX11:       ; %bb.0:
-; GFX11-NEXT:    s_waitcnt vmcnt(0) expcnt(0) lgkmcnt(0)
-; GFX11-NEXT:    s_waitcnt_vscnt null, 0x0
-; GFX11-NEXT:    v_mul_dx9_zero_f32_e32 v0, 2.0, v0
-; GFX11-NEXT:    s_setpc_b64 s[30:31]
   %result = call float @llvm.amdgcn.fmul.legacy(float 2.0, float %b)
   ret float %result
 }

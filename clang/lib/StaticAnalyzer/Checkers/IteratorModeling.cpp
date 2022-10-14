@@ -151,6 +151,8 @@ public:
   void checkBind(SVal Loc, SVal Val, const Stmt *S, CheckerContext &C) const;
   void checkPostStmt(const UnaryOperator *UO, CheckerContext &C) const;
   void checkPostStmt(const BinaryOperator *BO, CheckerContext &C) const;
+  void checkPostStmt(const CXXConstructExpr *CCE, CheckerContext &C) const;
+  void checkPostStmt(const DeclStmt *DS, CheckerContext &C) const;
   void checkPostStmt(const MaterializeTemporaryExpr *MTE,
                      CheckerContext &C) const;
   void checkLiveSymbols(ProgramStateRef State, SymbolReaper &SR) const;
@@ -629,7 +631,7 @@ void IteratorModeling::handlePtrIncrOrDecr(CheckerContext &C,
                                            const Expr *Iterator,
                                            OverloadedOperatorKind OK,
                                            SVal Offset) const {
-  if (!isa<DefinedSVal>(Offset))
+  if (!Offset.getAs<DefinedSVal>())
     return;
 
   QualType PtrType = Iterator->getType();
@@ -799,8 +801,8 @@ ProgramStateRef relateSymbols(ProgramStateRef State, SymbolRef Sym1,
     SVB.evalBinOp(State, BO_EQ, nonloc::SymbolVal(Sym1),
                   nonloc::SymbolVal(Sym2), SVB.getConditionType());
 
-  assert(isa<DefinedSVal>(comparison) &&
-         "Symbol comparison must be a `DefinedSVal`");
+  assert(comparison.getAs<DefinedSVal>() &&
+    "Symbol comparison must be a `DefinedSVal`");
 
   auto NewState = State->assume(comparison.castAs<DefinedSVal>(), Equal);
   if (!NewState)

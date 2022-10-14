@@ -11,6 +11,6 @@ add_mlir_library(MLIRShapeTestPasses
   LINK_LIBS PUBLIC
   MLIRIR
   MLIRPass
-  MLIRShapeDialect
+  MLIRShape
   MLIRSupport
   )

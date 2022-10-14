@@ -971,7 +971,7 @@ static bool checkTypeParamListConsistency(Sema &S,
   return false;
 }
 
-ObjCInterfaceDecl *Sema::ActOnStartClassInterface(
+Decl *Sema::ActOnStartClassInterface(
     Scope *S, SourceLocation AtInterfaceLoc, IdentifierInfo *ClassName,
     SourceLocation ClassLoc, ObjCTypeParamList *typeParamList,
     IdentifierInfo *SuperName, SourceLocation SuperLoc,
@@ -1100,8 +1100,7 @@ ObjCInterfaceDecl *Sema::ActOnStartClassInterface(
   }
 
   CheckObjCDeclScope(IDecl);
-  ActOnObjCContainerStartDefinition(IDecl);
-  return IDecl;
+  return ActOnObjCContainerStartDefinition(IDecl);
 }
 
 /// ActOnTypedefedProtocols - this action finds protocol list as part of the
@@ -1209,7 +1208,7 @@ bool Sema::CheckForwardProtocolDeclarationForCircularDependency(
   return res;
 }
 
-ObjCProtocolDecl *Sema::ActOnStartProtocolInterface(
+Decl *Sema::ActOnStartProtocolInterface(
     SourceLocation AtProtoInterfaceLoc, IdentifierInfo *ProtocolName,
     SourceLocation ProtocolLoc, Decl *const *ProtoRefs, unsigned NumProtoRefs,
     const SourceLocation *ProtoLocs, SourceLocation EndProtoLoc,
@@ -1273,8 +1272,7 @@ ObjCProtocolDecl *Sema::ActOnStartProtocolInterface(
   }
 
   CheckObjCDeclScope(PDecl);
-  ActOnObjCContainerStartDefinition(PDecl);
-  return PDecl;
+  return ActOnObjCContainerStartDefinition(PDecl);
 }
 
 static bool NestedProtocolHasNoDefinition(ObjCProtocolDecl *PDecl,
@@ -1588,7 +1586,7 @@ void Sema::actOnObjCTypeArgsOrProtocolQualifiers(
     DS.SetRangeEnd(loc);
 
     // Form the declarator.
-    Declarator D(DS, ParsedAttributesView::none(), DeclaratorContext::TypeName);
+    Declarator D(DS, DeclaratorContext::TypeName);
 
     // If we have a typedef of an Objective-C class type that is missing a '*',
     // add the '*'.
@@ -1801,7 +1799,7 @@ Sema::ActOnForwardProtocolDeclaration(SourceLocation AtProtocolLoc,
   return BuildDeclaratorGroup(DeclsInGroup);
 }
 
-ObjCCategoryDecl *Sema::ActOnStartCategoryInterface(
+Decl *Sema::ActOnStartCategoryInterface(
     SourceLocation AtInterfaceLoc, IdentifierInfo *ClassName,
     SourceLocation ClassLoc, ObjCTypeParamList *typeParamList,
     IdentifierInfo *CategoryName, SourceLocation CategoryLoc,
@@ -1828,8 +1826,7 @@ ObjCCategoryDecl *Sema::ActOnStartCategoryInterface(
 
     if (!IDecl)
       Diag(ClassLoc, diag::err_undef_interface) << ClassName;
-    ActOnObjCContainerStartDefinition(CDecl);
-    return CDecl;
+    return ActOnObjCContainerStartDefinition(CDecl);
   }
 
   if (!CategoryName && IDecl->getImplementation()) {
@@ -1892,17 +1889,17 @@ ObjCCategoryDecl *Sema::ActOnStartCategoryInterface(
   }
 
   CheckObjCDeclScope(CDecl);
-  ActOnObjCContainerStartDefinition(CDecl);
-  return CDecl;
+  return ActOnObjCContainerStartDefinition(CDecl);
 }
 
 /// ActOnStartCategoryImplementation - Perform semantic checks on the
 /// category implementation declaration and build an ObjCCategoryImplDecl
 /// object.
-ObjCCategoryImplDecl *Sema::ActOnStartCategoryImplementation(
-    SourceLocation AtCatImplLoc, IdentifierInfo *ClassName,
-    SourceLocation ClassLoc, IdentifierInfo *CatName, SourceLocation CatLoc,
-    const ParsedAttributesView &Attrs) {
+Decl *Sema::ActOnStartCategoryImplementation(
+                      SourceLocation AtCatImplLoc,
+                      IdentifierInfo *ClassName, SourceLocation ClassLoc,
+                      IdentifierInfo *CatName, SourceLocation CatLoc,
+                      const ParsedAttributesView &Attrs) {
   ObjCInterfaceDecl *IDecl = getObjCInterfaceDecl(ClassName, ClassLoc, true);
   ObjCCategoryDecl *CatIDecl = nullptr;
   if (IDecl && IDecl->hasDefinition()) {
@@ -1961,14 +1958,15 @@ ObjCCategoryImplDecl *Sema::ActOnStartCategoryImplementation(
   }
 
   CheckObjCDeclScope(CDecl);
-  ActOnObjCContainerStartDefinition(CDecl);
-  return CDecl;
+  return ActOnObjCContainerStartDefinition(CDecl);
 }
 
-ObjCImplementationDecl *Sema::ActOnStartClassImplementation(
-    SourceLocation AtClassImplLoc, IdentifierInfo *ClassName,
-    SourceLocation ClassLoc, IdentifierInfo *SuperClassname,
-    SourceLocation SuperClassLoc, const ParsedAttributesView &Attrs) {
+Decl *Sema::ActOnStartClassImplementation(
+                      SourceLocation AtClassImplLoc,
+                      IdentifierInfo *ClassName, SourceLocation ClassLoc,
+                      IdentifierInfo *SuperClassname,
+                      SourceLocation SuperClassLoc,
+                      const ParsedAttributesView &Attrs) {
   ObjCInterfaceDecl *IDecl = nullptr;
   // Check for another declaration kind with the same name.
   NamedDecl *PrevDecl
@@ -2065,10 +2063,8 @@ ObjCImplementationDecl *Sema::ActOnStartClassImplementation(
   ProcessDeclAttributeList(TUScope, IMPDecl, Attrs);
   AddPragmaAttributes(TUScope, IMPDecl);
 
-  if (CheckObjCDeclScope(IMPDecl)) {
-    ActOnObjCContainerStartDefinition(IMPDecl);
-    return IMPDecl;
-  }
+  if (CheckObjCDeclScope(IMPDecl))
+    return ActOnObjCContainerStartDefinition(IMPDecl);
 
   // Check that there is no duplicate implementation of this class.
   if (IDecl->getImplementation()) {
@@ -2094,8 +2090,7 @@ ObjCImplementationDecl *Sema::ActOnStartClassImplementation(
       << IDecl->getSuperClass()->getDeclName();
   }
 
-  ActOnObjCContainerStartDefinition(IMPDecl);
-  return IMPDecl;
+  return ActOnObjCContainerStartDefinition(IMPDecl);
 }
 
 Sema::DeclGroupPtrTy
@@ -4537,7 +4532,7 @@ static QualType mergeTypeNullabilityForRedecl(Sema &S, SourceLocation loc,
   auto prevNullability = prevType->getNullability(S.Context);
 
   // Easy case: both have nullability.
-  if (nullability.has_value() == prevNullability.has_value()) {
+  if (nullability.hasValue() == prevNullability.hasValue()) {
     // Neither has nullability; continue.
     if (!nullability)
       return type;

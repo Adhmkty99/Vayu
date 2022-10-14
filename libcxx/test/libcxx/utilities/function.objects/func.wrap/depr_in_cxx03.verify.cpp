@@ -13,8 +13,6 @@
 
 // REQUIRES: c++03
 
-// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_ENABLE_CXX03_FUNCTION
-
 #include <functional>
 #include "test_macros.h"
 

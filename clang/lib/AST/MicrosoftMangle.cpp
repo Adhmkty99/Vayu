@@ -147,8 +147,7 @@ class MicrosoftMangleContextImpl : public MicrosoftMangleContext {
   SmallString<16> AnonymousNamespaceHash;
 
 public:
-  MicrosoftMangleContextImpl(ASTContext &Context, DiagnosticsEngine &Diags,
-                             bool IsAux = false);
+  MicrosoftMangleContextImpl(ASTContext &Context, DiagnosticsEngine &Diags);
   bool shouldMangleCXXName(const NamedDecl *D) override;
   bool shouldMangleStringLiteral(const StringLiteral *SL) override;
   void mangleCXXName(GlobalDecl GD, raw_ostream &Out) override;
@@ -222,7 +221,7 @@ public:
 
     // Use the canonical number for externally visible decls.
     if (ND->isExternallyVisible()) {
-      disc = getASTContext().getManglingNumber(ND, isAux());
+      disc = getASTContext().getManglingNumber(ND);
       return true;
     }
 
@@ -460,9 +459,8 @@ private:
 }
 
 MicrosoftMangleContextImpl::MicrosoftMangleContextImpl(ASTContext &Context,
-                                                       DiagnosticsEngine &Diags,
-                                                       bool IsAux)
-    : MicrosoftMangleContext(Context, Diags, IsAux) {
+                                                       DiagnosticsEngine &Diags)
+    : MicrosoftMangleContext(Context, Diags) {
   // To mangle anonymous namespaces, hash the path to the main source file. The
   // path should be whatever (probably relative) path was passed on the command
   // line. The goal is for the compiler to produce the same output regardless of
@@ -808,8 +806,8 @@ void MicrosoftCXXNameMangler::mangleNumber(llvm::APSInt Number) {
   // to convert every integer to signed 64 bit before mangling (including
   // unsigned 64 bit values). Do the same, but preserve bits beyond the bottom
   // 64.
-  unsigned Width = std::max(Number.getBitWidth(), 64U);
-  llvm::APInt Value = Number.extend(Width);
+  llvm::APInt Value =
+      Number.isSigned() ? Number.sextOrSelf(64) : Number.zextOrSelf(64);
 
   // <non-negative integer> ::= A@              # when Number == 0
   //                        ::= <decimal digit> # when 1 <= Number <= 10
@@ -2461,12 +2459,7 @@ void MicrosoftCXXNameMangler::mangleType(const BuiltinType *T, Qualifiers,
     break;
 
   case BuiltinType::Half:
-    if (!getASTContext().getLangOpts().HLSL)
-      mangleArtificialTagType(TTK_Struct, "_Half", {"__clang"});
-    else if (getASTContext().getLangOpts().NativeHalfType)
-      Out << "$f16@";
-    else
-      Out << "$halff@";
+    mangleArtificialTagType(TTK_Struct, "_Half", {"__clang"});
     break;
 
 #define SVE_TYPE(Name, Id, SingletonId) \
@@ -3951,8 +3944,7 @@ void MicrosoftMangleContextImpl::mangleStringLiteral(const StringLiteral *SL,
   Mangler.getStream() << '@';
 }
 
-MicrosoftMangleContext *MicrosoftMangleContext::create(ASTContext &Context,
-                                                       DiagnosticsEngine &Diags,
-                                                       bool IsAux) {
-  return new MicrosoftMangleContextImpl(Context, Diags, IsAux);
+MicrosoftMangleContext *
+MicrosoftMangleContext::create(ASTContext &Context, DiagnosticsEngine &Diags) {
+  return new MicrosoftMangleContextImpl(Context, Diags);
 }

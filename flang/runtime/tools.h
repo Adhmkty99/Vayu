@@ -10,6 +10,7 @@
 #define FORTRAN_RUNTIME_TOOLS_H_
 
 #include "terminator.h"
+#include "flang/Common/long-double.h"
 #include "flang/Runtime/cpp-type.h"
 #include "flang/Runtime/descriptor.h"
 #include "flang/Runtime/memory.h"
@@ -133,7 +134,7 @@ inline RESULT ApplyType(
       return FUNC<TypeCategory::Integer, 16>{}(std::forward<A>(x)...);
 #endif
     default:
-      terminator.Crash("not yet implemented: INTEGER(KIND=%d)", kind);
+      terminator.Crash("unsupported INTEGER(KIND=%d)", kind);
     }
   case TypeCategory::Real:
     switch (kind) {
@@ -147,18 +148,16 @@ inline RESULT ApplyType(
       return FUNC<TypeCategory::Real, 4>{}(std::forward<A>(x)...);
     case 8:
       return FUNC<TypeCategory::Real, 8>{}(std::forward<A>(x)...);
+#if LONG_DOUBLE == 80
     case 10:
-      if constexpr (HasCppTypeFor<TypeCategory::Real, 10>) {
-        return FUNC<TypeCategory::Real, 10>{}(std::forward<A>(x)...);
-      }
-      break;
+      return FUNC<TypeCategory::Real, 10>{}(std::forward<A>(x)...);
+#elif LONG_DOUBLE == 128
     case 16:
-      if constexpr (HasCppTypeFor<TypeCategory::Real, 16>) {
-        return FUNC<TypeCategory::Real, 16>{}(std::forward<A>(x)...);
-      }
-      break;
+      return FUNC<TypeCategory::Real, 16>{}(std::forward<A>(x)...);
+#endif
+    default:
+      terminator.Crash("unsupported REAL(KIND=%d)", kind);
     }
-    terminator.Crash("not yet implemented: REAL(KIND=%d)", kind);
   case TypeCategory::Complex:
     switch (kind) {
 #if 0 // TODO: COMPLEX(2 & 3)
@@ -171,18 +170,16 @@ inline RESULT ApplyType(
       return FUNC<TypeCategory::Complex, 4>{}(std::forward<A>(x)...);
     case 8:
       return FUNC<TypeCategory::Complex, 8>{}(std::forward<A>(x)...);
+#if LONG_DOUBLE == 80
     case 10:
-      if constexpr (HasCppTypeFor<TypeCategory::Real, 10>) {
-        return FUNC<TypeCategory::Complex, 10>{}(std::forward<A>(x)...);
-      }
-      break;
+      return FUNC<TypeCategory::Complex, 10>{}(std::forward<A>(x)...);
+#elif LONG_DOUBLE == 128
     case 16:
-      if constexpr (HasCppTypeFor<TypeCategory::Real, 16>) {
-        return FUNC<TypeCategory::Complex, 16>{}(std::forward<A>(x)...);
-      }
-      break;
+      return FUNC<TypeCategory::Complex, 16>{}(std::forward<A>(x)...);
+#endif
+    default:
+      terminator.Crash("unsupported COMPLEX(KIND=%d)", kind);
     }
-    terminator.Crash("not yet implemented: COMPLEX(KIND=%d)", kind);
   case TypeCategory::Character:
     switch (kind) {
     case 1:
@@ -192,7 +189,7 @@ inline RESULT ApplyType(
     case 4:
       return FUNC<TypeCategory::Character, 4>{}(std::forward<A>(x)...);
     default:
-      terminator.Crash("not yet implemented: CHARACTER(KIND=%d)", kind);
+      terminator.Crash("unsupported CHARACTER(KIND=%d)", kind);
     }
   case TypeCategory::Logical:
     switch (kind) {
@@ -205,11 +202,10 @@ inline RESULT ApplyType(
     case 8:
       return FUNC<TypeCategory::Logical, 8>{}(std::forward<A>(x)...);
     default:
-      terminator.Crash("not yet implemented: LOGICAL(KIND=%d)", kind);
+      terminator.Crash("unsupported LOGICAL(KIND=%d)", kind);
     }
   default:
-    terminator.Crash(
-        "not yet implemented: type category(%d)", static_cast<int>(cat));
+    terminator.Crash("unsupported type category(%d)", static_cast<int>(cat));
   }
 }
 
@@ -231,7 +227,7 @@ inline RESULT ApplyIntegerKind(int kind, Terminator &terminator, A &&...x) {
     return FUNC<16>{}(std::forward<A>(x)...);
 #endif
   default:
-    terminator.Crash("not yet implemented: INTEGER(KIND=%d)", kind);
+    terminator.Crash("unsupported INTEGER(KIND=%d)", kind);
   }
 }
 
@@ -249,18 +245,16 @@ inline RESULT ApplyFloatingPointKind(
     return FUNC<4>{}(std::forward<A>(x)...);
   case 8:
     return FUNC<8>{}(std::forward<A>(x)...);
+#if LONG_DOUBLE == 80
   case 10:
-    if constexpr (HasCppTypeFor<TypeCategory::Real, 10>) {
-      return FUNC<10>{}(std::forward<A>(x)...);
-    }
-    break;
+    return FUNC<10>{}(std::forward<A>(x)...);
+#elif LONG_DOUBLE == 128
   case 16:
-    if constexpr (HasCppTypeFor<TypeCategory::Real, 16>) {
-      return FUNC<16>{}(std::forward<A>(x)...);
-    }
-    break;
+    return FUNC<16>{}(std::forward<A>(x)...);
+#endif
+  default:
+    terminator.Crash("unsupported REAL/COMPLEX(KIND=%d)", kind);
   }
-  terminator.Crash("not yet implemented: REAL/COMPLEX(KIND=%d)", kind);
 }
 
 template <template <int KIND> class FUNC, typename RESULT, typename... A>
@@ -273,7 +267,7 @@ inline RESULT ApplyCharacterKind(int kind, Terminator &terminator, A &&...x) {
   case 4:
     return FUNC<4>{}(std::forward<A>(x)...);
   default:
-    terminator.Crash("not yet implemented: CHARACTER(KIND=%d)", kind);
+    terminator.Crash("unsupported CHARACTER(KIND=%d)", kind);
   }
 }
 
@@ -289,7 +283,7 @@ inline RESULT ApplyLogicalKind(int kind, Terminator &terminator, A &&...x) {
   case 8:
     return FUNC<8>{}(std::forward<A>(x)...);
   default:
-    terminator.Crash("not yet implemented: LOGICAL(KIND=%d)", kind);
+    terminator.Crash("unsupported LOGICAL(KIND=%d)", kind);
   }
 }
 

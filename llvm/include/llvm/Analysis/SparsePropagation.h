@@ -331,8 +331,8 @@ void SparseSolver<LatticeKey, LatticeVal, KeyInfo>::getFeasibleSuccessors(
     return;
   }
 
-  if (!isa<SwitchInst>(TI)) {
-    // Unknown termintor, assume all successors are feasible.
+  if (TI.isExceptionalTerminator() ||
+      TI.isIndirectTerminator()) {
     Succs.assign(Succs.size(), true);
     return;
   }

@@ -9,6 +9,7 @@ from lldbsuite.test import lldbutil
 
 
 class TestPointerNumChilden(TestBase):
+    mydir = TestBase.compute_mydir(__file__)
 
     def test_pointer_num_children(self):
         self.build()

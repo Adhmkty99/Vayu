@@ -9,7 +9,6 @@
 #include "MCTargetDesc/ARMBaseInfo.h"
 #include "MCTargetDesc/ARMFixupKinds.h"
 #include "MCTargetDesc/ARMMCTargetDesc.h"
-#include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/BinaryFormat/MachO.h"
 #include "llvm/MC/MCAsmLayout.h"
@@ -22,6 +21,7 @@
 #include "llvm/MC/MCSection.h"
 #include "llvm/MC/MCValue.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/ScopedPrinter.h"
 
 using namespace llvm;
 
@@ -149,7 +149,7 @@ RecordARMScatteredHalfRelocation(MachObjectWriter *Writer,
   if (FixupOffset & 0xff000000) {
     Asm.getContext().reportError(Fixup.getLoc(),
                                  "can not encode offset '0x" +
-                                     utohexstr(FixupOffset) +
+                                     to_hexString(FixupOffset) +
                                      "' in resulting scattered relocation.");
     return;
   }
@@ -264,7 +264,7 @@ void ARMMachObjectWriter::RecordARMScatteredRelocation(MachObjectWriter *Writer,
   if (FixupOffset & 0xff000000) {
     Asm.getContext().reportError(Fixup.getLoc(),
                                  "can not encode offset '0x" +
-                                     utohexstr(FixupOffset) +
+                                     to_hexString(FixupOffset) +
                                      "' in resulting scattered relocation.");
     return;
   }

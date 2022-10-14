@@ -30,7 +30,7 @@ namespace AMDGPU {
 Align getAlign(DataLayout const &DL, const GlobalVariable *GV);
 
 std::vector<GlobalVariable *> findVariablesToLower(Module &M,
-                                                   const Function *F);
+                                                   const Function *F = nullptr);
 
 /// Replace all uses of constant \p C with instructions in \p F.
 void replaceConstantUsesInFunction(ConstantExpr *C, const Function *F);

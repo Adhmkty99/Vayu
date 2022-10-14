@@ -237,7 +237,7 @@ const LoadedModule *Symbolizer::FindModuleForAddress(uptr address) {
 class LLVMSymbolizerProcess final : public SymbolizerProcess {
  public:
   explicit LLVMSymbolizerProcess(const char *path)
-      : SymbolizerProcess(path, /*use_posix_spawn=*/SANITIZER_APPLE) {}
+      : SymbolizerProcess(path, /*use_posix_spawn=*/SANITIZER_MAC) {}
 
  private:
   bool ReachedEndOfOutput(const char *buffer, uptr length) const override {
@@ -363,21 +363,14 @@ void ParseSymbolizePCOutput(const char *str, SymbolizedStack *res) {
   }
 }
 
-// Parses a two- or three-line string in the following format:
+// Parses a two-line string in the following format:
 //   <symbol_name>
 //   <start_address> <size>
-//   <filename>:<column>
-// Used by LLVMSymbolizer and InternalSymbolizer. LLVMSymbolizer added support
-// for symbolizing the third line in D123538, but we support the older two-line
-// information as well.
+// Used by LLVMSymbolizer and InternalSymbolizer.
 void ParseSymbolizeDataOutput(const char *str, DataInfo *info) {
   str = ExtractToken(str, "\n", &info->name);
   str = ExtractUptr(str, " ", &info->start);
   str = ExtractUptr(str, "\n", &info->size);
-  // Note: If the third line isn't present, these calls will set info.{file,
-  // line} to empty strings.
-  str = ExtractToken(str, ":", &info->file);
-  str = ExtractUptr(str, "\n", &info->line);
 }
 
 static void ParseSymbolizeFrameOutput(const char *str,
@@ -507,9 +500,9 @@ const char *SymbolizerProcess::SendCommandImpl(const char *command) {
       return nullptr;
   if (!WriteToSymbolizer(command, internal_strlen(command)))
       return nullptr;
-  if (!ReadFromSymbolizer())
-    return nullptr;
-  return buffer_.data();
+  if (!ReadFromSymbolizer(buffer_, kBufferSize))
+      return nullptr;
+  return buffer_;
 }
 
 bool SymbolizerProcess::Restart() {
@@ -520,33 +513,31 @@ bool SymbolizerProcess::Restart() {
   return StartSymbolizerSubprocess();
 }
 
-bool SymbolizerProcess::ReadFromSymbolizer() {
-  buffer_.clear();
-  constexpr uptr max_length = 1024;
-  bool ret = true;
-  do {
+bool SymbolizerProcess::ReadFromSymbolizer(char *buffer, uptr max_length) {
+  if (max_length == 0)
+    return true;
+  uptr read_len = 0;
+  while (true) {
     uptr just_read = 0;
-    uptr size_before = buffer_.size();
-    buffer_.resize(size_before + max_length);
-    buffer_.resize(buffer_.capacity());
-    bool ret = ReadFromFile(input_fd_, &buffer_[size_before],
-                            buffer_.size() - size_before, &just_read);
-
-    if (!ret)
-      just_read = 0;
-
-    buffer_.resize(size_before + just_read);
-
+    bool success = ReadFromFile(input_fd_, buffer + read_len,
+                                max_length - read_len - 1, &just_read);
     // We can't read 0 bytes, as we don't expect external symbolizer to close
     // its stdout.
-    if (just_read == 0) {
+    if (!success || just_read == 0) {
       Report("WARNING: Can't read from symbolizer at fd %d\n", input_fd_);
-      ret = false;
+      return false;
+    }
+    read_len += just_read;
+    if (ReachedEndOfOutput(buffer, read_len))
+      break;
+    if (read_len + 1 == max_length) {
+      Report("WARNING: Symbolizer buffer too small\n");
+      read_len = 0;
       break;
     }
-  } while (!ReachedEndOfOutput(buffer_.data(), buffer_.size()));
-  buffer_.push_back('\0');
-  return ret;
+  }
+  buffer[read_len] = '\0';
+  return true;
 }
 
 bool SymbolizerProcess::WriteToSymbolizer(const char *buffer, uptr length) {

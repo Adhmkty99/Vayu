@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 
 class TestObjCDirectDispatchStepping(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def setUp(self):
@@ -19,6 +21,7 @@ class TestObjCDirectDispatchStepping(TestBase):
         self.main_source = lldb.SBFileSpec("stepping-tests.m")
 
     @add_test_categories(['pyapi', 'basic_process'])
+    @expectedFailureAll(remote=True)
     def test_with_python_api(self):
         """Test stepping through the 'direct dispatch' optimized method calls."""
         self.build()
@@ -28,7 +31,7 @@ class TestObjCDirectDispatchStepping(TestBase):
                                                                             self.main_source)
         stop_bkpt = target.BreakpointCreateBySourceRegex("// Stop Location [0-9]+", self.main_source)
         self.assertEqual(stop_bkpt.GetNumLocations(), 15)
-
+                                                         
         # Here we step through all the overridden methods of OverridesALot
         # The last continue will get us to the call ot OverridesInit.
         for idx in range(2,16):
@@ -42,6 +45,6 @@ class TestObjCDirectDispatchStepping(TestBase):
         thread.StepInto()
         func_name = thread.GetFrameAtIndex(0).GetFunctionName()
         self.assertEqual(func_name, "-[OverridesInit init]", "Stopped in [OverridesInit init]")
+        
 
-
-
+            

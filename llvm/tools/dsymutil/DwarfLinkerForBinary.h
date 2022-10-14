@@ -132,12 +132,14 @@ private:
       for (const auto &Entry : DMO.symbols()) {
         const auto &Mapping = Entry.getValue();
         if (Mapping.Size && Mapping.ObjectAddress)
-          AddressRanges.insert(
-              {*Mapping.ObjectAddress, *Mapping.ObjectAddress + Mapping.Size},
+          AddressRanges[*Mapping.ObjectAddress] = ObjFileAddressRange(
+              *Mapping.ObjectAddress + Mapping.Size,
               int64_t(Mapping.BinaryAddress) - *Mapping.ObjectAddress);
       }
     }
-    ~AddressManager() override { clear(); }
+    virtual ~AddressManager() override { clear(); }
+
+    virtual bool areRelocationsResolved() const override { return true; }
 
     bool hasValidRelocs() override {
       return !ValidDebugInfoRelocs.empty() || !ValidDebugAddrRelocs.empty();
@@ -169,10 +171,10 @@ private:
                               uint64_t StartOffset, uint64_t EndOffset,
                               CompileUnit::DIEInfo &Info);
 
-    bool isLiveVariable(const DWARFDie &DIE,
-                        CompileUnit::DIEInfo &Info) override;
-    bool isLiveSubprogram(const DWARFDie &DIE,
-                          CompileUnit::DIEInfo &Info) override;
+    bool hasLiveMemoryLocation(const DWARFDie &DIE,
+                               CompileUnit::DIEInfo &Info) override;
+    bool hasLiveAddressRange(const DWARFDie &DIE,
+                             CompileUnit::DIEInfo &Info) override;
 
     bool applyValidRelocs(MutableArrayRef<char> Data, uint64_t BaseOffset,
                           bool IsLittleEndian) override;

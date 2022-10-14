@@ -159,17 +159,6 @@ void MCPlusBuilder::addEHInfo(MCInst &Inst, const MCLandingPad &LP) {
   }
 }
 
-bool MCPlusBuilder::updateEHInfo(MCInst &Inst, const MCLandingPad &LP) {
-  if (!isInvoke(Inst))
-    return false;
-
-  setAnnotationOpValue(Inst, MCAnnotation::kEHLandingPad,
-                       reinterpret_cast<int64_t>(LP.first));
-  setAnnotationOpValue(Inst, MCAnnotation::kEHAction,
-                       static_cast<int64_t>(LP.second));
-  return true;
-}
-
 int64_t MCPlusBuilder::getGnuArgsSize(const MCInst &Inst) const {
   Optional<int64_t> Value =
       getAnnotationOpValue(Inst, MCAnnotation::kGnuArgsSize);
@@ -452,13 +441,17 @@ bool MCPlusBuilder::hasUseOfPhysReg(const MCInst &MI, unsigned Reg) const {
 
 const BitVector &MCPlusBuilder::getAliases(MCPhysReg Reg,
                                            bool OnlySmaller) const {
-  if (OnlySmaller)
-    return SmallerAliasMap[Reg];
-  return AliasMap[Reg];
-}
+  // AliasMap caches a mapping of registers to the set of registers that
+  // alias (are sub or superregs of itself, including itself).
+  static std::vector<BitVector> AliasMap;
+  static std::vector<BitVector> SmallerAliasMap;
 
-void MCPlusBuilder::initAliases() {
-  assert(AliasMap.size() == 0 && SmallerAliasMap.size() == 0);
+  if (AliasMap.size() > 0) {
+    if (OnlySmaller)
+      return SmallerAliasMap[Reg];
+    return AliasMap[Reg];
+  }
+
   // Build alias map
   for (MCPhysReg I = 0, E = RegInfo->getNumRegs(); I != E; ++I) {
     BitVector BV(RegInfo->getNumRegs(), false);
@@ -499,6 +492,10 @@ void MCPlusBuilder::initAliases() {
       dbgs() << "\n";
     }
   });
+
+  if (OnlySmaller)
+    return SmallerAliasMap[Reg];
+  return AliasMap[Reg];
 }
 
 uint8_t MCPlusBuilder::getRegSize(MCPhysReg Reg) const {

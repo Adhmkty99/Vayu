@@ -13,7 +13,7 @@
 // result unshift(stateT& state,
 //                externT* to, externT* to_end, externT*& to_next) const;
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 // This is pretty much just an "are you breathing" test
 

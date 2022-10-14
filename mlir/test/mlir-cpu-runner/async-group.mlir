@@ -13,7 +13,7 @@
 // to keep the bot green for now.
 // UNSUPPORTED: asan
 
-func.func @main() {
+func @main() {
   %c1 = arith.constant 1 : index
   %c5 = arith.constant 5 : index
 
@@ -46,4 +46,4 @@ func.func @main() {
   return
 }
 
-func.func private @mlirAsyncRuntimePrintCurrentThreadId() -> ()
+func private @mlirAsyncRuntimePrintCurrentThreadId() -> ()

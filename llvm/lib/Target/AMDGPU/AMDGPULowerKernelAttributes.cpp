@@ -163,29 +163,39 @@ static bool processUse(CallInst *CI) {
     if (!GroupSize || !GridSize)
       continue;
 
-    using namespace llvm::PatternMatch;
-    auto GroupIDIntrin =
-        I == 0 ? m_Intrinsic<Intrinsic::amdgcn_workgroup_id_x>()
-               : (I == 1 ? m_Intrinsic<Intrinsic::amdgcn_workgroup_id_y>()
-                         : m_Intrinsic<Intrinsic::amdgcn_workgroup_id_z>());
-
     for (User *U : GroupSize->users()) {
       auto *ZextGroupSize = dyn_cast<ZExtInst>(U);
       if (!ZextGroupSize)
         continue;
 
-      for (User *UMin : ZextGroupSize->users()) {
-        if (match(UMin,
-                  m_UMin(m_Sub(m_Specific(GridSize),
-                               m_Mul(GroupIDIntrin, m_Specific(ZextGroupSize))),
-                         m_Specific(ZextGroupSize)))) {
+      for (User *ZextUser : ZextGroupSize->users()) {
+        auto *SI = dyn_cast<SelectInst>(ZextUser);
+        if (!SI)
+          continue;
+
+        using namespace llvm::PatternMatch;
+        auto GroupIDIntrin = I == 0 ?
+          m_Intrinsic<Intrinsic::amdgcn_workgroup_id_x>() :
+            (I == 1 ? m_Intrinsic<Intrinsic::amdgcn_workgroup_id_y>() :
+                      m_Intrinsic<Intrinsic::amdgcn_workgroup_id_z>());
+
+        auto SubExpr = m_Sub(m_Specific(GridSize),
+                             m_Mul(GroupIDIntrin, m_Specific(ZextGroupSize)));
+
+        ICmpInst::Predicate Pred;
+        if (match(SI,
+                  m_Select(m_ICmp(Pred, SubExpr, m_Specific(ZextGroupSize)),
+                           SubExpr,
+                           m_Specific(ZextGroupSize))) &&
+            Pred == ICmpInst::ICMP_ULT) {
           if (HasReqdWorkGroupSize) {
             ConstantInt *KnownSize
               = mdconst::extract<ConstantInt>(MD->getOperand(I));
-            UMin->replaceAllUsesWith(ConstantExpr::getIntegerCast(
-                KnownSize, UMin->getType(), false));
+            SI->replaceAllUsesWith(ConstantExpr::getIntegerCast(KnownSize,
+                                                                SI->getType(),
+                                                                false));
           } else {
-            UMin->replaceAllUsesWith(ZextGroupSize);
+            SI->replaceAllUsesWith(ZextGroupSize);
           }
 
           MadeChange = true;

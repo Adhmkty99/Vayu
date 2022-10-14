@@ -89,10 +89,11 @@ entry:
   ret void
 }
 ; CHECK-LABEL: {{^}}vector_imm:
-; CHECK: v_xor_b32_e32 v{{[0-9]}}, 0x64, v{{[0-9]}}
-; CHECK: v_xor_b32_e32 v{{[0-9]}}, 0x64, v{{[0-9]}}
-; CHECK: v_xor_b32_e32 v{{[0-9]}}, 0x64, v{{[0-9]}}
-; CHECK: v_xor_b32_e32 v{{[0-9]}}, 0x64, v{{[0-9]}}
+; CHECK: s_movk_i32 [[IMM:s[0-9]+]], 0x64
+; CHECK: v_xor_b32_e32 v{{[0-9]}}, [[IMM]], v{{[0-9]}}
+; CHECK: v_xor_b32_e32 v{{[0-9]}}, [[IMM]], v{{[0-9]}}
+; CHECK: v_xor_b32_e32 v{{[0-9]}}, [[IMM]], v{{[0-9]}}
+; CHECK: v_xor_b32_e32 v{{[0-9]}}, [[IMM]], v{{[0-9]}}
 
 define amdgpu_kernel void @vector_imm(<4 x i32> addrspace(1)* %out) #1 {
 entry:

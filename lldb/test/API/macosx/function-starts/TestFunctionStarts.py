@@ -13,6 +13,8 @@ exe_name = "StripMe"  # Must match Makefile
 
 class FunctionStartsTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     NO_DEBUG_INFO_TESTCASE = True
 
     @skipIfRemote
@@ -33,7 +35,7 @@ class FunctionStartsTestCase(TestBase):
         """Run the binary, stop at our unstripped function,
            make sure the caller has synthetic symbols"""
 
-        exe = os.path.realpath(self.getBuildArtifact(exe_name))
+        exe = self.getBuildArtifact(exe_name)
         # Now strip the binary, but leave externals so we can break on dont_strip_me.
         self.runBuildCommand(["strip", "-u", "-x", "-S", exe])
 

@@ -14,6 +14,8 @@ from lldbsuite.test import lldbutil
 
 class ARMEmulationTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @no_debug_info_test
     def test_thumb_emulations(self):
         test_dir = os.path.join(self.getSourceDir(), "new-test-files")
@@ -49,4 +51,4 @@ class ARMEmulationTestCase(TestBase):
             print('\nRunning test ' + os.path.basename(filename))
             print(output)
 
-        self.assertTrue(success, 'Emulation test failed.')
+        self.assertTrue(success, 'Emulation test succeeded.')

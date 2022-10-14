@@ -8,9 +8,6 @@
 
 // UNSUPPORTED: c++03
 
-// test_memory_resource requires RTTI for dynamic_cast
-// UNSUPPORTED: no-rtti
-
 // <experimental/memory_resource>
 
 // template <class T> class polymorphic_allocator

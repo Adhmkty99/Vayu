@@ -53,10 +53,6 @@ def riscv_any_fcvt_wu_rv64 : PatFrags<(ops node:$src, node:$frm),
                                       [(riscv_strict_fcvt_wu_rv64 node:$src, node:$frm),
                                        (riscv_fcvt_wu_rv64 node:$src, node:$frm)]>;
 
-def any_fma_nsz : PatFrag<(ops node:$rs1, node:$rs2, node:$rs3),
-                          (any_fma node:$rs1, node:$rs2, node:$rs3), [{
-  return N->getFlags().hasNoSignedZeros();
-}]>;
 //===----------------------------------------------------------------------===//
 // Operand and SDNode transformation definitions.
 //===----------------------------------------------------------------------===//
@@ -163,7 +159,7 @@ class FPStore_r<bits<3> funct3, string opcodestr, RegisterClass rty,
       Sched<[sw, ReadStoreData, ReadFMemBase]>;
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, mayRaiseFPException = 1,
-    UseNamedOperandTable = 1, hasPostISelHook = 1, isCommutable = 1 in
+    UseNamedOperandTable = 1, hasPostISelHook = 1 in
 class FPFMA_rrr_frm<RISCVOpcode opcode, bits<2> funct2, string opcodestr,
                     DAGOperand rty>
     : RVInstR4Frm<funct2, opcode, (outs rty:$rd),
@@ -191,32 +187,28 @@ multiclass FPFMADynFrmAlias_m<FPFMA_rrr_frm Inst, string OpcodeStr,
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, mayRaiseFPException = 1 in
 class FPALU_rr<bits<7> funct7, bits<3> funct3, string opcodestr,
-               DAGOperand rty, bit Commutable>
+               DAGOperand rty>
     : RVInstR<funct7, funct3, OPC_OP_FP, (outs rty:$rd),
-              (ins rty:$rs1, rty:$rs2), opcodestr, "$rd, $rs1, $rs2"> {
-  let isCommutable = Commutable;
-}
+              (ins rty:$rs1, rty:$rs2), opcodestr, "$rd, $rs1, $rs2">;
 multiclass FPALU_rr_m<bits<7> funct7, bits<3> funct3, string opcodestr,
-                      list<ExtInfo_r> Exts, bit Commutable = 0> {
+                      list<ExtInfo_r> Exts> {
   foreach Ext = Exts in
     let Predicates = Ext.Predicates, DecoderNamespace = Ext.Space in
-    def Ext.Suffix : FPALU_rr<funct7, funct3, opcodestr, Ext.Reg, Commutable>;
+    def Ext.Suffix : FPALU_rr<funct7, funct3, opcodestr, Ext.Reg>;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, mayRaiseFPException = 1,
     UseNamedOperandTable = 1, hasPostISelHook = 1 in
-class FPALU_rr_frm<bits<7> funct7, string opcodestr, DAGOperand rty,
-                   bit Commutable>
+class FPALU_rr_frm<bits<7> funct7, string opcodestr, DAGOperand rty>
     : RVInstRFrm<funct7, OPC_OP_FP, (outs rty:$rd),
                  (ins rty:$rs1, rty:$rs2, frmarg:$frm), opcodestr,
-                  "$rd, $rs1, $rs2, $frm"> {
-  let isCommutable = Commutable;
-}
+                  "$rd, $rs1, $rs2, $frm">;
+
 multiclass FPALU_rr_frm_m<bits<7> funct7, string opcodestr,
-                          list<ExtInfo_r> Exts, bit Commutable = 0> {
+                          list<ExtInfo_r> Exts> {
   foreach Ext = Exts in
     let Predicates = Ext.Predicates, DecoderNamespace = Ext.Space in
-    def Ext.Suffix : FPALU_rr_frm<funct7, opcodestr, Ext.Reg, Commutable>;
+    def Ext.Suffix : FPALU_rr_frm<funct7, opcodestr, Ext.Reg>;
 }
 
 class FPALUDynFrmAlias<FPALU_rr_frm Inst, string OpcodeStr,
@@ -277,16 +269,14 @@ multiclass FPUnaryOpDynFrmAlias_m<FPUnaryOp_r_frm Inst, string OpcodeStr,
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0, mayRaiseFPException = 1 in
 class FPCmp_rr<bits<7> funct7, bits<3> funct3, string opcodestr,
-               DAGOperand rty, bit Commutable>
+               DAGOperand rty>
     : RVInstR<funct7, funct3, OPC_OP_FP, (outs GPR:$rd),
-              (ins rty:$rs1, rty:$rs2), opcodestr, "$rd, $rs1, $rs2"> {
-  let isCommutable = Commutable;
-}
+              (ins rty:$rs1, rty:$rs2), opcodestr, "$rd, $rs1, $rs2">;
 multiclass FPCmp_rr_m<bits<7> funct7, bits<3> funct3, string opcodestr,
-                      list<ExtInfo_r> Exts, bit Commutable = 0> {
+                      list<ExtInfo_r> Exts> {
   foreach Ext = Exts in
     let Predicates = Ext.Predicates, DecoderNamespace = Ext.Space in
-    def Ext.Suffix : FPCmp_rr<funct7, funct3, opcodestr, Ext.Reg, Commutable>;
+    def Ext.Suffix : FPCmp_rr<funct7, funct3, opcodestr, Ext.Reg>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -315,11 +305,11 @@ defm : FPFMADynFrmAlias_m<FNMSUB_S, "fnmsub.s", FINX>;
 defm : FPFMADynFrmAlias_m<FNMADD_S, "fnmadd.s", FINX>;
 
 let SchedRW = [WriteFALU32, ReadFALU32, ReadFALU32] in {
-defm FADD_S : FPALU_rr_frm_m<0b0000000, "fadd.s", FINX, /*Commutable*/1>;
+defm FADD_S : FPALU_rr_frm_m<0b0000000, "fadd.s", FINX>;
 defm FSUB_S : FPALU_rr_frm_m<0b0000100, "fsub.s", FINX>;
 }
 let SchedRW = [WriteFMul32, ReadFMul32, ReadFMul32] in
-defm FMUL_S : FPALU_rr_frm_m<0b0001000, "fmul.s", FINX, /*Commutable*/1>;
+defm FMUL_S : FPALU_rr_frm_m<0b0001000, "fmul.s", FINX>;
 
 let SchedRW = [WriteFDiv32, ReadFDiv32, ReadFDiv32] in
 defm FDIV_S : FPALU_rr_frm_m<0b0001100, "fdiv.s", FINX>;
@@ -341,8 +331,8 @@ defm FSGNJX_S : FPALU_rr_m<0b0010000, 0b010, "fsgnjx.s", FINX>;
 }
 
 let SchedRW = [WriteFMinMax32, ReadFMinMax32, ReadFMinMax32] in {
-defm FMIN_S   : FPALU_rr_m<0b0010100, 0b000, "fmin.s", FINX, /*Commutable*/1>;
-defm FMAX_S   : FPALU_rr_m<0b0010100, 0b001, "fmax.s", FINX, /*Commutable*/1>;
+defm FMIN_S   : FPALU_rr_m<0b0010100, 0b000, "fmin.s", FINX>;
+defm FMAX_S   : FPALU_rr_m<0b0010100, 0b001, "fmax.s", FINX>;
 }
 
 defm FCVT_W_S : FPUnaryOp_r_frm_m<0b1100000, 0b00000, XFINX, "fcvt.w.s">,
@@ -358,7 +348,7 @@ def FMV_X_W : FPUnaryOp_r<0b1110000, 0b00000, 0b000, GPR, FPR32, "fmv.x.w">,
               Sched<[WriteFMovF32ToI32, ReadFMovF32ToI32]>;
 
 let SchedRW = [WriteFCmp32, ReadFCmp32, ReadFCmp32] in {
-defm FEQ_S : FPCmp_rr_m<0b1010000, 0b010, "feq.s", FINX, /*Commutable*/1>;
+defm FEQ_S : FPCmp_rr_m<0b1010000, 0b010, "feq.s", FINX>;
 defm FLT_S : FPCmp_rr_m<0b1010000, 0b001, "flt.s", FINX>;
 defm FLE_S : FPCmp_rr_m<0b1010000, 0b000, "fle.s", FINX>;
 }
@@ -522,10 +512,6 @@ def : Pat<(any_fma (fneg FPR32:$rs1), FPR32:$rs2, FPR32:$rs3),
 
 // fnmadd: -rs1 * rs2 - rs3
 def : Pat<(any_fma (fneg FPR32:$rs1), FPR32:$rs2, (fneg FPR32:$rs3)),
-          (FNMADD_S FPR32:$rs1, FPR32:$rs2, FPR32:$rs3, 0b111)>;
-
-// fnmadd: -(rs1 * rs2 + rs3) (the nsz flag on the FMA)
-def : Pat<(fneg (any_fma_nsz FPR32:$rs1, FPR32:$rs2, FPR32:$rs3)),
           (FNMADD_S FPR32:$rs1, FPR32:$rs2, FPR32:$rs3, 0b111)>;
 
 // The ratified 20191213 ISA spec defines fmin and fmax in a way that matches

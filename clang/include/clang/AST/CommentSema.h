@@ -130,8 +130,14 @@ public:
 
   InlineCommandComment *actOnInlineCommand(SourceLocation CommandLocBegin,
                                            SourceLocation CommandLocEnd,
+                                           unsigned CommandID);
+
+  InlineCommandComment *actOnInlineCommand(SourceLocation CommandLocBegin,
+                                           SourceLocation CommandLocEnd,
                                            unsigned CommandID,
-                                           ArrayRef<Comment::Argument> Args);
+                                           SourceLocation ArgLocBegin,
+                                           SourceLocation ArgLocEnd,
+                                           StringRef Arg);
 
   InlineContentComment *actOnUnknownCommand(SourceLocation LocBegin,
                                             SourceLocation LocEnd,

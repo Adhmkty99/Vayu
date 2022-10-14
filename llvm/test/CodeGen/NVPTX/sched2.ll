@@ -1,5 +1,4 @@
 ; RUN: llc < %s -march=nvptx -mcpu=sm_20 | FileCheck %s
-; RUN: %if ptxas %{ llc < %s -march=nvptx -mcpu=sm_20 | %ptxas-verify %}
 
 define void @foo(<2 x i32>* %a) {
 ; CHECK: .func foo

@@ -117,6 +117,13 @@ void CodeMetrics::analyzeBasicBlock(
     const BasicBlock *BB, const TargetTransformInfo &TTI,
     const SmallPtrSetImpl<const Value *> &EphValues, bool PrepareForLTO) {
   ++NumBlocks;
+  // Use a proxy variable for NumInsts of type InstructionCost, so that it can
+  // use InstructionCost's arithmetic properties such as saturation when this
+  // feature is added to InstructionCost.
+  // When storing the value back to NumInsts, we can assume all costs are Valid
+  // because the IR should not contain any nodes that cannot be costed. If that
+  // happens the cost-model is broken.
+  InstructionCost NumInstsProxy = NumInsts;
   InstructionCost NumInstsBeforeThisBB = NumInsts;
   for (const Instruction &I : *BB) {
     // Skip ephemeral values.
@@ -176,7 +183,8 @@ void CodeMetrics::analyzeBasicBlock(
       if (InvI->cannotDuplicate())
         notDuplicatable = true;
 
-    NumInsts += TTI.getUserCost(&I, TargetTransformInfo::TCK_CodeSize);
+    NumInstsProxy += TTI.getUserCost(&I, TargetTransformInfo::TCK_CodeSize);
+    NumInsts = *NumInstsProxy.getValue();
   }
 
   if (isa<ReturnInst>(BB->getTerminator()))
@@ -196,6 +204,6 @@ void CodeMetrics::analyzeBasicBlock(
   notDuplicatable |= isa<IndirectBrInst>(BB->getTerminator());
 
   // Remember NumInsts for this BB.
-  InstructionCost NumInstsThisBB = NumInsts - NumInstsBeforeThisBB;
-  NumBBInsts[BB] = NumInstsThisBB;
+  InstructionCost NumInstsThisBB = NumInstsProxy - NumInstsBeforeThisBB;
+  NumBBInsts[BB] = *NumInstsThisBB.getValue();
 }

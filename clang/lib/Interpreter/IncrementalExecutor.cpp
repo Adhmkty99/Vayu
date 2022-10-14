@@ -12,9 +12,6 @@
 
 #include "IncrementalExecutor.h"
 
-#include "clang/Basic/TargetInfo.h"
-#include "clang/Basic/TargetOptions.h"
-#include "clang/Interpreter/PartialTranslationUnit.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
@@ -30,13 +27,12 @@ namespace clang {
 
 IncrementalExecutor::IncrementalExecutor(llvm::orc::ThreadSafeContext &TSC,
                                          llvm::Error &Err,
-                                         const clang::TargetInfo &TI)
+                                         const llvm::Triple &Triple)
     : TSCtx(TSC) {
   using namespace llvm::orc;
   llvm::ErrorAsOutParameter EAO(&Err);
 
-  auto JTMB = JITTargetMachineBuilder(TI.getTriple());
-  JTMB.addFeatures(TI.getTargetOpts().Features);
+  auto JTMB = JITTargetMachineBuilder(Triple);
   if (auto JitOrErr = LLJITBuilder().setJITTargetMachineBuilder(JTMB).create())
     Jit = std::move(*JitOrErr);
   else {
@@ -56,24 +52,8 @@ IncrementalExecutor::IncrementalExecutor(llvm::orc::ThreadSafeContext &TSC,
 
 IncrementalExecutor::~IncrementalExecutor() {}
 
-llvm::Error IncrementalExecutor::addModule(PartialTranslationUnit &PTU) {
-  llvm::orc::ResourceTrackerSP RT =
-      Jit->getMainJITDylib().createResourceTracker();
-  ResourceTrackers[&PTU] = RT;
-
-  return Jit->addIRModule(RT, {std::move(PTU.TheModule), TSCtx});
-}
-
-llvm::Error IncrementalExecutor::removeModule(PartialTranslationUnit &PTU) {
-
-  llvm::orc::ResourceTrackerSP RT = std::move(ResourceTrackers[&PTU]);
-  if (!RT)
-    return llvm::Error::success();
-
-  ResourceTrackers.erase(&PTU);
-  if (llvm::Error Err = RT->remove())
-    return Err;
-  return llvm::Error::success();
+llvm::Error IncrementalExecutor::addModule(std::unique_ptr<llvm::Module> M) {
+  return Jit->addIRModule(llvm::orc::ThreadSafeModule(std::move(M), TSCtx));
 }
 
 llvm::Error IncrementalExecutor::runCtors() const {
@@ -88,7 +68,7 @@ IncrementalExecutor::getSymbolAddress(llvm::StringRef Name,
 
   if (!Sym)
     return Sym.takeError();
-  return Sym->getValue();
+  return Sym->getAddress();
 }
 
 } // end namespace clang

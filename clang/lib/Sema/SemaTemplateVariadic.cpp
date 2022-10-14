@@ -677,19 +677,21 @@ bool Sema::CheckParameterPacksForExpansion(
   Optional<unsigned> NumPartialExpansions;
   SourceLocation PartiallySubstitutedPackLoc;
 
-  for (UnexpandedParameterPack ParmPack : Unexpanded) {
+  for (ArrayRef<UnexpandedParameterPack>::iterator i = Unexpanded.begin(),
+                                                 end = Unexpanded.end();
+                                                  i != end; ++i) {
     // Compute the depth and index for this parameter pack.
     unsigned Depth = 0, Index = 0;
     IdentifierInfo *Name;
     bool IsVarDeclPack = false;
 
-    if (const TemplateTypeParmType *TTP =
-            ParmPack.first.dyn_cast<const TemplateTypeParmType *>()) {
+    if (const TemplateTypeParmType *TTP
+        = i->first.dyn_cast<const TemplateTypeParmType *>()) {
       Depth = TTP->getDepth();
       Index = TTP->getIndex();
       Name = TTP->getIdentifier();
     } else {
-      NamedDecl *ND = ParmPack.first.get<NamedDecl *>();
+      NamedDecl *ND = i->first.get<NamedDecl *>();
       if (isa<VarDecl>(ND))
         IsVarDeclPack = true;
       else
@@ -704,9 +706,9 @@ bool Sema::CheckParameterPacksForExpansion(
       // Figure out whether we're instantiating to an argument pack or not.
       typedef LocalInstantiationScope::DeclArgumentPack DeclArgumentPack;
 
-      llvm::PointerUnion<Decl *, DeclArgumentPack *> *Instantiation =
-          CurrentInstantiationScope->findInstantiationOf(
-              ParmPack.first.get<NamedDecl *>());
+      llvm::PointerUnion<Decl *, DeclArgumentPack *> *Instantiation
+        = CurrentInstantiationScope->findInstantiationOf(
+                                        i->first.get<NamedDecl *>());
       if (Instantiation->is<DeclArgumentPack *>()) {
         // We could expand this function parameter pack.
         NewPackSize = Instantiation->get<DeclArgumentPack *>()->size();
@@ -743,7 +745,7 @@ bool Sema::CheckParameterPacksForExpansion(
           RetainExpansion = true;
           // We don't actually know the new pack size yet.
           NumPartialExpansions = NewPackSize;
-          PartiallySubstitutedPackLoc = ParmPack.second;
+          PartiallySubstitutedPackLoc = i->second;
           continue;
         }
       }
@@ -754,7 +756,7 @@ bool Sema::CheckParameterPacksForExpansion(
       // Record it.
       NumExpansions = NewPackSize;
       FirstPack.first = Name;
-      FirstPack.second = ParmPack.second;
+      FirstPack.second = i->second;
       HaveFirstPack = true;
       continue;
     }
@@ -765,12 +767,12 @@ bool Sema::CheckParameterPacksForExpansion(
       //   the same number of arguments specified.
       if (HaveFirstPack)
         Diag(EllipsisLoc, diag::err_pack_expansion_length_conflict)
-            << FirstPack.first << Name << *NumExpansions << NewPackSize
-            << SourceRange(FirstPack.second) << SourceRange(ParmPack.second);
+          << FirstPack.first << Name << *NumExpansions << NewPackSize
+          << SourceRange(FirstPack.second) << SourceRange(i->second);
       else
         Diag(EllipsisLoc, diag::err_pack_expansion_length_conflict_multilevel)
-            << Name << *NumExpansions << NewPackSize
-            << SourceRange(ParmPack.second);
+          << Name << *NumExpansions << NewPackSize
+          << SourceRange(i->second);
       return true;
     }
   }

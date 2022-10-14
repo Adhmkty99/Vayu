@@ -9,6 +9,8 @@ from lldbsuite.test.lldbtest import *
 from lldbsuite.test import lldbutil
 
 class SBEnvironmentAPICase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     # We use this function to test both kind of accessors:

@@ -26,7 +26,7 @@ namespace lldb_private {
 
 class ModuleSpec {
 public:
-  ModuleSpec() = default;
+  ModuleSpec() {}
 
   /// If the \c data argument is passed, its contents will be used
   /// as the module contents instead of trying to read them from
@@ -274,7 +274,7 @@ protected:
 
 class ModuleSpecList {
 public:
-  ModuleSpecList() = default;
+  ModuleSpecList() {}
 
   ModuleSpecList(const ModuleSpecList &rhs) {
     std::lock_guard<std::recursive_mutex> lhs_guard(m_mutex);

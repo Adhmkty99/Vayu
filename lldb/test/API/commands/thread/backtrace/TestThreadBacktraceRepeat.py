@@ -11,6 +11,8 @@ from lldbsuite.test import lldbutil
 
 
 class TestThreadBacktracePage(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def test_thread_backtrace_one_thread(self):
@@ -93,6 +95,9 @@ class TestThreadBacktracePage(TestBase):
     # the comments whether it was getting two threads to the same breakpoint that was
     # problematic, or the step-out part.  This test stops at the rendevous point so I'm
     # removing the skipIfLinux to see if we see any flakiness in just this part of the test.
+    @expectedFailureAll(
+        oslist=["freebsd"],
+        bugnumber="llvm.org/pr18066 inferior does not exit")
     @skipIfWindows # This test will hang on windows llvm.org/pr21753
     @expectedFailureAll(oslist=["windows"])
     @expectedFailureNetBSD
@@ -152,3 +157,7 @@ class TestThreadBacktracePage(TestBase):
         self.assertTrue(result.Succeeded(), "repeat command succeeded for two threads")
         result_str = result.GetOutput()
         self.check_two_threads(result_str, thread_id_1, name_1, thread_id_2, name_2, 13, 22)
+
+        
+
+        

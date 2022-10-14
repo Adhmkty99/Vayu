@@ -20,8 +20,7 @@ UniqueptrResetReleaseCheck::UniqueptrResetReleaseCheck(
     StringRef Name, ClangTidyContext *Context)
     : ClangTidyCheck(Name, Context),
       Inserter(Options.getLocalOrGlobal("IncludeStyle",
-                                        utils::IncludeSorter::IS_LLVM),
-               areDiagsSelfContained()) {}
+                                        utils::IncludeSorter::IS_LLVM)) {}
 
 void UniqueptrResetReleaseCheck::storeOptions(
     ClangTidyOptions::OptionMap &Opts) {

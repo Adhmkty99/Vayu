@@ -11,7 +11,7 @@
 // <string>
 
 // basic_string(basic_string&&)
-//        noexcept(is_nothrow_move_constructible<allocator_type>::value); // constexpr since C++20
+//        noexcept(is_nothrow_move_constructible<allocator_type>::value);
 
 // This tests a conforming extension
 

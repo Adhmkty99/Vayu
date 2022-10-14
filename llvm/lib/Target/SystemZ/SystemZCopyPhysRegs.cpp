@@ -100,7 +100,7 @@ bool SystemZCopyPhysRegs::visitMBB(MachineBasicBlock &MBB) {
 }
 
 bool SystemZCopyPhysRegs::runOnMachineFunction(MachineFunction &F) {
-  TII = F.getSubtarget<SystemZSubtarget>().getInstrInfo();
+  TII = static_cast<const SystemZInstrInfo *>(F.getSubtarget().getInstrInfo());
   MRI = &F.getRegInfo();
 
   bool Modified = false;

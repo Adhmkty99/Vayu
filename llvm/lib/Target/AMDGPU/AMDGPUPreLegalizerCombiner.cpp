@@ -126,6 +126,7 @@ void AMDGPUPreLegalizerCombinerHelper::applyClampI64ToI16(
          LLT::scalar(64));
   const LLT S32 = LLT::scalar(32);
 
+  B.setMBB(*MI.getParent());
   B.setInstrAndDebugLoc(MI);
 
   auto Unmerge = B.buildUnmerge(S32, Src);
@@ -191,8 +192,8 @@ public:
       report_fatal_error("Invalid rule identifier");
   }
 
-  bool combine(GISelChangeObserver &Observer, MachineInstr &MI,
-               MachineIRBuilder &B) const override;
+  virtual bool combine(GISelChangeObserver &Observer, MachineInstr &MI,
+                       MachineIRBuilder &B) const override;
 };
 
 bool AMDGPUPreLegalizerCombinerInfo::combine(GISelChangeObserver &Observer,

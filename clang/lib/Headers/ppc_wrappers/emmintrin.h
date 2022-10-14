@@ -36,8 +36,7 @@
 #ifndef EMMINTRIN_H_
 #define EMMINTRIN_H_
 
-#if defined(__ppc64__) &&                                                      \
-    (defined(__linux__) || defined(__FreeBSD__) || defined(_AIX))
+#if defined(__ppc64__) && (defined(__linux__) || defined(__FreeBSD__))
 
 #include <altivec.h>
 
@@ -2262,7 +2261,7 @@ extern __inline __m128d
 
 #else
 #include_next <emmintrin.h>
-#endif /* defined(__ppc64__) &&
-        *   (defined(__linux__) || defined(__FreeBSD__) || defined(_AIX)) */
+#endif /* defined(__ppc64__) && (defined(__linux__) || defined(__FreeBSD__))   \
+        */
 
 #endif /* EMMINTRIN_H_ */

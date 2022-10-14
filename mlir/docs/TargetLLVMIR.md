@@ -182,8 +182,6 @@ Function types are converted to LLVM dialect function types as follows:
     individual pointers;
 -   the conversion of `memref`-typed arguments is subject to
     [calling conventions](TargetLLVMIR.md#calling-conventions).
--   if a function type has boolean attribute `func.varargs` being set, the
-    converted LLVM function will be variadic.
 
 Examples:
 
@@ -254,11 +252,6 @@ Examples:
 // potentially with other non-memref typed results.
 !llvm.func<struct<(struct<(ptr<f32>, ptr<f32>, i64)>,
                    struct<(ptr<double>, ptr<double>, i64)>)> ()>
-
-// If "func.varargs" attribute is set:
-(i32) -> () attributes { "func.varargs" = true }
-// the corresponding LLVM function will be variadic:
-!llvm.func<void (i32, ...)>
 ```
 
 Conversion patterns are available to convert built-in function operations and
@@ -308,10 +301,10 @@ defines and uses of the values being returned.
 Example:
 
 ```mlir
-func.func @foo(%arg0: i32, %arg1: i64) -> (i32, i64) {
+func @foo(%arg0: i32, %arg1: i64) -> (i32, i64) {
   return %arg0, %arg1 : i32, i64
 }
-func.func @bar() {
+func @bar() {
   %0 = arith.constant 42 : i32
   %1 = arith.constant 17 : i64
   %2:2 = call @foo(%0, %1) : (i32, i64) -> (i32, i64)
@@ -367,14 +360,15 @@ aliasing attributes on the raw pointers underpinning the memref.
 Examples:
 
 ```mlir
-func.func @foo(%arg0: memref<?xf32>) -> () {
+func @foo(%arg0: memref<?xf32>) -> () {
   "use"(%arg0) : (memref<?xf32>) -> ()
   return
 }
 
 // Gets converted to the following
 // (using type alias for brevity):
-!llvm.memref_1d = !llvm.struct<(ptr<f32>, ptr<f32>, i64, array<1xi64>, array<1xi64>)>
+!llvm.memref_1d = type !llvm.struct<(ptr<f32>, ptr<f32>, i64,
+                                     array<1xi64>, array<1xi64>)>
 
 llvm.func @foo(%arg0: !llvm.ptr<f32>,  // Allocated pointer.
                %arg1: !llvm.ptr<f32>,  // Aligned pointer.
@@ -396,7 +390,7 @@ llvm.func @foo(%arg0: !llvm.ptr<f32>,  // Allocated pointer.
 ```
 
 ```mlir
-func.func @bar() {
+func @bar() {
   %0 = "get"() : () -> (memref<?xf32>)
   call @foo(%0) : (memref<?xf32>) -> ()
   return
@@ -404,7 +398,8 @@ func.func @bar() {
 
 // Gets converted to the following
 // (using type alias for brevity):
-!llvm.memref_1d = !llvm.struct<(ptr<f32>, ptr<f32>, i64, array<1xi64>, array<1xi64>)>
+!llvm.memref_1d = type !llvm.struct<(ptr<f32>, ptr<f32>, i64,
+                                     array<1xi64>, array<1xi64>)>
 
 llvm.func @bar() {
   %0 = "get"() : () -> !llvm.memref_1d
@@ -508,9 +503,9 @@ to the following.
 Examples:
 
 ```
-func.func @callee(memref<2x4xf32>) {
+func @callee(memref<2x4xf32>) {
 
-func.func @caller(%0 : memref<2x4xf32>) {
+func @caller(%0 : memref<2x4xf32>) {
   call @callee(%0) : (memref<2x4xf32>) -> ()
 }
 
@@ -552,17 +547,6 @@ llvm.func @caller(%arg0: !llvm.ptr<f32>) {
 
 The "bare pointer" calling convention does not support unranked memrefs as their
 shape cannot be known at compile time.
-
-### Generic alloction and deallocation functions
-
-When converting the Memref dialect, allocations and deallocations are converted
-into calls to `malloc` (`aligned_alloc` if aligned allocations are requested)
-and `free`. However, it is possible to convert them to more generic functions
-which can be implemented by a runtime library, thus allowing custom allocation
-strategies or runtime profiling. When the conversion pass is  instructed to
-perform such operation, the names of the calles are `_mlir_alloc`,
-`_mlir_aligned_alloc` and `_mlir_free`. Their signatures are the same of
-`malloc`, `aligned_alloc` and `free`.
 
 ### C-compatible wrapper emission
 
@@ -631,11 +615,12 @@ Examples:
 
 ```mlir
 
-func.func @qux(%arg0: memref<?x?xf32>)
+func @qux(%arg0: memref<?x?xf32>)
 
 // Gets converted into the following
 // (using type alias for brevity):
-!llvm.memref_2d = !llvm.struct<(ptr<f32>, ptr<f32>, i64, array<2xi64>, array<2xi64>)>
+!llvm.memref_2d = type !llvm.struct<(ptr<f32>, ptr<f32>, i64,
+                                     array<2xi64>, array<2xi64>)>
 
 // Function with unpacked arguments.
 llvm.func @qux(%arg0: !llvm.ptr<f32>, %arg1: !llvm.ptr<f32>,
@@ -674,14 +659,16 @@ llvm.func @_mlir_ciface_qux(!llvm.ptr<struct<(ptr<f32>, ptr<f32>, i64,
 ```
 
 ```mlir
-func.func @foo(%arg0: memref<?x?xf32>) {
+func @foo(%arg0: memref<?x?xf32>) {
   return
 }
 
 // Gets converted into the following
 // (using type alias for brevity):
-!llvm.memref_2d = !llvm.struct<(ptr<f32>, ptr<f32>, i64, array<2xi64>, array<2xi64>)>
-!llvm.memref_2d_ptr = !llvm.ptr<struct<(ptr<f32>, ptr<f32>, i64, array<2xi64>, array<2xi64>)>>
+!llvm.memref_2d = type !llvm.struct<(ptr<f32>, ptr<f32>, i64,
+                                     array<2xi64>, array<2xi64>)>
+!llvm.memref_2d_ptr = type !llvm.ptr<struct<(ptr<f32>, ptr<f32>, i64,
+                                             array<2xi64>, array<2xi64>)>>
 
 // Function with unpacked arguments.
 llvm.func @foo(%arg0: !llvm.ptr<f32>, %arg1: !llvm.ptr<f32>,
@@ -711,14 +698,16 @@ llvm.func @_mlir_ciface_foo(%arg0: !llvm.memref_2d_ptr) {
 ```
 
 ```mlir
-func.func @foo(%arg0: memref<?x?xf32>) -> memref<?x?xf32> {
+func @foo(%arg0: memref<?x?xf32>) -> memref<?x?xf32> {
   return %arg0 : memref<?x?xf32>
 }
 
 // Gets converted into the following
 // (using type alias for brevity):
-!llvm.memref_2d = !llvm.struct<(ptr<f32>, ptr<f32>, i64, array<2xi64>, array<2xi64>)>
-!llvm.memref_2d_ptr = !llvm.ptr<struct<(ptr<f32>, ptr<f32>, i64, array<2xi64>, array<2xi64>)>>
+!llvm.memref_2d = type !llvm.struct<(ptr<f32>, ptr<f32>, i64,
+                                     array<2xi64>, array<2xi64>)>
+!llvm.memref_2d_ptr = type !llvm.ptr<struct<(ptr<f32>, ptr<f32>, i64,
+                                             array<2xi64>, array<2xi64>)>>
 
 // Function with unpacked arguments.
 llvm.func @foo(%arg0: !llvm.ptr<f32>, %arg1: !llvm.ptr<f32>, %arg2: i64,
@@ -764,18 +753,6 @@ descriptors passed by pointer would have to be transferred to the device memory,
 which introduces significant overhead. In such situations, auxiliary interface
 functions are executed on host and only pass the values through device function
 invocation mechanism.
-
-Limitation: Right now we cannot generate C interface for variadic functions,
-regardless of being non-external or external. Because C functions are unable to
-"forward" variadic arguments like this:
-```c
-void bar(int, ...);
-
-void foo(int x, ...) {
-  // ERROR: no way to forward variadic arguments.
-  void bar(x, ...);
-}
-```
 
 ### Address Computation
 

@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class ProcessSaveCoreTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfRemote
     @skipUnlessWindows
     def test_cannot_save_core_unless_process_stopped(self):
@@ -38,7 +40,7 @@ class ProcessSaveCoreTestCase(TestBase):
             breakpoint = target.BreakpointCreateByName("bar")
             process = target.LaunchSimple(
                 None, None, self.get_process_working_directory())
-            self.assertState(process.GetState(), lldb.eStateStopped)
+            self.assertEqual(process.GetState(), lldb.eStateStopped)
             self.assertTrue(process.SaveCore(core))
             self.assertTrue(os.path.isfile(core))
             self.assertSuccess(process.Kill())
@@ -72,7 +74,7 @@ class ProcessSaveCoreTestCase(TestBase):
             breakpoint = target.BreakpointCreateByName("bar")
             process = target.LaunchSimple(
                 None, None, self.get_process_working_directory())
-            self.assertState(process.GetState(), lldb.eStateStopped)
+            self.assertEqual(process.GetState(), lldb.eStateStopped)
             self.assertTrue(process.SaveCore(core))
             self.assertTrue(os.path.isfile(core))
             self.assertSuccess(process.Kill())

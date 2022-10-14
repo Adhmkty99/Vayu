@@ -230,7 +230,8 @@ namespace {
 
     bool IsGuaranteedToExecute(MachineBasicBlock *BB);
 
-    bool isTriviallyReMaterializable(const MachineInstr &MI) const;
+    bool isTriviallyReMaterializable(const MachineInstr &MI,
+                                     AAResults *AA) const;
 
     void EnterScope(MachineBasicBlock *MBB);
 
@@ -665,9 +666,9 @@ bool MachineLICMBase::IsGuaranteedToExecute(MachineBasicBlock *BB) {
 /// virtual register uses. Even though rematerializable RA might not actually
 /// rematerialize it in this scenario. In that case we do not want to hoist such
 /// instruction out of the loop in a belief RA will sink it back if needed.
-bool MachineLICMBase::isTriviallyReMaterializable(
-    const MachineInstr &MI) const {
-  if (!TII->isTriviallyReMaterializable(MI))
+bool MachineLICMBase::isTriviallyReMaterializable(const MachineInstr &MI,
+                                                  AAResults *AA) const {
+  if (!TII->isTriviallyReMaterializable(MI, AA))
     return false;
 
   for (const MachineOperand &MO : MI.operands()) {
@@ -1173,7 +1174,7 @@ bool MachineLICMBase::IsProfitableToHoist(MachineInstr &MI) {
 
   // Rematerializable instructions should always be hoisted providing the
   // register allocator can just pull them down again when needed.
-  if (isTriviallyReMaterializable(MI))
+  if (isTriviallyReMaterializable(MI, AA))
     return true;
 
   // FIXME: If there are long latency loop-invariant instructions inside the
@@ -1226,8 +1227,8 @@ bool MachineLICMBase::IsProfitableToHoist(MachineInstr &MI) {
 
   // High register pressure situation, only hoist if the instruction is going
   // to be remat'ed.
-  if (!isTriviallyReMaterializable(MI) &&
-      !MI.isDereferenceableInvariantLoad()) {
+  if (!isTriviallyReMaterializable(MI, AA) &&
+      !MI.isDereferenceableInvariantLoad(AA)) {
     LLVM_DEBUG(dbgs() << "Can't remat / high reg-pressure: " << MI);
     return false;
   }
@@ -1246,7 +1247,7 @@ MachineInstr *MachineLICMBase::ExtractHoistableLoad(MachineInstr *MI) {
   // If not, we may be able to unfold a load and hoist that.
   // First test whether the instruction is loading from an amenable
   // memory location.
-  if (!MI->isDereferenceableInvariantLoad())
+  if (!MI->isDereferenceableInvariantLoad(AA))
     return nullptr;
 
   // Next determine the register class for a temporary register.

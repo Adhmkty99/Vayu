@@ -59,27 +59,30 @@ namespace {
     enum {
       RegBase,
       FrameIndexBase
-    } BaseType = RegBase;
+    } BaseType;
 
     // This is really a union, discriminated by BaseType!
     SDValue Base_Reg;
-    int Base_FrameIndex = 0;
+    int Base_FrameIndex;
 
-    unsigned Scale = 1;
+    unsigned Scale;
     SDValue IndexReg;
-    int32_t Disp = 0;
+    int32_t Disp;
     SDValue Segment;
-    const GlobalValue *GV = nullptr;
-    const Constant *CP = nullptr;
-    const BlockAddress *BlockAddr = nullptr;
-    const char *ES = nullptr;
-    MCSymbol *MCSym = nullptr;
-    int JT = -1;
+    const GlobalValue *GV;
+    const Constant *CP;
+    const BlockAddress *BlockAddr;
+    const char *ES;
+    MCSymbol *MCSym;
+    int JT;
     Align Alignment;            // CP alignment.
-    unsigned char SymbolFlags = X86II::MO_NO_FLAG;  // X86II::MO_*
+    unsigned char SymbolFlags;  // X86II::MO_*
     bool NegateIndex = false;
 
-    X86ISelAddressMode() = default;
+    X86ISelAddressMode()
+        : BaseType(RegBase), Base_FrameIndex(0), Scale(1), Disp(0), GV(nullptr),
+          CP(nullptr), BlockAddr(nullptr), ES(nullptr), MCSym(nullptr), JT(-1),
+          SymbolFlags(X86II::MO_NO_FLAG) {}
 
     bool hasSymbolicDisplacement() const {
       return GV != nullptr || CP != nullptr || ES != nullptr ||
@@ -529,7 +532,7 @@ namespace {
 
       unsigned StoreSize = N->getMemoryVT().getStoreSize();
 
-      if (N->getAlign().value() < StoreSize)
+      if (N->getAlignment() < StoreSize)
         return false;
 
       switch (StoreSize) {
@@ -3499,7 +3502,7 @@ bool X86DAGToDAGISel::matchBitExtract(SDNode *Node) {
   const bool AllowExtraUsesByDefault = Subtarget->hasBMI2();
   auto checkUses = [AllowExtraUsesByDefault](SDValue Op, unsigned NUses,
                                              Optional<bool> AllowExtraUses) {
-    return AllowExtraUses.value_or(AllowExtraUsesByDefault) ||
+    return AllowExtraUses.getValueOr(AllowExtraUsesByDefault) ||
            Op.getNode()->hasNUsesOfValue(NUses, Op.getResNo());
   };
   auto checkOneUse = [checkUses](SDValue Op,
@@ -6173,7 +6176,6 @@ SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintID,
   case InlineAsm::Constraint_v: // not offsetable    ??
   case InlineAsm::Constraint_m: // memory
   case InlineAsm::Constraint_X:
-  case InlineAsm::Constraint_p: // address
     if (!selectAddr(nullptr, Op, Op0, Op1, Op2, Op3, Op4))
       return true;
     break;

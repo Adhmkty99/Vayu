@@ -112,7 +112,7 @@ public:
   bool nameStartsWith(StringRef Prefix) const;
 
   bool hasSymbol(const MCSymbol *Symbol) const {
-    return llvm::is_contained(Symbols, Symbol);
+    return std::find(Symbols.begin(), Symbols.end(), Symbol) != Symbols.end();
   }
 
   bool isAbsolute() const;

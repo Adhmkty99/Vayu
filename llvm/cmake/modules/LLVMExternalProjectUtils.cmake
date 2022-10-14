@@ -56,12 +56,14 @@ endfunction()
 #     Use provided strip tool instead of the default one.
 #   TARGET_TRIPLE triple
 #     Optional target triple to pass to the compiler
+#   BYPRODUCTS files...
+#     Files generated as a byproduct of this build.
 #   )
 function(llvm_ExternalProject_Add name source_dir)
   cmake_parse_arguments(ARG
     "USE_TOOLCHAIN;EXCLUDE_FROM_ALL;NO_INSTALL;ALWAYS_CLEAN"
     "SOURCE_DIR"
-    "CMAKE_ARGS;TOOLCHAIN_TOOLS;RUNTIME_LIBRARIES;DEPENDS;EXTRA_TARGETS;PASSTHROUGH_PREFIXES;STRIP_TOOL;TARGET_TRIPLE"
+    "CMAKE_ARGS;TOOLCHAIN_TOOLS;RUNTIME_LIBRARIES;DEPENDS;EXTRA_TARGETS;PASSTHROUGH_PREFIXES;STRIP_TOOL;TARGET_TRIPLE;BYPRODUCTS"
     ${ARGN})
   canonicalize_tool_name(${name} nameCanon)
 
@@ -278,8 +280,6 @@ function(llvm_ExternalProject_Add name source_dir)
       foreach(type ${flag_types})
         list(APPEND cmake_args ${${type}_flag})
       endforeach()
-    else()
-      set(cmake_args ${ARG_CMAKE_ARGS})
     endif()
   else()
     set(llvm_config_path "$<TARGET_FILE:llvm-config>")
@@ -324,6 +324,7 @@ function(llvm_ExternalProject_Add name source_dir)
     INSTALL_COMMAND ""
     STEP_TARGETS configure build
     BUILD_ALWAYS 1
+    BUILD_BYPRODUCTS ${ARG_BYPRODUCTS}
     USES_TERMINAL_CONFIGURE 1
     USES_TERMINAL_BUILD 1
     USES_TERMINAL_INSTALL 1

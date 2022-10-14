@@ -80,7 +80,6 @@ typedef const struct __CFAllocator * CFAllocatorRef;
 extern const CFAllocatorRef kCFAllocatorDefault;
 extern CFTypeRef CFRetain(CFTypeRef cf);
 extern void CFRelease(CFTypeRef cf);
-extern CFTypeRef CFAutorelease(CFTypeRef cf);
 extern CFTypeRef CFMakeCollectable(CFTypeRef cf);
 typedef struct {
 }

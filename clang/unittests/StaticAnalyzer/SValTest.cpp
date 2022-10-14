@@ -161,7 +161,6 @@ SVAL_TEST(GetConstType, R"(
 void foo() {
   int x = 42;
   int *y = nullptr;
-  bool z = true;
 })") {
   SVal X = getByName("x");
   ASSERT_FALSE(X.getType(Context).isNull());
@@ -171,10 +170,6 @@ void foo() {
   ASSERT_FALSE(Y.getType(Context).isNull());
   expectSameSignAndBitWidth(Context.getUIntPtrType(), Y.getType(Context),
                             Context);
-
-  SVal Z = getByName("z");
-  ASSERT_FALSE(Z.getType(Context).isNull());
-  EXPECT_EQ(Context.BoolTy, Z.getType(Context));
 }
 
 SVAL_TEST(GetLocAsIntType, R"(
@@ -310,13 +305,13 @@ void foo(int x) {
   EXPECT_EQ("TestUnion", CRecordType->getDecl()->getName());
 
   auto D = getByName("d").getAs<nonloc::CompoundVal>();
-  ASSERT_TRUE(D.has_value());
+  ASSERT_TRUE(D.hasValue());
   auto Begin = D->begin();
   ASSERT_NE(D->end(), Begin);
   ++Begin;
   ASSERT_EQ(D->end(), Begin);
   auto LD = D->begin()->getAs<nonloc::LazyCompoundVal>();
-  ASSERT_TRUE(LD.has_value());
+  ASSERT_TRUE(LD.hasValue());
   auto LDT = LD->getType(Context);
   ASSERT_FALSE(LDT.isNull());
   const auto *DRecordType = dyn_cast<RecordType>(LDT);

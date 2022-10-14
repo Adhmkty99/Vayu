@@ -61,13 +61,7 @@ bool isIdempotentRMW(AtomicRMWInst& RMWI) {
 /// equivalent to its value operand.
 bool isSaturating(AtomicRMWInst& RMWI) {
   if (auto CF = dyn_cast<ConstantFP>(RMWI.getValOperand()))
-    switch (RMWI.getOperation()) {
-    case AtomicRMWInst::FMax:
-      // maxnum(x, +inf) -> +inf
-      return !CF->isNegative() && CF->isInfinity();
-    case AtomicRMWInst::FMin:
-      // minnum(x, -inf) -> +inf
-      return CF->isNegative() && CF->isInfinity();
+    switch(RMWI.getOperation()) {
     case AtomicRMWInst::FAdd:
     case AtomicRMWInst::FSub:
       return CF->isNaN();

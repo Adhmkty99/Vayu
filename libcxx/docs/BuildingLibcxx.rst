@@ -99,7 +99,8 @@ it is the simplest way to build.
           -T "ClangCL"                                    ^
           -DLLVM_ENABLE_RUNTIMES=libcxx                   ^
           -DLIBCXX_ENABLE_SHARED=YES                      ^
-          -DLIBCXX_ENABLE_STATIC=NO
+          -DLIBCXX_ENABLE_STATIC=NO                       ^
+          -DLIBCXX_ENABLE_EXPERIMENTAL_LIBRARY=NO
   > cmake --build build
 
 CMake + ninja (MSVC)
@@ -130,7 +131,8 @@ In either case, then run:
   > cmake -G Ninja -S runtimes -B build                                               ^
           -DCMAKE_C_COMPILER=clang-cl                                                 ^
           -DCMAKE_CXX_COMPILER=clang-cl                                               ^
-          -DLLVM_ENABLE_RUNTIMES=libcxx
+          -DLLVM_ENABLE_RUNTIMES=libcxx                                               ^
+          -DLIBCXX_ENABLE_EXPERIMENTAL_LIBRARY=NO
   > ninja -C build cxx
   > ninja -C build check-cxx
 
@@ -265,6 +267,15 @@ libc++ specific options
    support for ``wchar_t``. This is especially useful in embedded settings where
    C Standard Libraries don't always provide all the usual bells and whistles.
 
+.. option:: LIBCXX_ENABLE_INCOMPLETE_FEATURES:BOOL
+
+  **Default**: ``ON``
+
+  Whether to enable support for incomplete library features. Incomplete features
+  are new library features under development. These features don't guarantee
+  ABI stability nor the quality of completed library features. Vendors
+  shipping the library may want to disable this option.
+
 .. option:: LIBCXX_INSTALL_LIBRARY_DIR:PATH
 
   **Default**: ``lib${LIBCXX_LIBDIR_SUFFIX}``
@@ -287,6 +298,23 @@ libc++ specific options
   Path where target-specific libc++ headers should be installed. If a relative
   path, relative to ``CMAKE_INSTALL_PREFIX``.
 
+.. _libc++experimental options:
+
+libc++experimental Specific Options
+------------------------------------
+
+.. option:: LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY:BOOL
+
+  **Default**: ``ON``
+
+  Build and test libc++experimental.a.
+
+.. option:: LIBCXX_INSTALL_EXPERIMENTAL_LIBRARY:BOOL
+
+  **Default**: ``LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY AND LIBCXX_INSTALL_LIBRARY``
+
+  Install libc++experimental.a alongside libc++.
+
 
 .. _ABI Library Specific Options:
 
@@ -295,7 +323,7 @@ ABI Library Specific Options
 
 .. option:: LIBCXX_CXX_ABI:STRING
 
-  **Values**: ``none``, ``libcxxabi``, ``system-libcxxabi``, ``libcxxrt``, ``libstdc++``, ``libsupc++``, ``vcruntime``.
+  **Values**: ``none``, ``libcxxabi``, ``system-libcxxabi``, ``libcxxrt``, ``libstdc++``, ``libsupc++``.
 
   Select the ABI library to build libc++ against.
 
@@ -305,8 +333,7 @@ ABI Library Specific Options
 
 .. option:: LIBCXX_CXX_ABI_LIBRARY_PATH:PATH
 
-  Provide the path to the ABI library that libc++ should link against. This is only
-  useful when linking against an out-of-tree ABI library.
+  Provide the path to the ABI library that libc++ should link against.
 
 .. option:: LIBCXX_ENABLE_STATIC_ABI_LIBRARY:BOOL
 
@@ -383,6 +410,15 @@ libc++ Feature Options
 
   Use the specified GCC toolchain and standard library when building the native
   stdlib benchmark tests.
+
+.. option:: LIBCXX_HIDE_FROM_ABI_PER_TU_BY_DEFAULT:BOOL
+
+  **Default**: ``OFF``
+
+  Pick the default for whether to constrain ABI-unstable symbols to
+  each individual translation unit. This setting controls whether
+  `_LIBCPP_HIDE_FROM_ABI_PER_TU_BY_DEFAULT` is defined by default --
+  see the documentation of that macro for details.
 
 
 libc++ ABI Feature Options

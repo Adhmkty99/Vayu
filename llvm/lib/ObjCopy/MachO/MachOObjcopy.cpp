@@ -264,7 +264,8 @@ static Error processLoadCommands(const MachOConfig &MachOConfig, Object &Obj) {
       if (LC.MachOLoadCommand.load_command_data.cmd == MachO::LC_SEGMENT_64 ||
           LC.MachOLoadCommand.load_command_data.cmd == MachO::LC_SEGMENT) {
         return LC.Sections.empty() &&
-               MachOConfig.EmptySegmentsToRemove.contains(*LC.getSegmentName());
+               MachOConfig.EmptySegmentsToRemove.contains(
+                   LC.getSegmentName().getValue());
       }
       return false;
     };
@@ -483,12 +484,9 @@ Error objcopy::macho::executeObjcopyOnMachOUniversalBinary(
           createNewArchiveMembers(Config, **ArOrErr);
       if (!NewArchiveMembersOrErr)
         return NewArchiveMembersOrErr.takeError();
-      auto Kind = (*ArOrErr)->kind();
-      if (Kind == object::Archive::K_BSD)
-        Kind = object::Archive::K_DARWIN;
       Expected<std::unique_ptr<MemoryBuffer>> OutputBufferOrErr =
           writeArchiveToBuffer(*NewArchiveMembersOrErr,
-                               (*ArOrErr)->hasSymbolTable(), Kind,
+                               (*ArOrErr)->hasSymbolTable(), (*ArOrErr)->kind(),
                                Config.getCommonConfig().DeterministicArchives,
                                (*ArOrErr)->isThin());
       if (!OutputBufferOrErr)

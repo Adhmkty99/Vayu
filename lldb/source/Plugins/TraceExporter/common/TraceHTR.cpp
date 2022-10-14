@@ -132,9 +132,6 @@ TraceHTR::TraceHTR(Thread &thread, TraceCursor &cursor)
   cursor.SetForwards(true);
   cursor.Seek(0, TraceCursor::SeekType::Beginning);
 
-  // TODO: fix after persona0220's patch on a new way to access instruction
-  // kinds
-  /*
   Target &target = thread.GetProcess()->GetTarget();
   auto function_name_from_load_address =
       [&](lldb::addr_t load_address) -> llvm::Optional<ConstString> {
@@ -149,26 +146,25 @@ TraceHTR::TraceHTR(Thread &thread, TraceCursor &cursor)
       return llvm::None;
   };
 
-  while (cursor.HasValue()) { if (cursor.IsError()) {
+  bool more_data_in_trace = true;
+  while (more_data_in_trace) {
+    if (cursor.IsError()) {
       // Append a load address of 0 for all instructions that an error occured
       // while decoding.
       // TODO: Make distinction between errors by storing the error messages.
       // Currently, all errors are treated the same.
       m_instruction_layer_up->AppendInstruction(0);
-      cursor.Next();
-    } else if (cursor.IsEvent()) {
-      cursor.Next();
+      more_data_in_trace = cursor.Next();
     } else {
       lldb::addr_t current_instruction_load_address = cursor.GetLoadAddress();
-      lldb::InstructionControlFlowKind current_instruction_type =
-          cursor.GetInstructionControlFlowKind();
+      lldb::TraceInstructionControlFlowType current_instruction_type =
+          cursor.GetInstructionControlFlowType();
 
       m_instruction_layer_up->AppendInstruction(
           current_instruction_load_address);
-      cursor.Next();
-      bool more_data_in_trace = cursor.HasValue();
+      more_data_in_trace = cursor.Next();
       if (current_instruction_type &
-          lldb::eInstructionControlFlowKindCall) {
+          lldb::eTraceInstructionControlFlowTypeCall) {
         if (more_data_in_trace && !cursor.IsError()) {
           m_instruction_layer_up->AddCallInstructionMetadata(
               current_instruction_load_address,
@@ -182,7 +178,6 @@ TraceHTR::TraceHTR(Thread &thread, TraceCursor &cursor)
       }
     }
   }
-  */
 }
 
 void HTRBlockMetadata::MergeMetadata(

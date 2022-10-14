@@ -13,6 +13,7 @@ class UniversalTestCase(TestBase):
     """Test aspects of lldb commands on universal binaries."""
 
     NO_DEBUG_INFO_TESTCASE = True
+    mydir = TestBase.compute_mydir(__file__)
 
     def setUp(self):
         # Call super's setUp().

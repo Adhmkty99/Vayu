@@ -28,8 +28,7 @@ def CortexA53Model : SchedMachineModel {
 
   list<Predicate> UnsupportedFeatures = !listconcat(SVEUnsupported.F,
                                                     PAUnsupported.F,
-                                                    SMEUnsupported.F,
-                                                    [HasMTE]);
+                                                    SMEUnsupported.F);
 }
 
 

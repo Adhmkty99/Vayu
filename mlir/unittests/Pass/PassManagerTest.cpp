@@ -23,7 +23,7 @@ namespace {
 struct GenericAnalysis {
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(GenericAnalysis)
 
-  GenericAnalysis(Operation *op) : isFunc(isa<func::FuncOp>(op)) {}
+  GenericAnalysis(Operation *op) : isFunc(isa<FuncOp>(op)) {}
   const bool isFunc;
 };
 
@@ -31,17 +31,17 @@ struct GenericAnalysis {
 struct OpSpecificAnalysis {
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(OpSpecificAnalysis)
 
-  OpSpecificAnalysis(func::FuncOp op) : isSecret(op.getName() == "secret") {}
+  OpSpecificAnalysis(FuncOp op) : isSecret(op.getName() == "secret") {}
   const bool isSecret;
 };
 
-/// Simple pass to annotate a func::FuncOp with the results of analysis.
+/// Simple pass to annotate a FuncOp with the results of analysis.
 struct AnnotateFunctionPass
-    : public PassWrapper<AnnotateFunctionPass, OperationPass<func::FuncOp>> {
+    : public PassWrapper<AnnotateFunctionPass, OperationPass<FuncOp>> {
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(AnnotateFunctionPass)
 
   void runOnOperation() override {
-    func::FuncOp op = getOperation();
+    FuncOp op = getOperation();
     Builder builder(op->getParentOfType<ModuleOp>());
 
     auto &ga = getAnalysis<GenericAnalysis>();
@@ -60,21 +60,21 @@ TEST(PassManagerTest, OpSpecificAnalysis) {
   // Create a module with 2 functions.
   OwningOpRef<ModuleOp> module(ModuleOp::create(UnknownLoc::get(&context)));
   for (StringRef name : {"secret", "not_secret"}) {
-    auto func =
-        func::FuncOp::create(builder.getUnknownLoc(), name,
-                             builder.getFunctionType(llvm::None, llvm::None));
+    FuncOp func =
+        FuncOp::create(builder.getUnknownLoc(), name,
+                       builder.getFunctionType(llvm::None, llvm::None));
     func.setPrivate();
     module->push_back(func);
   }
 
   // Instantiate and run our pass.
   PassManager pm(&context);
-  pm.addNestedPass<func::FuncOp>(std::make_unique<AnnotateFunctionPass>());
+  pm.addNestedPass<FuncOp>(std::make_unique<AnnotateFunctionPass>());
   LogicalResult result = pm.run(module.get());
   EXPECT_TRUE(succeeded(result));
 
   // Verify that each function got annotated with expected attributes.
-  for (func::FuncOp func : module->getOps<func::FuncOp>()) {
+  for (FuncOp func : module->getOps<FuncOp>()) {
     ASSERT_TRUE(func->getAttr("isFunc").isa<BoolAttr>());
     EXPECT_TRUE(func->getAttr("isFunc").cast<BoolAttr>().getValue());
 

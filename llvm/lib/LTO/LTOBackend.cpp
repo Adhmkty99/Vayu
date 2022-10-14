@@ -18,6 +18,7 @@
 #include "llvm/Analysis/CGSCCPassManager.h"
 #include "llvm/Analysis/ModuleSummaryAnalysis.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/IR/LLVMRemarkStreamer.h"
@@ -40,6 +41,8 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Scalar/LoopPassManager.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/Transforms/Utils/SplitModule.h"
@@ -81,19 +84,17 @@ extern cl::opt<bool> NoPGOWarnMismatch;
   exit(1);
 }
 
-Error Config::addSaveTemps(std::string OutputFileName, bool UseInputModulePath,
-                           const DenseSet<StringRef> &SaveTempsArgs) {
+Error Config::addSaveTemps(std::string OutputFileName,
+                           bool UseInputModulePath) {
   ShouldDiscardValueNames = false;
 
   std::error_code EC;
-  if (SaveTempsArgs.empty() || SaveTempsArgs.contains("resolution")) {
-    ResolutionFile =
-        std::make_unique<raw_fd_ostream>(OutputFileName + "resolution.txt", EC,
-                                         sys::fs::OpenFlags::OF_TextWithCRLF);
-    if (EC) {
-      ResolutionFile.reset();
-      return errorCodeToError(EC);
-    }
+  ResolutionFile =
+      std::make_unique<raw_fd_ostream>(OutputFileName + "resolution.txt", EC,
+                                       sys::fs::OpenFlags::OF_TextWithCRLF);
+  if (EC) {
+    ResolutionFile.reset();
+    return errorCodeToError(EC);
   }
 
   auto setHook = [&](std::string PathSuffix, ModuleHookFn &Hook) {
@@ -127,7 +128,14 @@ Error Config::addSaveTemps(std::string OutputFileName, bool UseInputModulePath,
     };
   };
 
-  auto SaveCombinedIndex =
+  setHook("0.preopt", PreOptModuleHook);
+  setHook("1.promote", PostPromoteModuleHook);
+  setHook("2.internalize", PostInternalizeModuleHook);
+  setHook("3.import", PostImportModuleHook);
+  setHook("4.opt", PostOptModuleHook);
+  setHook("5.precodegen", PreCodeGenModuleHook);
+
+  CombinedIndexHook =
       [=](const ModuleSummaryIndex &Index,
           const DenseSet<GlobalValue::GUID> &GUIDPreservedSymbols) {
         std::string Path = OutputFileName + "index.bc";
@@ -146,31 +154,6 @@ Error Config::addSaveTemps(std::string OutputFileName, bool UseInputModulePath,
         Index.exportToDot(OSDot, GUIDPreservedSymbols);
         return true;
       };
-
-  if (SaveTempsArgs.empty()) {
-    setHook("0.preopt", PreOptModuleHook);
-    setHook("1.promote", PostPromoteModuleHook);
-    setHook("2.internalize", PostInternalizeModuleHook);
-    setHook("3.import", PostImportModuleHook);
-    setHook("4.opt", PostOptModuleHook);
-    setHook("5.precodegen", PreCodeGenModuleHook);
-    CombinedIndexHook = SaveCombinedIndex;
-  } else {
-    if (SaveTempsArgs.contains("preopt"))
-      setHook("0.preopt", PreOptModuleHook);
-    if (SaveTempsArgs.contains("promote"))
-      setHook("1.promote", PostPromoteModuleHook);
-    if (SaveTempsArgs.contains("internalize"))
-      setHook("2.internalize", PostInternalizeModuleHook);
-    if (SaveTempsArgs.contains("import"))
-      setHook("3.import", PostImportModuleHook);
-    if (SaveTempsArgs.contains("opt"))
-      setHook("4.opt", PostOptModuleHook);
-    if (SaveTempsArgs.contains("precodegen"))
-      setHook("5.precodegen", PreCodeGenModuleHook);
-    if (SaveTempsArgs.contains("combinedindex"))
-      CombinedIndexHook = SaveCombinedIndex;
-  }
 
   return Error::success();
 }
@@ -329,6 +312,39 @@ static void runNewPMPasses(const Config &Conf, Module &Mod, TargetMachine *TM,
   MPM.run(Mod, MAM);
 }
 
+static void runOldPMPasses(const Config &Conf, Module &Mod, TargetMachine *TM,
+                           bool IsThinLTO, ModuleSummaryIndex *ExportSummary,
+                           const ModuleSummaryIndex *ImportSummary) {
+  legacy::PassManager passes;
+  passes.add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
+
+  PassManagerBuilder PMB;
+  PMB.LibraryInfo = new TargetLibraryInfoImpl(Triple(TM->getTargetTriple()));
+  if (Conf.Freestanding)
+    PMB.LibraryInfo->disableAllFunctions();
+  PMB.Inliner = createFunctionInliningPass();
+  PMB.ExportSummary = ExportSummary;
+  PMB.ImportSummary = ImportSummary;
+  // Unconditionally verify input since it is not verified before this
+  // point and has unknown origin.
+  PMB.VerifyInput = true;
+  PMB.VerifyOutput = !Conf.DisableVerify;
+  PMB.LoopVectorize = true;
+  PMB.SLPVectorize = true;
+  PMB.OptLevel = Conf.OptLevel;
+  PMB.PGOSampleUse = Conf.SampleProfile;
+  PMB.EnablePGOCSInstrGen = Conf.RunCSIRInstr;
+  if (!Conf.RunCSIRInstr && !Conf.CSIRProfile.empty()) {
+    PMB.EnablePGOCSInstrUse = true;
+    PMB.PGOInstrUse = Conf.CSIRProfile;
+  }
+  if (IsThinLTO)
+    PMB.populateThinLTOPassManager(passes);
+  else
+    PMB.populateLTOPassManager(passes);
+  passes.run(Mod);
+}
+
 bool lto::opt(const Config &Conf, TargetMachine *TM, unsigned Task, Module &Mod,
               bool IsThinLTO, ModuleSummaryIndex *ExportSummary,
               const ModuleSummaryIndex *ImportSummary,
@@ -351,8 +367,12 @@ bool lto::opt(const Config &Conf, TargetMachine *TM, unsigned Task, Module &Mod,
                                /*Cmdline*/ CmdArgs);
   }
   // FIXME: Plumb the combined index into the new pass manager.
-  runNewPMPasses(Conf, Mod, TM, Conf.OptLevel, IsThinLTO, ExportSummary,
-                 ImportSummary);
+  if (Conf.UseNewPM || !Conf.OptPipeline.empty()) {
+    runNewPMPasses(Conf, Mod, TM, Conf.OptLevel, IsThinLTO, ExportSummary,
+                   ImportSummary);
+  } else {
+    runOldPMPasses(Conf, Mod, TM, IsThinLTO, ExportSummary, ImportSummary);
+  }
   return !Conf.PostOptModuleHook || Conf.PostOptModuleHook(Task, Mod);
 }
 

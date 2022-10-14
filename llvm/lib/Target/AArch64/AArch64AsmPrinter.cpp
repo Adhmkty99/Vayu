@@ -132,7 +132,7 @@ public:
 
   bool runOnMachineFunction(MachineFunction &MF) override {
     AArch64FI = MF.getInfo<AArch64FunctionInfo>();
-    STI = &MF.getSubtarget<AArch64Subtarget>();
+    STI = static_cast<const AArch64Subtarget*>(&MF.getSubtarget());
 
     SetupMachineFunction(MF);
 
@@ -143,10 +143,10 @@ public:
       int Type =
         COFF::IMAGE_SYM_DTYPE_FUNCTION << COFF::SCT_COMPLEX_TYPE_SHIFT;
 
-      OutStreamer->beginCOFFSymbolDef(CurrentFnSym);
-      OutStreamer->emitCOFFSymbolStorageClass(Scl);
-      OutStreamer->emitCOFFSymbolType(Type);
-      OutStreamer->endCOFFSymbolDef();
+      OutStreamer->BeginCOFFSymbolDef(CurrentFnSym);
+      OutStreamer->EmitCOFFSymbolStorageClass(Scl);
+      OutStreamer->EmitCOFFSymbolType(Type);
+      OutStreamer->EndCOFFSymbolDef();
     }
 
     // Emit the rest of the function body.
@@ -204,10 +204,10 @@ void AArch64AsmPrinter::emitStartOfAsmFile(Module &M) {
     // Emit an absolute @feat.00 symbol.  This appears to be some kind of
     // compiler features bitfield read by link.exe.
     MCSymbol *S = MMI->getContext().getOrCreateSymbol(StringRef("@feat.00"));
-    OutStreamer->beginCOFFSymbolDef(S);
-    OutStreamer->emitCOFFSymbolStorageClass(COFF::IMAGE_SYM_CLASS_STATIC);
-    OutStreamer->emitCOFFSymbolType(COFF::IMAGE_SYM_DTYPE_NULL);
-    OutStreamer->endCOFFSymbolDef();
+    OutStreamer->BeginCOFFSymbolDef(S);
+    OutStreamer->EmitCOFFSymbolStorageClass(COFF::IMAGE_SYM_CLASS_STATIC);
+    OutStreamer->EmitCOFFSymbolType(COFF::IMAGE_SYM_DTYPE_NULL);
+    OutStreamer->EndCOFFSymbolDef();
     int64_t Feat00Flags = 0;
 
     if (M.getModuleFlag("cfguard")) {
@@ -251,7 +251,7 @@ void AArch64AsmPrinter::emitFunctionHeaderComment() {
   const AArch64FunctionInfo *FI = MF->getInfo<AArch64FunctionInfo>();
   Optional<std::string> OutlinerString = FI->getOutliningStyle();
   if (OutlinerString != None)
-    OutStreamer->getCommentOS() << ' ' << OutlinerString;
+    OutStreamer->GetCommentOS() << ' ' << OutlinerString;
 }
 
 void AArch64AsmPrinter::LowerPATCHABLE_FUNCTION_ENTER(const MachineInstr &MI)
@@ -378,10 +378,10 @@ void AArch64AsmPrinter::emitHwasanMemaccessSymbols(Module &M) {
     bool CompileKernel =
         (AccessInfo >> HWASanAccessInfo::CompileKernelShift) & 1;
 
-    OutStreamer->switchSection(OutContext.getELFSection(
+    OutStreamer->SwitchSection(OutContext.getELFSection(
         ".text.hot", ELF::SHT_PROGBITS,
-        ELF::SHF_EXECINSTR | ELF::SHF_ALLOC | ELF::SHF_GROUP, 0, Sym->getName(),
-        /*IsComdat=*/true));
+        ELF::SHF_EXECINSTR | ELF::SHF_ALLOC | ELF::SHF_GROUP, 0,
+        Sym->getName(), /*IsComdat=*/true));
 
     OutStreamer->emitSymbolAttribute(Sym, MCSA_ELF_TypeFunction);
     OutStreamer->emitSymbolAttribute(Sym, MCSA_Weak);
@@ -827,7 +827,7 @@ void AArch64AsmPrinter::emitJumpTableInfo() {
 
   const TargetLoweringObjectFile &TLOF = getObjFileLowering();
   MCSection *ReadOnlySec = TLOF.getSectionForJumpTable(MF->getFunction(), TM);
-  OutStreamer->switchSection(ReadOnlySec);
+  OutStreamer->SwitchSection(ReadOnlySec);
 
   auto AFI = MF->getInfo<AArch64FunctionInfo>();
   for (unsigned JTI = 0, e = JT.size(); JTI != e; ++JTI) {
@@ -865,7 +865,7 @@ void AArch64AsmPrinter::emitFunctionEntryLabel() {
   if (MF->getFunction().getCallingConv() == CallingConv::AArch64_VectorCall ||
       MF->getFunction().getCallingConv() ==
           CallingConv::AArch64_SVE_VectorCall ||
-      MF->getInfo<AArch64FunctionInfo>()->isSVECC()) {
+      STI->getRegisterInfo()->hasSVEArgsOrReturn(MF)) {
     auto *TS =
         static_cast<AArch64TargetStreamer *>(OutStreamer->getTargetStreamer());
     TS->emitDirectiveVariantPCS(CurrentFnSym);
@@ -1129,8 +1129,7 @@ void AArch64AsmPrinter::LowerFAULTING_OP(const MachineInstr &FaultingMI) {
 
 void AArch64AsmPrinter::emitFMov0(const MachineInstr &MI) {
   Register DestReg = MI.getOperand(0).getReg();
-  if (STI->hasZeroCycleZeroingFP() && !STI->hasZeroCycleZeroingFPWorkaround() &&
-      STI->hasNEON()) {
+  if (STI->hasZeroCycleZeroingFP() && !STI->hasZeroCycleZeroingFPWorkaround()) {
     // Convert H/S register to corresponding D register
     if (AArch64::H0 <= DestReg && DestReg <= AArch64::H31)
       DestReg = AArch64::D0 + (DestReg - AArch64::H0);
@@ -1173,8 +1172,6 @@ void AArch64AsmPrinter::emitFMov0(const MachineInstr &MI) {
 #include "AArch64GenMCPseudoLowering.inc"
 
 void AArch64AsmPrinter::emitInstruction(const MachineInstr *MI) {
-  AArch64_MC::verifyInstructionPredicates(MI->getOpcode(), STI->getFeatureBits());
-
   // Do any auto-generated pseudo lowerings.
   if (emitPseudoExpansionLowering(*OutStreamer, MI))
     return;
@@ -1265,7 +1262,7 @@ void AArch64AsmPrinter::emitInstruction(const MachineInstr *MI) {
     break;
 
   case AArch64::DBG_VALUE:
-  case AArch64::DBG_VALUE_LIST:
+  case AArch64::DBG_VALUE_LIST: {
     if (isVerbose() && OutStreamer->hasRawTextSupport()) {
       SmallString<128> TmpStr;
       raw_svector_ostream OS(TmpStr);
@@ -1285,18 +1282,8 @@ void AArch64AsmPrinter::emitInstruction(const MachineInstr *MI) {
 
       OutStreamer->emitCFIBKeyFrame();
       return;
-  }
-
-  case AArch64::EMITMTETAGGED: {
-    ExceptionHandling ExceptionHandlingType = MAI->getExceptionHandlingType();
-    if (ExceptionHandlingType != ExceptionHandling::DwarfCFI &&
-        ExceptionHandlingType != ExceptionHandling::ARM)
-      return;
-
-    if (getFunctionCFISectionType(*MF) != CFISection::None)
-      OutStreamer->emitCFIMTETaggedFrame();
-    return;
-  }
+    }
+    }
 
   // Tail calls use pseudo instructions so they have the proper code-gen
   // attributes (isCall, isReturn, etc.). We lower them to the real

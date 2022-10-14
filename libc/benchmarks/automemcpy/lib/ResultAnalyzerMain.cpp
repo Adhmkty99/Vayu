@@ -22,7 +22,7 @@ static cl::list<std::string> InputFilenames(cl::Positional, cl::OneOrMore,
 
 // User can filter the distributions to be taken into account.
 static cl::list<std::string>
-    KeepOnlyDistributions("keep-only-distributions",
+    KeepOnlyDistributions("keep-only-distributions", cl::ZeroOrMore,
                           cl::desc("<comma separated list of distribution "
                                    "names, keeps all if unspecified>"));
 

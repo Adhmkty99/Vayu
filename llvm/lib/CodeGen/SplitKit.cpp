@@ -347,11 +347,13 @@ void SplitAnalysis::analyze(const LiveInterval *li) {
 //===----------------------------------------------------------------------===//
 
 /// Create a new SplitEditor for editing the LiveInterval analyzed by SA.
-SplitEditor::SplitEditor(SplitAnalysis &SA, LiveIntervals &LIS, VirtRegMap &VRM,
+SplitEditor::SplitEditor(SplitAnalysis &SA, AliasAnalysis &AA,
+                         LiveIntervals &LIS, VirtRegMap &VRM,
                          MachineDominatorTree &MDT,
                          MachineBlockFrequencyInfo &MBFI, VirtRegAuxInfo &VRAI)
-    : SA(SA), LIS(LIS), VRM(VRM), MRI(VRM.getMachineFunction().getRegInfo()),
-      MDT(MDT), TII(*VRM.getMachineFunction().getSubtarget().getInstrInfo()),
+    : SA(SA), AA(AA), LIS(LIS), VRM(VRM),
+      MRI(VRM.getMachineFunction().getRegInfo()), MDT(MDT),
+      TII(*VRM.getMachineFunction().getSubtarget().getInstrInfo()),
       TRI(*VRM.getMachineFunction().getSubtarget().getRegisterInfo()),
       MBFI(MBFI), VRAI(VRAI), RegAssign(Allocator) {}
 
@@ -369,7 +371,9 @@ void SplitEditor::reset(LiveRangeEdit &LRE, ComplementSpillMode SM) {
     LICalc[1].reset(&VRM.getMachineFunction(), LIS.getSlotIndexes(), &MDT,
                     &LIS.getVNInfoAllocator());
 
-  Edit->anyRematerializable();
+  // We don't need an AliasAnalysis since we will only be performing
+  // cheap-as-a-copy remats anyway.
+  Edit->anyRematerializable(nullptr);
 }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
@@ -1348,34 +1352,13 @@ void SplitEditor::rewriteAssigned(bool ExtendRanges) {
         continue;
       // We may want to extend a live range for a partial redef, or for a use
       // tied to an early clobber.
-      if (!Edit->getParent().liveAt(Idx.getPrevSlot()))
+      Idx = Idx.getPrevSlot();
+      if (!Edit->getParent().liveAt(Idx))
         continue;
-    } else {
-      assert(MO.isUse());
-      bool IsEarlyClobber = false;
-      if (MO.isTied()) {
-        // We want to extend a live range into `e` slot rather than `r` slot if
-        // tied-def is early clobber, because the `e` slot already contained
-        // in the live range of early-clobber tied-def operand, give an example
-        // here:
-        //  0  %0 = ...
-        // 16  early-clobber %0 = Op %0 (tied-def 0), ...
-        // 32  ... = Op %0
-        // Before extend:
-        //   %0 = [0r, 0d) [16e, 32d)
-        // The point we want to extend is 0d to 16e not 16r in this case, but if
-        // we use 16r here we will extend nothing because that already contained
-        // in [16e, 32d).
-        unsigned OpIdx = MI->getOperandNo(&MO);
-        unsigned DefOpIdx = MI->findTiedOperandIdx(OpIdx);
-        const MachineOperand &DefOp = MI->getOperand(DefOpIdx);
-        IsEarlyClobber = DefOp.isEarlyClobber();
-      }
+    } else
+      Idx = Idx.getRegSlot(true);
 
-      Idx = Idx.getRegSlot(IsEarlyClobber);
-    }
-
-    SlotIndex Next = Idx;
+    SlotIndex Next = Idx.getNextSlot();
     if (LI.hasSubRanges()) {
       // We have to delay extending subranges until we have seen all operands
       // defining the register. This is because a <def,read-undef> operand
@@ -1450,7 +1433,7 @@ void SplitEditor::deleteRematVictims() {
   if (Dead.empty())
     return;
 
-  Edit->eliminateDeadDefs(Dead, None);
+  Edit->eliminateDeadDefs(Dead, None, &AA);
 }
 
 void SplitEditor::forceRecomputeVNI(const VNInfo &ParentVNI) {

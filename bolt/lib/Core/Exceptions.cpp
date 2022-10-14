@@ -39,9 +39,11 @@ extern llvm::cl::OptionCategory BoltCategory;
 extern llvm::cl::opt<unsigned> Verbosity;
 
 static llvm::cl::opt<bool>
-    PrintExceptions("print-exceptions",
-                    llvm::cl::desc("print exception handling data"),
-                    llvm::cl::Hidden, llvm::cl::cat(BoltCategory));
+PrintExceptions("print-exceptions",
+  llvm::cl::desc("print exception handling data"),
+  llvm::cl::ZeroOrMore,
+  llvm::cl::Hidden,
+  llvm::cl::cat(BoltCategory));
 
 } // namespace opts
 
@@ -114,11 +116,11 @@ void BinaryFunction::parseLSDA(ArrayRef<uint8_t> LSDASectionData,
 
   uint8_t LPStartEncoding = Data.getU8(&Offset);
   uint64_t LPStart = 0;
-  // Convert to offset if LPStartEncoding is typed absptr DW_EH_PE_absptr
   if (Optional<uint64_t> MaybeLPStart = Data.getEncodedPointer(
           &Offset, LPStartEncoding, Offset + LSDASectionAddress))
-    LPStart = (LPStartEncoding && 0xFF == 0) ? *MaybeLPStart
-                                             : *MaybeLPStart - Address;
+    LPStart = *MaybeLPStart;
+
+  assert(LPStart == 0 && "support for split functions not implemented");
 
   const uint8_t TTypeEncoding = Data.getU8(&Offset);
   size_t TTypeEncodingSize = 0;
@@ -175,34 +177,10 @@ void BinaryFunction::parseLSDA(ArrayRef<uint8_t> LSDASectionData,
         &CallSitePtr, CallSiteEncoding, CallSitePtr + LSDASectionAddress);
     uint64_t ActionEntry = Data.getULEB128(&CallSitePtr);
 
-    uint64_t LPOffset = LPStart + LandingPad;
-    uint64_t LPAddress = Address + LPOffset;
-
-    // Verify if landing pad code is located outside current function
-    // Support landing pad to builtin_unreachable
-    if (LPAddress < Address || LPAddress > Address + getSize()) {
-      BinaryFunction *Fragment =
-          BC.getBinaryFunctionContainingAddress(LPAddress);
-      assert(Fragment != nullptr &&
-             "BOLT-ERROR: cannot find landing pad fragment");
-      BC.addInterproceduralReference(this, Fragment->getAddress());
-      BC.processInterproceduralReferences();
-      auto isFragmentOf = [](BinaryFunction *Fragment,
-                             BinaryFunction *Parent) -> bool {
-        return (Fragment->isFragment() && Fragment->isParentFragment(Parent));
-      };
-      assert((isFragmentOf(this, Fragment) || isFragmentOf(Fragment, this)) &&
-             "BOLT-ERROR: cannot have landing pads in different "
-             "functions");
-      setHasIndirectTargetToSplitFragment(true);
-      BC.addFragmentsToSkip(this);
-      return;
-    }
-
     if (opts::PrintExceptions) {
       outs() << "Call Site: [0x" << Twine::utohexstr(RangeBase + Start)
              << ", 0x" << Twine::utohexstr(RangeBase + Start + Length)
-             << "); landing pad: 0x" << Twine::utohexstr(LPOffset)
+             << "); landing pad: 0x" << Twine::utohexstr(LPStart + LandingPad)
              << "; action entry: 0x" << Twine::utohexstr(ActionEntry) << "\n";
       outs() << "  current offset is " << (CallSitePtr - CallSiteTableStart)
              << '\n';
@@ -210,19 +188,19 @@ void BinaryFunction::parseLSDA(ArrayRef<uint8_t> LSDASectionData,
 
     // Create a handler entry if necessary.
     MCSymbol *LPSymbol = nullptr;
-    if (LPOffset) {
-      if (!getInstructionAtOffset(LPOffset)) {
+    if (LandingPad) {
+      if (!getInstructionAtOffset(LandingPad)) {
         if (opts::Verbosity >= 1)
-          errs() << "BOLT-WARNING: landing pad " << Twine::utohexstr(LPOffset)
+          errs() << "BOLT-WARNING: landing pad " << Twine::utohexstr(LandingPad)
                  << " not pointing to an instruction in function " << *this
                  << " - ignoring.\n";
       } else {
-        auto Label = Labels.find(LPOffset);
+        auto Label = Labels.find(LandingPad);
         if (Label != Labels.end()) {
           LPSymbol = Label->second;
         } else {
           LPSymbol = BC.Ctx->createNamedTempSymbol("LP");
-          Labels[LPOffset] = LPSymbol;
+          Labels[LandingPad] = LPSymbol;
         }
       }
     }
@@ -381,7 +359,7 @@ void BinaryFunction::updateEHRanges() {
   // Sites to update - either regular or cold.
   CallSitesType *Sites = &CallSites;
 
-  for (BinaryBasicBlock *BB : getLayout().blocks()) {
+  for (BinaryBasicBlock *&BB : BasicBlocksLayout) {
 
     if (BB->isCold() && !SeenCold) {
       SeenCold = true;
@@ -517,7 +495,7 @@ bool CFIReaderWriter::fillCFIInfoFor(BinaryFunction &Function) const {
   Optional<uint64_t> LSDA = CurFDE.getLSDAAddress();
   Function.setLSDAAddress(LSDA ? *LSDA : 0);
 
-  uint64_t Offset = Function.getFirstInstructionOffset();
+  uint64_t Offset = 0;
   uint64_t CodeAlignment = CurFDE.getLinkedCIE()->getCodeAlignmentFactor();
   uint64_t DataAlignment = CurFDE.getLinkedCIE()->getDataAlignmentFactor();
   if (CurFDE.getLinkedCIE()->getPersonalityAddress()) {
@@ -681,7 +659,7 @@ std::vector<char> CFIReaderWriter::generateEHFrameHeader(
   std::map<uint64_t, uint64_t> PCToFDE;
 
   // Presort array for binary search.
-  llvm::sort(FailedAddresses);
+  std::sort(FailedAddresses.begin(), FailedAddresses.end());
 
   // Initialize PCToFDE using NewEHFrame.
   for (dwarf::FrameEntry &Entry : NewEHFrame.entries()) {
@@ -707,7 +685,9 @@ std::vector<char> CFIReaderWriter::generateEHFrameHeader(
   };
 
   LLVM_DEBUG(dbgs() << "BOLT-DEBUG: new .eh_frame contains "
-                    << llvm::size(NewEHFrame.entries()) << " entries\n");
+                    << std::distance(NewEHFrame.entries().begin(),
+                                     NewEHFrame.entries().end())
+                    << " entries\n");
 
   // Add entries from the original .eh_frame corresponding to the functions
   // that we did not update.
@@ -729,7 +709,9 @@ std::vector<char> CFIReaderWriter::generateEHFrameHeader(
   };
 
   LLVM_DEBUG(dbgs() << "BOLT-DEBUG: old .eh_frame contains "
-                    << llvm::size(OldEHFrame.entries()) << " entries\n");
+                    << std::distance(OldEHFrame.entries().begin(),
+                                     OldEHFrame.entries().end())
+                    << " entries\n");
 
   // Generate a new .eh_frame_hdr based on the new map.
 

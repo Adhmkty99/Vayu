@@ -32,7 +32,7 @@ namespace {
 // We place the constructor inline, other tweaks are available to outline it.
 class MemberwiseConstructor : public Tweak {
 public:
-  const char *id() const final;
+  const char *id() const override final;
   llvm::StringLiteral kind() const override {
     return CodeAction::REFACTOR_KIND;
   }
@@ -178,8 +178,6 @@ private:
 
   // Decide what to do with a field of type C.
   static FieldAction considerClassValue(const CXXRecordDecl &C) {
-    if (!C.hasDefinition())
-      return Skip;
     // We can't always tell if C is copyable/movable without doing Sema work.
     // We assume operations are possible unless we can prove not.
     bool CanCopy = C.hasUserDeclaredCopyConstructor() ||

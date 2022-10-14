@@ -212,9 +212,9 @@ namespace clang {
     }
 
     void Destroy() {
-      for (ParsedTemplateArgument &A :
-           llvm::make_range(getTemplateArgs(), getTemplateArgs() + NumArgs))
-        A.~ParsedTemplateArgument();
+      std::for_each(
+          getTemplateArgs(), getTemplateArgs() + NumArgs,
+          [](ParsedTemplateArgument &A) { A.~ParsedTemplateArgument(); });
       this->~TemplateIdAnnotation();
       free(this);
     }

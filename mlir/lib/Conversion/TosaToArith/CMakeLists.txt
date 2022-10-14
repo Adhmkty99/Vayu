@@ -10,10 +10,10 @@ add_mlir_conversion_library(MLIRTosaToArith
   MLIRConversionPassIncGen
 
   LINK_LIBS PUBLIC
-  MLIRArithmeticDialect
+  MLIRArithmetic
   MLIRIR
   MLIRPass
-  MLIRTosaDialect
+  MLIRTosa
   MLIRTosaTransforms
   MLIRSupport
   )

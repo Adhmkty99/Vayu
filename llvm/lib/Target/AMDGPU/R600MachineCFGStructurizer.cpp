@@ -741,7 +741,6 @@ bool R600MachineCFGStructurizer::run() {
     ++NumIter;
     LLVM_DEBUG(dbgs() << "numIter = " << NumIter
                       << ", numRemaintedBlk = " << NumRemainedBlk << "\n";);
-    (void)NumIter;
 
     SmallVectorImpl<MachineBasicBlock *>::const_iterator It =
         OrderedBlks.begin();
@@ -782,7 +781,6 @@ bool R600MachineCFGStructurizer::run() {
           LLVM_DEBUG(dbgs() << "Can't reduce SCC " << getSCCNum(MBB)
                             << ", sccNumIter = " << SccNumIter;
                      dbgs() << "doesn't make any progress\n";);
-          (void)SccNumIter;
           ContNextScc = true;
         } else if (sccRemainedNumBlk != 1 && sccRemainedNumBlk < SccNumBlk) {
           SccNumBlk = sccRemainedNumBlk;

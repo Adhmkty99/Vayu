@@ -172,8 +172,9 @@ static void visitRegisterBankClasses(
     SmallPtrSetImpl<const CodeGenRegisterClass *> &VisitedRCs) {
 
   // Make sure we only visit each class once to avoid infinite loops.
-  if (!VisitedRCs.insert(RC).second)
+  if (VisitedRCs.count(RC))
     return;
+  VisitedRCs.insert(RC);
 
   // Visit each explicitly named class.
   VisitFn(RC, Kind.str());

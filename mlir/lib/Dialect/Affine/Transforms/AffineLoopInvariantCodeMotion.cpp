@@ -181,12 +181,12 @@ bool checkInvarianceOfNestedIfOps(Operation *op, Value indVar,
   assert(isa<AffineIfOp>(op));
   auto ifOp = cast<AffineIfOp>(op);
 
-  if (!areAllOpsInTheBlockListInvariant(ifOp.getThenRegion(), indVar, iterArgs,
+  if (!areAllOpsInTheBlockListInvariant(ifOp.thenRegion(), indVar, iterArgs,
                                         opsWithUsers, opsToHoist)) {
     return false;
   }
 
-  if (!areAllOpsInTheBlockListInvariant(ifOp.getElseRegion(), indVar, iterArgs,
+  if (!areAllOpsInTheBlockListInvariant(ifOp.elseRegion(), indVar, iterArgs,
                                         opsWithUsers, opsToHoist)) {
     return false;
   }
@@ -238,7 +238,7 @@ void LoopInvariantCodeMotion::runOnOperation() {
   });
 }
 
-std::unique_ptr<OperationPass<func::FuncOp>>
+std::unique_ptr<OperationPass<FuncOp>>
 mlir::createAffineLoopInvariantCodeMotionPass() {
   return std::make_unique<LoopInvariantCodeMotion>();
 }

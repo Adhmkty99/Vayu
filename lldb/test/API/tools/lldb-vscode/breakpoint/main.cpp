@@ -33,7 +33,7 @@ int main(int argc, char const *argv[]) {
     fprintf(stderr, "%s\n", dlerror());
     exit(2);
   }
-  foo(12); // before loop
+  foo(12);
 
   for (int i=0; i<10; ++i) {
     int x = twelve(i) + thirteen(i) + a::fourteen(i); // break loop
@@ -43,5 +43,5 @@ int main(int argc, char const *argv[]) {
   } catch (...) {
     puts("caught exception...");
   }
-  return 0; // after loop
+  return 0;
 }

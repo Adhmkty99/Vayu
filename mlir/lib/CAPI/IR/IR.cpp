@@ -77,10 +77,6 @@ void mlirContextEnableMultithreading(MlirContext context, bool enable) {
   return unwrap(context)->enableMultithreading(enable);
 }
 
-void mlirContextLoadAllAvailableDialects(MlirContext context) {
-  unwrap(context)->loadAllAvailableDialects();
-}
-
 //===----------------------------------------------------------------------===//
 // Dialect API.
 //===----------------------------------------------------------------------===//

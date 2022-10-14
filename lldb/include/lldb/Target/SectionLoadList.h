@@ -22,7 +22,7 @@ namespace lldb_private {
 class SectionLoadList {
 public:
   // Constructors and Destructors
-  SectionLoadList() = default;
+  SectionLoadList() {}
 
   SectionLoadList(const SectionLoadList &rhs);
 

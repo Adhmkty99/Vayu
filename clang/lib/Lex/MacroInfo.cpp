@@ -201,7 +201,8 @@ MacroDirective::DefInfo MacroDirective::getDefinition() {
   Optional<bool> isPublic;
   for (; MD; MD = MD->getPrevious()) {
     if (DefMacroDirective *DefMD = dyn_cast<DefMacroDirective>(MD))
-      return DefInfo(DefMD, UndefLoc, !isPublic || *isPublic);
+      return DefInfo(DefMD, UndefLoc,
+                     !isPublic.hasValue() || isPublic.getValue());
 
     if (UndefMacroDirective *UndefMD = dyn_cast<UndefMacroDirective>(MD)) {
       UndefLoc = UndefMD->getLocation();
@@ -209,11 +210,12 @@ MacroDirective::DefInfo MacroDirective::getDefinition() {
     }
 
     VisibilityMacroDirective *VisMD = cast<VisibilityMacroDirective>(MD);
-    if (!isPublic)
+    if (!isPublic.hasValue())
       isPublic = VisMD->isPublic();
   }
 
-  return DefInfo(nullptr, UndefLoc, !isPublic || isPublic.value());
+  return DefInfo(nullptr, UndefLoc,
+                 !isPublic.hasValue() || isPublic.getValue());
 }
 
 const MacroDirective::DefInfo

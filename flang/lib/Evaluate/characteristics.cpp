@@ -69,10 +69,10 @@ TypeAndShape &TypeAndShape::Rewrite(FoldingContext &context) {
 std::optional<TypeAndShape> TypeAndShape::Characterize(
     const semantics::Symbol &symbol, FoldingContext &context) {
   const auto &ultimate{symbol.GetUltimate()};
-  return common::visit(
+  return std::visit(
       common::visitors{
           [&](const semantics::ProcEntityDetails &proc) {
-            const semantics::ProcInterface &interface { proc.interface() };
+            const semantics::ProcInterface &interface{proc.interface()};
             if (interface.type()) {
               return Characterize(*interface.type(), context);
             } else if (interface.symbol()) {
@@ -167,10 +167,7 @@ std::optional<Expr<SubscriptInteger>> TypeAndShape::MeasureElementSizeInBytes(
   if (LEN_) {
     CHECK(type_.category() == TypeCategory::Character);
     return Fold(foldingContext,
-        Expr<SubscriptInteger>{
-            foldingContext.targetCharacteristics().GetByteSize(
-                type_.category(), type_.kind())} *
-            Expr<SubscriptInteger>{*LEN_});
+        Expr<SubscriptInteger>{type_.kind()} * Expr<SubscriptInteger>{*LEN_});
   }
   if (auto elementBytes{type_.MeasureSizeInBytes(foldingContext, align)}) {
     return Fold(foldingContext, std::move(*elementBytes));
@@ -257,45 +254,11 @@ bool DummyDataObject::operator==(const DummyDataObject &that) const {
       coshape == that.coshape;
 }
 
-static bool AreCompatibleDummyDataObjectShapes(const Shape &x, const Shape &y) {
-  // TODO: Validate more than just compatible ranks
-  return GetRank(x) == GetRank(y);
-}
-
-bool DummyDataObject::IsCompatibleWith(
-    const DummyDataObject &actual, std::string *whyNot) const {
-  if (!AreCompatibleDummyDataObjectShapes(type.shape(), actual.type.shape())) {
-    if (whyNot) {
-      *whyNot = "incompatible dummy data object shapes";
-    }
-    return false;
-  }
-  if (!type.type().IsTkCompatibleWith(actual.type.type())) {
-    if (whyNot) {
-      *whyNot = "incompatible dummy data object types: "s +
-          type.type().AsFortran() + " vs " + actual.type.type().AsFortran();
-    }
-    return false;
-  }
-  if (attrs != actual.attrs) {
-    if (whyNot) {
-      *whyNot = "incompatible dummy data object attributes";
-    }
-    return false;
-  }
-  if (intent != actual.intent) {
-    if (whyNot) {
-      *whyNot = "incompatible dummy data object intents";
-    }
-    return false;
-  }
-  if (coshape != actual.coshape) {
-    if (whyNot) {
-      *whyNot = "incompatible dummy data object coshapes";
-    }
-    return false;
-  }
-  return true;
+bool DummyDataObject::IsCompatibleWith(const DummyDataObject &actual) const {
+  return type.shape() == actual.type.shape() &&
+      type.type().IsTkCompatibleWith(actual.type.type()) &&
+      attrs == actual.attrs && intent == actual.intent &&
+      coshape == actual.coshape;
 }
 
 static common::Intent GetIntent(const semantics::Attrs &attrs) {
@@ -380,27 +343,9 @@ bool DummyProcedure::operator==(const DummyProcedure &that) const {
       procedure.value() == that.procedure.value();
 }
 
-bool DummyProcedure::IsCompatibleWith(
-    const DummyProcedure &actual, std::string *whyNot) const {
-  if (attrs != actual.attrs) {
-    if (whyNot) {
-      *whyNot = "incompatible dummy procedure attributes";
-    }
-    return false;
-  }
-  if (intent != actual.intent) {
-    if (whyNot) {
-      *whyNot = "incompatible dummy procedure intents";
-    }
-    return false;
-  }
-  if (!procedure.value().IsCompatibleWith(actual.procedure.value(), whyNot)) {
-    if (whyNot) {
-      *whyNot = "incompatible dummy procedure interfaces: "s + *whyNot;
-    }
-    return false;
-  }
-  return true;
+bool DummyProcedure::IsCompatibleWith(const DummyProcedure &actual) const {
+  return attrs == actual.attrs && intent == actual.intent &&
+      procedure.value().IsCompatibleWith(actual.procedure.value());
 }
 
 static std::string GetSeenProcs(
@@ -420,9 +365,6 @@ static std::string GetSeenProcs(
 // or a DummyProcedure to detect circularly defined procedures as required by
 // 15.4.3.6, paragraph 2.
 static std::optional<DummyArgument> CharacterizeDummyArgument(
-    const semantics::Symbol &symbol, FoldingContext &context,
-    semantics::UnorderedSymbolSet seenProcs);
-static std::optional<FunctionResult> CharacterizeFunctionResult(
     const semantics::Symbol &symbol, FoldingContext &context,
     semantics::UnorderedSymbolSet seenProcs);
 
@@ -450,13 +392,13 @@ static std::optional<Procedure> CharacterizeProcedure(
           result.attrs.test(Procedure::Attr::Elemental))) {
     result.attrs.set(Procedure::Attr::Pure);
   }
-  return common::visit(
+  return std::visit(
       common::visitors{
           [&](const semantics::SubprogramDetails &subp)
               -> std::optional<Procedure> {
             if (subp.isFunction()) {
-              if (auto fr{CharacterizeFunctionResult(
-                      subp.result(), context, seenProcs)}) {
+              if (auto fr{
+                      FunctionResult::Characterize(subp.result(), context)}) {
                 result.functionResult = std::move(fr);
               } else {
                 return std::nullopt;
@@ -496,7 +438,7 @@ static std::optional<Procedure> CharacterizeProcedure(
               }
               return intrinsic;
             }
-            const semantics::ProcInterface &interface { proc.interface() };
+            const semantics::ProcInterface &interface{proc.interface()};
             if (const semantics::Symbol * interfaceSymbol{interface.symbol()}) {
               return CharacterizeProcedure(
                   *interfaceSymbol, context, seenProcs);
@@ -539,11 +481,6 @@ static std::optional<Procedure> CharacterizeProcedure(
           },
           [&](const semantics::UseDetails &use) {
             return CharacterizeProcedure(use.symbol(), context, seenProcs);
-          },
-          [](const semantics::UseErrorDetails &) {
-            // Ambiguous use-association will be handled later during symbol
-            // checks, ignore UseErrorDetails here without actual symbol usage.
-            return std::optional<Procedure>{};
           },
           [&](const semantics::HostAssocDetails &assoc) {
             return CharacterizeProcedure(assoc.symbol(), context, seenProcs);
@@ -610,32 +547,17 @@ bool DummyArgument::operator==(const DummyArgument &that) const {
   return u == that.u; // name and passed-object usage are not characteristics
 }
 
-bool DummyArgument::IsCompatibleWith(
-    const DummyArgument &actual, std::string *whyNot) const {
+bool DummyArgument::IsCompatibleWith(const DummyArgument &actual) const {
   if (const auto *ifaceData{std::get_if<DummyDataObject>(&u)}) {
-    if (const auto *actualData{std::get_if<DummyDataObject>(&actual.u)}) {
-      return ifaceData->IsCompatibleWith(*actualData, whyNot);
-    }
-    if (whyNot) {
-      *whyNot = "one dummy argument is an object, the other is not";
-    }
+    const auto *actualData{std::get_if<DummyDataObject>(&actual.u)};
+    return actualData && ifaceData->IsCompatibleWith(*actualData);
   } else if (const auto *ifaceProc{std::get_if<DummyProcedure>(&u)}) {
-    if (const auto *actualProc{std::get_if<DummyProcedure>(&actual.u)}) {
-      return ifaceProc->IsCompatibleWith(*actualProc, whyNot);
-    }
-    if (whyNot) {
-      *whyNot = "one dummy argument is a procedure, the other is not";
-    }
+    const auto *actualProc{std::get_if<DummyProcedure>(&actual.u)};
+    return actualProc && ifaceProc->IsCompatibleWith(*actualProc);
   } else {
-    CHECK(std::holds_alternative<AlternateReturn>(u));
-    if (std::holds_alternative<AlternateReturn>(actual.u)) {
-      return true;
-    }
-    if (whyNot) {
-      *whyNot = "one dummy argument is an alternate return, the other is not";
-    }
+    return std::holds_alternative<AlternateReturn>(u) &&
+        std::holds_alternative<AlternateReturn>(actual.u);
   }
-  return false;
 }
 
 static std::optional<DummyArgument> CharacterizeDummyArgument(
@@ -656,7 +578,7 @@ static std::optional<DummyArgument> CharacterizeDummyArgument(
 
 std::optional<DummyArgument> DummyArgument::FromActual(
     std::string &&name, const Expr<SomeType> &expr, FoldingContext &context) {
-  return common::visit(
+  return std::visit(
       common::visitors{
           [&](const BOZLiteralConstant &) {
             return std::make_optional<DummyArgument>(std::move(name),
@@ -697,7 +619,7 @@ std::optional<DummyArgument> DummyArgument::FromActual(
 }
 
 bool DummyArgument::IsOptional() const {
-  return common::visit(
+  return std::visit(
       common::visitors{
           [](const DummyDataObject &data) {
             return data.attrs.test(DummyDataObject::Attr::Optional);
@@ -711,36 +633,35 @@ bool DummyArgument::IsOptional() const {
 }
 
 void DummyArgument::SetOptional(bool value) {
-  common::visit(common::visitors{
-                    [value](DummyDataObject &data) {
-                      data.attrs.set(DummyDataObject::Attr::Optional, value);
-                    },
-                    [value](DummyProcedure &proc) {
-                      proc.attrs.set(DummyProcedure::Attr::Optional, value);
-                    },
-                    [](AlternateReturn &) { DIE("cannot set optional"); },
-                },
+  std::visit(common::visitors{
+                 [value](DummyDataObject &data) {
+                   data.attrs.set(DummyDataObject::Attr::Optional, value);
+                 },
+                 [value](DummyProcedure &proc) {
+                   proc.attrs.set(DummyProcedure::Attr::Optional, value);
+                 },
+                 [](AlternateReturn &) { DIE("cannot set optional"); },
+             },
       u);
 }
 
 void DummyArgument::SetIntent(common::Intent intent) {
-  common::visit(common::visitors{
-                    [intent](DummyDataObject &data) { data.intent = intent; },
-                    [intent](DummyProcedure &proc) { proc.intent = intent; },
-                    [](AlternateReturn &) { DIE("cannot set intent"); },
-                },
+  std::visit(common::visitors{
+                 [intent](DummyDataObject &data) { data.intent = intent; },
+                 [intent](DummyProcedure &proc) { proc.intent = intent; },
+                 [](AlternateReturn &) { DIE("cannot set intent"); },
+             },
       u);
 }
 
 common::Intent DummyArgument::GetIntent() const {
-  return common::visit(
-      common::visitors{
-          [](const DummyDataObject &data) { return data.intent; },
-          [](const DummyProcedure &proc) { return proc.intent; },
-          [](const AlternateReturn &) -> common::Intent {
-            DIE("Alternate returns have no intent");
-          },
-      },
+  return std::visit(common::visitors{
+                        [](const DummyDataObject &data) { return data.intent; },
+                        [](const DummyProcedure &proc) { return proc.intent; },
+                        [](const AlternateReturn &) -> common::Intent {
+                          DIE("Alternate returns have no intent");
+                        },
+                    },
       u);
 }
 
@@ -764,7 +685,7 @@ llvm::raw_ostream &DummyArgument::Dump(llvm::raw_ostream &o) const {
   if (pass) {
     o << " PASS";
   }
-  common::visit([&](const auto &x) { x.Dump(o); }, u);
+  std::visit([&](const auto &x) { x.Dump(o); }, u);
   return o;
 }
 
@@ -777,9 +698,8 @@ bool FunctionResult::operator==(const FunctionResult &that) const {
   return attrs == that.attrs && u == that.u;
 }
 
-static std::optional<FunctionResult> CharacterizeFunctionResult(
-    const semantics::Symbol &symbol, FoldingContext &context,
-    semantics::UnorderedSymbolSet seenProcs) {
+std::optional<FunctionResult> FunctionResult::Characterize(
+    const Symbol &symbol, FoldingContext &context) {
   if (symbol.has<semantics::ObjectEntityDetails>()) {
     if (auto type{TypeAndShape::Characterize(symbol, context)}) {
       FunctionResult result{std::move(*type)};
@@ -791,19 +711,12 @@ static std::optional<FunctionResult> CharacterizeFunctionResult(
           });
       return result;
     }
-  } else if (auto maybeProc{
-                 CharacterizeProcedure(symbol, context, seenProcs)}) {
+  } else if (auto maybeProc{Procedure::Characterize(symbol, context)}) {
     FunctionResult result{std::move(*maybeProc)};
     result.attrs.set(FunctionResult::Attr::Pointer);
     return result;
   }
   return std::nullopt;
-}
-
-std::optional<FunctionResult> FunctionResult::Characterize(
-    const Symbol &symbol, FoldingContext &context) {
-  semantics::UnorderedSymbolSet seenProcs;
-  return CharacterizeFunctionResult(symbol, context, seenProcs);
 }
 
 bool FunctionResult::IsAssumedLengthCharacter() const {
@@ -856,72 +769,41 @@ bool FunctionResult::CanBeReturnedViaImplicitInterface() const {
   }
 }
 
-bool FunctionResult::IsCompatibleWith(
-    const FunctionResult &actual, std::string *whyNot) const {
+bool FunctionResult::IsCompatibleWith(const FunctionResult &actual) const {
   Attrs actualAttrs{actual.attrs};
-  if (!attrs.test(Attr::Contiguous)) {
-    actualAttrs.reset(Attr::Contiguous);
-  }
+  actualAttrs.reset(Attr::Contiguous);
   if (attrs != actualAttrs) {
-    if (whyNot) {
-      *whyNot = "function results have incompatible attributes";
-    }
+    return false;
   } else if (const auto *ifaceTypeShape{std::get_if<TypeAndShape>(&u)}) {
     if (const auto *actualTypeShape{std::get_if<TypeAndShape>(&actual.u)}) {
-      if (ifaceTypeShape->Rank() != actualTypeShape->Rank()) {
-        if (whyNot) {
-          *whyNot = "function results have distinct ranks";
-        }
-      } else if (!attrs.test(Attr::Allocatable) && !attrs.test(Attr::Pointer) &&
-          ifaceTypeShape->shape() != actualTypeShape->shape()) {
-        if (whyNot) {
-          *whyNot = "function results have distinct extents";
-        }
-      } else if (!ifaceTypeShape->type().IsTkCompatibleWith(
-                     actualTypeShape->type())) {
-        if (whyNot) {
-          *whyNot = "function results have incompatible types: "s +
-              ifaceTypeShape->type().AsFortran() + " vs "s +
-              actualTypeShape->type().AsFortran();
-        }
+      if (ifaceTypeShape->shape() != actualTypeShape->shape()) {
+        return false;
       } else {
-        return true;
+        return ifaceTypeShape->type().IsTkCompatibleWith(
+            actualTypeShape->type());
       }
     } else {
-      if (whyNot) {
-        *whyNot = "function result type and shape are not known";
-      }
+      return false;
     }
   } else {
     const auto *ifaceProc{std::get_if<CopyableIndirection<Procedure>>(&u)};
-    CHECK(ifaceProc != nullptr);
     if (const auto *actualProc{
             std::get_if<CopyableIndirection<Procedure>>(&actual.u)}) {
-      if (ifaceProc->value().IsCompatibleWith(actualProc->value(), whyNot)) {
-        return true;
-      }
-      if (whyNot) {
-        *whyNot =
-            "function results are incompatible procedure pointers: "s + *whyNot;
-      }
+      return ifaceProc->value().IsCompatibleWith(actualProc->value());
     } else {
-      if (whyNot) {
-        *whyNot =
-            "one function result is a procedure pointer, the other is not";
-      }
+      return false;
     }
   }
-  return false;
 }
 
 llvm::raw_ostream &FunctionResult::Dump(llvm::raw_ostream &o) const {
   attrs.Dump(o, EnumToString);
-  common::visit(common::visitors{
-                    [&](const TypeAndShape &ts) { ts.Dump(o); },
-                    [&](const CopyableIndirection<Procedure> &p) {
-                      p.value().Dump(o << " procedure(") << ')';
-                    },
-                },
+  std::visit(common::visitors{
+                 [&](const TypeAndShape &ts) { ts.Dump(o); },
+                 [&](const CopyableIndirection<Procedure> &p) {
+                   p.value().Dump(o << " procedure(") << ')';
+                 },
+             },
       u);
   return o;
 }
@@ -938,54 +820,29 @@ bool Procedure::operator==(const Procedure &that) const {
       dummyArguments == that.dummyArguments;
 }
 
-bool Procedure::IsCompatibleWith(
-    const Procedure &actual, std::string *whyNot) const {
+bool Procedure::IsCompatibleWith(const Procedure &actual) const {
   // 15.5.2.9(1): if dummy is not pure, actual need not be.
-  // Ditto with elemental.
   Attrs actualAttrs{actual.attrs};
   if (!attrs.test(Attr::Pure)) {
     actualAttrs.reset(Attr::Pure);
   }
-  if (!attrs.test(Attr::Elemental)) {
-    actualAttrs.reset(Attr::Elemental);
-  }
-  Attrs differences{attrs ^ actualAttrs};
-  differences.reset(Attr::Subroutine); // dealt with specifically later
-  if (!differences.empty()) {
-    if (whyNot) {
-      auto sep{": "s};
-      *whyNot = "incompatible procedure attributes";
-      differences.IterateOverMembers([&](Attr x) {
-        *whyNot += sep + EnumToString(x);
-        sep = ", ";
-      });
-    }
-  } else if ((IsFunction() && actual.IsSubroutine()) ||
-      (IsSubroutine() && actual.IsFunction())) {
-    if (whyNot) {
-      *whyNot =
-          "incompatible procedures: one is a function, the other a subroutine";
-    }
-  } else if (functionResult && actual.functionResult &&
-      !functionResult->IsCompatibleWith(*actual.functionResult, whyNot)) {
+  if (attrs != actualAttrs) {
+    return false;
+  } else if (IsFunction() != actual.IsFunction()) {
+    return false;
+  } else if (IsFunction() &&
+      !functionResult->IsCompatibleWith(*actual.functionResult)) {
+    return false;
   } else if (dummyArguments.size() != actual.dummyArguments.size()) {
-    if (whyNot) {
-      *whyNot = "distinct numbers of dummy arguments";
-    }
+    return false;
   } else {
     for (std::size_t j{0}; j < dummyArguments.size(); ++j) {
-      if (!dummyArguments[j].IsCompatibleWith(
-              actual.dummyArguments[j], whyNot)) {
-        if (whyNot) {
-          *whyNot = "incompatible dummy argument #"s + std::to_string(j + 1) +
-              ": "s + *whyNot;
-        }
+      if (!dummyArguments[j].IsCompatibleWith(actual.dummyArguments[j])) {
         return false;
       }
     }
     return true;
   }
-  return false;
 }
 
 int Procedure::FindPassIndex(std::optional<parser::CharBlock> name) const {
@@ -1074,10 +931,8 @@ llvm::raw_ostream &Procedure::Dump(llvm::raw_ostream &o) const {
   attrs.Dump(o, EnumToString);
   if (functionResult) {
     functionResult->Dump(o << "TYPE(") << ") FUNCTION";
-  } else if (attrs.test(Attr::Subroutine)) {
-    o << "SUBROUTINE";
   } else {
-    o << "EXTERNAL";
+    o << "SUBROUTINE";
   }
   char sep{'('};
   for (const auto &dummy : dummyArguments) {
@@ -1280,7 +1135,7 @@ bool DistinguishUtils::Distinguishable(
   if (x.u.index() != y.u.index()) {
     return true; // different kind: data/proc/alt-return
   }
-  return common::visit(
+  return std::visit(
       common::visitors{
           [&](const DummyDataObject &z) {
             return Distinguishable(z, std::get<DummyDataObject>(y.u));
@@ -1342,7 +1197,7 @@ bool DistinguishUtils::Distinguishable(
   if (x.u.index() != y.u.index()) {
     return true; // one is data object, one is procedure
   }
-  return common::visit(
+  return std::visit(
       common::visitors{
           [&](const TypeAndShape &z) {
             return Distinguishable(z, std::get<TypeAndShape>(y.u));

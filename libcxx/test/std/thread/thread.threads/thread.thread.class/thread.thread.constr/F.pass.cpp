@@ -12,7 +12,7 @@
 
 // template <class F, class ...Args> thread(F&& f, Args&&... args);
 
-// UNSUPPORTED: no-threads
+// UNSUPPORTED: libcpp-has-no-threads
 // UNSUPPORTED: sanitizer-new-delete
 
 #include <thread>

@@ -31,11 +31,11 @@ cl::opt<bool>
            cl::desc("Automatically put hot code on 2MB page(s) (hugify) at "
                     "runtime. No manual call to hugify is needed in the binary "
                     "(which is what --hot-text relies on)."),
-           cl::cat(BoltOptCategory));
+           cl::ZeroOrMore, cl::cat(BoltOptCategory));
 
 static cl::opt<std::string> RuntimeHugifyLib(
     "runtime-hugify-lib",
-    cl::desc("specify file name of the runtime hugify library"),
+    cl::desc("specify file name of the runtime hugify library"), cl::ZeroOrMore,
     cl::init("libbolt_rt_hugify.a"), cl::cat(BoltOptCategory));
 
 } // namespace opts
@@ -80,7 +80,7 @@ void HugifyRuntimeLibrary::emitBinary(BinaryContext &BC, MCStreamer &Streamer) {
   MCSymbol *InitPtr = BC.Ctx->getOrCreateSymbol("__bolt_hugify_init_ptr");
 
   Section->setAlignment(llvm::Align(BC.RegularPageSize));
-  Streamer.switchSection(Section);
+  Streamer.SwitchSection(Section);
 
   Streamer.emitLabel(InitPtr);
   Streamer.emitSymbolAttribute(InitPtr, MCSymbolAttr::MCSA_Global);

@@ -39,7 +39,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
-#include <deque>
 #include <iterator>
 #include <limits>
 #include <utility>
@@ -63,9 +62,6 @@ static cl::opt<unsigned> MaxBitSplit("hexbit-max-bitsplit", cl::Hidden,
   cl::init(std::numeric_limits<unsigned>::max()));
 static unsigned CountBitSplit = 0;
 
-static cl::opt<unsigned> RegisterSetLimit("hexbit-registerset-limit",
-  cl::Hidden, cl::init(1000));
-
 namespace llvm {
 
   void initializeHexagonBitSimplifyPass(PassRegistry& Registry);
@@ -76,29 +72,23 @@ namespace llvm {
 namespace {
 
   // Set of virtual registers, based on BitVector.
-  struct RegisterSet {
+  struct RegisterSet : private BitVector {
     RegisterSet() = default;
-    explicit RegisterSet(unsigned s, bool t = false) : Bits(s, t) {}
+    explicit RegisterSet(unsigned s, bool t = false) : BitVector(s, t) {}
     RegisterSet(const RegisterSet &RS) = default;
 
-    void clear() {
-      Bits.clear();
-      LRU.clear();
-    }
-
-    unsigned count() const {
-      return Bits.count();
-    }
+    using BitVector::clear;
+    using BitVector::count;
 
     unsigned find_first() const {
-      int First = Bits.find_first();
+      int First = BitVector::find_first();
       if (First < 0)
         return 0;
       return x2v(First);
     }
 
     unsigned find_next(unsigned Prev) const {
-      int Next = Bits.find_next(v2x(Prev));
+      int Next = BitVector::find_next(v2x(Prev));
       if (Next < 0)
         return 0;
       return x2v(Next);
@@ -107,72 +97,54 @@ namespace {
     RegisterSet &insert(unsigned R) {
       unsigned Idx = v2x(R);
       ensure(Idx);
-      bool Exists = Bits.test(Idx);
-      Bits.set(Idx);
-      if (!Exists) {
-        LRU.push_back(Idx);
-        if (LRU.size() > RegisterSetLimit) {
-          unsigned T = LRU.front();
-          Bits.reset(T);
-          LRU.pop_front();
-        }
-      }
-      return *this;
+      return static_cast<RegisterSet&>(BitVector::set(Idx));
     }
     RegisterSet &remove(unsigned R) {
       unsigned Idx = v2x(R);
-      if (Idx < Bits.size()) {
-        bool Exists = Bits.test(Idx);
-        Bits.reset(Idx);
-        if (Exists) {
-          auto F = llvm::find(LRU, Idx);
-          assert(F != LRU.end());
-          LRU.erase(F);
-        }
-      }
-      return *this;
+      if (Idx >= size())
+        return *this;
+      return static_cast<RegisterSet&>(BitVector::reset(Idx));
     }
 
     RegisterSet &insert(const RegisterSet &Rs) {
-      for (unsigned R = Rs.find_first(); R; R = Rs.find_next(R))
-        insert(R);
-      return *this;
+      return static_cast<RegisterSet&>(BitVector::operator|=(Rs));
     }
     RegisterSet &remove(const RegisterSet &Rs) {
-      for (unsigned R = Rs.find_first(); R; R = Rs.find_next(R))
-        remove(R);
-      return *this;
+      return static_cast<RegisterSet&>(BitVector::reset(Rs));
     }
 
+    reference operator[](unsigned R) {
+      unsigned Idx = v2x(R);
+      ensure(Idx);
+      return BitVector::operator[](Idx);
+    }
     bool operator[](unsigned R) const {
       unsigned Idx = v2x(R);
-      return Idx < Bits.size() ? Bits[Idx] : false;
+      assert(Idx < size());
+      return BitVector::operator[](Idx);
     }
     bool has(unsigned R) const {
       unsigned Idx = v2x(R);
-      if (Idx >= Bits.size())
+      if (Idx >= size())
         return false;
-      return Bits.test(Idx);
+      return BitVector::test(Idx);
     }
 
     bool empty() const {
-      return !Bits.any();
+      return !BitVector::any();
     }
     bool includes(const RegisterSet &Rs) const {
-      // A.test(B)  <=>  A-B != {}
-      return !Rs.Bits.test(Bits);
+      // A.BitVector::test(B)  <=>  A-B != {}
+      return !Rs.BitVector::test(*this);
     }
     bool intersects(const RegisterSet &Rs) const {
-      return Bits.anyCommon(Rs.Bits);
+      return BitVector::anyCommon(Rs);
     }
 
   private:
-    BitVector Bits;
-    std::deque<unsigned> LRU;
-
     void ensure(unsigned Idx) {
-      if (Bits.size() <= Idx)
-        Bits.resize(std::max(Idx+1, 32U));
+      if (size() <= Idx)
+        resize(std::max(Idx+1, 32U));
     }
 
     static inline unsigned v2x(unsigned v) {

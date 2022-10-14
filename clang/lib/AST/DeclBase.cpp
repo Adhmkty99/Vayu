@@ -283,9 +283,8 @@ unsigned Decl::getTemplateDepth() const {
   return cast<Decl>(DC)->getTemplateDepth();
 }
 
-const DeclContext *Decl::getParentFunctionOrMethod(bool LexicalParent) const {
-  for (const DeclContext *DC = LexicalParent ? getLexicalDeclContext()
-                                             : getDeclContext();
+const DeclContext *Decl::getParentFunctionOrMethod() const {
+  for (const DeclContext *DC = getDeclContext();
        DC && !DC->isTranslationUnit() && !DC->isNamespace();
        DC = DC->getParent())
     if (DC->isFunctionOrMethod())
@@ -1538,11 +1537,7 @@ void DeclContext::removeDecl(Decl *D) {
       if (Map) {
         StoredDeclsMap::iterator Pos = Map->find(ND->getDeclName());
         assert(Pos != Map->end() && "no lookup entry for decl");
-        StoredDeclsList &List = Pos->second;
-        List.remove(ND);
-        // Clean up the entry if there are no more decls.
-        if (List.isNull())
-          Map->erase(Pos);
+        Pos->second.remove(ND);
       }
     } while (DC->isTransparentContext() && (DC = DC->getParent()));
   }

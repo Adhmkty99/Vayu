@@ -15,6 +15,8 @@ import six
 
 
 class ProcessLaunchTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def setUp(self):
@@ -199,4 +201,4 @@ class ProcessLaunchTestCase(TestBase):
 
         self.assertEqual(value, evil_var)
         process.Continue()
-        self.assertState(process.GetState(), lldb.eStateExited, PROCESS_EXITED)
+        self.assertEqual(process.GetState(), lldb.eStateExited, PROCESS_EXITED)

@@ -13,7 +13,7 @@
 
 #include "interception.h"
 
-#if SANITIZER_LINUX || SANITIZER_APPLE
+#if SANITIZER_LINUX || SANITIZER_MAC
 
 #include <sys/types.h>
 #include <stddef.h>
@@ -24,7 +24,7 @@ COMPILER_CHECK(sizeof(::SSIZE_T) == sizeof(ssize_t));
 COMPILER_CHECK(sizeof(::PTRDIFF_T) == sizeof(ptrdiff_t));
 COMPILER_CHECK(sizeof(::INTMAX_T) == sizeof(intmax_t));
 
-#if !SANITIZER_APPLE
+#if !SANITIZER_MAC
 COMPILER_CHECK(sizeof(::OFF64_T) == sizeof(off64_t));
 #endif
 

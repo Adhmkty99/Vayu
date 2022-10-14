@@ -10,8 +10,7 @@
 #ifndef _MM_MALLOC_H_INCLUDED
 #define _MM_MALLOC_H_INCLUDED
 
-#if defined(__ppc64__) &&                                                      \
-    (defined(__linux__) || defined(__FreeBSD__) || defined(_AIX))
+#if defined(__ppc64__) && (defined(__linux__) || defined(__FreeBSD__))
 
 #include <stdlib.h>
 

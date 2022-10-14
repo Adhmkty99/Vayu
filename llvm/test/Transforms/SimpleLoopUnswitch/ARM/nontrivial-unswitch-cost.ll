@@ -55,8 +55,7 @@ loop_exit:
 define void @test_unswitch(i1* %ptr, i1 %cond) {
 ; CHECK-LABEL: @test_unswitch(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[COND_FR:%.*]] = freeze i1 [[COND:%.*]]
-; CHECK-NEXT:    br i1 [[COND_FR]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
+; CHECK-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
 ; CHECK:       entry.split.us:
 ; CHECK-NEXT:    br label [[LOOP_BEGIN_US:%.*]]
 ; CHECK:       loop_begin.us:
@@ -154,8 +153,7 @@ loop_exit:
 define void @test_unswitch_non_dup_code(i1* %ptr, i1 %cond) {
 ; CHECK-LABEL: @test_unswitch_non_dup_code(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[COND_FR:%.*]] = freeze i1 [[COND:%.*]]
-; CHECK-NEXT:    br i1 [[COND_FR]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
+; CHECK-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
 ; CHECK:       entry.split.us:
 ; CHECK-NEXT:    br label [[LOOP_BEGIN_US:%.*]]
 ; CHECK:       loop_begin.us:
@@ -277,8 +275,7 @@ loop_exit:
 define void @test_unswitch_non_dup_code_in_cfg(i1* %ptr, i1 %cond) {
 ; CHECK-LABEL: @test_unswitch_non_dup_code_in_cfg(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[COND_FR:%.*]] = freeze i1 [[COND:%.*]]
-; CHECK-NEXT:    br i1 [[COND_FR]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
+; CHECK-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
 ; CHECK:       entry.split.us:
 ; CHECK-NEXT:    br label [[LOOP_BEGIN_US:%.*]]
 ; CHECK:       loop_begin.us:
@@ -506,8 +503,7 @@ loop_exit:
 define void @test_unswitch_large_exit(i1* %ptr, i1 %cond) {
 ; CHECK-LABEL: @test_unswitch_large_exit(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[COND_FR:%.*]] = freeze i1 [[COND:%.*]]
-; CHECK-NEXT:    br i1 [[COND_FR]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
+; CHECK-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
 ; CHECK:       entry.split.us:
 ; CHECK-NEXT:    br label [[LOOP_BEGIN_US:%.*]]
 ; CHECK:       loop_begin.us:
@@ -571,8 +567,7 @@ loop_exit:
 define void @test_unswitch_dedicated_exiting(i1* %ptr, i1 %cond) {
 ; CHECK-LABEL: @test_unswitch_dedicated_exiting(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[COND_FR:%.*]] = freeze i1 [[COND:%.*]]
-; CHECK-NEXT:    br i1 [[COND_FR]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
+; CHECK-NEXT:    br i1 [[COND:%.*]], label [[ENTRY_SPLIT_US:%.*]], label [[ENTRY_SPLIT:%.*]]
 ; CHECK:       entry.split.us:
 ; CHECK-NEXT:    br label [[LOOP_BEGIN_US:%.*]]
 ; CHECK:       loop_begin.us:

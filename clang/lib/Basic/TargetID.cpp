@@ -109,7 +109,8 @@ parseTargetID(const llvm::Triple &T, llvm::StringRef TargetID,
   if (!OptionalProcessor)
     return llvm::None;
 
-  llvm::StringRef Processor = getCanonicalProcessorName(T, *OptionalProcessor);
+  llvm::StringRef Processor =
+      getCanonicalProcessorName(T, OptionalProcessor.getValue());
   if (Processor.empty())
     return llvm::None;
 
@@ -149,7 +150,8 @@ getConflictTargetIDCombination(const std::set<llvm::StringRef> &TargetIDs) {
   llvm::StringMap<Info> FeatureMap;
   for (auto &&ID : TargetIDs) {
     llvm::StringMap<bool> Features;
-    llvm::StringRef Proc = *parseTargetIDWithFormatCheckingOnly(ID, &Features);
+    llvm::StringRef Proc =
+        parseTargetIDWithFormatCheckingOnly(ID, &Features).getValue();
     auto Loc = FeatureMap.find(Proc);
     if (Loc == FeatureMap.end())
       FeatureMap[Proc] = Info{ID, Features};

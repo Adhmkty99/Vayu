@@ -34,7 +34,7 @@ struct TestPrintInvalidPass
   void runOnOperation() override {
     Location loc = getOperation().getLoc();
     OpBuilder builder(getOperation().getBodyRegion());
-    auto funcOp = builder.create<func::FuncOp>(
+    auto funcOp = builder.create<FuncOp>(
         loc, "test", FunctionType::get(getOperation().getContext(), {}, {}));
     funcOp.addEntryBlock();
     // The created function is invalid because there is no return op.

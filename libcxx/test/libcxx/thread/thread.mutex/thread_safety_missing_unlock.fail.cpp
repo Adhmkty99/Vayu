@@ -10,7 +10,7 @@
 // the processing goes awry preventing the definition of the types.
 // XFAIL: msvc
 
-// UNSUPPORTED: no-threads
+// UNSUPPORTED: libcpp-has-no-threads
 // REQUIRES: thread-safety
 
 // <mutex>

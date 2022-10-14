@@ -1883,7 +1883,7 @@ static bool optimizeEdges(const PathDiagnosticConstruct &C, PathPieces &path,
                  lexicalContains(PM, s1Start, s1End)) {
           SourceRange EdgeRange(PieceI->getEndLocation().asLocation(),
                                 PieceI->getStartLocation().asLocation());
-          if (!getLengthOnSingleLine(SM, EdgeRange))
+          if (!getLengthOnSingleLine(SM, EdgeRange).hasValue())
             removeEdge = true;
         }
       }
@@ -2363,15 +2363,15 @@ PathSensitiveBugReport::getInterestingnessKind(const MemRegion *R) const {
 }
 
 bool PathSensitiveBugReport::isInteresting(SVal V) const {
-  return getInterestingnessKind(V).has_value();
+  return getInterestingnessKind(V).hasValue();
 }
 
 bool PathSensitiveBugReport::isInteresting(SymbolRef sym) const {
-  return getInterestingnessKind(sym).has_value();
+  return getInterestingnessKind(sym).hasValue();
 }
 
 bool PathSensitiveBugReport::isInteresting(const MemRegion *R) const {
-  return getInterestingnessKind(R).has_value();
+  return getInterestingnessKind(R).hasValue();
 }
 
 bool PathSensitiveBugReport::isInteresting(const LocationContext *LC)  const {

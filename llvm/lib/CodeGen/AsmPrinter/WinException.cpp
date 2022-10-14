@@ -49,13 +49,13 @@ void WinException::endModule() {
   const Module *M = MMI->getModule();
   for (const Function &F : *M)
     if (F.hasFnAttribute("safeseh"))
-      OS.emitCOFFSafeSEH(Asm->getSymbol(&F));
+      OS.EmitCOFFSafeSEH(Asm->getSymbol(&F));
 
   if (M->getModuleFlag("ehcontguard") && !EHContTargets.empty()) {
     // Emit the symbol index of each ehcont target.
-    OS.switchSection(Asm->OutContext.getObjectFileInfo()->getGEHContSection());
+    OS.SwitchSection(Asm->OutContext.getObjectFileInfo()->getGEHContSection());
     for (const MCSymbol *S : EHContTargets) {
-      OS.emitCOFFSymbolIndex(S);
+      OS.EmitCOFFSymbolIndex(S);
     }
   }
 }
@@ -116,7 +116,7 @@ void WinException::beginFunction(const MachineFunction *MF) {
 void WinException::markFunctionEnd() {
   if (isAArch64 && CurrentFuncletEntry &&
       (shouldEmitMoves || shouldEmitPersonality))
-    Asm->OutStreamer->emitWinCFIFuncletOrFuncEnd();
+    Asm->OutStreamer->EmitWinCFIFuncletOrFuncEnd();
 }
 
 /// endFunction - Gather and emit post-function exception information.
@@ -145,12 +145,12 @@ void WinException::endFunction(const MachineFunction *MF) {
     return;
 
   if (shouldEmitPersonality || shouldEmitLSDA) {
-    Asm->OutStreamer->pushSection();
+    Asm->OutStreamer->PushSection();
 
     // Just switch sections to the right xdata section.
     MCSection *XData = Asm->OutStreamer->getAssociatedXDataSection(
         Asm->OutStreamer->getCurrentSectionOnly());
-    Asm->OutStreamer->switchSection(XData);
+    Asm->OutStreamer->SwitchSection(XData);
 
     // Emit the tables appropriate to the personality function in use. If we
     // don't recognize the personality, assume it uses an Itanium-style LSDA.
@@ -165,7 +165,7 @@ void WinException::endFunction(const MachineFunction *MF) {
     else
       emitExceptionTable();
 
-    Asm->OutStreamer->popSection();
+    Asm->OutStreamer->PopSection();
   }
 
   if (!MF->getCatchretTargets().empty()) {
@@ -205,11 +205,11 @@ void WinException::beginFunclet(const MachineBasicBlock &MBB,
     Sym = getMCSymbolForMBB(Asm, &MBB);
 
     // Describe our funclet symbol as a function with internal linkage.
-    Asm->OutStreamer->beginCOFFSymbolDef(Sym);
-    Asm->OutStreamer->emitCOFFSymbolStorageClass(COFF::IMAGE_SYM_CLASS_STATIC);
-    Asm->OutStreamer->emitCOFFSymbolType(COFF::IMAGE_SYM_DTYPE_FUNCTION
+    Asm->OutStreamer->BeginCOFFSymbolDef(Sym);
+    Asm->OutStreamer->EmitCOFFSymbolStorageClass(COFF::IMAGE_SYM_CLASS_STATIC);
+    Asm->OutStreamer->EmitCOFFSymbolType(COFF::IMAGE_SYM_DTYPE_FUNCTION
                                          << COFF::SCT_COMPLEX_TYPE_SHIFT);
-    Asm->OutStreamer->endCOFFSymbolDef();
+    Asm->OutStreamer->EndCOFFSymbolDef();
 
     // We want our funclet's entry point to be aligned such that no nops will be
     // present after the label.
@@ -223,7 +223,7 @@ void WinException::beginFunclet(const MachineBasicBlock &MBB,
   // Mark 'Sym' as starting our funclet.
   if (shouldEmitMoves || shouldEmitPersonality) {
     CurrentFuncletTextSection = Asm->OutStreamer->getCurrentSectionOnly();
-    Asm->OutStreamer->emitWinCFIStartProc(Sym);
+    Asm->OutStreamer->EmitWinCFIStartProc(Sym);
   }
 
   if (shouldEmitPersonality) {
@@ -242,15 +242,15 @@ void WinException::beginFunclet(const MachineBasicBlock &MBB,
     // inliner doesn't allow inlining them, this isn't a major problem in
     // practice.
     if (!CurrentFuncletEntry->isCleanupFuncletEntry())
-      Asm->OutStreamer->emitWinEHHandler(PersHandlerSym, true, true);
+      Asm->OutStreamer->EmitWinEHHandler(PersHandlerSym, true, true);
   }
 }
 
 void WinException::endFunclet() {
   if (isAArch64 && CurrentFuncletEntry &&
       (shouldEmitMoves || shouldEmitPersonality)) {
-    Asm->OutStreamer->switchSection(CurrentFuncletTextSection);
-    Asm->OutStreamer->emitWinCFIFuncletOrFuncEnd();
+    Asm->OutStreamer->SwitchSection(CurrentFuncletTextSection);
+    Asm->OutStreamer->EmitWinCFIFuncletOrFuncEnd();
   }
   endFuncletImpl();
 }
@@ -270,7 +270,7 @@ void WinException::endFuncletImpl() {
     if (Per == EHPersonality::MSVC_CXX && shouldEmitPersonality &&
         !CurrentFuncletEntry->isCleanupFuncletEntry()) {
       // Emit an UNWIND_INFO struct describing the prologue.
-      Asm->OutStreamer->emitWinEHHandlerData();
+      Asm->OutStreamer->EmitWinEHHandlerData();
 
       // If this is a C++ catch funclet (or the parent function),
       // emit a reference to the LSDA for the parent function.
@@ -281,14 +281,14 @@ void WinException::endFuncletImpl() {
     } else if (Per == EHPersonality::MSVC_TableSEH && MF->hasEHFunclets() &&
                !CurrentFuncletEntry->isEHFuncletEntry()) {
       // Emit an UNWIND_INFO struct describing the prologue.
-      Asm->OutStreamer->emitWinEHHandlerData();
+      Asm->OutStreamer->EmitWinEHHandlerData();
 
       // If this is the parent function in Win64 SEH, emit the LSDA immediately
       // following .seh_handlerdata.
       emitCSpecificHandlerTable(MF);
     } else if (shouldEmitPersonality || shouldEmitLSDA) {
       // Emit an UNWIND_INFO struct describing the prologue.
-      Asm->OutStreamer->emitWinEHHandlerData();
+      Asm->OutStreamer->EmitWinEHHandlerData();
       // In these cases, no further info is written to the .xdata section
       // right here, but is written by e.g. emitExceptionTable in endFunction()
       // above.
@@ -301,8 +301,8 @@ void WinException::endFuncletImpl() {
     // Switch back to the funclet start .text section now that we are done
     // writing to .xdata, and emit an .seh_endproc directive to mark the end of
     // the function.
-    Asm->OutStreamer->switchSection(CurrentFuncletTextSection);
-    Asm->OutStreamer->emitWinCFIEndProc();
+    Asm->OutStreamer->SwitchSection(CurrentFuncletTextSection);
+    Asm->OutStreamer->EmitWinCFIEndProc();
   }
 
   // Let's make sure we don't try to end the same funclet twice.
@@ -693,12 +693,7 @@ void WinException::emitCXXFrameHandler3Table(const MachineFunction *MF) {
   }
 
   int UnwindHelpOffset = 0;
-  // TODO: The check for UnwindHelpFrameIdx against max() below (and the
-  // second check further below) can be removed if MS C++ unwinding is
-  // implemented for ARM, when test/CodeGen/ARM/Windows/wineh-basic.ll
-  // passes without the check.
-  if (Asm->MAI->usesWindowsCFI() &&
-      FuncInfo.UnwindHelpFrameIdx != std::numeric_limits<int>::max())
+  if (Asm->MAI->usesWindowsCFI())
     UnwindHelpOffset =
         getFrameIndexOffset(FuncInfo.UnwindHelpFrameIdx, FuncInfo);
 
@@ -760,8 +755,7 @@ void WinException::emitCXXFrameHandler3Table(const MachineFunction *MF) {
   AddComment("IPToStateXData");
   OS.emitValue(create32bitRef(IPToStateXData), 4);
 
-  if (Asm->MAI->usesWindowsCFI() &&
-      FuncInfo.UnwindHelpFrameIdx != std::numeric_limits<int>::max()) {
+  if (Asm->MAI->usesWindowsCFI()) {
     AddComment("UnwindHelp");
     OS.emitInt32(UnwindHelpOffset);
   }

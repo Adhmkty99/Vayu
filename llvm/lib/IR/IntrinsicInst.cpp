@@ -223,13 +223,13 @@ ConstrainedFPIntrinsic::getExceptionBehavior() const {
 bool ConstrainedFPIntrinsic::isDefaultFPEnvironment() const {
   Optional<fp::ExceptionBehavior> Except = getExceptionBehavior();
   if (Except) {
-    if (Except.value() != fp::ebIgnore)
+    if (Except.getValue() != fp::ebIgnore)
       return false;
   }
 
   Optional<RoundingMode> Rounding = getRoundingMode();
   if (Rounding) {
-    if (Rounding.value() != RoundingMode::NearestTiesToEven)
+    if (Rounding.getValue() != RoundingMode::NearestTiesToEven)
       return false;
   }
 
@@ -314,7 +314,7 @@ ElementCount VPIntrinsic::getStaticVectorLength() const {
 
 Value *VPIntrinsic::getMaskParam() const {
   if (auto MaskPos = getMaskParamPos(getIntrinsicID()))
-    return getArgOperand(*MaskPos);
+    return getArgOperand(MaskPos.getValue());
   return nullptr;
 }
 
@@ -325,7 +325,7 @@ void VPIntrinsic::setMaskParam(Value *NewMask) {
 
 Value *VPIntrinsic::getVectorLengthParam() const {
   if (auto EVLPos = getVectorLengthParamPos(getIntrinsicID()))
-    return getArgOperand(*EVLPos);
+    return getArgOperand(EVLPos.getValue());
   return nullptr;
 }
 
@@ -363,14 +363,14 @@ VPIntrinsic::getVectorLengthParamPos(Intrinsic::ID IntrinsicID) {
 /// scatter.
 MaybeAlign VPIntrinsic::getPointerAlignment() const {
   Optional<unsigned> PtrParamOpt = getMemoryPointerParamPos(getIntrinsicID());
-  assert(PtrParamOpt && "no pointer argument!");
-  return getParamAlign(PtrParamOpt.value());
+  assert(PtrParamOpt.hasValue() && "no pointer argument!");
+  return getParamAlign(PtrParamOpt.getValue());
 }
 
 /// \return The pointer operand of this load,store, gather or scatter.
 Value *VPIntrinsic::getMemoryPointerParam() const {
   if (auto PtrParamOpt = getMemoryPointerParamPos(getIntrinsicID()))
-    return getArgOperand(PtrParamOpt.value());
+    return getArgOperand(PtrParamOpt.getValue());
   return nullptr;
 }
 
@@ -389,9 +389,9 @@ Optional<unsigned> VPIntrinsic::getMemoryPointerParamPos(Intrinsic::ID VPID) {
 /// \return The data (payload) operand of this store or scatter.
 Value *VPIntrinsic::getMemoryDataParam() const {
   auto DataParamOpt = getMemoryDataParamPos(getIntrinsicID());
-  if (!DataParamOpt)
+  if (!DataParamOpt.hasValue())
     return nullptr;
-  return getArgOperand(DataParamOpt.value());
+  return getArgOperand(DataParamOpt.getValue());
 }
 
 Optional<unsigned> VPIntrinsic::getMemoryDataParamPos(Intrinsic::ID VPID) {
@@ -617,7 +617,7 @@ CmpInst::Predicate VPCmpIntrinsic::getPredicate() const {
 #define END_REGISTER_VP_INTRINSIC(VPID) break;
 #include "llvm/IR/VPIntrinsics.def"
   }
-  assert(CCArgIdx && "Unexpected vector-predicated comparison");
+  assert(CCArgIdx.hasValue() && "Unexpected vector-predicated comparison");
   return IsFP ? getFPPredicateFromMD(getArgOperand(*CCArgIdx))
               : getIntPredicateFromMD(getArgOperand(*CCArgIdx));
 }
@@ -694,10 +694,8 @@ unsigned BinaryOpIntrinsic::getNoWrapKind() const {
     return OverflowingBinaryOperator::NoUnsignedWrap;
 }
 
-const Value *GCProjectionInst::getStatepoint() const {
+const GCStatepointInst *GCProjectionInst::getStatepoint() const {
   const Value *Token = getArgOperand(0);
-  if (isa<UndefValue>(Token))
-    return Token;
 
   // This takes care both of relocates for call statepoints and relocates
   // on normal path of invoke statepoint.
@@ -716,23 +714,13 @@ const Value *GCProjectionInst::getStatepoint() const {
 }
 
 Value *GCRelocateInst::getBasePtr() const {
-  auto Statepoint = getStatepoint();
-  if (isa<UndefValue>(Statepoint))
-    return UndefValue::get(Statepoint->getType());
-
-  auto *GCInst = cast<GCStatepointInst>(Statepoint);
-  if (auto Opt = GCInst->getOperandBundle(LLVMContext::OB_gc_live))
+  if (auto Opt = getStatepoint()->getOperandBundle(LLVMContext::OB_gc_live))
     return *(Opt->Inputs.begin() + getBasePtrIndex());
-  return *(GCInst->arg_begin() + getBasePtrIndex());
+  return *(getStatepoint()->arg_begin() + getBasePtrIndex());
 }
 
 Value *GCRelocateInst::getDerivedPtr() const {
-  auto *Statepoint = getStatepoint();
-  if (isa<UndefValue>(Statepoint))
-    return UndefValue::get(Statepoint->getType());
-
-  auto *GCInst = cast<GCStatepointInst>(Statepoint);
-  if (auto Opt = GCInst->getOperandBundle(LLVMContext::OB_gc_live))
+  if (auto Opt = getStatepoint()->getOperandBundle(LLVMContext::OB_gc_live))
     return *(Opt->Inputs.begin() + getDerivedPtrIndex());
-  return *(GCInst->arg_begin() + getDerivedPtrIndex());
+  return *(getStatepoint()->arg_begin() + getDerivedPtrIndex());
 }

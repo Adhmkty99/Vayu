@@ -131,7 +131,10 @@ public:
 
   void emitInstruction(const MachineInstr *MI) override;
 
-  void emitBasicBlockEnd(const MachineBasicBlock &MBB) override;
+  void emitBasicBlockEnd(const MachineBasicBlock &MBB) override {
+    AsmPrinter::emitBasicBlockEnd(MBB);
+    SMShadowTracker.emitShadowPadding(*OutStreamer, getSubtargetInfo());
+  }
 
   bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
                        const char *ExtraCode, raw_ostream &O) override;

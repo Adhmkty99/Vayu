@@ -272,8 +272,8 @@ static const std::vector<TensorSpec> TrainingOnlyFeatures{
 static const std::vector<TensorSpec> getInputFeatures() {
   std::vector<TensorSpec> InputSpecs;
   for (size_t I = 0; I < NumberOfFeatures; ++I)
-    InputSpecs.push_back(TensorSpec::createSpec<int64_t>(
-        TFFeedPrefix + FeatureMap[I].name(), FeatureMap[I].shape()));
+    InputSpecs.push_back(
+        TensorSpec::createSpec<int64_t>(TFFeedPrefix + FeatureNameMap[I], {1}));
   append_range(InputSpecs, TrainingOnlyFeatures);
   return InputSpecs;
 }
@@ -289,7 +289,8 @@ TrainingLogger::TrainingLogger(StringRef LogFileName,
   std::vector<LoggedFeatureSpec> FT;
 
   for (size_t I = 0; I < NumberOfFeatures; ++I)
-    FT.push_back({FeatureMap.at(I), None});
+    FT.push_back(
+        {TensorSpec::createSpec<int64_t>(FeatureNameMap.at(I), {1}), None});
   if (MUTR && MUTR->outputLoggedFeatureSpecs().size() > 1)
     append_range(FT, drop_begin(MUTR->outputLoggedFeatureSpecs()));
 

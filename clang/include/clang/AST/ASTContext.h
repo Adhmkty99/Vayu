@@ -130,7 +130,6 @@ class TemplateDecl;
 class TemplateParameterList;
 class TemplateTemplateParmDecl;
 class TemplateTypeParmDecl;
-class TypeConstraint;
 class UnresolvedSetIterator;
 class UsingShadowDecl;
 class VarTemplateDecl;
@@ -261,7 +260,7 @@ class ASTContext : public RefCountedBase<ASTContext> {
   mutable llvm::FoldingSet<DeducedTemplateSpecializationType>
     DeducedTemplateSpecializationTypes;
   mutable llvm::FoldingSet<AtomicType> AtomicTypes;
-  mutable llvm::FoldingSet<AttributedType> AttributedTypes;
+  llvm::FoldingSet<AttributedType> AttributedTypes;
   mutable llvm::FoldingSet<PipeType> PipeTypes;
   mutable llvm::FoldingSet<BitIntType> BitIntTypes;
   mutable llvm::FoldingSet<DependentBitIntType> DependentBitIntTypes;
@@ -472,9 +471,6 @@ class ASTContext : public RefCountedBase<ASTContext> {
     void resolve(ASTContext &Ctx);
   };
   llvm::DenseMap<Module*, PerModuleInitializers*> ModuleInitializers;
-
-  /// For module code-gen cases, this is the top-level module we are building.
-  Module *TopLevelModule = nullptr;
 
   static constexpr unsigned ConstantArrayTypesLog2InitSize = 8;
   static constexpr unsigned GeneralTypesLog2InitSize = 9;
@@ -1079,12 +1075,6 @@ public:
   /// Get the initializations to perform when importing a module, if any.
   ArrayRef<Decl*> getModuleInitializers(Module *M);
 
-  /// Set the (C++20) module we are building.
-  void setModuleForCodeGen(Module *M) { TopLevelModule = M; }
-
-  /// Get module under construction, nullptr if this is not a C++20 module.
-  Module *getModuleForCodeGen() const { return TopLevelModule; }
-
   TranslationUnitDecl *getTranslationUnitDecl() const {
     return TUDecl->getMostRecentDecl();
   }
@@ -1169,10 +1159,6 @@ public:
 
   /// Keep track of CUDA/HIP device-side variables ODR-used by host code.
   llvm::DenseSet<const VarDecl *> CUDADeviceVarODRUsedByHost;
-
-  /// Keep track of CUDA/HIP external kernels or device variables ODR-used by
-  /// host code.
-  llvm::DenseSet<const ValueDecl *> CUDAExternalDeviceDeclODRUsedByHost;
 
   ASTContext(LangOptions &LOpts, SourceManager &SM, IdentifierTable &idents,
              SelectorTable &sels, Builtin::Context &builtins,
@@ -1316,11 +1302,11 @@ public:
   /// declaration of a function with an exception specification is permitted
   /// and preserved. Other type sugar (for instance, typedefs) is not.
   QualType getFunctionTypeWithExceptionSpec(
-      QualType Orig, const FunctionProtoType::ExceptionSpecInfo &ESI) const;
+      QualType Orig, const FunctionProtoType::ExceptionSpecInfo &ESI);
 
   /// Determine whether two function types are the same, ignoring
   /// exception specifications in cases where they're part of the type.
-  bool hasSameFunctionTypeIgnoringExceptionSpec(QualType T, QualType U) const;
+  bool hasSameFunctionTypeIgnoringExceptionSpec(QualType T, QualType U);
 
   /// Change the exception specification on a function once it is
   /// delay-parsed, instantiated, or computed.
@@ -1607,8 +1593,9 @@ public:
 
   QualType getInjectedClassNameType(CXXRecordDecl *Decl, QualType TST) const;
 
-  QualType getAttributedType(attr::Kind attrKind, QualType modifiedType,
-                             QualType equivalentType) const;
+  QualType getAttributedType(attr::Kind attrKind,
+                             QualType modifiedType,
+                             QualType equivalentType);
 
   QualType getBTFTagAttributedType(const BTFTypeTagAttr *BTFAttr,
                                    QualType Wrapped);
@@ -2191,7 +2178,7 @@ public:
 
   TemplateName getQualifiedTemplateName(NestedNameSpecifier *NNS,
                                         bool TemplateKeyword,
-                                        TemplateName Template) const;
+                                        TemplateDecl *Template) const;
 
   TemplateName getDependentTemplateName(NestedNameSpecifier *NNS,
                                         const IdentifierInfo *Name) const;
@@ -2563,7 +2550,7 @@ public:
                                        bool IsParam) const {
     auto SubTnullability = SubT->getNullability(*this);
     auto SuperTnullability = SuperT->getNullability(*this);
-    if (SubTnullability.has_value() == SuperTnullability.has_value()) {
+    if (SubTnullability.hasValue() == SuperTnullability.hasValue()) {
       // Neither has nullability; return true
       if (!SubTnullability)
         return true;
@@ -2663,33 +2650,25 @@ public:
   bool hasSameTemplateName(const TemplateName &X, const TemplateName &Y) const;
 
   /// Determine whether the two declarations refer to the same entity.
-  bool isSameEntity(const NamedDecl *X, const NamedDecl *Y) const;
+  ///
+  /// FIXME: isSameEntity is not const due to its implementation calls
+  /// hasSameFunctionTypeIgnoringExceptionSpec which may alter this.
+  bool isSameEntity(const NamedDecl *X, const NamedDecl *Y);
 
   /// Determine whether two template parameter lists are similar enough
   /// that they may be used in declarations of the same template.
+  ///
+  /// FIXME: isSameTemplateParameterList is not const since it calls
+  /// isSameTemplateParameter.
   bool isSameTemplateParameterList(const TemplateParameterList *X,
-                                   const TemplateParameterList *Y) const;
+                                   const TemplateParameterList *Y);
 
   /// Determine whether two template parameters are similar enough
   /// that they may be used in declarations of the same template.
-  bool isSameTemplateParameter(const NamedDecl *X, const NamedDecl *Y) const;
-
-  /// Determine whether two 'requires' expressions are similar enough that they
-  /// may be used in re-declarations.
   ///
-  /// Use of 'requires' isn't mandatory, works with constraints expressed in
-  /// other ways too.
-  bool isSameConstraintExpr(const Expr *XCE, const Expr *YCE) const;
-
-  /// Determine whether two type contraint are similar enough that they could
-  /// used in declarations of the same template.
-  bool isSameTypeConstraint(const TypeConstraint *XTC,
-                            const TypeConstraint *YTC) const;
-
-  /// Determine whether two default template arguments are similar enough
-  /// that they may be used in declarations of the same template.
-  bool isSameDefaultTemplateArgument(const NamedDecl *X,
-                                     const NamedDecl *Y) const;
+  /// FIXME: isSameTemplateParameterList is not const since it calls
+  /// isSameEntity.
+  bool isSameTemplateParameter(const NamedDecl *X, const NamedDecl *Y);
 
   /// Retrieve the "canonical" template argument.
   ///
@@ -3058,8 +3037,7 @@ public:
   DeclaratorDecl *getDeclaratorForUnnamedTagDecl(const TagDecl *TD);
 
   void setManglingNumber(const NamedDecl *ND, unsigned Number);
-  unsigned getManglingNumber(const NamedDecl *ND,
-                             bool ForAuxTarget = false) const;
+  unsigned getManglingNumber(const NamedDecl *ND) const;
 
   void setStaticLocalNumber(const VarDecl *VD, unsigned Number);
   unsigned getStaticLocalNumber(const VarDecl *VD) const;
@@ -3311,11 +3289,11 @@ public:
   /// Return a new OMPTraitInfo object owned by this context.
   OMPTraitInfo &getNewOMPTraitInfo();
 
-  /// Whether a C++ static variable or CUDA/HIP kernel may be externalized.
-  bool mayExternalize(const Decl *D) const;
+  /// Whether a C++ static variable may be externalized.
+  bool mayExternalizeStaticVar(const Decl *D) const;
 
-  /// Whether a C++ static variable or CUDA/HIP kernel should be externalized.
-  bool shouldExternalize(const Decl *D) const;
+  /// Whether a C++ static variable should be externalized.
+  bool shouldExternalizeStaticVar(const Decl *D) const;
 
   StringRef getCUIDHash() const;
 

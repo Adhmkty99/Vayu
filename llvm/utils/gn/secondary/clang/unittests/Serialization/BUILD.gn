@@ -15,6 +15,5 @@ unittest("SerializationTests") {
   sources = [
     "InMemoryModuleCacheTest.cpp",
     "ModuleCacheTest.cpp",
-    "SourceLocationEncodingTest.cpp",
   ]
 }

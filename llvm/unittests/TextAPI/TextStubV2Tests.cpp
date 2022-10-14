@@ -103,7 +103,7 @@ TEST(TBDv2, ReadFile) {
         ExportedSymbol{Sym->getKind(), std::string(Sym->getName()),
                        Sym->isWeakDefined(), Sym->isThreadLocalValue()});
   }
-  llvm::sort(Exports);
+  llvm::sort(Exports.begin(), Exports.end());
 
   EXPECT_EQ(sizeof(TBDv2Symbols) / sizeof(ExportedSymbol), Exports.size());
   EXPECT_TRUE(

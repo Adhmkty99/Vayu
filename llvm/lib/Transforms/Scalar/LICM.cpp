@@ -538,7 +538,7 @@ bool llvm::sinkRegion(DomTreeNode *N, AAResults *AA, LoopInfo *LI,
          CurLoop != nullptr && SafetyInfo != nullptr &&
          "Unexpected input to sinkRegion.");
 
-  // We want to visit children before parents. We will enqueue all the parents
+  // We want to visit children before parents. We will enque all the parents
   // before their children in the worklist and process the worklist in reverse
   // order.
   SmallVector<DomTreeNode *, 16> Worklist = collectChildrenInLoop(N, CurLoop);
@@ -1508,7 +1508,8 @@ static bool canSplitPredecessors(PHINode *PN, LoopSafetyInfo *SafetyInfo) {
   if (!SafetyInfo->getBlockColors().empty() && BB->getFirstNonPHI()->isEHPad())
     return false;
   for (BasicBlock *BBPred : predecessors(BB)) {
-    if (isa<IndirectBrInst>(BBPred->getTerminator()))
+    if (isa<IndirectBrInst>(BBPred->getTerminator()) ||
+        isa<CallBrInst>(BBPred->getTerminator()))
       return false;
   }
   return true;
@@ -1605,7 +1606,7 @@ static bool sink(Instruction &I, LoopInfo *LI, DominatorTree *DT,
       continue;
 
     if (!DT->isReachableFromEntry(User->getParent())) {
-      U = PoisonValue::get(I.getType());
+      U = UndefValue::get(I.getType());
       Changed = true;
       continue;
     }
@@ -1618,7 +1619,7 @@ static bool sink(Instruction &I, LoopInfo *LI, DominatorTree *DT,
     // unreachable.
     BasicBlock *BB = PN->getIncomingBlock(U);
     if (!DT->isReachableFromEntry(BB)) {
-      U = PoisonValue::get(I.getType());
+      U = UndefValue::get(I.getType());
       Changed = true;
       continue;
     }
@@ -1958,7 +1959,6 @@ bool llvm::promoteLoopAccessesToScalars(
 
   bool DereferenceableInPH = false;
   bool SafeToInsertStore = false;
-  bool StoreIsGuanteedToExecute = false;
   bool FoundLoadToPromote = false;
 
   SmallVector<Instruction *, 64> LoopUses;
@@ -2039,12 +2039,10 @@ bool llvm::promoteLoopAccessesToScalars(
         // alignment than any other guaranteed stores, in which case we can
         // raise the alignment on the promoted store.
         Align InstAlignment = Store->getAlign();
-        bool GuaranteedToExecute =
-            SafetyInfo->isGuaranteedToExecute(*UI, DT, CurLoop);
-        StoreIsGuanteedToExecute |= GuaranteedToExecute;
+
         if (!DereferenceableInPH || !SafeToInsertStore ||
             (InstAlignment > Alignment)) {
-          if (GuaranteedToExecute) {
+          if (SafetyInfo->isGuaranteedToExecute(*UI, DT, CurLoop)) {
             DereferenceableInPH = true;
             SafeToInsertStore = true;
             Alignment = std::max(Alignment, InstAlignment);
@@ -2158,26 +2156,21 @@ bool llvm::promoteLoopAccessesToScalars(
 
   // Set up the preheader to have a definition of the value.  It is the live-out
   // value from the preheader that uses in the loop will use.
-  LoadInst *PreheaderLoad = nullptr;
-  if (FoundLoadToPromote || !StoreIsGuanteedToExecute) {
-    PreheaderLoad =
-        new LoadInst(AccessTy, SomePtr, SomePtr->getName() + ".promoted",
-                     Preheader->getTerminator());
-    if (SawUnorderedAtomic)
-      PreheaderLoad->setOrdering(AtomicOrdering::Unordered);
-    PreheaderLoad->setAlignment(Alignment);
-    PreheaderLoad->setDebugLoc(DebugLoc());
-    if (AATags)
-      PreheaderLoad->setAAMetadata(AATags);
+  LoadInst *PreheaderLoad = new LoadInst(
+      AccessTy, SomePtr, SomePtr->getName() + ".promoted",
+      Preheader->getTerminator());
+  if (SawUnorderedAtomic)
+    PreheaderLoad->setOrdering(AtomicOrdering::Unordered);
+  PreheaderLoad->setAlignment(Alignment);
+  PreheaderLoad->setDebugLoc(DebugLoc());
+  if (AATags)
+    PreheaderLoad->setAAMetadata(AATags);
+  SSA.AddAvailableValue(Preheader, PreheaderLoad);
 
-    MemoryAccess *PreheaderLoadMemoryAccess = MSSAU.createMemoryAccessInBB(
-        PreheaderLoad, nullptr, PreheaderLoad->getParent(), MemorySSA::End);
-    MemoryUse *NewMemUse = cast<MemoryUse>(PreheaderLoadMemoryAccess);
-    MSSAU.insertUse(NewMemUse, /*RenameUses=*/true);
-    SSA.AddAvailableValue(Preheader, PreheaderLoad);
-  } else {
-    SSA.AddAvailableValue(Preheader, PoisonValue::get(AccessTy));
-  }
+  MemoryAccess *PreheaderLoadMemoryAccess = MSSAU.createMemoryAccessInBB(
+      PreheaderLoad, nullptr, PreheaderLoad->getParent(), MemorySSA::End);
+  MemoryUse *NewMemUse = cast<MemoryUse>(PreheaderLoadMemoryAccess);
+  MSSAU.insertUse(NewMemUse, /*RenameUses=*/true);
 
   if (VerifyMemorySSA)
     MSSAU.getMemorySSA()->verifyMemorySSA();
@@ -2188,7 +2181,7 @@ bool llvm::promoteLoopAccessesToScalars(
   if (VerifyMemorySSA)
     MSSAU.getMemorySSA()->verifyMemorySSA();
   // If the SSAUpdater didn't use the load in the preheader, just zap it now.
-  if (PreheaderLoad && PreheaderLoad->use_empty())
+  if (PreheaderLoad->use_empty())
     eraseInstruction(*PreheaderLoad, *SafetyInfo, MSSAU);
 
   return true;

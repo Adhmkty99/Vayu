@@ -98,9 +98,13 @@ LogicalResult mlir::mlirTranslateMain(int argc, char **argv,
     return sourceMgrHandler.verify();
   };
 
-  if (failed(splitAndProcessBuffer(std::move(input), processBuffer,
-                                   output->os(), splitInputFile)))
+  if (splitInputFile) {
+    if (failed(splitAndProcessBuffer(std::move(input), processBuffer,
+                                     output->os())))
+      return failure();
+  } else if (failed(processBuffer(std::move(input), output->os()))) {
     return failure();
+  }
 
   output->keep();
   return success();

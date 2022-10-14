@@ -145,13 +145,13 @@ public:
         EndIfStr[FindEscapedNewline] == '\\')
       return false;
 
-    bool IsLineComment =
-        EndIfStr.consume_front("//") ||
-        (EndIfStr.consume_front("/*") && EndIfStr.consume_back("*/"));
-    if (!IsLineComment)
-      return Check->shouldSuggestEndifComment(FileName);
+    if (!Check->shouldSuggestEndifComment(FileName) &&
+        !(EndIfStr.startswith("//") ||
+          (EndIfStr.startswith("/*") && EndIfStr.endswith("*/"))))
+      return false;
 
-    return EndIfStr.trim() != HeaderGuard;
+    return (EndIfStr != "// " + HeaderGuard.str()) &&
+           (EndIfStr != "/* " + HeaderGuard.str() + " */");
   }
 
   /// Look for header guards that don't match the preferred style. Emit

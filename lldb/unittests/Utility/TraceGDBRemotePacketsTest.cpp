@@ -38,7 +38,8 @@ TEST(TraceGDBRemotePacketsTest, IntelPTGetStateResponse) {
 
   // Create TraceIntelPTGetStateResponse.
   TraceIntelPTGetStateResponse response;
-  response.tsc_perf_zero_conversion = LinuxPerfZeroTscConversion{test_time_mult, test_time_shift, {test_time_zero}};
+  response.tsc_conversion = std::make_unique<LinuxPerfZeroTscConversion>(
+      test_time_mult, test_time_shift, test_time_zero);
 
   // Serialize then deserialize.
   Expected<TraceIntelPTGetStateResponse> deserialized_response =
@@ -56,9 +57,9 @@ TEST(TraceGDBRemotePacketsTest, IntelPTGetStateResponse) {
   const uint64_t EXPECTED_NANOS = 9223372039007304983u;
 
   uint64_t pre_serialization_conversion =
-      response.tsc_perf_zero_conversion->ToNanos(TSC);
+      response.tsc_conversion->Convert(TSC).count();
   uint64_t post_serialization_conversion =
-      deserialized_response->tsc_perf_zero_conversion->ToNanos(TSC);
+      deserialized_response->tsc_conversion->Convert(TSC).count();
 
   // Check equality:
   // Ensure that both the TraceGetStateResponse and TraceIntelPTGetStateResponse
@@ -94,6 +95,7 @@ TEST(TraceGDBRemotePacketsTest, IntelPTGetStateResponseEmpty) {
   // portions of the JSON representation are unchanged.
   ASSERT_EQ(toJSON(response), toJSON(*deserialized_response));
   // Ensure that the tsc_conversion's are nullptr.
-  ASSERT_FALSE((bool)response.tsc_perf_zero_conversion);
-  ASSERT_FALSE((bool)deserialized_response->tsc_perf_zero_conversion);
+  ASSERT_EQ(response.tsc_conversion.get(), nullptr);
+  ASSERT_EQ(response.tsc_conversion.get(),
+            deserialized_response->tsc_conversion.get());
 }

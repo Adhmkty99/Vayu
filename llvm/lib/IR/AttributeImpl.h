@@ -256,7 +256,6 @@ public:
   unsigned getVScaleRangeMin() const;
   Optional<unsigned> getVScaleRangeMax() const;
   UWTableKind getUWTableKind() const;
-  AllocFnKind getAllocKind() const;
   std::string getAsString(bool InAttrGrp) const;
   Type *getAttributeType(Attribute::AttrKind Kind) const;
 

@@ -45,7 +45,6 @@ add_flang_library(FortranEvaluate
   real.cpp
   shape.cpp
   static-data.cpp
-  target.cpp
   tools.cpp
   type.cpp
   variable.cpp
@@ -63,3 +62,4 @@ add_flang_library(FortranEvaluate
   acc_gen
   omp_gen
 )
+

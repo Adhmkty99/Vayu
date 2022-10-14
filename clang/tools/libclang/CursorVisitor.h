@@ -19,10 +19,6 @@ namespace clang {
 class PreprocessingRecord;
 class ASTUnit;
 
-namespace concepts {
-class Requirement;
-}
-
 namespace cxcursor {
 
 class VisitorJob {
@@ -41,8 +37,6 @@ public:
     MemberRefVisitKind,
     SizeOfPackExprPartsKind,
     LambdaExprPartsKind,
-    ConceptSpecializationExprVisitKind,
-    RequiresExprVisitKind,
     PostChildrenVisitKind
   };
 
@@ -248,9 +242,6 @@ public:
   bool VisitStaticAssertDecl(StaticAssertDecl *D);
   bool VisitFriendDecl(FriendDecl *D);
   bool VisitDecompositionDecl(DecompositionDecl *D);
-  bool VisitConceptDecl(ConceptDecl *D);
-  bool VisitTypeConstraint(const TypeConstraint &TC);
-  bool VisitConceptRequirement(const concepts::Requirement &R);
 
   // Name visitor
   bool VisitDeclarationNameInfo(DeclarationNameInfo Name);

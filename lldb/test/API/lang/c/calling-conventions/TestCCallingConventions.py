@@ -6,6 +6,8 @@ from lldbsuite.test_event.build_exception import BuildError
 
 class TestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     NO_DEBUG_INFO_TESTCASE = True
 
     def build_and_run(self, test_file):
@@ -59,8 +61,6 @@ class TestCase(TestBase):
             return
         self.expect_expr("func(1, 2, 3, 4)", result_type="int", result_value="10")
 
-    @expectedFailureAll(oslist=["freebsd"],
-                        bugnumber="github.com/llvm/llvm-project/issues/56084")
     def test_vectorcall(self):
         if not self.build_and_run("vectorcall.c"):
             return

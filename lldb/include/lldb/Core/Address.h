@@ -116,7 +116,7 @@ public:
   ///
   /// Initialize with a invalid section (NULL) and an invalid offset
   /// (LLDB_INVALID_ADDRESS).
-  Address() = default;
+  Address() {}
 
   /// Copy constructor
   ///

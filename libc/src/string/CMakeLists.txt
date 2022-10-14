@@ -6,8 +6,6 @@ add_header_library(
     string_utils.h
   DEPENDS
     libc.src.__support.CPP.bitset
-    .memory_utils.memcpy_implementation
-    .memory_utils.memset_implementation
 )
 
 add_entrypoint_object(
@@ -126,28 +124,6 @@ add_entrypoint_object(
     .memory_utils.memcpy_implementation
     .string_utils
     libc.include.stdlib
-)
-
-add_entrypoint_object(
-  strlcat
-  SRCS
-    strlcat.cpp
-  HDRS
-    strlcat.h
-  DEPENDS
-    .string_utils
-    libc.include.string
-)
-
-add_entrypoint_object(
-  strlcpy
-  SRCS
-    strlcpy.cpp
-  HDRS
-    strlcpy.h
-  DEPENDS
-    .string_utils
-    libc.include.string
 )
 
 add_entrypoint_object(
@@ -279,6 +255,7 @@ function(add_implementation name impl_name)
     ${ARGN})
 
   if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+    list(APPEND ADD_IMPL_MLLVM_COMPILE_OPTIONS "-combiner-global-alias-analysis")
     # Note that '-mllvm' needs to be prefixed with 'SHELL:' to prevent CMake flag deduplication.
     foreach(opt IN LISTS ADD_IMPL_MLLVM_COMPILE_OPTIONS)
       list(APPEND ADD_IMPL_COMPILE_OPTIONS "SHELL:-mllvm ${opt}")
@@ -308,6 +285,9 @@ function(add_bcmp bcmp_name)
     DEPENDS
       .memory_utils.memory_utils
       libc.include.string
+    COMPILE_OPTIONS
+      -fno-builtin-memcmp
+      -fno-builtin-bcmp
     ${ARGN}
   )
 endfunction()
@@ -335,6 +315,8 @@ function(add_bzero bzero_name)
     DEPENDS
       .memory_utils.memset_implementation
       libc.include.string
+    COMPILE_OPTIONS
+      -fno-builtin-bzero
     ${ARGN}
   )
 endfunction()
@@ -362,6 +344,8 @@ function(add_memcmp memcmp_name)
     DEPENDS
       .memory_utils.memcmp_implementation
       libc.include.string
+    COMPILE_OPTIONS
+      -fno-builtin-memcmp
     ${ARGN}
   )
 endfunction()
@@ -392,6 +376,8 @@ function(add_memcpy memcpy_name)
     DEPENDS
       .memory_utils.memcpy_implementation
       libc.include.string
+    COMPILE_OPTIONS
+      -fno-builtin-memcpy
     ${ARGN}
   )
 endfunction()
@@ -424,6 +410,8 @@ function(add_memmove memmove_name)
     DEPENDS
       .memory_utils.memory_utils
       libc.include.string
+    COMPILE_OPTIONS
+      -fno-builtin
     ${ARGN}
   )
 endfunction()
@@ -456,6 +444,8 @@ function(add_memset memset_name)
     DEPENDS
       .memory_utils.memset_implementation
       libc.include.string
+    COMPILE_OPTIONS
+      -fno-builtin-memset
     ${ARGN}
   )
 endfunction()

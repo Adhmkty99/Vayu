@@ -28,7 +28,8 @@ SimplifySubscriptExprCheck::SimplifySubscriptExprCheck(
 
 void SimplifySubscriptExprCheck::registerMatchers(MatchFinder *Finder) {
   const auto TypesMatcher = hasUnqualifiedDesugaredType(
-      recordType(hasDeclaration(cxxRecordDecl(hasAnyName(Types)))));
+      recordType(hasDeclaration(cxxRecordDecl(hasAnyName(
+          llvm::SmallVector<StringRef, 8>(Types.begin(), Types.end()))))));
 
   Finder->addMatcher(
       arraySubscriptExpr(hasBase(

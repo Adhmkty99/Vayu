@@ -88,7 +88,7 @@ private:
     for (auto &Callee : CandidateSet) {
       auto ImplSymbol = AliaseeImplTable.getImplFor(Callee);
       // try to distinguish already compiled & library symbols
-      if (!ImplSymbol)
+      if (!ImplSymbol.hasValue())
         continue;
       const auto &ImplSymbolName = ImplSymbol.getPointer()->first;
       JITDylib *ImplJD = ImplSymbol.getPointer()->second;
@@ -175,8 +175,9 @@ public:
   using ResultEval = std::function<IRlikiesStrRef(Function &)>;
   using TargetAndLikelies = DenseMap<SymbolStringPtr, SymbolNameSet>;
 
-  IRSpeculationLayer(ExecutionSession &ES, IRLayer &BaseLayer, Speculator &Spec,
-                     MangleAndInterner &Mangle, ResultEval Interpreter)
+  IRSpeculationLayer(ExecutionSession &ES, IRCompileLayer &BaseLayer,
+                     Speculator &Spec, MangleAndInterner &Mangle,
+                     ResultEval Interpreter)
       : IRLayer(ES, BaseLayer.getManglingOptions()), NextLayer(BaseLayer),
         S(Spec), Mangle(Mangle), QueryAnalysis(Interpreter) {}
 
@@ -197,7 +198,7 @@ private:
     return InternedNames;
   }
 
-  IRLayer &NextLayer;
+  IRCompileLayer &NextLayer;
   Speculator &S;
   MangleAndInterner &Mangle;
   ResultEval QueryAnalysis;

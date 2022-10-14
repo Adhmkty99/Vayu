@@ -243,8 +243,6 @@ private:
   std::function<void()> Evictor;
 };
 
-Optional<ArrayRef<uint8_t>> getBuildID(const ELFObjectFileBase *Obj);
-
 } // end namespace symbolize
 } // end namespace llvm
 

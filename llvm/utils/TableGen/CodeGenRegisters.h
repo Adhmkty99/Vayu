@@ -351,7 +351,10 @@ namespace llvm {
     std::string getQualifiedName() const;
     ArrayRef<ValueTypeByHwMode> getValueTypes() const { return VTs; }
     unsigned getNumValueTypes() const { return VTs.size(); }
-    bool hasType(const ValueTypeByHwMode &VT) const;
+
+    bool hasType(const ValueTypeByHwMode &VT) const {
+      return llvm::is_contained(VTs, VT);
+    }
 
     const ValueTypeByHwMode &getValueTypeNum(unsigned VTNum) const {
       if (VTNum < VTs.size())

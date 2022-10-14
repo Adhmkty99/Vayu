@@ -68,7 +68,7 @@ template <class _Comp>
 struct __comp_ref_type {
   // Pass the comparator by lvalue reference. Or in debug mode, using a
   // debugging wrapper that stores a reference.
-#ifdef _LIBCPP_ENABLE_DEBUG_MODE
+#if _LIBCPP_DEBUG_LEVEL == 2
   typedef __debug_less<_Comp> type;
 #else
   typedef _Comp& type;

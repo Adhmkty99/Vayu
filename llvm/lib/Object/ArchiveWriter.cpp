@@ -18,17 +18,13 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/Error.h"
-#include "llvm/Object/IRObjectFile.h"
-#include "llvm/Object/MachO.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Object/SymbolicFile.h"
-#include "llvm/Object/XCOFFObjectFile.h"
 #include "llvm/Support/Alignment.h"
 #include "llvm/Support/EndianStream.h"
 #include "llvm/Support/Errc.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/Format.h"
-#include "llvm/Support/MathExtras.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/SmallVectorMemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
@@ -46,40 +42,6 @@ using namespace llvm;
 NewArchiveMember::NewArchiveMember(MemoryBufferRef BufRef)
     : Buf(MemoryBuffer::getMemBuffer(BufRef, false)),
       MemberName(BufRef.getBufferIdentifier()) {}
-
-object::Archive::Kind NewArchiveMember::detectKindFromObject() const {
-  auto MemBufferRef = this->Buf->getMemBufferRef();
-  Expected<std::unique_ptr<object::ObjectFile>> OptionalObject =
-      object::ObjectFile::createObjectFile(MemBufferRef);
-
-  if (OptionalObject)
-    return isa<object::MachOObjectFile>(**OptionalObject)
-               ? object::Archive::K_DARWIN
-               : (isa<object::XCOFFObjectFile>(**OptionalObject)
-                      ? object::Archive::K_AIXBIG
-                      : object::Archive::K_GNU);
-
-  // Squelch the error in case we had a non-object file.
-  consumeError(OptionalObject.takeError());
-
-  // If we're adding a bitcode file to the archive, detect the Archive kind
-  // based on the target triple.
-  LLVMContext Context;
-  if (identify_magic(MemBufferRef.getBuffer()) == file_magic::bitcode) {
-    if (auto ObjOrErr = object::SymbolicFile::createSymbolicFile(
-            MemBufferRef, file_magic::bitcode, &Context)) {
-      auto &IRObject = cast<object::IRObjectFile>(**ObjOrErr);
-      return Triple(IRObject.getTargetTriple()).isOSDarwin()
-                 ? object::Archive::K_DARWIN
-                 : object::Archive::K_GNU;
-    } else {
-      // Squelch the error in case this was not a SymbolicFile.
-      consumeError(ObjOrErr.takeError());
-    }
-  }
-
-  return object::Archive::getDefaultKindForHost();
-}
 
 Expected<NewArchiveMember>
 NewArchiveMember::getOldMember(const object::Archive::Child &OldMember,
@@ -165,20 +127,16 @@ static bool isDarwin(object::Archive::Kind Kind) {
          Kind == object::Archive::K_DARWIN64;
 }
 
-static bool isAIXBigArchive(object::Archive::Kind Kind) {
-  return Kind == object::Archive::K_AIXBIG;
-}
-
 static bool isBSDLike(object::Archive::Kind Kind) {
   switch (Kind) {
   case object::Archive::K_GNU:
   case object::Archive::K_GNU64:
-  case object::Archive::K_AIXBIG:
     return false;
   case object::Archive::K_BSD:
   case object::Archive::K_DARWIN:
   case object::Archive::K_DARWIN64:
     return true;
+  case object::Archive::K_AIXBIG:
   case object::Archive::K_COFF:
     break;
   }
@@ -231,31 +189,6 @@ printBSDMemberHeader(raw_ostream &Out, uint64_t Pos, StringRef Name,
     Out.write(uint8_t(0));
 }
 
-static void
-printBigArchiveMemberHeader(raw_ostream &Out, StringRef Name,
-                            const sys::TimePoint<std::chrono::seconds> &ModTime,
-                            unsigned UID, unsigned GID, unsigned Perms,
-                            uint64_t Size, unsigned PrevOffset,
-                            unsigned NextOffset) {
-  unsigned NameLen = Name.size();
-
-  printWithSpacePadding(Out, Size, 20);           // File member size
-  printWithSpacePadding(Out, NextOffset, 20);     // Next member header offset
-  printWithSpacePadding(Out, PrevOffset, 20); // Previous member header offset
-  printWithSpacePadding(Out, sys::toTimeT(ModTime), 12); // File member date
-  // The big archive format has 12 chars for uid and gid.
-  printWithSpacePadding(Out, UID % 1000000000000, 12);   // UID
-  printWithSpacePadding(Out, GID % 1000000000000, 12);   // GID
-  printWithSpacePadding(Out, format("%o", Perms), 12);   // Permission
-  printWithSpacePadding(Out, NameLen, 4);                // Name length
-  if (NameLen) {
-    printWithSpacePadding(Out, Name, NameLen); // Name
-    if (NameLen % 2)
-      Out.write(uint8_t(0)); // Null byte padding
-  }
-  Out << "`\n"; // Terminator
-}
-
 static bool useStringTable(bool Thin, StringRef Name) {
   return Thin || Name.size() >= 16 || Name.contains('/');
 }
@@ -266,8 +199,8 @@ static bool is64BitKind(object::Archive::Kind Kind) {
   case object::Archive::K_BSD:
   case object::Archive::K_DARWIN:
   case object::Archive::K_COFF:
-    return false;
   case object::Archive::K_AIXBIG:
+    return false;
   case object::Archive::K_DARWIN64:
   case object::Archive::K_GNU64:
     return true;
@@ -371,11 +304,7 @@ static uint64_t computeSymbolTableSize(object::Archive::Kind Kind,
   // least 4-byte aligned for 32-bit content.  Opt for the larger encoding
   // uniformly.
   // We do this for all bsd formats because it simplifies aligning members.
-  // For the big archive format, the symbol table is the last member, so there
-  // is no need to align.
-  uint32_t Pad = isAIXBigArchive(Kind)
-                     ? 0
-                     : offsetToAlignment(Size, Align(isBSDLike(Kind) ? 8 : 2));
+  uint32_t Pad = offsetToAlignment(Size, Align(isBSDLike(Kind) ? 8 : 2));
   Size += Pad;
   if (Padding)
     *Padding = Pad;
@@ -383,15 +312,11 @@ static uint64_t computeSymbolTableSize(object::Archive::Kind Kind,
 }
 
 static void writeSymbolTableHeader(raw_ostream &Out, object::Archive::Kind Kind,
-                                   bool Deterministic, uint64_t Size,
-                                   uint64_t PrevMemberOffset = 0) {
+                                   bool Deterministic, uint64_t Size) {
   if (isBSDLike(Kind)) {
     const char *Name = is64BitKind(Kind) ? "__.SYMDEF_64" : "__.SYMDEF";
     printBSDMemberHeader(Out, Out.tell(), Name, now(Deterministic), 0, 0, 0,
                          Size);
-  } else if (isAIXBigArchive(Kind)) {
-    printBigArchiveMemberHeader(Out, "", now(Deterministic), 0, 0,
-                                0, Size, PrevMemberOffset, 0);
   } else {
     const char *Name = is64BitKind(Kind) ? "/SYM64" : "";
     printGNUSmallMemberHeader(Out, Name, now(Deterministic), 0, 0, 0, Size);
@@ -400,8 +325,7 @@ static void writeSymbolTableHeader(raw_ostream &Out, object::Archive::Kind Kind,
 
 static void writeSymbolTable(raw_ostream &Out, object::Archive::Kind Kind,
                              bool Deterministic, ArrayRef<MemberData> Members,
-                             StringRef StringTable,
-                             uint64_t PrevMemberOffset = 0) {
+                             StringRef StringTable) {
   // We don't write a symbol table on an archive with no members -- except on
   // Darwin, where the linker will abort unless the archive has a symbol table.
   if (StringTable.empty() && !isDarwin(Kind))
@@ -414,10 +338,9 @@ static void writeSymbolTable(raw_ostream &Out, object::Archive::Kind Kind,
   uint64_t OffsetSize = is64BitKind(Kind) ? 8 : 4;
   uint32_t Pad;
   uint64_t Size = computeSymbolTableSize(Kind, NumSyms, OffsetSize, StringTable, &Pad);
-  writeSymbolTableHeader(Out, Kind, Deterministic, Size, PrevMemberOffset);
+  writeSymbolTableHeader(Out, Kind, Deterministic, Size);
 
-  uint64_t Pos = isAIXBigArchive(Kind) ? sizeof(object::BigArchive::FixLenHdr)
-                                       : Out.tell() + Size;
+  uint64_t Pos = Out.tell() + Size;
 
   if (isBSDLike(Kind))
     printNBits(Out, Kind, NumSyms * 2 * OffsetSize);
@@ -486,8 +409,9 @@ computeMemberData(raw_ostream &StringTable, raw_ostream &SymNames,
                   bool NeedSymbols, ArrayRef<NewArchiveMember> NewMembers) {
   static char PaddingData[8] = {'\n', '\n', '\n', '\n', '\n', '\n', '\n', '\n'};
 
-  uint64_t Pos =
-      isAIXBigArchive(Kind) ? sizeof(object::BigArchive::FixLenHdr) : 0;
+  // This ignores the symbol table, but we only need the value mod 8 and the
+  // symbol table is aligned to be a multiple of 8 bytes
+  uint64_t Pos = 0;
 
   std::vector<MemberData> Ret;
   bool HasObject = false;
@@ -547,9 +471,6 @@ computeMemberData(raw_ostream &StringTable, raw_ostream &SymNames,
       Entry.second = Entry.second > 1 ? 1 : 0;
   }
 
-  // The big archive format needs to know the offset of the previous member
-  // header.
-  unsigned PrevOffset = 0;
   for (const NewArchiveMember &M : NewMembers) {
     std::string Header;
     raw_string_ostream Out(Header);
@@ -582,16 +503,8 @@ computeMemberData(raw_ostream &StringTable, raw_ostream &SymNames,
           std::move(StringMsg), object::object_error::parse_failed);
     }
 
-    if (isAIXBigArchive(Kind)) {
-      unsigned NextOffset = Pos + sizeof(object::BigArMemHdrType) +
-                            alignTo(M.MemberName.size(), 2) + alignTo(Size, 2);
-      printBigArchiveMemberHeader(Out, M.MemberName, ModTime, M.UID, M.GID,
-                                  M.Perms, Size, PrevOffset, NextOffset);
-      PrevOffset = Pos;
-    } else {
-      printMemberHeader(Out, Pos, StringTable, MemberNames, Kind, Thin, M,
-                        ModTime, Size);
-    }
+    printMemberHeader(Out, Pos, StringTable, MemberNames, Kind, Thin, M,
+                      ModTime, Size);
     Out.flush();
 
     std::vector<unsigned> Symbols;
@@ -675,25 +588,22 @@ static Error writeArchiveToStream(raw_ostream &Out,
     return E;
   std::vector<MemberData> &Data = *DataOrErr;
 
-  if (!StringTableBuf.empty() && !isAIXBigArchive(Kind))
+  if (!StringTableBuf.empty())
     Data.insert(Data.begin(), computeStringTable(StringTableBuf));
 
   // We would like to detect if we need to switch to a 64-bit symbol table.
-  uint64_t LastMemberEndOffset =
-      isAIXBigArchive(Kind) ? sizeof(object::BigArchive::FixLenHdr) : 8;
-  uint64_t LastMemberHeaderOffset = LastMemberEndOffset;
-  uint64_t NumSyms = 0;
-  for (const auto &M : Data) {
-    // Record the start of the member's offset
-    LastMemberHeaderOffset = LastMemberEndOffset;
-    // Account for the size of each part associated with the member.
-    LastMemberEndOffset += M.Header.size() + M.Data.size() + M.Padding.size();
-    NumSyms += M.Symbols.size();
-  }
+  if (WriteSymtab) {
+    uint64_t MaxOffset = 8; // For the file signature.
+    uint64_t LastOffset = MaxOffset;
+    uint64_t NumSyms = 0;
+    for (const auto &M : Data) {
+      // Record the start of the member's offset
+      LastOffset = MaxOffset;
+      // Account for the size of each part associated with the member.
+      MaxOffset += M.Header.size() + M.Data.size() + M.Padding.size();
+      NumSyms += M.Symbols.size();
+    }
 
-  // The symbol table is put at the end of the big archive file. The symbol
-  // table is at the start of the archive file for other archive formats.
-  if (WriteSymtab && !isAIXBigArchive(Kind)) {
     // We assume 32-bit offsets to see if 32-bit symbols are possible or not.
     uint64_t SymtabSize = computeSymbolTableSize(Kind, NumSyms, 4, SymNamesBuf);
     auto computeSymbolTableHeaderSize =
@@ -703,7 +613,7 @@ static Error writeArchiveToStream(raw_ostream &Out,
           writeSymbolTableHeader(Tmp, Kind, Deterministic, SymtabSize);
           return TmpBuf.size();
         };
-    LastMemberHeaderOffset += computeSymbolTableHeaderSize() + SymtabSize;
+    LastOffset += computeSymbolTableHeaderSize() + SymtabSize;
 
     // The SYM64 format is used when an archive's member offsets are larger than
     // 32-bits can hold. The need for this shift in format is detected by
@@ -717,10 +627,10 @@ static Error writeArchiveToStream(raw_ostream &Out,
     if (Sym64Env)
       StringRef(Sym64Env).getAsInteger(10, Sym64Threshold);
 
-    // If LastMemberHeaderOffset isn't going to fit in a 32-bit varible we need
-    // to switch to 64-bit. Note that the file can be larger than 4GB as long as
-    // the last member starts before the 4GB offset.
-    if (LastMemberHeaderOffset >= Sym64Threshold) {
+    // If LastOffset isn't going to fit in a 32-bit varible we need to switch
+    // to 64-bit. Note that the file can be larger than 4GB as long as the last
+    // member starts before the 4GB offset.
+    if (LastOffset >= Sym64Threshold) {
       if (Kind == object::Archive::K_DARWIN)
         Kind = object::Archive::K_DARWIN64;
       else
@@ -730,92 +640,15 @@ static Error writeArchiveToStream(raw_ostream &Out,
 
   if (Thin)
     Out << "!<thin>\n";
-  else if (isAIXBigArchive(Kind))
-    Out << "<bigaf>\n";
   else
     Out << "!<arch>\n";
 
-  if (!isAIXBigArchive(Kind)) {
-    if (WriteSymtab)
-      writeSymbolTable(Out, Kind, Deterministic, Data, SymNamesBuf);
-    for (const MemberData &M : Data)
-      Out << M.Header << M.Data << M.Padding;
-  } else {
-    // For the big archive (AIX) format, compute a table of member names and
-    // offsets, used in the member table.
-    uint64_t MemberTableNameStrTblSize = 0;
-    std::vector<size_t> MemberOffsets;
-    std::vector<StringRef> MemberNames;
-    // Loop across object to find offset and names.
-    uint64_t MemberEndOffset = sizeof(object::BigArchive::FixLenHdr);
-    for (size_t I = 0, Size = NewMembers.size(); I != Size; ++I) {
-      const NewArchiveMember &Member = NewMembers[I];
-      MemberTableNameStrTblSize += Member.MemberName.size() + 1;
-      MemberOffsets.push_back(MemberEndOffset);
-      MemberNames.push_back(Member.MemberName);
-      // File member name ended with "`\n". The length is included in
-      // BigArMemHdrType.
-      MemberEndOffset += sizeof(object::BigArMemHdrType) +
-                             alignTo(Data[I].Data.size(), 2) +
-                             alignTo(Member.MemberName.size(), 2);
-    }
+  if (WriteSymtab)
+    writeSymbolTable(Out, Kind, Deterministic, Data, SymNamesBuf);
 
-    // AIX member table size.
-    unsigned MemberTableSize = 20 + // Number of members field
-                               20 * MemberOffsets.size() +
-                               MemberTableNameStrTblSize;
+  for (const MemberData &M : Data)
+    Out << M.Header << M.Data << M.Padding;
 
-    unsigned GlobalSymbolOffset =
-        (WriteSymtab && NumSyms > 0)
-            ? LastMemberEndOffset +
-                  alignTo(sizeof(object::BigArMemHdrType) + MemberTableSize, 2)
-            : 0;
-
-    // Fixed Sized Header.
-    printWithSpacePadding(Out, NewMembers.size() ? LastMemberEndOffset : 0,
-                          20); // Offset to member table
-    // If there are no file members in the archive, there will be no global
-    // symbol table.
-    printWithSpacePadding(Out, NewMembers.size() ? GlobalSymbolOffset : 0, 20);
-    printWithSpacePadding(
-        Out, 0,
-        20); // Offset to 64 bits global symbol table - Not supported yet
-    printWithSpacePadding(
-        Out, NewMembers.size() ? sizeof(object::BigArchive::FixLenHdr) : 0,
-        20); // Offset to first archive member
-    printWithSpacePadding(Out, NewMembers.size() ? LastMemberHeaderOffset : 0,
-                          20); // Offset to last archive member
-    printWithSpacePadding(
-        Out, 0,
-        20); // Offset to first member of free list - Not supported yet
-
-    for (const MemberData &M : Data) {
-      Out << M.Header << M.Data;
-      if (M.Data.size() % 2)
-        Out << '\0';
-    }
-
-    if (NewMembers.size()) {
-      // Member table.
-      printBigArchiveMemberHeader(Out, "", sys::toTimePoint(0), 0, 0, 0,
-                                  MemberTableSize, LastMemberHeaderOffset,
-                                  GlobalSymbolOffset);
-      printWithSpacePadding(Out, MemberOffsets.size(), 20); // Number of members
-      for (uint64_t MemberOffset : MemberOffsets)
-        printWithSpacePadding(Out, MemberOffset,
-                              20); // Offset to member file header.
-      for (StringRef MemberName : MemberNames)
-        Out << MemberName << '\0'; // Member file name, null byte padding.
-
-      if (MemberTableNameStrTblSize % 2)
-        Out << '\0'; // Name table must be tail padded to an even number of
-                     // bytes.
-
-      if (WriteSymtab && NumSyms > 0)
-        writeSymbolTable(Out, Kind, Deterministic, Data, SymNamesBuf,
-                         LastMemberEndOffset);
-    }
-  }
   Out.flush();
   return Error::success();
 }

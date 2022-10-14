@@ -265,8 +265,10 @@ void Sema::actOnParamCommandParamNameArg(ParamCommandComment *Command,
     // User didn't provide a direction argument.
     Command->setDirection(ParamCommandComment::In, /* Explicit = */ false);
   }
-  auto *A = new (Allocator)
-      Comment::Argument{SourceRange(ArgLocBegin, ArgLocEnd), Arg};
+  typedef BlockCommandComment::Argument Argument;
+  Argument *A = new (Allocator) Argument(SourceRange(ArgLocBegin,
+                                                     ArgLocEnd),
+                                         Arg);
   Command->setArgs(llvm::makeArrayRef(A, 1));
 }
 
@@ -301,8 +303,10 @@ void Sema::actOnTParamCommandParamNameArg(TParamCommandComment *Command,
   // Parser will not feed us more arguments than needed.
   assert(Command->getNumArgs() == 0);
 
-  auto *A = new (Allocator)
-      Comment::Argument{SourceRange(ArgLocBegin, ArgLocEnd), Arg};
+  typedef BlockCommandComment::Argument Argument;
+  Argument *A = new (Allocator) Argument(SourceRange(ArgLocBegin,
+                                                     ArgLocEnd),
+                                         Arg);
   Command->setArgs(llvm::makeArrayRef(A, 1));
 
   if (!isTemplateOrSpecialization()) {
@@ -357,15 +361,37 @@ void Sema::actOnTParamCommandFinish(TParamCommandComment *Command,
   checkBlockCommandEmptyParagraph(Command);
 }
 
-InlineCommandComment *
-Sema::actOnInlineCommand(SourceLocation CommandLocBegin,
-                         SourceLocation CommandLocEnd, unsigned CommandID,
-                         ArrayRef<Comment::Argument> Args) {
+InlineCommandComment *Sema::actOnInlineCommand(SourceLocation CommandLocBegin,
+                                               SourceLocation CommandLocEnd,
+                                               unsigned CommandID) {
+  ArrayRef<InlineCommandComment::Argument> Args;
+  StringRef CommandName = Traits.getCommandInfo(CommandID)->Name;
+  return new (Allocator) InlineCommandComment(
+                                  CommandLocBegin,
+                                  CommandLocEnd,
+                                  CommandID,
+                                  getInlineCommandRenderKind(CommandName),
+                                  Args);
+}
+
+InlineCommandComment *Sema::actOnInlineCommand(SourceLocation CommandLocBegin,
+                                               SourceLocation CommandLocEnd,
+                                               unsigned CommandID,
+                                               SourceLocation ArgLocBegin,
+                                               SourceLocation ArgLocEnd,
+                                               StringRef Arg) {
+  typedef InlineCommandComment::Argument Argument;
+  Argument *A = new (Allocator) Argument(SourceRange(ArgLocBegin,
+                                                     ArgLocEnd),
+                                         Arg);
   StringRef CommandName = Traits.getCommandInfo(CommandID)->Name;
 
-  return new (Allocator)
-      InlineCommandComment(CommandLocBegin, CommandLocEnd, CommandID,
-                           getInlineCommandRenderKind(CommandName), Args);
+  return new (Allocator) InlineCommandComment(
+                                  CommandLocBegin,
+                                  CommandLocEnd,
+                                  CommandID,
+                                  getInlineCommandRenderKind(CommandName),
+                                  llvm::makeArrayRef(A, 1));
 }
 
 InlineContentComment *Sema::actOnUnknownCommand(SourceLocation LocBegin,

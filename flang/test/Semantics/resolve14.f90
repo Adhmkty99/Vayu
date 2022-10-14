@@ -12,7 +12,7 @@ module m2
   integer, parameter :: k2 = selected_int_kind(9)
 end
 
-subroutine p1
+program p1
   use m1
   use m2
   ! check that selected_int_kind is not use-associated

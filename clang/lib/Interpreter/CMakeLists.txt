@@ -14,7 +14,6 @@ add_clang_library(clangInterpreter
 
   DEPENDS
   intrinsics_gen
-  ClangDriverOptions
 
   LINK_LIBS
   clangAST

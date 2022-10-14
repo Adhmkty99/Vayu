@@ -251,12 +251,12 @@ AsmToken AsmLexer::LexLineComment() {
 }
 
 static void SkipIgnoredIntegerSuffix(const char *&CurPtr) {
-  // Skip case-insensitive ULL, UL, U, L and LL suffixes.
-  if (CurPtr[0] == 'U' || CurPtr[0] == 'u')
+  // Skip ULL, UL, U, L and LL suffices.
+  if (CurPtr[0] == 'U')
     ++CurPtr;
-  if (CurPtr[0] == 'L' || CurPtr[0] == 'l')
+  if (CurPtr[0] == 'L')
     ++CurPtr;
-  if (CurPtr[0] == 'L' || CurPtr[0] == 'l')
+  if (CurPtr[0] == 'L')
     ++CurPtr;
 }
 

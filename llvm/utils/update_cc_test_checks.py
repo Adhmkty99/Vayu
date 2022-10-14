@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 '''A utility to update LLVM IR CHECK lines in C/C++ FileCheck test files.
 
 Example RUN lines in .c/.cc test files:
@@ -214,7 +214,6 @@ def get_function_body(builder, args, filename, clang_args, extra_commands,
     builder.process_run_line(
             common.OPT_FUNCTION_RE, common.scrub_body, raw_tool_output,
             prefixes, False)
-    builder.processed_prefixes(prefixes)
   else:
     print('The clang command line should include -emit-llvm as asm tests '
           'are discouraged in Clang testsuite.', file=sys.stderr)
@@ -341,17 +340,17 @@ def main():
       # Now generate all the checks.
       def check_generator(my_output_lines, prefixes, func):
         if '-emit-llvm' in clang_args:
-          return common.add_ir_checks(my_output_lines, '//',
-                                      prefixes,
-                                      func_dict, func, False,
-                                      ti.args.function_signature,
-                                      global_vars_seen_dict,
-                                      is_filtered=builder.is_filtered())
+          common.add_ir_checks(my_output_lines, '//',
+                               prefixes,
+                               func_dict, func, False,
+                               ti.args.function_signature,
+                               global_vars_seen_dict,
+                               is_filtered=builder.is_filtered())
         else:
-          return asm.add_checks(my_output_lines, '//',
-                                prefixes,
-                                func_dict, func, global_vars_seen_dict,
-                                is_filtered=builder.is_filtered())
+          asm.add_checks(my_output_lines, '//',
+                             prefixes,
+                             func_dict, func,
+                             is_filtered=builder.is_filtered())
 
       if ti.args.check_globals:
         common.add_global_checks(builder.global_var_dict(), '//', run_list,

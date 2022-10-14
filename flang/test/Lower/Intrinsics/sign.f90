@@ -16,7 +16,7 @@ end subroutine
 subroutine sign_testr(a, b, c)
   real a, b, c
   ! CHECK-NOT: fir.call @{{.*}}fabs
-  ! CHECK: math.copysign{{.*}} : f32
+  ! CHECK: fir.call @{{.*}}copysign{{.*}} : (f32, f32) -> f32
   c = sign(a, b)
 end subroutine
 
@@ -24,6 +24,6 @@ end subroutine
 subroutine sign_testr2(a, b, c)
   real(KIND=16) a, b, c
   ! CHECK-NOT: fir.call @{{.*}}fabs
-  ! CHECK: math.copysign{{.*}} : f128
+  ! CHECK: fir.call @{{.*}}copysign{{.*}} : (f128, f128) -> f128
   c = sign(a, b)
 end subroutine

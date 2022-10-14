@@ -6,7 +6,7 @@
 // RUN:     -shared-libs=%linalg_test_lib_dir/libmlir_async_runtime%shlibext   \
 // RUN: | FileCheck %s --dump-input=always
 
-func.func @main() {
+func @main() {
 
   // ------------------------------------------------------------------------ //
   // Blocking async.await outside of the async.execute.
@@ -51,7 +51,7 @@ func.func @main() {
   // CHECK: Unranked Memref
   // CHECK-SAME: rank = 0 offset = 0 sizes = [] strides = []
   // CHECK-NEXT: [0.25]
-  call @printMemrefF32(%7): (memref<*xf32>) -> ()
+  call @print_memref_f32(%7): (memref<*xf32>) -> ()
 
   // ------------------------------------------------------------------------ //
   // Memref passed as async.execute operand.
@@ -67,12 +67,12 @@ func.func @main() {
   // CHECK: Unranked Memref
   // CHECK-SAME: rank = 0 offset = 0 sizes = [] strides = []
   // CHECK-NEXT: [0.5]
-  call @printMemrefF32(%7): (memref<*xf32>) -> ()
+  call @print_memref_f32(%7): (memref<*xf32>) -> ()
 
   memref.dealloc %6 : memref<f32>
 
   return
 }
 
-func.func private @printMemrefF32(memref<*xf32>)
+func private @print_memref_f32(memref<*xf32>)
   attributes { llvm.emit_c_interface }

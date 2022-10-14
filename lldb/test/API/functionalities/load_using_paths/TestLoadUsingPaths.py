@@ -14,6 +14,8 @@ from lldbsuite.test import lldbutil
 @skipIfWindows  # The Windows platform doesn't implement DoLoadImage.
 class LoadUsingPathsTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     NO_DEBUG_INFO_TESTCASE = True
 
     def setUp(self):

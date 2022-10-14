@@ -267,8 +267,6 @@ void ReadContextStack(void *context, uptr *stack, uptr *ssize) {
   UNIMPLEMENTED();
 }
 
-void ResetContextStack(void *context) { UNIMPLEMENTED(); }
-
 void AsanOnDeadlySignal(int, void *siginfo, void *context) { UNIMPLEMENTED(); }
 
 bool PlatformUnpoisonStacks() { return false; }

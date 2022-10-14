@@ -37,7 +37,7 @@ using namespace polly;
 static cl::opt<bool>
     PollyInliner("polly-run-inliner",
                  cl::desc("Run an early inliner pass before Polly"), cl::Hidden,
-                 cl::cat(PollyCategory));
+                 cl::init(false), cl::ZeroOrMore, cl::cat(PollyCategory));
 
 void polly::registerCanonicalicationPasses(llvm::legacy::PassManagerBase &PM) {
   bool UseMemSSA = true;
@@ -132,7 +132,7 @@ polly::buildCanonicalicationPassesForNPM(llvm::ModulePassManager &MPM,
 }
 
 namespace {
-class PollyCanonicalize final : public ModulePass {
+class PollyCanonicalize : public ModulePass {
   PollyCanonicalize(const PollyCanonicalize &) = delete;
   const PollyCanonicalize &operator=(const PollyCanonicalize &) = delete;
 

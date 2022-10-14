@@ -7,10 +7,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "AMDGPUGlobalISelUtils.h"
-#include "GCNSubtarget.h"
 #include "llvm/CodeGen/GlobalISel/MIPatternMatch.h"
 #include "llvm/IR/Constants.h"
-#include "llvm/Support/LowLevelTypeImpl.h"
 
 using namespace llvm;
 using namespace MIPatternMatch;
@@ -67,13 +65,4 @@ bool AMDGPU::isLegalVOP3PShuffleMask(ArrayRef<int> Mask) {
   if (Mask[0] == -1 || Mask[1] == -1)
     return true;
   return (Mask[0] & 2) == (Mask[1] & 2);
-}
-
-bool AMDGPU::hasAtomicFaddRtnForTy(const GCNSubtarget &Subtarget,
-                                   const LLT &Ty) {
-  if (Ty == LLT::scalar(32))
-    return Subtarget.hasAtomicFaddRtnInsts();
-  if (Ty == LLT::fixed_vector(2, 16) || Ty == LLT::scalar(64))
-    return Subtarget.hasGFX90AInsts();
-  return false;
 }

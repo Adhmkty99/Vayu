@@ -779,7 +779,7 @@ llvm::Expected<NewFunction> getExtractedFunction(ExtractionZone &ExtZone,
         toHalfOpenFileRange(SM, LangOpts, FirstOriginalDecl->getSourceRange());
     if (!DeclPos)
       return error("Declaration is inside a macro");
-    ExtractedFunc.ForwardDeclarationPoint = DeclPos->getBegin();
+    ExtractedFunc.ForwardDeclarationPoint = DeclPos.getValue().getBegin();
     ExtractedFunc.ForwardDeclarationSyntacticDC = ExtractedFunc.SemanticDC;
   }
 
@@ -796,7 +796,7 @@ llvm::Expected<NewFunction> getExtractedFunction(ExtractionZone &ExtZone,
 
 class ExtractFunction : public Tweak {
 public:
-  const char *id() const final;
+  const char *id() const override final;
   bool prepare(const Selection &Inputs) override;
   Expected<Effect> apply(const Selection &Inputs) override;
   std::string title() const override { return "Extract to function"; }
@@ -820,7 +820,7 @@ tooling::Replacement replaceWithFuncCall(const NewFunction &ExtractedFunc,
 tooling::Replacement createFunctionDefinition(const NewFunction &ExtractedFunc,
                                               const SourceManager &SM) {
   FunctionDeclKind DeclKind = InlineDefinition;
-  if (ExtractedFunc.ForwardDeclarationPoint)
+  if (ExtractedFunc.ForwardDeclarationPoint.hasValue())
     DeclKind = OutOfLineDefinition;
   std::string FunctionDef = ExtractedFunc.renderDeclaration(
       DeclKind, *ExtractedFunc.SemanticDC, *ExtractedFunc.SyntacticDC, SM);
@@ -834,7 +834,7 @@ tooling::Replacement createForwardDeclaration(const NewFunction &ExtractedFunc,
   std::string FunctionDecl = ExtractedFunc.renderDeclaration(
       ForwardDeclaration, *ExtractedFunc.SemanticDC,
       *ExtractedFunc.ForwardDeclarationSyntacticDC, SM);
-  SourceLocation DeclPoint = *ExtractedFunc.ForwardDeclarationPoint;
+  SourceLocation DeclPoint = ExtractedFunc.ForwardDeclarationPoint.getValue();
 
   return tooling::Replacement(SM, DeclPoint, 0, FunctionDecl);
 }

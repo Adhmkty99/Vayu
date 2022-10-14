@@ -29,7 +29,6 @@
 #include "llvm/ADT/Optional.h"
 #include "llvm/ADT/ScopeExit.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/ADT/Twine.h"
 #include "llvm/Support/Allocator.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FormatVariadic.h"
@@ -362,7 +361,7 @@ private:
   Context handlerContext() const {
     return Context::current().derive(
         kCurrentOffsetEncoding,
-        Server.Opts.Encoding.value_or(OffsetEncoding::UTF16));
+        Server.Opts.Encoding.getValueOr(OffsetEncoding::UTF16));
   }
 
   // We run cancelable requests in a context that does two things:
@@ -493,7 +492,7 @@ void ClangdLSPServer::onInitialize(const InitializeParams &Params,
 
   Opts.CodeComplete.EnableSnippets = Params.capabilities.CompletionSnippets;
   Opts.CodeComplete.IncludeFixIts = Params.capabilities.CompletionFixes;
-  if (!Opts.CodeComplete.BundleOverloads)
+  if (!Opts.CodeComplete.BundleOverloads.hasValue())
     Opts.CodeComplete.BundleOverloads = Params.capabilities.HasSignatureHelp;
   Opts.CodeComplete.DocumentationFormat =
       Params.capabilities.CompletionDocumentationFormat;
@@ -534,11 +533,10 @@ void ClangdLSPServer::onInitialize(const InitializeParams &Params,
        }},
       {"completionProvider",
        llvm::json::Object{
-           // We don't set `(` etc as allCommitCharacters as they interact
-           // poorly with snippet results.
-           // See https://github.com/clangd/vscode-clangd/issues/357
-           // Hopefully we can use them one day without this side-effect:
-           //     https://github.com/microsoft/vscode/issues/42544
+           {"allCommitCharacters",
+            {" ", "\t", "(", ")", "[", "]", "{",  "}", "<",
+             ">", ":",  ";", ",", "+", "-", "/",  "*", "%",
+             "^", "&",  "#", "?", ".", "=", "\"", "'", "|"}},
            {"resolveProvider", false},
            // We do extra checks, e.g. that > is part of ->.
            {"triggerCharacters", {".", "<", ">", ":", "\"", "/", "*"}},
@@ -576,7 +574,6 @@ void ClangdLSPServer::onInitialize(const InitializeParams &Params,
        llvm::json::Object{{"automaticReload", true}}},
       {"callHierarchyProvider", true},
       {"clangdInlayHintsProvider", true},
-      {"inlayHintProvider", true},
   };
 
   {
@@ -664,9 +661,9 @@ void ClangdLSPServer::onDocumentDidOpen(
 void ClangdLSPServer::onDocumentDidChange(
     const DidChangeTextDocumentParams &Params) {
   auto WantDiags = WantDiagnostics::Auto;
-  if (Params.wantDiagnostics)
-    WantDiags = Params.wantDiagnostics.value() ? WantDiagnostics::Yes
-                                               : WantDiagnostics::No;
+  if (Params.wantDiagnostics.hasValue())
+    WantDiags = Params.wantDiagnostics.getValue() ? WantDiagnostics::Yes
+                                                  : WantDiagnostics::No;
 
   PathRef File = Params.textDocument.uri.file();
   auto Code = Server->getDraft(File);
@@ -787,7 +784,7 @@ void ClangdLSPServer::onWorkspaceSymbol(
     const WorkspaceSymbolParams &Params,
     Callback<std::vector<SymbolInformation>> Reply) {
   Server->workspaceSymbols(
-      Params.query, Params.limit.value_or(Opts.CodeComplete.Limit),
+      Params.query, Params.limit.getValueOr(Opts.CodeComplete.Limit),
       [Reply = std::move(Reply),
        this](llvm::Expected<std::vector<SymbolInformation>> Items) mutable {
         if (!Items)
@@ -1111,7 +1108,7 @@ void ClangdLSPServer::onGoToDefinition(const TextDocumentPositionParams &Params,
         for (auto &S : *Symbols) {
           if (Location *Toggle = getToggle(Params, S))
             return Reply(std::vector<Location>{std::move(*Toggle)});
-          Defs.push_back(S.Definition.value_or(S.PreferredDeclaration));
+          Defs.push_back(S.Definition.getValueOr(S.PreferredDeclaration));
         }
         Reply(std::move(Defs));
       });
@@ -1210,41 +1207,8 @@ void ClangdLSPServer::onCallHierarchyIncomingCalls(
   Server->incomingCalls(Params.item, std::move(Reply));
 }
 
-void ClangdLSPServer::onClangdInlayHints(const InlayHintsParams &Params,
-                                         Callback<llvm::json::Value> Reply) {
-  // Our extension has a different representation on the wire than the standard.
-  // We have a "range" property and "kind" is represented as a string, not as an
-  // enum value.
-  // https://clangd.llvm.org/extensions#inlay-hints
-  auto Serialize = [Reply = std::move(Reply)](
-                       llvm::Expected<std::vector<InlayHint>> Hints) mutable {
-    if (!Hints) {
-      Reply(Hints.takeError());
-      return;
-    }
-    llvm::json::Array Result;
-    Result.reserve(Hints->size());
-    for (auto &Hint : *Hints) {
-      Result.emplace_back(llvm::json::Object{
-          {"kind", llvm::to_string(Hint.kind)},
-          {"range", Hint.range},
-          {"position", Hint.position},
-          // Extension doesn't have paddingLeft/Right so adjust the label
-          // accordingly.
-          {"label",
-           ((Hint.paddingLeft ? " " : "") + llvm::StringRef(Hint.label) +
-            (Hint.paddingRight ? " " : ""))
-               .str()},
-      });
-    }
-    Reply(std::move(Result));
-  };
-  Server->inlayHints(Params.textDocument.uri.file(), Params.range,
-                     std::move(Serialize));
-}
-
-void ClangdLSPServer::onInlayHint(const InlayHintsParams &Params,
-                                  Callback<std::vector<InlayHint>> Reply) {
+void ClangdLSPServer::onInlayHints(const InlayHintsParams &Params,
+                                   Callback<std::vector<InlayHint>> Reply) {
   Server->inlayHints(Params.textDocument.uri.file(), Params.range,
                      std::move(Reply));
 }
@@ -1398,15 +1362,14 @@ static void increment(std::string &S) {
 
 void ClangdLSPServer::onSemanticTokens(const SemanticTokensParams &Params,
                                        Callback<SemanticTokens> CB) {
-  auto File = Params.textDocument.uri.file();
   Server->semanticHighlights(
       Params.textDocument.uri.file(),
-      [this, File(File.str()), CB(std::move(CB)), Code(Server->getDraft(File))](
+      [this, File(Params.textDocument.uri.file().str()), CB(std::move(CB))](
           llvm::Expected<std::vector<HighlightingToken>> HT) mutable {
         if (!HT)
           return CB(HT.takeError());
         SemanticTokens Result;
-        Result.tokens = toSemanticTokens(*HT, *Code);
+        Result.tokens = toSemanticTokens(*HT);
         {
           std::lock_guard<std::mutex> Lock(SemanticTokensMutex);
           auto &Last = LastSemanticTokens[File];
@@ -1422,15 +1385,14 @@ void ClangdLSPServer::onSemanticTokens(const SemanticTokensParams &Params,
 void ClangdLSPServer::onSemanticTokensDelta(
     const SemanticTokensDeltaParams &Params,
     Callback<SemanticTokensOrDelta> CB) {
-  auto File = Params.textDocument.uri.file();
   Server->semanticHighlights(
       Params.textDocument.uri.file(),
-      [this, PrevResultID(Params.previousResultId), File(File.str()),
-       CB(std::move(CB)), Code(Server->getDraft(File))](
+      [this, PrevResultID(Params.previousResultId),
+       File(Params.textDocument.uri.file().str()), CB(std::move(CB))](
           llvm::Expected<std::vector<HighlightingToken>> HT) mutable {
         if (!HT)
           return CB(HT.takeError());
-        std::vector<SemanticToken> Toks = toSemanticTokens(*HT, *Code);
+        std::vector<SemanticToken> Toks = toSemanticTokens(*HT);
 
         SemanticTokensOrDelta Result;
         {
@@ -1529,8 +1491,7 @@ void ClangdLSPServer::bindMethods(LSPBinder &Bind,
   Bind.method("textDocument/documentLink", this, &ClangdLSPServer::onDocumentLink);
   Bind.method("textDocument/semanticTokens/full", this, &ClangdLSPServer::onSemanticTokens);
   Bind.method("textDocument/semanticTokens/full/delta", this, &ClangdLSPServer::onSemanticTokensDelta);
-  Bind.method("clangd/inlayHints", this, &ClangdLSPServer::onClangdInlayHints);
-  Bind.method("textDocument/inlayHint", this, &ClangdLSPServer::onInlayHint);
+  Bind.method("clangd/inlayHints", this, &ClangdLSPServer::onInlayHints);
   Bind.method("$/memoryUsage", this, &ClangdLSPServer::onMemoryUsage);
   if (Opts.FoldingRanges)
     Bind.method("textDocument/foldingRange", this, &ClangdLSPServer::onFoldingRange);

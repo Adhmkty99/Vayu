@@ -86,6 +86,7 @@ class HoistSpillHelper : private LiveRangeEdit::Delegate {
   MachineFunction &MF;
   LiveIntervals &LIS;
   LiveStacks &LSS;
+  AliasAnalysis *AA;
   MachineDominatorTree &MDT;
   MachineLoopInfo &Loops;
   VirtRegMap &VRM;
@@ -139,6 +140,7 @@ public:
                    VirtRegMap &vrm)
       : MF(mf), LIS(pass.getAnalysis<LiveIntervals>()),
         LSS(pass.getAnalysis<LiveStacks>()),
+        AA(&pass.getAnalysis<AAResultsWrapperPass>().getAAResults()),
         MDT(pass.getAnalysis<MachineDominatorTree>()),
         Loops(pass.getAnalysis<MachineLoopInfo>()), VRM(vrm),
         MRI(mf.getRegInfo()), TII(*mf.getSubtarget().getInstrInfo()),
@@ -157,6 +159,7 @@ class InlineSpiller : public Spiller {
   MachineFunction &MF;
   LiveIntervals &LIS;
   LiveStacks &LSS;
+  AliasAnalysis *AA;
   MachineDominatorTree &MDT;
   MachineLoopInfo &Loops;
   VirtRegMap &VRM;
@@ -197,6 +200,7 @@ public:
                 VirtRegAuxInfo &VRAI)
       : MF(MF), LIS(Pass.getAnalysis<LiveIntervals>()),
         LSS(Pass.getAnalysis<LiveStacks>()),
+        AA(&Pass.getAnalysis<AAResultsWrapperPass>().getAAResults()),
         MDT(Pass.getAnalysis<MachineDominatorTree>()),
         Loops(Pass.getAnalysis<MachineLoopInfo>()), VRM(VRM),
         MRI(MF.getRegInfo()), TII(*MF.getSubtarget().getInstrInfo()),
@@ -655,7 +659,7 @@ bool InlineSpiller::reMaterializeFor(LiveInterval &VirtReg, MachineInstr &MI) {
 /// reMaterializeAll - Try to rematerialize as many uses as possible,
 /// and trim the live ranges after.
 void InlineSpiller::reMaterializeAll() {
-  if (!Edit->anyRematerializable())
+  if (!Edit->anyRematerializable(AA))
     return;
 
   UsedValues.clear();
@@ -681,7 +685,7 @@ void InlineSpiller::reMaterializeAll() {
   // Remove any values that were completely rematted.
   for (Register Reg : RegsToSpill) {
     LiveInterval &LI = LIS.getInterval(Reg);
-    for (VNInfo *VNI : LI.vnis()) {
+    for (VNInfo *VNI : llvm::make_range(LI.vni_begin(), LI.vni_end())) {
       if (VNI->isUnused() || VNI->isPHIDef() || UsedValues.count(VNI))
         continue;
       MachineInstr *MI = LIS.getInstructionFromIndex(VNI->def);
@@ -698,7 +702,7 @@ void InlineSpiller::reMaterializeAll() {
   if (DeadDefs.empty())
     return;
   LLVM_DEBUG(dbgs() << "Remat created " << DeadDefs.size() << " dead defs.\n");
-  Edit->eliminateDeadDefs(DeadDefs, RegsToSpill);
+  Edit->eliminateDeadDefs(DeadDefs, RegsToSpill, AA);
 
   // LiveRangeEdit::eliminateDeadDef is used to remove dead define instructions
   // after rematerialization.  To remove a VNI for a vreg from its LiveInterval,
@@ -834,13 +838,6 @@ foldMemoryOperand(ArrayRef<std::pair<MachineInstr *, unsigned>> Ops,
     unsigned Idx = OpPair.second;
     assert(MI == OpPair.first && "Instruction conflict during operand folding");
     MachineOperand &MO = MI->getOperand(Idx);
-
-    // No point restoring an undef read, and we'll produce an invalid live
-    // interval.
-    // TODO: Is this really the correct way to handle undef tied uses?
-    if (MO.isUse() && !MO.readsReg() && !MO.isTied())
-      continue;
-
     if (MO.isImplicit()) {
       ImpReg = MO.getReg();
       continue;
@@ -1176,7 +1173,7 @@ void InlineSpiller::spillAll() {
   // Hoisted spills may cause dead code.
   if (!DeadDefs.empty()) {
     LLVM_DEBUG(dbgs() << "Eliminating " << DeadDefs.size() << " dead defs\n");
-    Edit->eliminateDeadDefs(DeadDefs, RegsToSpill);
+    Edit->eliminateDeadDefs(DeadDefs, RegsToSpill, AA);
   }
 
   // Finally delete the SnippetCopies.
@@ -1294,7 +1291,7 @@ void HoistSpillHelper::rmRedundantSpills(
   // For each spill saw, check SpillBBToSpill[] and see if its BB already has
   // another spill inside. If a BB contains more than one spill, only keep the
   // earlier spill with smaller SlotIndex.
-  for (auto *const CurrentSpill : Spills) {
+  for (const auto CurrentSpill : Spills) {
     MachineBasicBlock *Block = CurrentSpill->getParent();
     MachineDomTreeNode *Node = MDT.getBase().getNode(Block);
     MachineInstr *PrevSpill = SpillBBToSpill[Node];
@@ -1309,7 +1306,7 @@ void HoistSpillHelper::rmRedundantSpills(
       SpillBBToSpill[MDT.getBase().getNode(Block)] = CurrentSpill;
     }
   }
-  for (auto *const SpillToRm : SpillsToRm)
+  for (const auto SpillToRm : SpillsToRm)
     Spills.erase(SpillToRm);
 }
 
@@ -1343,7 +1340,7 @@ void HoistSpillHelper::getVisitOrders(
   // the path starting from the first node with non-redundant spill to the Root
   // node will be added to the WorkSet, which will contain all the possible
   // locations where spills may be hoisted to after the loop below is done.
-  for (auto *const Spill : Spills) {
+  for (const auto Spill : Spills) {
     MachineBasicBlock *Block = Spill->getParent();
     MachineDomTreeNode *Node = MDT[Block];
     MachineInstr *SpillToRm = nullptr;
@@ -1488,7 +1485,7 @@ void HoistSpillHelper::runHoistSpills(
                                        : BranchProbability(1, 1);
     if (SubTreeCost > MBFI.getBlockFreq(Block) * MarginProb) {
       // Hoist: Move spills to current Block.
-      for (auto *const SpillBB : SpillsInSubTree) {
+      for (const auto SpillBB : SpillsInSubTree) {
         // When SpillBB is a BB contains original spill, insert the spill
         // to SpillsToRm.
         if (SpillsToKeep.find(SpillBB) != SpillsToKeep.end() &&
@@ -1605,7 +1602,7 @@ void HoistSpillHelper::hoistAllSpills() {
 
     // Remove redundant spills or change them to dead instructions.
     NumSpills -= SpillsToRm.size();
-    for (auto *const RMEnt : SpillsToRm) {
+    for (auto const RMEnt : SpillsToRm) {
       RMEnt->setDesc(TII.get(TargetOpcode::KILL));
       for (unsigned i = RMEnt->getNumOperands(); i; --i) {
         MachineOperand &MO = RMEnt->getOperand(i - 1);
@@ -1613,7 +1610,7 @@ void HoistSpillHelper::hoistAllSpills() {
           RMEnt->removeOperand(i - 1);
       }
     }
-    Edit.eliminateDeadDefs(SpillsToRm, None);
+    Edit.eliminateDeadDefs(SpillsToRm, None, AA);
   }
 }
 

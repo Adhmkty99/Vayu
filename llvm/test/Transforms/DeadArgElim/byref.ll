@@ -12,9 +12,9 @@ define void @unused_byref_arg(i32* byref(i32) %dead_arg) {
   ret void
 }
 
-define void @dont_replace_by_poison(i32* %ptr) {
-; CHECK-LABEL: @dont_replace_by_poison(
-; CHECK-NEXT:    call void @unused_byref_arg(i32* byref(i32) poison)
+define void @dont_replace_by_undef(i32* %ptr) {
+; CHECK-LABEL: @dont_replace_by_undef(
+; CHECK-NEXT:    call void @unused_byref_arg(i32* byref(i32) undef)
 ; CHECK-NEXT:    ret void
 ;
   call void @unused_byref_arg(i32* byref(i32) %ptr)

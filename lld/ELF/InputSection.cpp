@@ -70,10 +70,16 @@ InputSectionBase::InputSectionBase(InputFile *file, uint64_t flags,
     fatal(toString(this) + ": sh_addralign is not a power of 2");
   this->alignment = v;
 
-  // If SHF_COMPRESSED is set, parse the header. The legacy .zdebug format is no
-  // longer supported.
-  if (flags & SHF_COMPRESSED)
+  // In ELF, each section can be compressed by zlib, and if compressed,
+  // section name may be mangled by appending "z" (e.g. ".zdebug_info").
+  // If that's the case, demangle section name so that we can handle a
+  // section as if it weren't compressed.
+  if ((flags & SHF_COMPRESSED) || name.startswith(".zdebug")) {
+    if (!zlib::isAvailable())
+      error(toString(file) + ": contains a compressed section, " +
+            "but zlib is not available");
     invokeELFT(parseCompressedHeader);
+  }
 }
 
 // Drop SHF_GROUP bit unless we are producing a re-linkable object file.
@@ -111,17 +117,17 @@ size_t InputSectionBase::getSize() const {
 
 void InputSectionBase::uncompress() const {
   size_t size = uncompressedSize;
-  uint8_t *uncompressedBuf;
+  char *uncompressedBuf;
   {
     static std::mutex mu;
     std::lock_guard<std::mutex> lock(mu);
-    uncompressedBuf = bAlloc().Allocate<uint8_t>(size);
+    uncompressedBuf = bAlloc().Allocate<char>(size);
   }
 
-  if (Error e = compression::zlib::uncompress(rawData, uncompressedBuf, size))
+  if (Error e = zlib::uncompress(toStringRef(rawData), uncompressedBuf, size))
     fatal(toString(this) +
           ": uncompress failed: " + llvm::toString(std::move(e)));
-  rawData = makeArrayRef(uncompressedBuf, size);
+  rawData = makeArrayRef((uint8_t *)uncompressedBuf, size);
   uncompressedSize = -1;
 }
 
@@ -198,6 +204,29 @@ OutputSection *SectionBase::getOutputSection() {
 // by zlib-compressed data. This function parses a header to initialize
 // `uncompressedSize` member and remove the header from `rawData`.
 template <typename ELFT> void InputSectionBase::parseCompressedHeader() {
+  // Old-style header
+  if (!(flags & SHF_COMPRESSED)) {
+    assert(name.startswith(".zdebug"));
+    if (!toStringRef(rawData).startswith("ZLIB")) {
+      error(toString(this) + ": corrupted compressed section header");
+      return;
+    }
+    rawData = rawData.slice(4);
+
+    if (rawData.size() < 8) {
+      error(toString(this) + ": corrupted compressed section header");
+      return;
+    }
+
+    uncompressedSize = read64be(rawData.data());
+    rawData = rawData.slice(8);
+
+    // Restore the original section name.
+    // (e.g. ".zdebug_info" -> ".debug_info")
+    name = saver().save("." + name.substr(2));
+    return;
+  }
+
   flags &= ~(uint64_t)SHF_COMPRESSED;
 
   // New-style header
@@ -207,13 +236,8 @@ template <typename ELFT> void InputSectionBase::parseCompressedHeader() {
   }
 
   auto *hdr = reinterpret_cast<const typename ELFT::Chdr *>(rawData.data());
-  if (hdr->ch_type == ELFCOMPRESS_ZLIB) {
-    if (!compression::zlib::isAvailable())
-      error(toString(this) + " is compressed with ELFCOMPRESS_ZLIB, but lld is "
-                             "not built with zlib support");
-  } else {
-    error(toString(this) + ": unsupported compression type (" +
-          Twine(hdr->ch_type) + ")");
+  if (hdr->ch_type != ELFCOMPRESS_ZLIB) {
+    error(toString(this) + ": unsupported compression type");
     return;
   }
 
@@ -533,8 +557,8 @@ static uint64_t getARMStaticBase(const Symbol &sym) {
 static Relocation *getRISCVPCRelHi20(const Symbol *sym, uint64_t addend) {
   const Defined *d = cast<Defined>(sym);
   if (!d->section) {
-    errorOrWarn("R_RISCV_PCREL_LO12 relocation points to an absolute symbol: " +
-                sym->getName());
+    error("R_RISCV_PCREL_LO12 relocation points to an absolute symbol: " +
+          sym->getName());
     return nullptr;
   }
   InputSection *isec = cast<InputSection>(d->section);
@@ -558,9 +582,8 @@ static Relocation *getRISCVPCRelHi20(const Symbol *sym, uint64_t addend) {
         it->type == R_RISCV_TLS_GD_HI20 || it->type == R_RISCV_TLS_GOT_HI20)
       return &*it;
 
-  errorOrWarn("R_RISCV_PCREL_LO12 relocation points to " +
-              isec->getObjMsg(d->value) +
-              " without an associated R_RISCV_PCREL_HI20 relocation");
+  error("R_RISCV_PCREL_LO12 relocation points to " + isec->getObjMsg(d->value) +
+        " without an associated R_RISCV_PCREL_HI20 relocation");
   return nullptr;
 }
 
@@ -623,8 +646,6 @@ uint64_t InputSectionBase::getRelocTargetVA(const InputFile *file, RelType type,
     return sym.getVA(a);
   case R_ADDEND:
     return a;
-  case R_RELAX_HINT:
-    return 0;
   case R_ARM_SBREL:
     return sym.getVA(a) - getARMStaticBase(sym);
   case R_GOT:
@@ -708,13 +729,11 @@ uint64_t InputSectionBase::getRelocTargetVA(const InputFile *file, RelType type,
     if (expr == R_ARM_PCA)
       // Some PC relative ARM (Thumb) relocations align down the place.
       p = p & 0xfffffffc;
-    if (sym.isUndefined()) {
+    if (sym.isUndefWeak()) {
       // On ARM and AArch64 a branch to an undefined weak resolves to the next
       // instruction, otherwise the place. On RISCV, resolve an undefined weak
       // to the same instruction to cause an infinite loop (making the user
       // aware of the issue) while ensuring no overflow.
-      // Note: if the symbol is hidden, its binding has been converted to local,
-      // so we just check isUndefined() here.
       if (config->emachine == EM_ARM)
         dest = getARMUndefinedRelativeWeakVA(type, a, p);
       else if (config->emachine == EM_AARCH64)
@@ -990,8 +1009,6 @@ void InputSectionBase::relocateAlloc(uint8_t *buf, uint8_t *bufEnd) {
                                       *rel.sym, rel.expr),
                      bits);
     switch (rel.expr) {
-    case R_RELAX_HINT:
-      continue;
     case R_RELAX_GOT_PC:
     case R_RELAX_GOT_PC_NOPIC:
       target.relaxGot(bufLoc, rel, targetVA);
@@ -1218,7 +1235,7 @@ template <class ELFT> void InputSection::writeTo(uint8_t *buf) {
   // to the buffer.
   if (uncompressedSize >= 0) {
     size_t size = uncompressedSize;
-    if (Error e = compression::zlib::uncompress(rawData, buf, size))
+    if (Error e = zlib::uncompress(toStringRef(rawData), (char *)buf, size))
       fatal(toString(this) +
             ": uncompress failed: " + llvm::toString(std::move(e)));
     uint8_t *bufEnd = buf + size;
@@ -1357,15 +1374,15 @@ void MergeInputSection::splitStrings(StringRef s, size_t entSize) {
   if (entSize == 1) {
     // Optimize the common case.
     do {
-      size_t size = strlen(p);
+      size_t size = strlen(p) + 1;
       pieces.emplace_back(p - s.begin(), xxHash64(StringRef(p, size)), live);
-      p += size + 1;
+      p += size;
     } while (p != end);
   } else {
     do {
-      size_t size = findNull(StringRef(p, end - p), entSize);
+      size_t size = findNull(StringRef(p, end - p), entSize) + entSize;
       pieces.emplace_back(p - s.begin(), xxHash64(StringRef(p, size)), live);
-      p += size + entSize;
+      p += size;
     } while (p != end);
   }
 }

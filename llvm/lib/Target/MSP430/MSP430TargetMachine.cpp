@@ -27,7 +27,9 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeMSP430Target() {
 }
 
 static Reloc::Model getEffectiveRelocModel(Optional<Reloc::Model> RM) {
-  return RM.value_or(Reloc::Static);
+  if (!RM.hasValue())
+    return Reloc::Static;
+  return *RM;
 }
 
 static std::string computeDataLayout(const Triple &TT, StringRef CPU,

@@ -361,8 +361,9 @@ void A15SDOptimizer::elideCopiesAndPHIs(MachineInstr *MI,
      MI = Front.pop_back_val();
 
      // If we have already explored this MachineInstr, ignore it.
-     if (!Reached.insert(MI).second)
+     if (Reached.find(MI) != Reached.end())
        continue;
+     Reached.insert(MI);
      if (MI->isPHI()) {
        for (unsigned I = 1, E = MI->getNumOperands(); I != E; I += 2) {
          Register Reg = MI->getOperand(I).getReg();

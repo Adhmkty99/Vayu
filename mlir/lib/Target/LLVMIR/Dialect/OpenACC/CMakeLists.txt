@@ -6,8 +6,8 @@ add_mlir_translation_library(MLIROpenACCToLLVMIRTranslation
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRLLVMDialect
-  MLIROpenACCDialect
+  MLIRLLVMIR
+  MLIROpenACC
   MLIROpenACCToLLVM
   MLIRSupport
   MLIRTargetLLVMIRExport

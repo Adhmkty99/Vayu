@@ -16,8 +16,8 @@ add_mlir_conversion_library(MLIROpenMPToLLVM
   MLIRFuncToLLVM
   MLIRIR
   MLIRLLVMCommonConversion
-  MLIRLLVMDialect
+  MLIRLLVMIR
   MLIRMemRefToLLVM
-  MLIROpenMPDialect
+  MLIROpenMP
   MLIRTransforms
   )

@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class ExprCommandCallBuiltinFunction(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     # Builtins are expanded by Clang, so debug info shouldn't matter.
     NO_DEBUG_INFO_TESTCASE = True
 

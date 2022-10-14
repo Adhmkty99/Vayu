@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class CXXModulesImportTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def build(self):
         include = self.getBuildArtifact('include')
         lldbutil.mkdir_p(include)

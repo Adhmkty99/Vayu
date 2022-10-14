@@ -34,8 +34,7 @@ namespace llvm {
 
 namespace clang {
 namespace CodeGen {
-class CGFunctionInfo;
-class CodeGenFunction;
+  class CodeGenFunction;
 }
 
   class FieldDecl;

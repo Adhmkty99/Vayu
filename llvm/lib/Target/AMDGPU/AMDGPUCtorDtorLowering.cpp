@@ -50,7 +50,7 @@ public:
   }
 
   bool createInitOrFiniKernel(Module &M, GlobalVariable *GV, bool IsCtor) {
-    if (!GV || !GV->hasInitializer())
+    if (!GV)
       return false;
     ConstantArray *GA = dyn_cast<ConstantArray>(GV->getInitializer());
     if (!GA || GA->getNumOperands() == 0)

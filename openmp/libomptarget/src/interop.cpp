@@ -62,81 +62,81 @@ PropertyTy getProperty(omp_interop_val_t &InteropVal,
                        omp_interop_property_t Property, int *Err);
 
 template <>
-intptr_t getProperty<intptr_t>(omp_interop_val_t &InteropVal,
-                               omp_interop_property_t Property, int *Err) {
-  switch (Property) {
+intptr_t getProperty<intptr_t>(omp_interop_val_t &interop_val,
+                               omp_interop_property_t property, int *err) {
+  switch (property) {
   case omp_ipr_fr_id:
-    return InteropVal.backend_type_id;
+    return interop_val.backend_type_id;
   case omp_ipr_vendor:
-    return InteropVal.vendor_id;
+    return interop_val.vendor_id;
   case omp_ipr_device_num:
-    return InteropVal.device_id;
+    return interop_val.device_id;
   default:;
   }
-  getTypeMismatch(Property, Err);
+  getTypeMismatch(property, err);
   return 0;
 }
 
 template <>
-const char *getProperty<const char *>(omp_interop_val_t &InteropVal,
-                                      omp_interop_property_t Property,
-                                      int *Err) {
-  switch (Property) {
+const char *getProperty<const char *>(omp_interop_val_t &interop_val,
+                                      omp_interop_property_t property,
+                                      int *err) {
+  switch (property) {
   case omp_ipr_fr_id:
-    return InteropVal.interop_type == kmp_interop_type_tasksync
+    return interop_val.interop_type == kmp_interop_type_tasksync
                ? "tasksync"
                : "device+context";
   case omp_ipr_vendor_name:
-    return getVendorIdToStr(InteropVal.vendor_id);
+    return getVendorIdToStr(interop_val.vendor_id);
   default:
-    getTypeMismatch(Property, Err);
+    getTypeMismatch(property, err);
     return nullptr;
   }
 }
 
 template <>
-void *getProperty<void *>(omp_interop_val_t &InteropVal,
-                          omp_interop_property_t Property, int *Err) {
-  switch (Property) {
+void *getProperty<void *>(omp_interop_val_t &interop_val,
+                          omp_interop_property_t property, int *err) {
+  switch (property) {
   case omp_ipr_device:
-    if (InteropVal.device_info.Device)
-      return InteropVal.device_info.Device;
-    *Err = omp_irc_no_value;
-    return const_cast<char *>(InteropVal.err_str);
+    if (interop_val.device_info.Device)
+      return interop_val.device_info.Device;
+    *err = omp_irc_no_value;
+    return const_cast<char *>(interop_val.err_str);
   case omp_ipr_device_context:
-    return InteropVal.device_info.Context;
+    return interop_val.device_info.Context;
   case omp_ipr_targetsync:
-    return InteropVal.async_info->Queue;
+    return interop_val.async_info->Queue;
   default:;
   }
-  getTypeMismatch(Property, Err);
+  getTypeMismatch(property, err);
   return nullptr;
 }
 
-bool getPropertyCheck(omp_interop_val_t **InteropPtr,
-                      omp_interop_property_t Property, int *Err) {
-  if (Err)
-    *Err = omp_irc_success;
-  if (!InteropPtr) {
-    if (Err)
-      *Err = omp_irc_empty;
+bool getPropertyCheck(omp_interop_val_t **interop_ptr,
+                      omp_interop_property_t property, int *err) {
+  if (err)
+    *err = omp_irc_success;
+  if (!interop_ptr) {
+    if (err)
+      *err = omp_irc_empty;
     return false;
   }
-  if (Property >= 0 || Property < omp_ipr_first) {
-    if (Err)
-      *Err = omp_irc_out_of_range;
+  if (property >= 0 || property < omp_ipr_first) {
+    if (err)
+      *err = omp_irc_out_of_range;
     return false;
   }
-  if (Property == omp_ipr_targetsync &&
-      (*InteropPtr)->interop_type != kmp_interop_type_tasksync) {
-    if (Err)
-      *Err = omp_irc_other;
+  if (property == omp_ipr_targetsync &&
+      (*interop_ptr)->interop_type != kmp_interop_type_tasksync) {
+    if (err)
+      *err = omp_irc_other;
     return false;
   }
-  if ((Property == omp_ipr_device || Property == omp_ipr_device_context) &&
-      (*InteropPtr)->interop_type == kmp_interop_type_tasksync) {
-    if (Err)
-      *Err = omp_irc_other;
+  if ((property == omp_ipr_device || property == omp_ipr_device_context) &&
+      (*interop_ptr)->interop_type == kmp_interop_type_tasksync) {
+    if (err)
+      *err = omp_irc_other;
     return false;
   }
   return true;
@@ -181,105 +181,105 @@ typedef int64_t kmp_int64;
 #ifdef __cplusplus
 extern "C" {
 #endif
-void __tgt_interop_init(ident_t *LocRef, kmp_int32 Gtid,
-                        omp_interop_val_t *&InteropPtr,
-                        kmp_interop_type_t InteropType, kmp_int32 DeviceId,
-                        kmp_int64 Ndeps, kmp_depend_info_t *DepList,
-                        kmp_int32 HaveNowait) {
-  kmp_int32 NdepsNoalias = 0;
-  kmp_depend_info_t *NoaliasDepList = NULL;
-  assert(InteropType != kmp_interop_type_unknown &&
+void __tgt_interop_init(ident_t *loc_ref, kmp_int32 gtid,
+                        omp_interop_val_t *&interop_ptr,
+                        kmp_interop_type_t interop_type, kmp_int32 device_id,
+                        kmp_int64 ndeps, kmp_depend_info_t *dep_list,
+                        kmp_int32 have_nowait) {
+  kmp_int32 ndeps_noalias = 0;
+  kmp_depend_info_t *noalias_dep_list = NULL;
+  assert(interop_type != kmp_interop_type_unknown &&
          "Cannot initialize with unknown interop_type!");
-  if (DeviceId == -1) {
-    DeviceId = omp_get_default_device();
+  if (device_id == -1) {
+    device_id = omp_get_default_device();
   }
 
-  if (InteropType == kmp_interop_type_tasksync) {
-    __kmpc_omp_wait_deps(LocRef, Gtid, Ndeps, DepList, NdepsNoalias,
-                         NoaliasDepList);
+  if (interop_type == kmp_interop_type_tasksync) {
+    __kmpc_omp_wait_deps(loc_ref, gtid, ndeps, dep_list, ndeps_noalias,
+                         noalias_dep_list);
   }
 
-  InteropPtr = new omp_interop_val_t(DeviceId, InteropType);
-  if (!deviceIsReady(DeviceId)) {
-    InteropPtr->err_str = "Device not ready!";
+  interop_ptr = new omp_interop_val_t(device_id, interop_type);
+  if (!device_is_ready(device_id)) {
+    interop_ptr->err_str = "Device not ready!";
     return;
   }
 
-  DeviceTy &Device = *PM->Devices[DeviceId];
+  DeviceTy &Device = *PM->Devices[device_id];
   if (!Device.RTL || !Device.RTL->init_device_info ||
-      Device.RTL->init_device_info(DeviceId, &(InteropPtr)->device_info,
-                                   &(InteropPtr)->err_str)) {
-    delete InteropPtr;
-    InteropPtr = omp_interop_none;
+      Device.RTL->init_device_info(device_id, &(interop_ptr)->device_info,
+                                   &(interop_ptr)->err_str)) {
+    delete interop_ptr;
+    interop_ptr = omp_interop_none;
   }
-  if (InteropType == kmp_interop_type_tasksync) {
+  if (interop_type == kmp_interop_type_tasksync) {
     if (!Device.RTL || !Device.RTL->init_async_info ||
-        Device.RTL->init_async_info(DeviceId, &(InteropPtr)->async_info)) {
-      delete InteropPtr;
-      InteropPtr = omp_interop_none;
+        Device.RTL->init_async_info(device_id, &(interop_ptr)->async_info)) {
+      delete interop_ptr;
+      interop_ptr = omp_interop_none;
     }
   }
 }
 
-void __tgt_interop_use(ident_t *LocRef, kmp_int32 Gtid,
-                       omp_interop_val_t *&InteropPtr, kmp_int32 DeviceId,
-                       kmp_int32 Ndeps, kmp_depend_info_t *DepList,
-                       kmp_int32 HaveNowait) {
-  kmp_int32 NdepsNoalias = 0;
-  kmp_depend_info_t *NoaliasDepList = NULL;
-  assert(InteropPtr && "Cannot use nullptr!");
-  omp_interop_val_t *InteropVal = InteropPtr;
-  if (DeviceId == -1) {
-    DeviceId = omp_get_default_device();
+void __tgt_interop_use(ident_t *loc_ref, kmp_int32 gtid,
+                       omp_interop_val_t *&interop_ptr, kmp_int32 device_id,
+                       kmp_int32 ndeps, kmp_depend_info_t *dep_list,
+                       kmp_int32 have_nowait) {
+  kmp_int32 ndeps_noalias = 0;
+  kmp_depend_info_t *noalias_dep_list = NULL;
+  assert(interop_ptr && "Cannot use nullptr!");
+  omp_interop_val_t *interop_val = interop_ptr;
+  if (device_id == -1) {
+    device_id = omp_get_default_device();
   }
-  assert(InteropVal != omp_interop_none &&
+  assert(interop_val != omp_interop_none &&
          "Cannot use uninitialized interop_ptr!");
-  assert((DeviceId == -1 || InteropVal->device_id == DeviceId) &&
+  assert((device_id == -1 || interop_val->device_id == device_id) &&
          "Inconsistent device-id usage!");
 
-  if (!deviceIsReady(DeviceId)) {
-    InteropPtr->err_str = "Device not ready!";
+  if (!device_is_ready(device_id)) {
+    interop_ptr->err_str = "Device not ready!";
     return;
   }
 
-  if (InteropVal->interop_type == kmp_interop_type_tasksync) {
-    __kmpc_omp_wait_deps(LocRef, Gtid, Ndeps, DepList, NdepsNoalias,
-                         NoaliasDepList);
+  if (interop_val->interop_type == kmp_interop_type_tasksync) {
+    __kmpc_omp_wait_deps(loc_ref, gtid, ndeps, dep_list, ndeps_noalias,
+                         noalias_dep_list);
   }
   // TODO Flush the queue associated with the interop through the plugin
 }
 
-void __tgt_interop_destroy(ident_t *LocRef, kmp_int32 Gtid,
-                           omp_interop_val_t *&InteropPtr, kmp_int32 DeviceId,
-                           kmp_int32 Ndeps, kmp_depend_info_t *DepList,
-                           kmp_int32 HaveNowait) {
-  kmp_int32 NdepsNoalias = 0;
-  kmp_depend_info_t *NoaliasDepList = NULL;
-  assert(InteropPtr && "Cannot use nullptr!");
-  omp_interop_val_t *InteropVal = InteropPtr;
-  if (DeviceId == -1) {
-    DeviceId = omp_get_default_device();
+void __tgt_interop_destroy(ident_t *loc_ref, kmp_int32 gtid,
+                           omp_interop_val_t *&interop_ptr, kmp_int32 device_id,
+                           kmp_int32 ndeps, kmp_depend_info_t *dep_list,
+                           kmp_int32 have_nowait) {
+  kmp_int32 ndeps_noalias = 0;
+  kmp_depend_info_t *noalias_dep_list = NULL;
+  assert(interop_ptr && "Cannot use nullptr!");
+  omp_interop_val_t *interop_val = interop_ptr;
+  if (device_id == -1) {
+    device_id = omp_get_default_device();
   }
 
-  if (InteropVal == omp_interop_none)
+  if (interop_val == omp_interop_none)
     return;
 
-  assert((DeviceId == -1 || InteropVal->device_id == DeviceId) &&
+  assert((device_id == -1 || interop_val->device_id == device_id) &&
          "Inconsistent device-id usage!");
-  if (!deviceIsReady(DeviceId)) {
-    InteropPtr->err_str = "Device not ready!";
+  if (!device_is_ready(device_id)) {
+    interop_ptr->err_str = "Device not ready!";
     return;
   }
 
-  if (InteropVal->interop_type == kmp_interop_type_tasksync) {
-    __kmpc_omp_wait_deps(LocRef, Gtid, Ndeps, DepList, NdepsNoalias,
-                         NoaliasDepList);
+  if (interop_val->interop_type == kmp_interop_type_tasksync) {
+    __kmpc_omp_wait_deps(loc_ref, gtid, ndeps, dep_list, ndeps_noalias,
+                         noalias_dep_list);
   }
   // TODO Flush the queue associated with the interop through the plugin
   // TODO Signal out dependences
 
-  delete InteropPtr;
-  InteropPtr = omp_interop_none;
+  delete interop_ptr;
+  interop_ptr = omp_interop_none;
 }
 #ifdef __cplusplus
 } // extern "C"

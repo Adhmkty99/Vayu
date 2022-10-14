@@ -252,8 +252,7 @@ enum : unsigned {
   WASM_SEC_CODE = 10,      // Function bodies (code)
   WASM_SEC_DATA = 11,      // Data segments
   WASM_SEC_DATACOUNT = 12, // Data segment count
-  WASM_SEC_TAG = 13,       // Tag declarations
-  WASM_SEC_LAST_KNOWN = WASM_SEC_TAG,
+  WASM_SEC_TAG = 13        // Tag declarations
 };
 
 // Type immediate encodings used in various contexts.
@@ -284,7 +283,6 @@ enum : unsigned {
   WASM_OPCODE_CALL = 0x10,
   WASM_OPCODE_LOCAL_GET = 0x20,
   WASM_OPCODE_LOCAL_SET = 0x21,
-  WASM_OPCODE_LOCAL_TEE = 0x22,
   WASM_OPCODE_GLOBAL_GET = 0x23,
   WASM_OPCODE_GLOBAL_SET = 0x24,
   WASM_OPCODE_I32_STORE = 0x36,
@@ -471,9 +469,8 @@ inline bool operator==(const WasmTableType &LHS, const WasmTableType &RHS) {
   return LHS.ElemType == RHS.ElemType && LHS.Limits == RHS.Limits;
 }
 
-llvm::StringRef toString(WasmSymbolType type);
-llvm::StringRef relocTypetoString(uint32_t type);
-llvm::StringRef sectionTypeToString(uint32_t type);
+std::string toString(WasmSymbolType type);
+std::string relocTypetoString(uint32_t type);
 bool relocTypeHasAddend(uint32_t type);
 
 } // end namespace wasm

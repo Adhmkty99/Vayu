@@ -1,8 +1,5 @@
 ; RUN: llc < %s
 
-; NVPTX failed to lower arg i160, as size > 64
-; UNSUPPORTED: nvptx
-
 @c = external global i32, align 4
 
 define void @foo(i160 %x) {

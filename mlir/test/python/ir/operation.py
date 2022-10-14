@@ -30,7 +30,7 @@ def testTraverseOpRegionBlockIterators():
   ctx.allow_unregistered_dialects = True
   module = Module.parse(
       r"""
-    func.func @f1(%arg0: i32) -> i32 {
+    func @f1(%arg0: i32) -> i32 {
       %1 = "custom.addi"(%arg0, %arg0) : (i32, i32) -> i32
       return %1 : i32
     }
@@ -75,7 +75,7 @@ def testTraverseOpRegionBlockIterators():
   # CHECK:       REGION 0:
   # CHECK:         BLOCK 0:
   # CHECK:           OP 0: %0 = "custom.addi"
-  # CHECK:           OP 1: func.return
+  # CHECK:           OP 1: return
   walk_operations("", op)
 
 
@@ -87,7 +87,7 @@ def testTraverseOpRegionBlockIndices():
   ctx.allow_unregistered_dialects = True
   module = Module.parse(
       r"""
-    func.func @f1(%arg0: i32) -> i32 {
+    func @f1(%arg0: i32) -> i32 {
       %1 = "custom.addi"(%arg0, %arg0) : (i32, i32) -> i32
       return %1 : i32
     }
@@ -114,7 +114,7 @@ def testTraverseOpRegionBlockIndices():
   # CHECK:         BLOCK 0:
   # CHECK:           OP 0: %0 = "custom.addi"
   # CHECK:           OP 0: parent func.func
-  # CHECK:           OP 1: func.return
+  # CHECK:           OP 1: return
   # CHECK:           OP 1: parent func.func
   walk_operations("", module.operation)
 
@@ -147,7 +147,7 @@ def testBlockArgumentList():
   with Context() as ctx:
     module = Module.parse(
         r"""
-      func.func @f1(%arg0: i32, %arg1: f64, %arg2: index) {
+      func @f1(%arg0: i32, %arg1: f64, %arg2: index) {
         return
       }
     """, ctx)
@@ -185,19 +185,6 @@ def testBlockArgumentList():
     for t in entry_block.arguments.types:
       print("Type: ", t)
 
-    # Check that slicing and type access compose.
-    # CHECK: Sliced type: i16
-    # CHECK: Sliced type: i24
-    for t in entry_block.arguments[1:].types:
-      print("Sliced type: ", t)
-
-    # Check that slice addition works as expected.
-    # CHECK: Argument 2, type i24
-    # CHECK: Argument 0, type i8
-    restructured = entry_block.arguments[-1:] + entry_block.arguments[:1]
-    for arg in restructured:
-      print(f"Argument {arg.arg_number}, type {arg.type}")
-
 
 # CHECK-LABEL: TEST: testOperationOperands
 @run
@@ -205,7 +192,7 @@ def testOperationOperands():
   with Context() as ctx:
     ctx.allow_unregistered_dialects = True
     module = Module.parse(r"""
-      func.func @f1(%arg0: i32) {
+      func @f1(%arg0: i32) {
         %0 = "test.producer"() : () -> i64
         "test.consumer"(%arg0, %0) : (i32, i64) -> ()
         return
@@ -228,7 +215,7 @@ def testOperationOperandsSlice():
   with Context() as ctx:
     ctx.allow_unregistered_dialects = True
     module = Module.parse(r"""
-      func.func @f1() {
+      func @f1() {
         %0 = "test.producer0"() : () -> i64
         %1 = "test.producer1"() : () -> i64
         %2 = "test.producer2"() : () -> i64
@@ -286,7 +273,7 @@ def testOperationOperandsSet():
   with Context() as ctx, Location.unknown(ctx):
     ctx.allow_unregistered_dialects = True
     module = Module.parse(r"""
-      func.func @f1() {
+      func @f1() {
         %0 = "test.producer0"() : () -> i64
         %1 = "test.producer1"() : () -> i64
         %2 = "test.producer2"() : () -> i64
@@ -341,7 +328,7 @@ def testOperationInsertionPoint():
   ctx.allow_unregistered_dialects = True
   module = Module.parse(
       r"""
-    func.func @f1(%arg0: i32) -> i32 {
+    func @f1(%arg0: i32) -> i32 {
       %1 = "custom.addi"(%arg0, %arg0) : (i32, i32) -> i32
       return %1 : i32
     }
@@ -396,7 +383,7 @@ def testOperationWithRegion():
     # TODO: Also verify accessing the terminator once both parents are nulled
     # out.
     module = Module.parse(r"""
-      func.func @f1(%arg0: i32) -> i32 {
+      func @f1(%arg0: i32) -> i32 {
         %1 = "custom.addi"(%arg0, %arg0) : (i32, i32) -> i32
         return %1 : i32
       }
@@ -418,11 +405,11 @@ def testOperationResultList():
   ctx = Context()
   module = Module.parse(
       r"""
-    func.func @f1() {
+    func @f1() {
       %0:3 = call @f2() : () -> (i32, f64, index)
       return
     }
-    func.func private @f2() -> (i32, f64, index)
+    func private @f2() -> (i32, f64, index)
   """, ctx)
   caller = module.body.operations[0]
   call = caller.regions[0].blocks[0].operations[0]
@@ -450,7 +437,7 @@ def testOperationResultListSlice():
   with Context() as ctx:
     ctx.allow_unregistered_dialects = True
     module = Module.parse(r"""
-      func.func @f1() {
+      func @f1() {
         "some.op"() : () -> (i1, i2, i3, i4, i5)
         return
       }
@@ -547,8 +534,8 @@ def testOperationPrint():
   ctx = Context()
   module = Module.parse(
       r"""
-    func.func @f1(%arg0: i32) -> i32 {
-      %0 = arith.constant dense<[1, 2, 3, 4]> : tensor<4xi32> loc("nom")
+    func @f1(%arg0: i32) -> i32 {
+      %0 = arith.constant dense<[1, 2, 3, 4]> : tensor<4xi32>
       return %arg0 : i32
     }
   """, ctx)
@@ -574,10 +561,6 @@ def testOperationPrint():
   bytes_value = f.getvalue()
   print(bytes_value.__class__)
   print(bytes_value)
-
-  # Test get_asm local_scope.
-  # CHECK: constant dense<[1, 2, 3, 4]> : tensor<4xi32> loc("nom")
-  module.operation.print(enable_debug_info=True, use_local_scope=True)
 
   # Test get_asm with options.
   # CHECK: value = opaque<"elided_large_const", "0xDEADBEEF"> : tensor<4xi32>
@@ -820,10 +803,10 @@ def testOperationLoc():
 @run
 def testModuleMerge():
   with Context():
-    m1 = Module.parse("func.func private @foo()")
+    m1 = Module.parse("func private @foo()")
     m2 = Module.parse("""
-      func.func private @bar()
-      func.func private @qux()
+      func private @bar()
+      func private @qux()
     """)
     foo = m1.body.operations[0]
     bar = m2.body.operations[0]
@@ -846,8 +829,8 @@ def testModuleMerge():
 @run
 def testAppendMoveFromAnotherBlock():
   with Context():
-    m1 = Module.parse("func.func private @foo()")
-    m2 = Module.parse("func.func private @bar()")
+    m1 = Module.parse("func private @foo()")
+    m2 = Module.parse("func private @bar()")
     func = m1.body.operations[0]
     m2.body.append(func)
 
@@ -865,7 +848,7 @@ def testAppendMoveFromAnotherBlock():
 @run
 def testDetachFromParent():
   with Context():
-    m1 = Module.parse("func.func private @foo()")
+    m1 = Module.parse("func private @foo()")
     func = m1.body.operations[0].detach_from_parent()
 
     try:

@@ -118,12 +118,11 @@ template <> struct MappingTraits<IFSSymbol> {
     IO.mapRequired("Type", Symbol.Type);
     // The need for symbol size depends on the symbol type.
     if (Symbol.Type == IFSSymbolType::NoType) {
-      // Size is None, so we are reading it in, or it is non 0 so we
-      // should emit it.
-      if (!Symbol.Size || *Symbol.Size)
-        IO.mapOptional("Size", Symbol.Size);
-    } else if (Symbol.Type != IFSSymbolType::Func) {
-      IO.mapOptional("Size", Symbol.Size);
+      IO.mapOptional("Size", Symbol.Size, (uint64_t)0);
+    } else if (Symbol.Type == IFSSymbolType::Func) {
+      Symbol.Size = 0;
+    } else {
+      IO.mapRequired("Size", Symbol.Size);
     }
     IO.mapOptional("Undefined", Symbol.Undefined, false);
     IO.mapOptional("Weak", Symbol.Weak, false);
@@ -193,7 +192,7 @@ Expected<std::unique_ptr<IFSStub>> ifs::readIFSFromBuffer(StringRef Buf) {
         std::make_error_code(std::errc::invalid_argument));
   if (Stub->Target.ArchString) {
     Stub->Target.Arch =
-        ELF::convertArchNameToEMachine(*Stub->Target.ArchString);
+        ELF::convertArchNameToEMachine(Stub->Target.ArchString.getValue());
   }
   return std::move(Stub);
 }
@@ -202,8 +201,8 @@ Error ifs::writeIFSToOutputStream(raw_ostream &OS, const IFSStub &Stub) {
   yaml::Output YamlOut(OS, nullptr, /*WrapColumn =*/0);
   std::unique_ptr<IFSStubTriple> CopyStub(new IFSStubTriple(Stub));
   if (Stub.Target.Arch) {
-    CopyStub->Target.ArchString =
-        std::string(ELF::convertEMachineToArchName(Stub.Target.Arch.value()));
+    CopyStub->Target.ArchString = std::string(
+        ELF::convertEMachineToArchName(Stub.Target.Arch.getValue()));
   }
   IFSTarget Target = Stub.Target;
 
@@ -222,35 +221,36 @@ Error ifs::overrideIFSTarget(IFSStub &Stub, Optional<IFSArch> OverrideArch,
                              Optional<std::string> OverrideTriple) {
   std::error_code OverrideEC(1, std::generic_category());
   if (OverrideArch) {
-    if (Stub.Target.Arch && Stub.Target.Arch.value() != OverrideArch.value()) {
+    if (Stub.Target.Arch &&
+        Stub.Target.Arch.getValue() != OverrideArch.getValue()) {
       return make_error<StringError>(
           "Supplied Arch conflicts with the text stub", OverrideEC);
     }
-    Stub.Target.Arch = OverrideArch.value();
+    Stub.Target.Arch = OverrideArch.getValue();
   }
   if (OverrideEndianness) {
     if (Stub.Target.Endianness &&
-        Stub.Target.Endianness.value() != OverrideEndianness.value()) {
+        Stub.Target.Endianness.getValue() != OverrideEndianness.getValue()) {
       return make_error<StringError>(
           "Supplied Endianness conflicts with the text stub", OverrideEC);
     }
-    Stub.Target.Endianness = OverrideEndianness.value();
+    Stub.Target.Endianness = OverrideEndianness.getValue();
   }
   if (OverrideBitWidth) {
     if (Stub.Target.BitWidth &&
-        Stub.Target.BitWidth.value() != OverrideBitWidth.value()) {
+        Stub.Target.BitWidth.getValue() != OverrideBitWidth.getValue()) {
       return make_error<StringError>(
           "Supplied BitWidth conflicts with the text stub", OverrideEC);
     }
-    Stub.Target.BitWidth = OverrideBitWidth.value();
+    Stub.Target.BitWidth = OverrideBitWidth.getValue();
   }
   if (OverrideTriple) {
     if (Stub.Target.Triple &&
-        Stub.Target.Triple.value() != OverrideTriple.value()) {
+        Stub.Target.Triple.getValue() != OverrideTriple.getValue()) {
       return make_error<StringError>(
           "Supplied Triple conflicts with the text stub", OverrideEC);
     }
-    Stub.Target.Triple = OverrideTriple.value();
+    Stub.Target.Triple = OverrideTriple.getValue();
   }
   return Error::success();
 }
@@ -265,7 +265,7 @@ Error ifs::validateIFSTarget(IFSStub &Stub, bool ParseTriple) {
           ValidationEC);
     }
     if (ParseTriple) {
-      IFSTarget TargetFromTriple = parseTriple(*Stub.Target.Triple);
+      IFSTarget TargetFromTriple = parseTriple(Stub.Target.Triple.getValue());
       Stub.Target.Arch = TargetFromTriple.Arch;
       Stub.Target.BitWidth = TargetFromTriple.BitWidth;
       Stub.Target.Endianness = TargetFromTriple.Endianness;

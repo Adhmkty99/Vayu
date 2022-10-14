@@ -38,8 +38,7 @@ void test_alnum_concrete(int v) {
 }
 
 void test_alnum_symbolic(int x) {
-  int ret = isalnum(x); // \
-  // bugpath-note{{Assuming the character is non-alphanumeric}}
+  int ret = isalnum(x);
   (void)ret;
 
   clang_analyzer_eval(EOF <= x && x <= 255); // \

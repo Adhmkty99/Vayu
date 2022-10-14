@@ -48,7 +48,7 @@ static void runDumpModule(llvm::Module &M, StringRef Filename, bool IsSuffix) {
   Out->keep();
 }
 
-class DumpModuleWrapperPass final : public ModulePass {
+class DumpModuleWrapperPass : public ModulePass {
 private:
   DumpModuleWrapperPass(const DumpModuleWrapperPass &) = delete;
   const DumpModuleWrapperPass &

@@ -299,8 +299,7 @@ public:
     IPhoneOS,
     TvOS,
     WatchOS,
-    DriverKit,
-    LastDarwinPlatform = DriverKit
+    LastDarwinPlatform = WatchOS
   };
   enum DarwinEnvironmentKind {
     NativeEnvironment,
@@ -350,7 +349,7 @@ public:
 
   bool isKernelStatic() const override {
     return (!(isTargetIPhoneOS() && !isIPhoneOSVersionLT(6, 0)) &&
-            !isTargetWatchOS() && !isTargetDriverKit());
+            !isTargetWatchOS());
   }
 
   void addProfileRTLibs(const llvm::opt::ArgList &Args,
@@ -436,11 +435,6 @@ public:
     return TargetPlatform == WatchOS;
   }
 
-  bool isTargetDriverKit() const {
-    assert(TargetInitialized && "Target not initialized!");
-    return TargetPlatform == DriverKit;
-  }
-
   bool isTargetMacCatalyst() const {
     return TargetPlatform == IPhoneOS && TargetEnvironment == MacCatalyst;
   }
@@ -495,12 +489,6 @@ public:
                 : TargetVersion) < VersionTuple(V0, V1, V2);
   }
 
-  /// Returns the darwin target variant triple, the variant of the deployment
-  /// target for which the code is being compiled.
-  Optional<llvm::Triple> getTargetVariantTriple() const override {
-    return TargetVariantTriple;
-  }
-
 protected:
   /// Return true if c++17 aligned allocation/deallocation functions are not
   /// implemented in the c++ standard library of the deployment target we are
@@ -550,7 +538,7 @@ public:
   GetDefaultStackProtectorLevel(bool KernelOrKext) const override {
     // Stack protectors default to on for user code on 10.5,
     // and for everything in 10.6 and beyond
-    if (isTargetIOSBased() || isTargetWatchOSBased() || isTargetDriverKit())
+    if (isTargetIOSBased() || isTargetWatchOSBased())
       return LangOptions::SSPOn;
     else if (isTargetMacOSBased() && !isMacosxVersionLT(10, 6))
       return LangOptions::SSPOn;

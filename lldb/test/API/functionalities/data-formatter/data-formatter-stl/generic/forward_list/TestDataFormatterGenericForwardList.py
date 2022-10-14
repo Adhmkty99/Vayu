@@ -14,6 +14,8 @@ USE_LIBCPP = "USE_LIBCPP"
 
 class TestDataFormatterGenericForwardList(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         TestBase.setUp(self)
         self.line = line_number('main.cpp', '// break here')

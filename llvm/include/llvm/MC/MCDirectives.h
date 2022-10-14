@@ -31,7 +31,6 @@ enum MCSymbolAttr {
   MCSA_LGlobal,                 ///< .lglobl (XCOFF)
   MCSA_Extern,                  ///< .extern (XCOFF)
   MCSA_Hidden,                  ///< .hidden (ELF)
-  MCSA_Exported,                ///< .globl _foo, exported (XCOFF)
   MCSA_IndirectSymbol,          ///< .indirect_symbol (MachO)
   MCSA_Internal,                ///< .internal (ELF)
   MCSA_LazyReference,           ///< .lazy_reference (MachO)

@@ -14,6 +14,8 @@ from lldbsuite.test import lldbutil
 
 class ExpressionEvaluationCase(BenchBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         BenchBase.setUp(self)
         self.source = 'main.cpp'

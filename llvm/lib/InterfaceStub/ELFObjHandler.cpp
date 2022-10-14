@@ -194,7 +194,7 @@ public:
     for (const std::string &Lib : Stub.NeededLibs)
       DynStr.Content.add(Lib);
     if (Stub.SoName)
-      DynStr.Content.add(*Stub.SoName);
+      DynStr.Content.add(Stub.SoName.getValue());
 
     std::vector<OutputSection<ELFT> *> Sections = {&DynSym, &DynStr, &DynTab,
                                                    &ShStrTab};
@@ -217,8 +217,7 @@ public:
       // time as long as it is not SHN_UNDEF. Set shndx to 1, which
       // points to ".dynsym".
       uint16_t Shndx = Sym.Undefined ? SHN_UNDEF : 1;
-      uint64_t Size = Sym.Size.value_or(0);
-      DynSym.Content.add(DynStr.Content.getOffset(Sym.Name), Size, Bind,
+      DynSym.Content.add(DynStr.Content.getOffset(Sym.Name), Sym.Size, Bind,
                          convertIFSSymbolTypeToELF(Sym.Type), 0, Shndx);
     }
     DynSym.Size = DynSym.Content.getSize();
@@ -231,7 +230,7 @@ public:
       DynTab.Content.addValue(DT_NEEDED, DynStr.Content.getOffset(Lib));
     if (Stub.SoName)
       DynTab.Content.addValue(DT_SONAME,
-                              DynStr.Content.getOffset(*Stub.SoName));
+                              DynStr.Content.getOffset(Stub.SoName.getValue()));
     DynTab.Size = DynTab.Content.getSize();
     // Calculate sections' addresses and offsets.
     uint64_t CurrentOffset = sizeof(Elf_Ehdr);
@@ -250,7 +249,8 @@ public:
     fillStrTabShdr(ShStrTab);
 
     // Finish initializing the ELF header.
-    initELFHeader<ELFT>(ElfHeader, static_cast<uint16_t>(*Stub.Target.Arch));
+    initELFHeader<ELFT>(ElfHeader,
+                        static_cast<uint16_t>(Stub.Target.Arch.getValue()));
     ElfHeader.e_shstrndx = ShStrTab.Index;
     ElfHeader.e_shnum = LastSection->Index + 1;
     ElfHeader.e_shoff =
@@ -492,7 +492,7 @@ static Error populateDynamic(DynamicEntries &Dyn,
     return createError(
         "Couldn't locate dynamic symbol table (no DT_SYMTAB entry)");
   }
-  if (Dyn.SONameOffset && *Dyn.SONameOffset >= Dyn.StrSize) {
+  if (Dyn.SONameOffset.hasValue() && *Dyn.SONameOffset >= Dyn.StrSize) {
     return createStringError(object_error::parse_failed,
                              "DT_SONAME string offset (0x%016" PRIx64
                              ") outside of dynamic string table",
@@ -607,7 +607,7 @@ buildStub(const ELFObjectFile<ELFT> &ElfObj) {
   DestStub->Target.ObjectFormat = "ELF";
 
   // Populate SoName from .dynamic entries and dynamic string table.
-  if (DynEnt.SONameOffset) {
+  if (DynEnt.SONameOffset.hasValue()) {
     Expected<StringRef> NameOrErr =
         terminatedSubstr(DynStr, *DynEnt.SONameOffset);
     if (!NameOrErr) {

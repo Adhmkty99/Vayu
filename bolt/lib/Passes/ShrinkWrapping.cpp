@@ -13,8 +13,6 @@
 #include "bolt/Passes/ShrinkWrapping.h"
 #include "bolt/Core/MCPlus.h"
 #include "bolt/Passes/DataflowInfoManager.h"
-#include "bolt/Passes/MCF.h"
-#include "bolt/Utils/CommandLineOpts.h"
 #include <numeric>
 #include <stack>
 
@@ -248,7 +246,7 @@ void StackLayoutModifier::checkFramePointerInitialization(MCInst &Point) {
     SP = std::make_pair(0, 0);
 
   int64_t Output;
-  if (!BC.MIB->evaluateStackOffsetExpr(Point, Output, SP, FP))
+  if (!BC.MIB->evaluateSimple(Point, Output, SP, FP))
     return;
 
   // Not your regular frame pointer initialization... bail
@@ -296,7 +294,7 @@ void StackLayoutModifier::checkStackPointerRestore(MCInst &Point) {
     SP = std::make_pair(0, 0);
 
   int64_t Output;
-  if (!BC.MIB->evaluateStackOffsetExpr(Point, Output, SP, FP))
+  if (!BC.MIB->evaluateSimple(Point, Output, SP, FP))
     return;
 
   // If the value is the same of FP, no need to adjust it
@@ -379,7 +377,7 @@ void StackLayoutModifier::classifyCFIs() {
     }
   };
 
-  for (BinaryBasicBlock *BB : BF.getLayout().blocks()) {
+  for (BinaryBasicBlock *&BB : BF.layout()) {
     for (MCInst &Inst : *BB) {
       if (!BC.MIB->isCFI(Inst))
         continue;
@@ -712,12 +710,8 @@ void StackLayoutModifier::initialize() {
   IsInitialized = true;
 }
 
-std::atomic<std::uint64_t> ShrinkWrapping::SpillsMovedRegularMode{0};
-std::atomic<std::uint64_t> ShrinkWrapping::SpillsMovedPushPopMode{0};
-std::atomic<std::uint64_t> ShrinkWrapping::SpillsMovedDynamicCount{0};
-std::atomic<std::uint64_t> ShrinkWrapping::SpillsFailedDynamicCount{0};
-std::atomic<std::uint64_t> ShrinkWrapping::InstrDynamicCount{0};
-std::atomic<std::uint64_t> ShrinkWrapping::StoreDynamicCount{0};
+std::atomic_uint64_t ShrinkWrapping::SpillsMovedRegularMode{0};
+std::atomic_uint64_t ShrinkWrapping::SpillsMovedPushPopMode{0};
 
 using BBIterTy = BinaryBasicBlock::iterator;
 
@@ -735,7 +729,7 @@ void ShrinkWrapping::classifyCSRUses() {
       BitVector BV = BitVector(BC.MRI->getNumRegs(), false);
       BC.MIB->getTouchedRegs(Inst, BV);
       BV &= CSA.CalleeSaved;
-      for (int I : BV.set_bits()) {
+      for (int I = BV.find_first(); I != -1; I = BV.find_next(I)) {
         if (I == 0)
           continue;
         if (CSA.getSavedReg(Inst) != I && CSA.getRestoredReg(Inst) != I)
@@ -745,7 +739,7 @@ void ShrinkWrapping::classifyCSRUses() {
         continue;
       BV = CSA.CalleeSaved;
       BV &= FPAliases;
-      for (int I : BV.set_bits())
+      for (int I = BV.find_first(); I > 0; I = BV.find_next(I))
         UsesByReg[I].set(DA.ExprToIdx[&Inst]);
     }
   }
@@ -779,7 +773,7 @@ void ShrinkWrapping::pruneUnwantedCSRs() {
 }
 
 void ShrinkWrapping::computeSaveLocations() {
-  BestSavePos = std::vector<std::vector<MCInst *>>(BC.MRI->getNumRegs());
+  SavePos = std::vector<SmallSetVector<MCInst *, 4>>(BC.MRI->getNumRegs());
   ReachingInsns<true> &RI = Info.getReachingInsnsBackwards();
   DominatorAnalysis<false> &DA = Info.getDominatorAnalysis();
   StackPointerTracking &SPT = Info.getStackPointerTracking();
@@ -808,7 +802,8 @@ void ShrinkWrapping::computeSaveLocations() {
         continue;
 
       BitVector BBDominatedUses = BitVector(DA.NumInstrs, false);
-      for (int J : UsesByReg[I].set_bits())
+      for (int J = UsesByReg[I].find_first(); J > 0;
+           J = UsesByReg[I].find_next(J))
         if (DA.doesADominateB(*First, J))
           BBDominatedUses.set(J);
       LLVM_DEBUG(dbgs() << "\t\tBB " << BB.getName() << " dominates "
@@ -819,12 +814,12 @@ void ShrinkWrapping::computeSaveLocations() {
       if (BBDominatedUses == UsesByReg[I]) {
         LLVM_DEBUG(dbgs() << "\t\t\tAdded " << BB.getName()
                           << " as a save pos for " << I << "\n");
-        BestSavePos[I].push_back(First);
+        SavePos[I].insert(First);
         LLVM_DEBUG({
           dbgs() << "Dominated uses are:\n";
-          for (int J : UsesByReg[I].set_bits()) {
+          for (int J = UsesByReg[I].find_first(); J > 0;
+               J = UsesByReg[I].find_next(J)) {
             dbgs() << "Idx " << J << ": ";
-            BC.printInstruction(dbgs(), *DA.Expressions[J]);
             DA.Expressions[J]->dump();
           }
         });
@@ -832,32 +827,27 @@ void ShrinkWrapping::computeSaveLocations() {
     }
   }
 
-  BestSaveCount = std::vector<std::vector<uint64_t>>(BC.MRI->getNumRegs());
-
+  BestSaveCount = std::vector<uint64_t>(BC.MRI->getNumRegs(),
+                                        std::numeric_limits<uint64_t>::max());
+  BestSavePos = std::vector<MCInst *>(BC.MRI->getNumRegs(), nullptr);
   auto &InsnToBB = Info.getInsnToBBMap();
   for (unsigned I = 0, E = BC.MRI->getNumRegs(); I != E; ++I) {
     if (!CSA.CalleeSaved[I])
       continue;
 
-    std::stable_sort(BestSavePos[I].begin(), BestSavePos[I].end(),
-                     [&](const MCInst *A, const MCInst *B) {
-                       const BinaryBasicBlock *BBA = InsnToBB[A];
-                       const BinaryBasicBlock *BBB = InsnToBB[B];
-                       const uint64_t CountA = BBA->getKnownExecutionCount();
-                       const uint64_t CountB = BBB->getKnownExecutionCount();
-                       return CountB < CountA;
-                     });
-
-    for (MCInst *Pos : BestSavePos[I]) {
-      const BinaryBasicBlock *BB = InsnToBB[Pos];
-      const uint64_t Count = BB->getKnownExecutionCount();
-      BestSaveCount[I].push_back(Count);
+    for (MCInst *Pos : SavePos[I]) {
+      BinaryBasicBlock *BB = InsnToBB[Pos];
+      uint64_t Count = BB->getExecutionCount();
+      if (Count != BinaryBasicBlock::COUNT_NO_PROFILE &&
+          Count < BestSaveCount[I]) {
+        BestSavePos[I] = Pos;
+        BestSaveCount[I] = Count;
+      }
     }
   }
 }
 
 void ShrinkWrapping::computeDomOrder() {
-  DomOrder = std::vector<MCPhysReg>(BC.MRI->getNumRegs(), 0);
   std::vector<MCPhysReg> Order;
   for (MCPhysReg I = 0, E = BC.MRI->getNumRegs(); I != E; ++I) {
     Order.push_back(I);
@@ -865,23 +855,24 @@ void ShrinkWrapping::computeDomOrder() {
 
   DominatorAnalysis<false> &DA = Info.getDominatorAnalysis();
   auto &InsnToBB = Info.getInsnToBBMap();
-  llvm::sort(Order, [&](const MCPhysReg &A, const MCPhysReg &B) {
-    BinaryBasicBlock *BBA =
-        BestSavePos[A].size() ? InsnToBB[BestSavePos[A].back()] : nullptr;
-    BinaryBasicBlock *BBB =
-        BestSavePos[B].size() ? InsnToBB[BestSavePos[B].back()] : nullptr;
-    if (BBA == BBB)
-      return A < B;
-    if (!BBA && BBB)
-      return false;
-    if (BBA && !BBB)
-      return true;
-    if (DA.doesADominateB(*BestSavePos[A].back(), *BestSavePos[B].back()))
-      return true;
-    if (DA.doesADominateB(*BestSavePos[B].back(), *BestSavePos[A].back()))
-      return false;
-    return A < B;
-  });
+  std::sort(Order.begin(), Order.end(),
+            [&](const MCPhysReg &A, const MCPhysReg &B) {
+              BinaryBasicBlock *BBA =
+                  BestSavePos[A] ? InsnToBB[BestSavePos[A]] : nullptr;
+              BinaryBasicBlock *BBB =
+                  BestSavePos[B] ? InsnToBB[BestSavePos[B]] : nullptr;
+              if (BBA == BBB)
+                return A < B;
+              if (!BBA && BBB)
+                return false;
+              if (BBA && !BBB)
+                return true;
+              if (DA.doesADominateB(*BestSavePos[A], *BestSavePos[B]))
+                return true;
+              if (DA.doesADominateB(*BestSavePos[B], *BestSavePos[A]))
+                return false;
+              return A < B;
+            });
 
   for (MCPhysReg I = 0, E = BC.MRI->getNumRegs(); I != E; ++I)
     DomOrder[Order[I]] = I;
@@ -893,25 +884,33 @@ bool ShrinkWrapping::isBestSavePosCold(unsigned CSR, MCInst *&BestPosSave,
   if (!CSA.CalleeSaved[CSR])
     return false;
 
-  assert(BestSaveCount[CSR].size() == BestSavePos[CSR].size() &&
-         "save position vectors out of sync");
-  if (BestSaveCount[CSR].empty())
+  uint64_t BestCount = BestSaveCount[CSR];
+  BestPosSave = BestSavePos[CSR];
+  bool ShouldMove = false;
+  if (BestCount != std::numeric_limits<uint64_t>::max() &&
+      BestCount < (opts::ShrinkWrappingThreshold / 100.0) * CurSavingCost) {
+    LLVM_DEBUG({
+      auto &InsnToBB = Info.getInsnToBBMap();
+      dbgs() << "Better position for saves found in func " << BF.getPrintName()
+             << " count << " << BF.getKnownExecutionCount() << "\n";
+      dbgs() << "Reg: " << CSR
+             << "; New BB: " << InsnToBB[BestPosSave]->getName()
+             << " Freq reduction: " << (CurSavingCost - BestCount) << "\n";
+    });
+    TotalEstimatedWin += CurSavingCost - BestCount;
+    ShouldMove = true;
+  }
+
+  if (!ShouldMove)
     return false;
-
-  const uint64_t BestCount = BestSaveCount[CSR].back();
-  BestPosSave = BestSavePos[CSR].back();
-  if (BestCount >= (opts::ShrinkWrappingThreshold / 100.0) * CurSavingCost)
+  if (!BestPosSave) {
+    LLVM_DEBUG({
+      dbgs() << "Dropping opportunity because we don't know where to put "
+                "stores -- total est. freq reduc: "
+             << TotalEstimatedWin << "\n";
+    });
     return false;
-
-  LLVM_DEBUG({
-    auto &InsnToBB = Info.getInsnToBBMap();
-    dbgs() << "Better position for saves found in func " << BF.getPrintName()
-           << " count << " << BF.getKnownExecutionCount() << "\n";
-    dbgs() << "Reg: " << CSR << "; New BB: " << InsnToBB[BestPosSave]->getName()
-           << " Freq reduction: " << (CurSavingCost - BestCount) << "\n";
-  });
-
-  TotalEstimatedWin = CurSavingCost - BestCount;
+  }
   return true;
 }
 
@@ -973,6 +972,7 @@ ShrinkWrapping::doRestorePlacement(MCInst *BestPosSave, unsigned CSR,
                                    uint64_t TotalEstimatedWin) {
   SmallVector<ProgramPoint, 4> Frontier;
   SmallVector<bool, 4> IsCritEdge;
+  bool CannotPlace = false;
   DominatorAnalysis<false> &DA = Info.getDominatorAnalysis();
 
   SmallVector<BinaryBasicBlock *, 4> CritEdgesFrom;
@@ -993,10 +993,8 @@ ShrinkWrapping::doRestorePlacement(MCInst *BestPosSave, unsigned CSR,
   for (ProgramPoint &PP : Frontier) {
     bool HasCritEdges = false;
     if (PP.isInst() && BC.MIB->isTerminator(*PP.getInst()) &&
-        doesInstUsesCSR(*PP.getInst(), CSR)) {
-      Frontier.clear();
-      return Frontier;
-    }
+        doesInstUsesCSR(*PP.getInst(), CSR))
+      CannotPlace = true;
     BinaryBasicBlock *FrontierBB = Info.getParentBB(PP);
     CritEdgesFrom.emplace_back(FrontierBB);
     CritEdgesTo.emplace_back(0);
@@ -1004,6 +1002,8 @@ ShrinkWrapping::doRestorePlacement(MCInst *BestPosSave, unsigned CSR,
     // Check for invoke instructions at the dominance frontier, which indicates
     // the landing pad is not dominated.
     if (PP.isInst() && BC.MIB->isInvoke(*PP.getInst())) {
+      LLVM_DEBUG(
+          dbgs() << "Bailing on restore placement to avoid LP splitting\n");
       Frontier.clear();
       return Frontier;
     }
@@ -1021,7 +1021,7 @@ ShrinkWrapping::doRestorePlacement(MCInst *BestPosSave, unsigned CSR,
   // (PredictiveStackPointerTracking). Detect now for empty BBs and add a
   // dummy nop that is scheduled to be removed later.
   bool InvalidateRequired = false;
-  for (BinaryBasicBlock *BB : BF.getLayout().blocks()) {
+  for (BinaryBasicBlock *&BB : BF.layout()) {
     if (BB->size() != 0)
       continue;
     MCInst NewInst;
@@ -1053,6 +1053,15 @@ ShrinkWrapping::doRestorePlacement(MCInst *BestPosSave, unsigned CSR,
     Info.invalidateAll();
     classifyCSRUses();
   }
+  if (CannotPlace) {
+    LLVM_DEBUG({
+      dbgs() << "Dropping opportunity because restore placement failed"
+                " -- total est. freq reduc: "
+             << TotalEstimatedWin << "\n";
+    });
+    Frontier.clear();
+    return Frontier;
+  }
   return Frontier;
 }
 
@@ -1063,14 +1072,6 @@ bool ShrinkWrapping::validatePushPopsMode(unsigned CSR, MCInst *BestPosSave,
       dbgs() << "Reg " << CSR
              << " is not using push/pops due to function "
                 "alignment requirements.\n";
-    });
-    return false;
-  }
-  if (FA.hasStackArithmetic(BF)) {
-    LLVM_DEBUG({
-      dbgs() << "Reg " << CSR
-             << " is not using push/pops due to function "
-                "taking the address of a stack position.\n";
     });
     return false;
   }
@@ -1149,7 +1150,7 @@ SmallVector<ProgramPoint, 4> ShrinkWrapping::fixPopsPlacements(
 void ShrinkWrapping::scheduleOldSaveRestoresRemoval(unsigned CSR,
                                                     bool UsePushPops) {
 
-  for (BinaryBasicBlock *BB : BF.getLayout().blocks()) {
+  for (BinaryBasicBlock *&BB : BF.layout()) {
     std::vector<MCInst *> CFIs;
     for (auto I = BB->rbegin(), E = BB->rend(); I != E; ++I) {
       MCInst &Inst = *I;
@@ -1277,32 +1278,16 @@ void ShrinkWrapping::moveSaveRestores() {
   // Keeps info about successfully moved regs: reg index, save position and
   // save size
   std::vector<std::tuple<unsigned, MCInst *, size_t>> MovedRegs;
-  uint64_t TotalEstimatedWin = 0;
 
-  computeDomOrder();
   for (unsigned I = 0, E = BC.MRI->getNumRegs(); I != E; ++I) {
     MCInst *BestPosSave = nullptr;
-    uint64_t EstimatedWin = 0;
-    SmallVector<ProgramPoint, 4> RestorePoints;
-    while (RestorePoints.empty() &&
-           isBestSavePosCold(I, BestPosSave, EstimatedWin)) {
-      RestorePoints = doRestorePlacement(BestPosSave, I, EstimatedWin);
-      if (RestorePoints.empty()) {
-        LLVM_DEBUG({
-          dbgs() << "Dropping opportunity because restore placement failed"
-                    " -- total est. freq reduc: "
-                 << EstimatedWin << ". Will try "
-                 << (BestSaveCount[I].size() - 1) << " more times.\n";
-        });
-        BestSaveCount[I].pop_back();
-        BestSavePos[I].pop_back();
-        computeDomOrder();
-      }
-    }
-    if (RestorePoints.empty()) {
-      SpillsFailedDynamicCount += EstimatedWin;
+    uint64_t TotalEstimatedWin = 0;
+    if (!isBestSavePosCold(I, BestPosSave, TotalEstimatedWin))
       continue;
-    }
+    SmallVector<ProgramPoint, 4> RestorePoints =
+        doRestorePlacement(BestPosSave, I, TotalEstimatedWin);
+    if (RestorePoints.empty())
+      continue;
 
     const FrameIndexEntry *FIESave = CSA.SaveFIEByReg[I];
     const FrameIndexEntry *FIELoad = CSA.LoadFIEByReg[I];
@@ -1315,10 +1300,8 @@ void ShrinkWrapping::moveSaveRestores() {
 
     // If we don't know stack state at this point, bail
     if ((SPFP.first == SPT.SUPERPOSITION || SPFP.first == SPT.EMPTY) &&
-        (SPFP.second == SPT.SUPERPOSITION || SPFP.second == SPT.EMPTY)) {
-      SpillsFailedDynamicCount += EstimatedWin;
+        (SPFP.second == SPT.SUPERPOSITION || SPFP.second == SPT.EMPTY))
       continue;
-    }
 
     // Operation mode: if true, will insert push/pops instead of loads/restores
     bool UsePushPops = validatePushPopsMode(I, BestPosSave, SaveOffset);
@@ -1341,7 +1324,6 @@ void ShrinkWrapping::moveSaveRestores() {
     scheduleOldSaveRestoresRemoval(I, UsePushPops);
     scheduleSaveRestoreInsertions(I, BestPosSave, RestorePoints, UsePushPops);
     MovedRegs.emplace_back(std::make_tuple(I, BestPosSave, SaveSize));
-    TotalEstimatedWin += EstimatedWin;
   }
 
   // Revert push-pop mode if it failed for a single CSR
@@ -1371,7 +1353,6 @@ void ShrinkWrapping::moveSaveRestores() {
       }
     }
   }
-  SpillsMovedDynamicCount += TotalEstimatedWin;
 
   // Update statistics
   if (!UsedPushPopMode) {
@@ -1574,7 +1555,7 @@ void ShrinkWrapping::insertUpdatedCFI(unsigned CSR, int SPValPush,
   bool PrevAffectedZone = false;
   BinaryBasicBlock *PrevBB = nullptr;
   DominatorAnalysis<false> &DA = Info.getDominatorAnalysis();
-  for (BinaryBasicBlock *BB : BF.getLayout().blocks()) {
+  for (BinaryBasicBlock *BB : BF.layout()) {
     if (BB->size() == 0)
       continue;
     const bool InAffectedZoneAtEnd = DA.count(*BB->rbegin(), *SavePoint);
@@ -1625,7 +1606,7 @@ void ShrinkWrapping::rebuildCFIForSP() {
   int PrevSPVal = -8;
   BinaryBasicBlock *PrevBB = nullptr;
   StackPointerTracking &SPT = Info.getStackPointerTracking();
-  for (BinaryBasicBlock *BB : BF.getLayout().blocks()) {
+  for (BinaryBasicBlock *BB : BF.layout()) {
     if (BB->size() == 0)
       continue;
     const int SPValAtEnd = SPT.getStateAt(*BB->rbegin())->first;
@@ -1842,17 +1823,21 @@ BBIterTy ShrinkWrapping::processInsertionsList(
   }
 
   // Reorder POPs to obey the correct dominance relation between them
-  llvm::stable_sort(TodoList, [&](const WorklistItem &A,
-                                  const WorklistItem &B) {
-    if ((A.Action != WorklistItem::InsertPushOrPop || !A.FIEToInsert.IsLoad) &&
-        (B.Action != WorklistItem::InsertPushOrPop || !B.FIEToInsert.IsLoad))
-      return false;
-    if ((A.Action != WorklistItem::InsertPushOrPop || !A.FIEToInsert.IsLoad))
-      return true;
-    if ((B.Action != WorklistItem::InsertPushOrPop || !B.FIEToInsert.IsLoad))
-      return false;
-    return DomOrder[B.AffectedReg] < DomOrder[A.AffectedReg];
-  });
+  std::stable_sort(TodoList.begin(), TodoList.end(),
+                   [&](const WorklistItem &A, const WorklistItem &B) {
+                     if ((A.Action != WorklistItem::InsertPushOrPop ||
+                          !A.FIEToInsert.IsLoad) &&
+                         (B.Action != WorklistItem::InsertPushOrPop ||
+                          !B.FIEToInsert.IsLoad))
+                       return false;
+                     if ((A.Action != WorklistItem::InsertPushOrPop ||
+                          !A.FIEToInsert.IsLoad))
+                       return true;
+                     if ((B.Action != WorklistItem::InsertPushOrPop ||
+                          !B.FIEToInsert.IsLoad))
+                       return false;
+                     return DomOrder[B.AffectedReg] < DomOrder[A.AffectedReg];
+                   });
 
   // Process insertions
   for (WorklistItem &Item : TodoList) {
@@ -1965,37 +1950,11 @@ void ShrinkWrapping::rebuildCFI() {
   }
 }
 
-bool ShrinkWrapping::perform(bool HotOnly) {
+bool ShrinkWrapping::perform() {
   HasDeletedOffsetCFIs = BitVector(BC.MRI->getNumRegs(), false);
   PushOffsetByReg = std::vector<int64_t>(BC.MRI->getNumRegs(), 0LL);
   PopOffsetByReg = std::vector<int64_t>(BC.MRI->getNumRegs(), 0LL);
-
-  // Update pass statistics
-  uint64_t TotalInstrs = 0ULL;
-  uint64_t TotalStoreInstrs = 0ULL;
-  for (BinaryBasicBlock *BB : BF.getLayout().blocks()) {
-    uint64_t BBExecCount = BB->getExecutionCount();
-    if (!BBExecCount || BBExecCount == BinaryBasicBlock::COUNT_NO_PROFILE)
-      continue;
-    for (const auto &Instr : *BB) {
-      if (BC.MIB->isPseudo(Instr))
-        continue;
-      if (BC.MIB->isStore(Instr))
-        TotalStoreInstrs += BBExecCount;
-      TotalInstrs += BBExecCount;
-    }
-  }
-  InstrDynamicCount += TotalInstrs;
-  StoreDynamicCount += TotalStoreInstrs;
-
-  if (!FA.hasFrameInfo(BF))
-    return false;
-
-  if (HotOnly && (BF.getKnownExecutionCount() < BC.getHotThreshold()))
-    return false;
-
-  if (opts::EqualizeBBCounts)
-    equalizeBBCounts(Info, BF);
+  DomOrder = std::vector<MCPhysReg>(BC.MRI->getNumRegs(), 0);
 
   if (BF.checkForAmbiguousJumpTables()) {
     LLVM_DEBUG(dbgs() << "BOLT-DEBUG: ambiguous JTs in " << BF.getPrintName()
@@ -2011,6 +1970,7 @@ bool ShrinkWrapping::perform(bool HotOnly) {
   classifyCSRUses();
   pruneUnwantedCSRs();
   computeSaveLocations();
+  computeDomOrder();
   moveSaveRestores();
   LLVM_DEBUG({
     dbgs() << "Func before shrink-wrapping: \n";
@@ -2042,24 +2002,6 @@ void ShrinkWrapping::printStats() {
   outs() << "BOLT-INFO: Shrink wrapping moved " << SpillsMovedRegularMode
          << " spills inserting load/stores and " << SpillsMovedPushPopMode
          << " spills inserting push/pops\n";
-  if (!InstrDynamicCount || !StoreDynamicCount)
-    return;
-  outs() << "BOLT-INFO: Shrink wrapping reduced " << SpillsMovedDynamicCount
-         << " store executions ("
-         << format("%.1lf%%",
-                   (100.0 * SpillsMovedDynamicCount / InstrDynamicCount))
-         << " total instructions executed, "
-         << format("%.1lf%%",
-                   (100.0 * SpillsMovedDynamicCount / StoreDynamicCount))
-         << " store instructions)\n";
-  outs() << "BOLT-INFO: Shrink wrapping failed at reducing "
-         << SpillsFailedDynamicCount << " store executions ("
-         << format("%.1lf%%",
-                   (100.0 * SpillsFailedDynamicCount / InstrDynamicCount))
-         << " total instructions executed, "
-         << format("%.1lf%%",
-                   (100.0 * SpillsFailedDynamicCount / StoreDynamicCount))
-         << " store instructions)\n";
 }
 
 // Operators necessary as a result of using MCAnnotation

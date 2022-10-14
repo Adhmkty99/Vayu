@@ -397,9 +397,9 @@ bool Parser::parseIdentifierPrefixImpl(VariantValue *Value) {
       assert(NamedValue.isMatcher());
       llvm::Optional<DynTypedMatcher> Result =
           NamedValue.getMatcher().getSingleMatcher();
-      if (Result) {
+      if (Result.hasValue()) {
         llvm::Optional<DynTypedMatcher> Bound = Result->tryBind(BindID);
-        if (Bound) {
+        if (Bound.hasValue()) {
           *Value = VariantMatcher::SingleMatcher(*Bound);
           return true;
         }
@@ -645,7 +645,7 @@ bool Parser::parseMatcherExpressionImpl(const TokenInfo &NameToken,
   Tokenizer->SkipNewlines();
 
   {
-    ScopedContextEntry SCE(this, Ctor.value_or(nullptr));
+    ScopedContextEntry SCE(this, Ctor.getValueOr(nullptr));
 
     while (Tokenizer->nextTokenKind() != TokenInfo::TK_Eof) {
       if (Tokenizer->nextTokenKind() == TokenInfo::TK_CloseParen) {
@@ -917,7 +917,7 @@ Parser::parseMatcherExpression(StringRef &Code, Sema *S,
   }
   llvm::Optional<DynTypedMatcher> Result =
       Value.getMatcher().getSingleMatcher();
-  if (!Result) {
+  if (!Result.hasValue()) {
     Error->addError(SourceRange(), Error->ET_ParserOverloadedType)
         << Value.getTypeAsString();
   }

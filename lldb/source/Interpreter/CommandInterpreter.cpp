@@ -128,8 +128,7 @@ CommandInterpreter::CommandInterpreter(Debugger &debugger,
       m_debugger(debugger), m_synchronous_execution(true),
       m_skip_lldbinit_files(false), m_skip_app_init_files(false),
       m_comment_char('#'), m_batch_command_mode(false),
-      m_truncation_warning(eNoOmission), m_max_depth_warning(eNoOmission),
-      m_command_source_depth(0) {
+      m_truncation_warning(eNoTruncation), m_command_source_depth(0) {
   SetEventName(eBroadcastBitThreadShouldExit, "thread-should-exit");
   SetEventName(eBroadcastBitResetPrompt, "reset-prompt");
   SetEventName(eBroadcastBitQuitCommandReceived, "quit");
@@ -212,7 +211,7 @@ bool CommandInterpreter::SetQuitExitCode(int exit_code) {
 }
 
 int CommandInterpreter::GetQuitExitCode(bool &exited) const {
-  exited = m_quit_exit_code.has_value();
+  exited = m_quit_exit_code.hasValue();
   if (exited)
     return *m_quit_exit_code;
   return 0;
@@ -2989,18 +2988,22 @@ void CommandInterpreter::PrintCommandOutput(IOHandler &io_handler,
   lldb::StreamFileSP stream = is_stdout ? io_handler.GetOutputStreamFileSP()
                                         : io_handler.GetErrorStreamFileSP();
   // Split the output into lines and poll for interrupt requests
-  while (!str.empty() && !WasInterrupted()) {
+  size_t size = str.size();
+  while (size > 0 && !WasInterrupted()) {
     llvm::StringRef line;
+    size_t written = 0;
     std::tie(line, str) = str.split('\n');
     {
       std::lock_guard<std::recursive_mutex> guard(io_handler.GetOutputMutex());
-      stream->Write(line.data(), line.size());
-      stream->Write("\n", 1);
+      written += stream->Write(line.data(), line.size());
+      written += stream->Write("\n", 1);
     }
+    lldbassert(size >= written);
+    size -= written;
   }
 
   std::lock_guard<std::recursive_mutex> guard(io_handler.GetOutputMutex());
-  if (!str.empty())
+  if (size > 0)
     stream->Printf("\n... Interrupted.\n");
   stream->Flush();
 }
@@ -3047,15 +3050,9 @@ void CommandInterpreter::IOHandlerInputComplete(IOHandler &io_handler,
 
   StartHandlingCommand();
 
-  ExecutionContext exe_ctx = m_debugger.GetSelectedExecutionContext();
-  bool pushed_exe_ctx = false;
-  if (exe_ctx.HasTargetScope()) {
-    OverrideExecutionContext(exe_ctx);
-    pushed_exe_ctx = true;
-  }
-  auto finalize = llvm::make_scope_exit([this, pushed_exe_ctx]() {
-    if (pushed_exe_ctx)
-      RestoreExecutionContext();
+  OverrideExecutionContext(m_debugger.GetSelectedExecutionContext());
+  auto finalize = llvm::make_scope_exit([this]() {
+    RestoreExecutionContext();
   });
 
   lldb_private::CommandReturnObject result(m_debugger.GetUseColor());

@@ -1,12 +1,10 @@
 // REQUIRES: powerpc-registered-target
-// RUN: %clang_cc1 -flax-vector-conversions=none -no-opaque-pointers -target-feature +altivec \
-// RUN: -target-feature +power8-vector -triple powerpc-unknown-unknown -emit-llvm %s -o - | FileCheck %s
+// RUN: %clang_cc1 -no-opaque-pointers -target-feature +altivec -target-feature +power8-vector \
+// RUN:   -triple powerpc-unknown-unknown -emit-llvm %s -o - | FileCheck %s
 
 #include <altivec.h>
 vector signed long long vsll1, vsll2, vsll3;
-vector unsigned long long vull1, vull2, vull3;
 vector signed char vsc;
-vector unsigned char vuc;
 vector bool long long vbll;
 
 void dummy();
@@ -159,7 +157,7 @@ void test() {
 // CHECK: call <4 x i32> @llvm.ppc.altivec.vpksdss
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
-  vec_vpkudus(vull1, vull2);
+  vec_vpkudus(vsll1, vsll2);
 // CHECK: call <4 x i32> @llvm.ppc.altivec.vpkudus
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
@@ -167,7 +165,7 @@ void test() {
 // CHECK: call <4 x i32> @llvm.ppc.altivec.vpksdus
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
-  vec_rl(vull1, vull2);
+  vec_rl(vsll1, vsll2);
 // CHECK: call <2 x i64> @llvm.ppc.altivec.vrld
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
@@ -178,7 +176,7 @@ void test() {
 // CHECK: or <2 x i64>
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
-  vec_sl(vull1, vull2);
+  vec_sl(vsll1, vsll2);
 // CHECK: shl <2 x i64>
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
@@ -190,7 +188,7 @@ void test() {
 // CHECK: call <4 x i32> @llvm.ppc.altivec.vperm
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
-  vec_sll(vsll1, vuc);
+  vec_sll(vsll1, vsll2);
 // CHECK: call <4 x i32> @llvm.ppc.altivec.vsl
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
@@ -202,15 +200,15 @@ void test() {
 // CHECK: call <4 x i32> @llvm.ppc.altivec.vperm
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
-  vec_sr(vull1, vull2);
+  vec_sr(vsll1, vsll2);
 // CHECK: lshr <2 x i64>
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
-  vec_sra(vsll1, vull2);
+  vec_sra(vsll1, vsll2);
 // CHECK: ashr <2 x i64>
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()
-  vec_srl(vsll1, vuc);
+  vec_srl(vsll1, vsc);
 // CHECK: call <4 x i32> @llvm.ppc.altivec.vsr
   dummy();
 // CHECK: call void bitcast (void (...)* @dummy to void ()*)()

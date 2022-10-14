@@ -60,27 +60,26 @@ CoverageMappingModuleGen::setUpCoverageCallbacks(Preprocessor &PP) {
   return CoverageInfo;
 }
 
-void CoverageSourceInfo::AddSkippedRange(SourceRange Range,
-                                         SkippedRange::Kind RangeKind) {
+void CoverageSourceInfo::AddSkippedRange(SourceRange Range) {
   if (EmptyLineCommentCoverage && !SkippedRanges.empty() &&
       PrevTokLoc == SkippedRanges.back().PrevTokLoc &&
       SourceMgr.isWrittenInSameFile(SkippedRanges.back().Range.getEnd(),
                                     Range.getBegin()))
     SkippedRanges.back().Range.setEnd(Range.getEnd());
   else
-    SkippedRanges.push_back({Range, RangeKind, PrevTokLoc});
+    SkippedRanges.push_back({Range, PrevTokLoc});
 }
 
 void CoverageSourceInfo::SourceRangeSkipped(SourceRange Range, SourceLocation) {
-  AddSkippedRange(Range, SkippedRange::PPIfElse);
+  AddSkippedRange(Range);
 }
 
 void CoverageSourceInfo::HandleEmptyline(SourceRange Range) {
-  AddSkippedRange(Range, SkippedRange::EmptyLine);
+  AddSkippedRange(Range);
 }
 
 bool CoverageSourceInfo::HandleComment(Preprocessor &PP, SourceRange Range) {
-  AddSkippedRange(Range, SkippedRange::Comment);
+  AddSkippedRange(Range);
   return false;
 }
 
@@ -130,7 +129,7 @@ public:
 
   void setCounter(Counter C) { Count = C; }
 
-  bool hasStartLoc() const { return LocStart.has_value(); }
+  bool hasStartLoc() const { return LocStart.hasValue(); }
 
   void setStartLoc(SourceLocation Loc) { LocStart = Loc; }
 
@@ -139,7 +138,7 @@ public:
     return *LocStart;
   }
 
-  bool hasEndLoc() const { return LocEnd.has_value(); }
+  bool hasEndLoc() const { return LocEnd.hasValue(); }
 
   void setEndLoc(SourceLocation Loc) {
     assert(Loc.isValid() && "Setting an invalid end location");
@@ -155,7 +154,7 @@ public:
 
   void setGap(bool Gap) { GapRegion = Gap; }
 
-  bool isBranch() const { return FalseCount.has_value(); }
+  bool isBranch() const { return FalseCount.hasValue(); }
 };
 
 /// Spelling locations for the start and end of a source region.
@@ -336,8 +335,6 @@ public:
   /// This shrinks the skipped range if it spans a line that contains a
   /// non-comment token. If shrinking the skipped range would make it empty,
   /// this returns None.
-  /// Note this function can potentially be expensive because
-  /// getSpellingLineNumber uses getLineNumber, which is expensive.
   Optional<SpellingRegion> adjustSkippedRange(SourceManager &SM,
                                               SourceLocation LocStart,
                                               SourceLocation LocEnd,
@@ -385,14 +382,9 @@ public:
       auto CovFileID = getCoverageFileID(LocStart);
       if (!CovFileID)
         continue;
-      Optional<SpellingRegion> SR;
-      if (I.isComment())
-        SR = adjustSkippedRange(SM, LocStart, LocEnd, I.PrevTokLoc,
-                                I.NextTokLoc);
-      else if (I.isPPIfElse() || I.isEmptyLine())
-        SR = {SM, LocStart, LocEnd};
-
-      if (!SR)
+      Optional<SpellingRegion> SR =
+          adjustSkippedRange(SM, LocStart, LocEnd, I.PrevTokLoc, I.NextTokLoc);
+      if (!SR.hasValue())
         continue;
       auto Region = CounterMappingRegion::makeSkipped(
           *CovFileID, SR->LineStart, SR->ColumnStart, SR->LineEnd,
@@ -558,18 +550,17 @@ struct CounterCoverageMappingBuilder
   Counter GapRegionCounter;
 
   /// Return a counter for the subtraction of \c RHS from \c LHS
-  Counter subtractCounters(Counter LHS, Counter RHS, bool Simplify = true) {
-    return Builder.subtract(LHS, RHS, Simplify);
+  Counter subtractCounters(Counter LHS, Counter RHS) {
+    return Builder.subtract(LHS, RHS);
   }
 
   /// Return a counter for the sum of \c LHS and \c RHS.
-  Counter addCounters(Counter LHS, Counter RHS, bool Simplify = true) {
-    return Builder.add(LHS, RHS, Simplify);
+  Counter addCounters(Counter LHS, Counter RHS) {
+    return Builder.add(LHS, RHS);
   }
 
-  Counter addCounters(Counter C1, Counter C2, Counter C3,
-                      bool Simplify = true) {
-    return addCounters(addCounters(C1, C2, Simplify), C3, Simplify);
+  Counter addCounters(Counter C1, Counter C2, Counter C3) {
+    return addCounters(addCounters(C1, C2), C3);
   }
 
   /// Return the region counter for the given statement.
@@ -587,7 +578,7 @@ struct CounterCoverageMappingBuilder
                     Optional<SourceLocation> EndLoc = None,
                     Optional<Counter> FalseCount = None) {
 
-    if (StartLoc && !FalseCount) {
+    if (StartLoc && !FalseCount.hasValue()) {
       MostRecentLocation = *StartLoc;
     }
 
@@ -1326,16 +1317,11 @@ struct CounterCoverageMappingBuilder
     const SwitchCase *Case = S->getSwitchCaseList();
     for (; Case; Case = Case->getNextSwitchCase()) {
       HasDefaultCase = HasDefaultCase || isa<DefaultStmt>(Case);
-      CaseCountSum =
-          addCounters(CaseCountSum, getRegionCounter(Case), /*Simplify=*/false);
+      CaseCountSum = addCounters(CaseCountSum, getRegionCounter(Case));
       createSwitchCaseRegion(
           Case, getRegionCounter(Case),
           subtractCounters(ParentCount, getRegionCounter(Case)));
     }
-    // Simplify is skipped while building the counters above: it can get really
-    // slow on top of switches with thousands of cases. Instead, trigger
-    // simplification by adding zero to the last counter.
-    CaseCountSum = addCounters(CaseCountSum, Counter::getZero());
 
     // If no explicit default case exists, create a branch region to represent
     // the hidden branch, which will be added later by the CodeGen. This region

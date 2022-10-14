@@ -668,8 +668,8 @@ CGCallee ItaniumCXXABI::EmitLoadOfMemberFunctionPointer(
                            CGM.HasHiddenLTOVisibility(RD);
   bool ShouldEmitWPDInfo =
       CGM.getCodeGenOpts().WholeProgramVTables &&
-      // Don't insert type tests if we are forcing public visibility.
-      !CGM.AlwaysHasLTOVisibilityPublic(RD);
+      // Don't insert type tests if we are forcing public std visibility.
+      !CGM.HasLTOVisibilityPublicStd(RD);
   llvm::Value *VirtualFn = nullptr;
 
   {
@@ -955,16 +955,14 @@ ItaniumCXXABI::EmitMemberPointerConversion(const CastExpr *E,
     adj = llvm::ConstantInt::get(adj->getType(), offset);
   }
 
-  llvm::Constant *srcAdj = src->getAggregateElement(1);
+  llvm::Constant *srcAdj = llvm::ConstantExpr::getExtractValue(src, 1);
   llvm::Constant *dstAdj;
   if (isDerivedToBase)
     dstAdj = llvm::ConstantExpr::getNSWSub(srcAdj, adj);
   else
     dstAdj = llvm::ConstantExpr::getNSWAdd(srcAdj, adj);
 
-  llvm::Constant *res = ConstantFoldInsertValueInstruction(src, dstAdj, 1);
-  assert(res != nullptr && "Folding must succeed");
-  return res;
+  return llvm::ConstantExpr::getInsertValue(src, dstAdj, 1);
 }
 
 llvm::Constant *
@@ -3682,14 +3680,12 @@ llvm::Constant *ItaniumRTTIBuilder::BuildTypeInfo(QualType Ty) {
 
   llvm::GlobalValue::DLLStorageClassTypes DLLStorageClass =
       llvm::GlobalValue::DefaultStorageClass;
-  if (auto RD = Ty->getAsCXXRecordDecl()) {
-    if ((CGM.getTriple().isWindowsItaniumEnvironment() &&
-         RD->hasAttr<DLLExportAttr>()) ||
-        (CGM.shouldMapVisibilityToDLLExport(RD) &&
-         !llvm::GlobalValue::isLocalLinkage(Linkage) &&
-         llvmVisibility == llvm::GlobalValue::DefaultVisibility))
+  if (CGM.getTriple().isWindowsItaniumEnvironment()) {
+    auto RD = Ty->getAsCXXRecordDecl();
+    if (RD && RD->hasAttr<DLLExportAttr>())
       DLLStorageClass = llvm::GlobalValue::DLLExportStorageClass;
   }
+
   return BuildTypeInfo(Ty, Linkage, llvmVisibility, DLLStorageClass);
 }
 
@@ -4172,9 +4168,9 @@ void ItaniumCXXABI::EmitFundamentalRTTIDescriptors(const CXXRecordDecl *RD) {
       getContext().Char32Ty
   };
   llvm::GlobalValue::DLLStorageClassTypes DLLStorageClass =
-      RD->hasAttr<DLLExportAttr>() || CGM.shouldMapVisibilityToDLLExport(RD)
-          ? llvm::GlobalValue::DLLExportStorageClass
-          : llvm::GlobalValue::DefaultStorageClass;
+      RD->hasAttr<DLLExportAttr>()
+      ? llvm::GlobalValue::DLLExportStorageClass
+      : llvm::GlobalValue::DefaultStorageClass;
   llvm::GlobalValue::VisibilityTypes Visibility =
       CodeGenModule::GetLLVMVisibility(RD->getVisibility());
   for (const QualType &FundamentalType : FundamentalTypes) {

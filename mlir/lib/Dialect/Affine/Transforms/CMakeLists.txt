@@ -22,17 +22,17 @@ add_mlir_dialect_library(MLIRAffineTransforms
   MLIRLoopLikeInterfaceIncGen
 
   LINK_LIBS PUBLIC
-  MLIRAffineDialect
+  MLIRAffine
   MLIRAffineAnalysis
   MLIRAffineUtils
-  MLIRArithmeticDialect
+  MLIRArithmetic
   MLIRIR
-  MLIRMemRefDialect
+  MLIRMemRef
   MLIRPass
   MLIRSCFUtils
   MLIRSideEffectInterfaces
   MLIRTransformUtils
-  MLIRVectorDialect
+  MLIRVector
   MLIRVectorUtils
   MLIRVectorToLLVM
   )

@@ -115,7 +115,7 @@ TEST_P(MCPlusBuilderTester, ReplaceRegWithImm) {
   if (GetParam() != Triple::x86_64)
     GTEST_SKIP();
   BinaryFunction *BF = BC->createInjectedBinaryFunction("BF", true);
-  std::unique_ptr<BinaryBasicBlock> BB = BF->createBasicBlock();
+  std::unique_ptr<BinaryBasicBlock> BB = BF->createBasicBlock(0);
   MCInst Inst; // cmpl    %eax, %ebx
   Inst.setOpcode(X86::CMP32rr);
   Inst.addOperand(MCOperand::createReg(X86::EAX));

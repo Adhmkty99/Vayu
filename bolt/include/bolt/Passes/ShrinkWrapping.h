@@ -11,7 +11,6 @@
 
 #include "bolt/Passes/FrameAnalysis.h"
 #include "llvm/MC/MCRegisterInfo.h"
-#include <atomic>
 
 namespace llvm {
 namespace bolt {
@@ -304,16 +303,13 @@ class ShrinkWrapping {
   std::vector<int64_t> PopOffsetByReg;
   std::vector<MCPhysReg> DomOrder;
   CalleeSavedAnalysis CSA;
-  std::vector<std::vector<uint64_t>> BestSaveCount;
-  std::vector<std::vector<MCInst *>> BestSavePos;
+  std::vector<SmallSetVector<MCInst *, 4>> SavePos;
+  std::vector<uint64_t> BestSaveCount;
+  std::vector<MCInst *> BestSavePos;
 
   /// Pass stats
-  static std::atomic<std::uint64_t> SpillsMovedRegularMode;
-  static std::atomic<std::uint64_t> SpillsMovedPushPopMode;
-  static std::atomic<std::uint64_t> SpillsMovedDynamicCount;
-  static std::atomic<std::uint64_t> SpillsFailedDynamicCount;
-  static std::atomic<std::uint64_t> InstrDynamicCount;
-  static std::atomic<std::uint64_t> StoreDynamicCount;
+  static std::atomic_uint64_t SpillsMovedRegularMode;
+  static std::atomic_uint64_t SpillsMovedPushPopMode;
 
   Optional<unsigned> AnnotationIndex;
 
@@ -519,7 +515,7 @@ public:
         BC.MIB->removeAnnotation(Inst, getAnnotationIndex());
   }
 
-  bool perform(bool HotOnly = false);
+  bool perform();
 
   static void printStats();
 };

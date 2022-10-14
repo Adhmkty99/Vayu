@@ -13,16 +13,16 @@ add_mlir_dialect_library(MLIRMemRefTransforms
   MLIRMemRefPassIncGen
 
   LINK_LIBS PUBLIC
-  MLIRAffineDialect
+  MLIRAffine
   MLIRAffineUtils
-  MLIRArithmeticDialect
-  MLIRFuncDialect
+  MLIRArithmetic
+  MLIRFunc
   MLIRInferTypeOpInterface
   MLIRLoopLikeInterface
-  MLIRMemRefDialect
+  MLIRMemRef
   MLIRPass
-  MLIRTensorDialect
+  MLIRTensor
   MLIRTransforms
-  MLIRVectorDialect
+  MLIRVector
 )
 

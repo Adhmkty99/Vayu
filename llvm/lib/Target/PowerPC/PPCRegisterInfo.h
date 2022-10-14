@@ -130,8 +130,6 @@ public:
   void lowerCRBitRestore(MachineBasicBlock::iterator II,
                          unsigned FrameIndex) const;
 
-  void lowerOctWordSpilling(MachineBasicBlock::iterator II,
-                            unsigned FrameIndex) const;
   void lowerACCSpilling(MachineBasicBlock::iterator II,
                         unsigned FrameIndex) const;
   void lowerACCRestore(MachineBasicBlock::iterator II,

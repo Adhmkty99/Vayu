@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "sanitizer_common/sanitizer_platform.h"
-#if SANITIZER_APPLE
+#if SANITIZER_MAC
 
 #include "asan_interceptors.h"
 #include "asan_internal.h"
@@ -98,8 +98,6 @@ void FlushUnneededASanShadowMemory(uptr p, uptr size) {
 void ReadContextStack(void *context, uptr *stack, uptr *ssize) {
   UNIMPLEMENTED();
 }
-
-void ResetContextStack(void *context) { UNIMPLEMENTED(); }
 
 // Support for the following functions from libdispatch on Mac OS:
 //   dispatch_async_f()
@@ -298,4 +296,4 @@ INTERCEPTOR(void, dispatch_source_set_event_handler,
 }
 #endif
 
-#endif  // SANITIZER_APPLE
+#endif  // SANITIZER_MAC

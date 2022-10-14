@@ -13,7 +13,6 @@
 #include <array>
 #include <cassert>
 #include <cstddef>       // for std::max_align_t
-#include <cstdint>
 
 #include "test_macros.h"
 

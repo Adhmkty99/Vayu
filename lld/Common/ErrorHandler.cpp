@@ -242,9 +242,6 @@ void ErrorHandler::warn(const Twine &msg) {
     return;
   }
 
-  if (suppressWarnings)
-    return;
-
   std::lock_guard<std::mutex> lock(mu);
   reportDiagnostic(getLocation(msg), Colors::MAGENTA, "warning", msg);
   sep = getSeparator(msg);

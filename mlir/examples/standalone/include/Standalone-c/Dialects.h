@@ -9,7 +9,7 @@
 #ifndef STANDALONE_C_DIALECTS_H
 #define STANDALONE_C_DIALECTS_H
 
-#include "mlir-c/IR.h"
+#include "mlir-c/Registration.h"
 
 #ifdef __cplusplus
 extern "C" {

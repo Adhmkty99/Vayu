@@ -12,7 +12,7 @@
 
 // static constexpr bool eq(char_type c1, char_type c2);
 
-// UNSUPPORTED: no-wide-characters
+// UNSUPPORTED: libcpp-has-no-wide-characters
 
 #include <string>
 #include <cassert>

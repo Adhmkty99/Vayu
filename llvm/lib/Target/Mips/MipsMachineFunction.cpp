@@ -22,13 +22,6 @@ static cl::opt<bool>
 FixGlobalBaseReg("mips-fix-global-base-reg", cl::Hidden, cl::init(true),
                  cl::desc("Always use $gp as the global base register."));
 
-MachineFunctionInfo *
-MipsFunctionInfo::clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
-                        const DenseMap<MachineBasicBlock *, MachineBasicBlock *>
-                            &Src2DstMBB) const {
-  return DestMF.cloneInfo<MipsFunctionInfo>(*this);
-}
-
 MipsFunctionInfo::~MipsFunctionInfo() = default;
 
 bool MipsFunctionInfo::globalBaseRegSet() const {
@@ -36,7 +29,7 @@ bool MipsFunctionInfo::globalBaseRegSet() const {
 }
 
 static const TargetRegisterClass &getGlobalBaseRegClass(MachineFunction &MF) {
-  auto &STI = MF.getSubtarget<MipsSubtarget>();
+  auto &STI = static_cast<const MipsSubtarget &>(MF.getSubtarget());
   auto &TM = static_cast<const MipsTargetMachine &>(MF.getTarget());
 
   if (STI.inMips16Mode())

@@ -10,7 +10,6 @@ module m
     integer, len :: len
   end type
   type(pdt(1,2)) :: x
-  !ERROR: 'i' is not a variable
   namelist /nml/i
  contains
   subroutine s(d)

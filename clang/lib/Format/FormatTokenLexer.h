@@ -92,8 +92,6 @@ private:
 
   bool tryMergeConflictMarkers();
 
-  void truncateToken(size_t NewLen);
-
   FormatToken *getStashedToken();
 
   FormatToken *getNextToken();
@@ -125,9 +123,6 @@ private:
 
   // Targets that may appear inside a C# attribute.
   static const llvm::StringSet<> CSharpAttributeTargets;
-
-  /// Handle Verilog-specific tokens.
-  bool readRawTokenVerilogSpecific(Token &Tok);
 
   void readRawToken(FormatToken &Tok);
 

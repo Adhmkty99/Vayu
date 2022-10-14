@@ -25,7 +25,7 @@ void END_LOOP(void);
         for (el in self) 
 	  { LOOP(); 
             for (id el1 in self) 
-	       INNERLOOP();
+	       INNER_LOOP();
 
 	    END_LOOP();
 	  }

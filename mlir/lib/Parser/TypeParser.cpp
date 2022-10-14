@@ -154,21 +154,23 @@ ParseResult Parser::parseStridedLayout(int64_t &offset,
                                        SmallVectorImpl<int64_t> &strides) {
   // Parse offset.
   consumeToken(Token::kw_offset);
-  if (parseToken(Token::colon, "expected colon after `offset` keyword"))
-    return failure();
-
+  if (!consumeIf(Token::colon))
+    return emitError("expected colon after `offset` keyword");
   auto maybeOffset = getToken().getUnsignedIntegerValue();
   bool question = getToken().is(Token::question);
   if (!maybeOffset && !question)
-    return emitWrongTokenError("invalid offset");
-  offset = maybeOffset ? static_cast<int64_t>(*maybeOffset)
+    return emitError("invalid offset");
+  offset = maybeOffset ? static_cast<int64_t>(maybeOffset.getValue())
                        : MemRefType::getDynamicStrideOrOffset();
   consumeToken();
 
+  if (!consumeIf(Token::comma))
+    return emitError("expected comma after offset value");
+
   // Parse stride list.
-  if (parseToken(Token::comma, "expected comma after offset value") ||
-      parseToken(Token::kw_strides,
+  if (parseToken(Token::kw_strides,
                  "expected `strides` keyword after offset specification") ||
+
       parseToken(Token::colon, "expected colon after `strides` keyword") ||
       parseStrideList(strides))
     return failure();
@@ -232,7 +234,8 @@ Type Parser::parseMemRefType() {
       if (failed(parseStridedLayout(offset, strides)))
         return failure();
       // Construct strided affine map.
-      AffineMap map = makeStridedLinearLayoutMap(strides, offset, getContext());
+      AffineMap map =
+          makeStridedLinearLayoutMap(strides, offset, state.context);
       layout = AffineMapAttr::get(map);
     } else {
       // Either it is MemRefLayoutAttrInterface or memory space attribute.
@@ -295,7 +298,7 @@ Type Parser::parseMemRefType() {
 Type Parser::parseNonFunctionType() {
   switch (getToken().getKind()) {
   default:
-    return (emitWrongTokenError("expected non-function type"), nullptr);
+    return (emitError("expected non-function type"), nullptr);
   case Token::kw_memref:
     return parseMemRefType();
   case Token::kw_tensor:
@@ -309,9 +312,9 @@ Type Parser::parseNonFunctionType() {
   // integer-type
   case Token::inttype: {
     auto width = getToken().getIntTypeBitwidth();
-    if (!width.has_value())
+    if (!width.hasValue())
       return (emitError("invalid integer width"), nullptr);
-    if (width.value() > IntegerType::kMaxWidth) {
+    if (width.getValue() > IntegerType::kMaxWidth) {
       emitError(getToken().getLoc(), "integer bitwidth is limited to ")
           << IntegerType::kMaxWidth << " bits";
       return nullptr;
@@ -322,7 +325,7 @@ Type Parser::parseNonFunctionType() {
       signSemantics = *signedness ? IntegerType::Signed : IntegerType::Unsigned;
 
     consumeToken(Token::inttype);
-    return IntegerType::get(getContext(), *width, signSemantics);
+    return IntegerType::get(getContext(), width.getValue(), signSemantics);
   }
 
   // float-type
@@ -358,12 +361,6 @@ Type Parser::parseNonFunctionType() {
   // extended type
   case Token::exclamation_identifier:
     return parseExtendedType();
-
-  // Handle completion of a dialect type.
-  case Token::code_complete:
-    if (getToken().isCodeCompletionFor(Token::exclamation_identifier))
-      return parseExtendedType();
-    return codeCompleteType();
   }
 }
 
@@ -511,7 +508,9 @@ Parser::parseVectorDimensionList(SmallVectorImpl<int64_t> &dimensions,
       // Check if we have reached the end of the scalable dimension list
       if (consumeIf(Token::r_square)) {
         // Make sure we have something like 'xbf32'.
-        return parseXInDimensionList();
+        if (parseXInDimensionList())
+          return failure();
+        return success();
       }
       // Make sure we have an 'x'
       if (parseXInDimensionList())
@@ -519,8 +518,7 @@ Parser::parseVectorDimensionList(SmallVectorImpl<int64_t> &dimensions,
     }
     // If we make it here, we've finished parsing the dimension list
     // without finding ']' closing the set of scalable dimensions
-    return emitWrongTokenError(
-        "missing ']' closing set of scalable dimensions");
+    return emitError("missing ']' closing set of scalable dimensions");
   }
 
   return success();
@@ -528,51 +526,33 @@ Parser::parseVectorDimensionList(SmallVectorImpl<int64_t> &dimensions,
 
 /// Parse a dimension list of a tensor or memref type.  This populates the
 /// dimension list, using -1 for the `?` dimensions if `allowDynamic` is set and
-/// errors out on `?` otherwise. Parsing the trailing `x` is configurable.
+/// errors out on `?` otherwise.
 ///
-///   dimension-list ::= eps | dimension (`x` dimension)*
-///   dimension-list-with-trailing-x ::= (dimension `x`)*
+///   dimension-list-ranked ::= (dimension `x`)*
 ///   dimension ::= `?` | decimal-literal
 ///
 /// When `allowDynamic` is not set, this is used to parse:
 ///
-///   static-dimension-list ::= eps | decimal-literal (`x` decimal-literal)*
-///   static-dimension-list-with-trailing-x ::= (dimension `x`)*
+///   static-dimension-list ::= (decimal-literal `x`)*
 ParseResult
 Parser::parseDimensionListRanked(SmallVectorImpl<int64_t> &dimensions,
-                                 bool allowDynamic, bool withTrailingX) {
-  auto parseDim = [&]() -> LogicalResult {
-    auto loc = getToken().getLoc();
+                                 bool allowDynamic) {
+  while (getToken().isAny(Token::integer, Token::question)) {
     if (consumeIf(Token::question)) {
       if (!allowDynamic)
-        return emitError(loc, "expected static shape");
+        return emitError("expected static shape");
       dimensions.push_back(-1);
     } else {
       int64_t value;
-      if (failed(parseIntegerInDimensionList(value)))
+      if (parseIntegerInDimensionList(value))
         return failure();
       dimensions.push_back(value);
     }
-    return success();
-  };
-
-  if (withTrailingX) {
-    while (getToken().isAny(Token::integer, Token::question)) {
-      if (failed(parseDim()) || failed(parseXInDimensionList()))
-        return failure();
-    }
-    return success();
-  }
-
-  if (getToken().isAny(Token::integer, Token::question)) {
-    if (failed(parseDim()))
+    // Make sure we have an 'x' or something like 'xbf32'.
+    if (parseXInDimensionList())
       return failure();
-    while (getToken().is(Token::bare_identifier) &&
-           getTokenSpelling()[0] == 'x') {
-      if (failed(parseXInDimensionList()) || failed(parseDim()))
-        return failure();
-    }
   }
+
   return success();
 }
 
@@ -595,7 +575,7 @@ ParseResult Parser::parseIntegerInDimensionList(int64_t &value) {
     if (!dimension ||
         *dimension > (uint64_t)std::numeric_limits<int64_t>::max())
       return emitError("invalid dimension");
-    value = (int64_t)*dimension;
+    value = (int64_t)dimension.getValue();
     consumeToken(Token::integer);
   }
   return success();
@@ -606,7 +586,7 @@ ParseResult Parser::parseIntegerInDimensionList(int64_t &value) {
 /// token.
 ParseResult Parser::parseXInDimensionList() {
   if (getToken().isNot(Token::bare_identifier) || getTokenSpelling()[0] != 'x')
-    return emitWrongTokenError("expected 'x' in dimension list");
+    return emitError("expected 'x' in dimension list");
 
   // If we had a prefix of 'x', lex the next token immediately after the 'x'.
   if (getTokenSpelling().size() != 1)

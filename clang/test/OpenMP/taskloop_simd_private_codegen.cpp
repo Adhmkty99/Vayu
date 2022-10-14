@@ -244,7 +244,7 @@ int main() {
 // CHECK-DAG: [[PRIV_T_VAR]]
 // CHECK-DAG: [[PRIV_S_ARR]]
 // CHECK-DAG: [[PRIV_VEC]]
-// CHECK-DAG: [[PRIV_SIVAR]]
+// CHECK_DAG: [[PRIV_SIVAR]]
 
 // CHECK: ret
 

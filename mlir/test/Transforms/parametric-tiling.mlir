@@ -2,7 +2,7 @@
 // RUN: mlir-opt -test-extract-fixed-outer-loops='test-outer-loop-sizes=7,4' %s | FileCheck %s --check-prefixes=COMMON,TILE_74
 
 // COMMON-LABEL: @rectangular
-func.func @rectangular(%arg0: memref<?x?xf32>) {
+func @rectangular(%arg0: memref<?x?xf32>) {
   %c2 = arith.constant 2 : index
   %c44 = arith.constant 44 : index
   %c1 = arith.constant 1 : index
@@ -66,7 +66,7 @@ func.func @rectangular(%arg0: memref<?x?xf32>) {
 }
 
 // COMMON-LABEL: @triangular
-func.func @triangular(%arg0: memref<?x?xf32>) {
+func @triangular(%arg0: memref<?x?xf32>) {
   %c2 = arith.constant 2 : index
   %c44 = arith.constant 44 : index
   %c1 = arith.constant 1 : index

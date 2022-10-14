@@ -1,4 +1,4 @@
-add_mlir_dialect_library(MLIROpenMPDialect
+add_mlir_dialect_library(MLIROpenMP
   IR/OpenMPDialect.cpp
 
   ADDITIONAL_HEADER_DIRS
@@ -7,9 +7,8 @@ add_mlir_dialect_library(MLIROpenMPDialect
   DEPENDS
   MLIROpenMPOpsIncGen
   MLIROpenMPOpsInterfacesIncGen
-  MLIROpenMPTypeInterfacesIncGen
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRLLVMDialect
+  MLIRLLVMIR
   )

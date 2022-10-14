@@ -98,7 +98,7 @@ namespace {
 struct LinalgInlineScalarOperandsPass
     : public LinalgInlineScalarOperandsBase<LinalgInlineScalarOperandsPass> {
   void runOnOperation() override {
-    func::FuncOp funcOp = getOperation();
+    FuncOp funcOp = getOperation();
     MLIRContext *context = funcOp.getContext();
     RewritePatternSet patterns(context);
 
@@ -108,7 +108,7 @@ struct LinalgInlineScalarOperandsPass
 };
 } // namespace
 
-std::unique_ptr<OperationPass<func::FuncOp>>
+std::unique_ptr<OperationPass<FuncOp>>
 mlir::createLinalgInlineScalarOperandsPass() {
   return std::make_unique<LinalgInlineScalarOperandsPass>();
 }

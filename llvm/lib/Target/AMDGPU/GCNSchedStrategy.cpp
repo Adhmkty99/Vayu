@@ -733,7 +733,7 @@ void GCNScheduleDAGMILive::collectRematerializableInstructions() {
 
     MachineOperand *Op = MRI.getOneDef(Reg);
     MachineInstr *Def = Op->getParent();
-    if (Op->getSubReg() != 0 || !isTriviallyReMaterializable(*Def))
+    if (Op->getSubReg() != 0 || !isTriviallyReMaterializable(*Def, AA))
       continue;
 
     MachineInstr *UseI = &*MRI.use_instr_nodbg_begin(Reg);
@@ -943,8 +943,9 @@ bool GCNScheduleDAGMILive::sinkTriviallyRematInsts(const GCNSubtarget &ST,
 }
 
 // Copied from MachineLICM
-bool GCNScheduleDAGMILive::isTriviallyReMaterializable(const MachineInstr &MI) {
-  if (!TII->isTriviallyReMaterializable(MI))
+bool GCNScheduleDAGMILive::isTriviallyReMaterializable(const MachineInstr &MI,
+                                                       AAResults *AA) {
+  if (!TII->isTriviallyReMaterializable(MI, AA))
     return false;
 
   for (const MachineOperand &MO : MI.operands())

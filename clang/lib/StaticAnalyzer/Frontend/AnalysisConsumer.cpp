@@ -171,7 +171,13 @@ public:
     }
 
     // Create the analyzer component creators.
-    CreateStoreMgr = &CreateRegionStoreManager;
+    switch (Opts->AnalysisStoreOpt) {
+    default:
+      llvm_unreachable("Unknown store manager.");
+#define ANALYSIS_STORE(NAME, CMDFLAG, DESC, CREATEFN)           \
+      case NAME##Model: CreateStoreMgr = CREATEFN; break;
+#include "clang/StaticAnalyzer/Core/Analyses.def"
+    }
 
     switch (Opts->AnalysisConstraintsOpt) {
     default:
@@ -352,6 +358,7 @@ public:
 
 private:
   void storeTopLevelDecls(DeclGroupRef DG);
+  std::string getFunctionName(const Decl *D);
 
   /// Check if we should skip (not analyze) the given function.
   AnalysisMode getModeForDecl(Decl *D, AnalysisMode Mode);
@@ -468,18 +475,6 @@ void AnalysisConsumer::HandleDeclsCallGraph(const unsigned LocalTUDeclsSize) {
     // inlined.
     if (shouldSkipFunction(D, Visited, VisitedAsTopLevel))
       continue;
-
-    // The CallGraph might have declarations as callees. However, during CTU
-    // the declaration might form a declaration chain with the newly imported
-    // definition from another TU. In this case we don't want to analyze the
-    // function definition as toplevel.
-    if (const auto *FD = dyn_cast<FunctionDecl>(D)) {
-      // Calling 'hasBody' replaces 'FD' in place with the FunctionDecl
-      // that has the body.
-      FD->hasBody(FD);
-      if (CTU.isImportedAsNew(FD))
-        continue;
-    }
 
     // Analyze the function.
     SetOfConstDecls VisitedCallees;

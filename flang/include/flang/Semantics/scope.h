@@ -60,8 +60,7 @@ class Scope {
 
 public:
   ENUM_CLASS(Kind, Global, IntrinsicModules, Module, MainProgram, Subprogram,
-      BlockData, DerivedType, BlockConstruct, Forall, OtherConstruct,
-      ImpliedDos)
+      BlockData, DerivedType, Block, Forall, ImpliedDos)
   using ImportKind = common::ImportKind;
 
   // Create the Global scope -- the root of the scope tree
@@ -105,10 +104,7 @@ public:
   bool IsParameterizedDerivedTypeInstantiation() const {
     return kind_ == Kind::DerivedType && !symbol_;
   }
-  /// Does this derived type have at least one kind parameter ?
   bool IsDerivedTypeWithKindParameter() const;
-  /// Does this derived type have at least one length parameter ?
-  bool IsDerivedTypeWithLengthParameter() const;
   Symbol *symbol() { return symbol_; }
   const Symbol *symbol() const { return symbol_; }
   SemanticsContext &context() const { return context_; }

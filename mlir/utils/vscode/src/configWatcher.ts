@@ -41,42 +41,45 @@ async function promptRestart(settingName: string, promptMessage: string) {
  *  Activate watchers that track configuration changes for the given workspace
  *  folder, or null if the workspace is top-level.
  */
-export async function activate(
-    mlirContext: MLIRContext, workspaceFolder: vscode.WorkspaceFolder,
-    serverSettings: string[], serverPaths: string[]) {
+export async function activate(mlirContext: MLIRContext,
+                               workspaceFolder: vscode.WorkspaceFolder,
+                               serverPathsToWatch: string[]) {
   // When a configuration change happens, check to see if we should restart the
   // server.
   mlirContext.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
-    for (const serverSetting of serverSettings) {
-      const expandedSetting = `mlir.${serverSetting}`;
+    const settings: string[] = [ 'server_path', 'pdll_server_path' ];
+    for (const setting of settings) {
+      const expandedSetting = `mlir.${setting}`;
       if (event.affectsConfiguration(expandedSetting, workspaceFolder)) {
         promptRestart(
             'onSettingsChanged',
             `setting '${
                 expandedSetting}' has changed. Do you want to reload the server?`);
+        break;
       }
     }
   }));
 
-  // Setup watchers for the provided server paths.
-  const fileWatcherConfig = {
-    disableGlobbing : true,
-    followSymlinks : true,
-    ignoreInitial : true,
-    awaitWriteFinish : true,
-  };
-  for (const serverPath of serverPaths) {
+  // Track the server file in case it changes. We use `fs` here because the
+  // server may not be in a workspace directory.
+  for (const serverPath of serverPathsToWatch) {
+    // Check that the path actually exists.
     if (serverPath === '') {
-      return;
+      continue;
     }
 
-    // If the server path actually exists, track it in case it changes.
+    const fileWatcherConfig = {
+      disableGlobbing : true,
+      followSymlinks : true,
+      ignoreInitial : true,
+      awaitWriteFinish : true,
+    };
     const fileWatcher = chokidar.watch(serverPath, fileWatcherConfig);
     fileWatcher.on('all', (event, _filename, _details) => {
       if (event != 'unlink') {
         promptRestart(
             'onSettingsChanged',
-            'MLIR language server file has changed. Do you want to reload the server?');
+            'MLIR language server binary has changed. Do you want to reload the server?');
       }
     });
     mlirContext.subscriptions.push(

@@ -8,6 +8,8 @@ import six
 
 class TestBuildMethod(Base):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         super().setUp()
         self._traces = []

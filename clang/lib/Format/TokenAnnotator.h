@@ -76,10 +76,6 @@ public:
     }
   }
 
-  bool isComment() const {
-    return First && First->is(tok::comment) && !First->getNextNonComment();
-  }
-
   /// \c true if this line starts with the given tokens in order, ignoring
   /// comments.
   template <typename... Ts> bool startsWith(Ts... Tokens) const {
@@ -161,46 +157,43 @@ public:
   /// Adapts the indent levels of comment lines to the indent of the
   /// subsequent line.
   // FIXME: Can/should this be done in the UnwrappedLineParser?
-  void setCommentLineLevels(SmallVectorImpl<AnnotatedLine *> &Lines) const;
+  void setCommentLineLevels(SmallVectorImpl<AnnotatedLine *> &Lines);
 
-  void annotate(AnnotatedLine &Line) const;
-  void calculateFormattingInformation(AnnotatedLine &Line) const;
+  void annotate(AnnotatedLine &Line);
+  void calculateFormattingInformation(AnnotatedLine &Line);
 
 private:
   /// Calculate the penalty for splitting before \c Tok.
   unsigned splitPenalty(const AnnotatedLine &Line, const FormatToken &Tok,
-                        bool InFunctionDecl) const;
+                        bool InFunctionDecl);
 
   bool spaceRequiredBeforeParens(const FormatToken &Right) const;
 
   bool spaceRequiredBetween(const AnnotatedLine &Line, const FormatToken &Left,
-                            const FormatToken &Right) const;
+                            const FormatToken &Right);
 
-  bool spaceRequiredBefore(const AnnotatedLine &Line,
-                           const FormatToken &Right) const;
+  bool spaceRequiredBefore(const AnnotatedLine &Line, const FormatToken &Right);
 
-  bool mustBreakBefore(const AnnotatedLine &Line,
-                       const FormatToken &Right) const;
+  bool mustBreakBefore(const AnnotatedLine &Line, const FormatToken &Right);
 
-  bool canBreakBefore(const AnnotatedLine &Line,
-                      const FormatToken &Right) const;
+  bool canBreakBefore(const AnnotatedLine &Line, const FormatToken &Right);
 
   bool mustBreakForReturnType(const AnnotatedLine &Line) const;
 
-  void printDebugInfo(const AnnotatedLine &Line) const;
+  void printDebugInfo(const AnnotatedLine &Line);
 
-  void calculateUnbreakableTailLengths(AnnotatedLine &Line) const;
+  void calculateUnbreakableTailLengths(AnnotatedLine &Line);
 
-  void calculateArrayInitializerColumnList(AnnotatedLine &Line) const;
+  void calculateArrayInitializerColumnList(AnnotatedLine &Line);
 
   FormatToken *calculateInitializerColumnList(AnnotatedLine &Line,
                                               FormatToken *CurrentToken,
-                                              unsigned Depth) const;
+                                              unsigned Depth);
   FormatStyle::PointerAlignmentStyle
-  getTokenReferenceAlignment(const FormatToken &PointerOrReference) const;
+  getTokenReferenceAlignment(const FormatToken &PointerOrReference);
 
-  FormatStyle::PointerAlignmentStyle getTokenPointerOrReferenceAlignment(
-      const FormatToken &PointerOrReference) const;
+  FormatStyle::PointerAlignmentStyle
+  getTokenPointerOrReferenceAlignment(const FormatToken &PointerOrReference);
 
   const FormatStyle &Style;
 

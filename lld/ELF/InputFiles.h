@@ -371,10 +371,23 @@ public:
   void parse();
 };
 
-ELFFileBase *createObjFile(MemoryBufferRef mb, StringRef archiveName = "",
-                           bool lazy = false);
+InputFile *createObjectFile(MemoryBufferRef mb, StringRef archiveName = "",
+                            uint64_t offsetInArchive = 0);
+InputFile *createLazyFile(MemoryBufferRef mb, StringRef archiveName,
+                          uint64_t offsetInArchive);
+
+inline bool isBitcode(MemoryBufferRef mb) {
+  return identify_magic(mb.getBuffer()) == llvm::file_magic::bitcode;
+}
 
 std::string replaceThinLTOSuffix(StringRef path);
+
+extern SmallVector<std::unique_ptr<MemoryBuffer>> memoryBuffers;
+extern SmallVector<BinaryFile *, 0> binaryFiles;
+extern SmallVector<BitcodeFile *, 0> bitcodeFiles;
+extern SmallVector<BitcodeFile *, 0> lazyBitcodeFiles;
+extern SmallVector<ELFFileBase *, 0> objectFiles;
+extern SmallVector<SharedFile *, 0> sharedFiles;
 
 } // namespace elf
 } // namespace lld

@@ -35,7 +35,7 @@ public:
 ///
 /// Requirements:
 ///
-///  `S` must not be `ParenExpr` or `ExprWithCleanups`.
+///  The type of `S` must not be `ParenExpr`.
 void transfer(const StmtToEnvMap &StmtToEnv, const Stmt &S, Environment &Env);
 
 } // namespace dataflow

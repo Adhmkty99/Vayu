@@ -3,6 +3,8 @@
 // RUN: %clang_cc1 -no-opaque-pointers -triple aarch64-none-linux-gnu -target-feature +sve2 -fallow-half-arguments-and-returns -S -O1 -Werror -Wall -emit-llvm -o - -x c++ %s | FileCheck %s -check-prefix=CPP-CHECK
 // RUN: %clang_cc1 -no-opaque-pointers -DSVE_OVERLOADED_FORMS -triple aarch64-none-linux-gnu -target-feature +sve2 -fallow-half-arguments-and-returns -S -O1 -Werror -Wall -emit-llvm -o - %s | FileCheck %s
 // RUN: %clang_cc1 -no-opaque-pointers -DSVE_OVERLOADED_FORMS -triple aarch64-none-linux-gnu -target-feature +sve2 -fallow-half-arguments-and-returns -S -O1 -Werror -Wall -emit-llvm -o - -x c++ %s | FileCheck %s -check-prefix=CPP-CHECK
+// RUN: %clang_cc1 -no-opaque-pointers -triple aarch64-none-linux-gnu -target-feature +sve -fallow-half-arguments-and-returns -fsyntax-only -std=c99 -verify -verify-ignore-unexpected=error %s
+// RUN: %clang_cc1 -no-opaque-pointers -DSVE_OVERLOADED_FORMS -triple aarch64-none-linux-gnu -target-feature +sve -fallow-half-arguments-and-returns -fsyntax-only -std=c99 -verify=overload -verify-ignore-unexpected=error %s
 
 // REQUIRES: aarch64-registered-target
 
@@ -30,6 +32,8 @@
 // CPP-CHECK-NEXT:    ret <vscale x 4 x i32> [[TMP2]]
 //
 svint32_t test_svldnt1sh_gather_u32base_s32(svbool_t pg, svuint32_t bases) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_s32'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u32base_s32'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u32base, _s32, )(pg, bases);
 }
 
@@ -48,6 +52,8 @@ svint32_t test_svldnt1sh_gather_u32base_s32(svbool_t pg, svuint32_t bases) {
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svint64_t test_svldnt1sh_gather_u64base_s64(svbool_t pg, svuint64_t bases) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_s64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64base_s64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u64base, _s64, )(pg, bases);
 }
 
@@ -66,6 +72,8 @@ svint64_t test_svldnt1sh_gather_u64base_s64(svbool_t pg, svuint64_t bases) {
 // CPP-CHECK-NEXT:    ret <vscale x 4 x i32> [[TMP2]]
 //
 svuint32_t test_svldnt1sh_gather_u32base_u32(svbool_t pg, svuint32_t bases) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_u32'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u32base_u32'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u32base, _u32, )(pg, bases);
 }
 
@@ -84,6 +92,8 @@ svuint32_t test_svldnt1sh_gather_u32base_u32(svbool_t pg, svuint32_t bases) {
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svuint64_t test_svldnt1sh_gather_u64base_u64(svbool_t pg, svuint64_t bases) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_u64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64base_u64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u64base, _u64, )(pg, bases);
 }
 
@@ -102,6 +112,8 @@ svuint64_t test_svldnt1sh_gather_u64base_u64(svbool_t pg, svuint64_t bases) {
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svint64_t test_svldnt1sh_gather_s64offset_s64(svbool_t pg, const int16_t *base, svint64_t offsets) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_s64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_s64offset_s64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, s64, offset_s64, )(pg, base, offsets);
 }
 
@@ -120,6 +132,8 @@ svint64_t test_svldnt1sh_gather_s64offset_s64(svbool_t pg, const int16_t *base, 
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svuint64_t test_svldnt1sh_gather_s64offset_u64(svbool_t pg, const int16_t *base, svint64_t offsets) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_u64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_s64offset_u64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, s64, offset_u64, )(pg, base, offsets);
 }
 
@@ -138,6 +152,8 @@ svuint64_t test_svldnt1sh_gather_s64offset_u64(svbool_t pg, const int16_t *base,
 // CPP-CHECK-NEXT:    ret <vscale x 4 x i32> [[TMP2]]
 //
 svint32_t test_svldnt1sh_gather_u32offset_s32(svbool_t pg, const int16_t *base, svuint32_t offsets) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_s32'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u32offset_s32'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, u32, offset_s32, )(pg, base, offsets);
 }
 
@@ -156,6 +172,8 @@ svint32_t test_svldnt1sh_gather_u32offset_s32(svbool_t pg, const int16_t *base, 
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svint64_t test_svldnt1sh_gather_u64offset_s64(svbool_t pg, const int16_t *base, svuint64_t offsets) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_s64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64offset_s64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, u64, offset_s64, )(pg, base, offsets);
 }
 
@@ -174,6 +192,8 @@ svint64_t test_svldnt1sh_gather_u64offset_s64(svbool_t pg, const int16_t *base, 
 // CPP-CHECK-NEXT:    ret <vscale x 4 x i32> [[TMP2]]
 //
 svuint32_t test_svldnt1sh_gather_u32offset_u32(svbool_t pg, const int16_t *base, svuint32_t offsets) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_u32'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u32offset_u32'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, u32, offset_u32, )(pg, base, offsets);
 }
 
@@ -192,6 +212,8 @@ svuint32_t test_svldnt1sh_gather_u32offset_u32(svbool_t pg, const int16_t *base,
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svuint64_t test_svldnt1sh_gather_u64offset_u64(svbool_t pg, const int16_t *base, svuint64_t offsets) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_u64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64offset_u64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, u64, offset_u64, )(pg, base, offsets);
 }
 
@@ -210,6 +232,8 @@ svuint64_t test_svldnt1sh_gather_u64offset_u64(svbool_t pg, const int16_t *base,
 // CPP-CHECK-NEXT:    ret <vscale x 4 x i32> [[TMP2]]
 //
 svint32_t test_svldnt1sh_gather_u32base_offset_s32(svbool_t pg, svuint32_t bases, int64_t offset) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_s32'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u32base_offset_s32'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u32base, _offset_s32, )(pg, bases, offset);
 }
 
@@ -228,6 +252,8 @@ svint32_t test_svldnt1sh_gather_u32base_offset_s32(svbool_t pg, svuint32_t bases
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svint64_t test_svldnt1sh_gather_u64base_offset_s64(svbool_t pg, svuint64_t bases, int64_t offset) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_s64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64base_offset_s64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u64base, _offset_s64, )(pg, bases, offset);
 }
 
@@ -246,6 +272,8 @@ svint64_t test_svldnt1sh_gather_u64base_offset_s64(svbool_t pg, svuint64_t bases
 // CPP-CHECK-NEXT:    ret <vscale x 4 x i32> [[TMP2]]
 //
 svuint32_t test_svldnt1sh_gather_u32base_offset_u32(svbool_t pg, svuint32_t bases, int64_t offset) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_u32'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u32base_offset_u32'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u32base, _offset_u32, )(pg, bases, offset);
 }
 
@@ -264,6 +292,8 @@ svuint32_t test_svldnt1sh_gather_u32base_offset_u32(svbool_t pg, svuint32_t base
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svuint64_t test_svldnt1sh_gather_u64base_offset_u64(svbool_t pg, svuint64_t bases, int64_t offset) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_offset_u64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64base_offset_u64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u64base, _offset_u64, )(pg, bases, offset);
 }
 
@@ -282,6 +312,8 @@ svuint64_t test_svldnt1sh_gather_u64base_offset_u64(svbool_t pg, svuint64_t base
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svint64_t test_svldnt1sh_gather_s64index_s64(svbool_t pg, const int16_t *base, svint64_t indices) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_index_s64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_s64index_s64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, s64, index_s64, )(pg, base, indices);
 }
 
@@ -300,6 +332,8 @@ svint64_t test_svldnt1sh_gather_s64index_s64(svbool_t pg, const int16_t *base, s
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svuint64_t test_svldnt1sh_gather_s64index_u64(svbool_t pg, const int16_t *base, svint64_t indices) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_index_u64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_s64index_u64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, s64, index_u64, )(pg, base, indices);
 }
 
@@ -318,6 +352,8 @@ svuint64_t test_svldnt1sh_gather_s64index_u64(svbool_t pg, const int16_t *base, 
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svint64_t test_svldnt1sh_gather_u64index_s64(svbool_t pg, const int16_t *base, svuint64_t indices) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_index_s64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64index_s64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, u64, index_s64, )(pg, base, indices);
 }
 
@@ -336,6 +372,8 @@ svint64_t test_svldnt1sh_gather_u64index_s64(svbool_t pg, const int16_t *base, s
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP2]]
 //
 svuint64_t test_svldnt1sh_gather_u64index_u64(svbool_t pg, const int16_t *base, svuint64_t indices) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_index_u64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64index_u64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather_, u64, index_u64, )(pg, base, indices);
 }
 
@@ -356,6 +394,8 @@ svuint64_t test_svldnt1sh_gather_u64index_u64(svbool_t pg, const int16_t *base, 
 // CPP-CHECK-NEXT:    ret <vscale x 4 x i32> [[TMP3]]
 //
 svint32_t test_svldnt1sh_gather_u32base_index_s32(svbool_t pg, svuint32_t bases, int64_t index) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_index_s32'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u32base_index_s32'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u32base, _index_s32, )(pg, bases, index);
 }
 
@@ -376,6 +416,8 @@ svint32_t test_svldnt1sh_gather_u32base_index_s32(svbool_t pg, svuint32_t bases,
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP3]]
 //
 svint64_t test_svldnt1sh_gather_u64base_index_s64(svbool_t pg, svuint64_t bases, int64_t index) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_index_s64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64base_index_s64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u64base, _index_s64, )(pg, bases, index);
 }
 
@@ -396,6 +438,8 @@ svint64_t test_svldnt1sh_gather_u64base_index_s64(svbool_t pg, svuint64_t bases,
 // CPP-CHECK-NEXT:    ret <vscale x 4 x i32> [[TMP3]]
 //
 svuint32_t test_svldnt1sh_gather_u32base_index_u32(svbool_t pg, svuint32_t bases, int64_t index) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_index_u32'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u32base_index_u32'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u32base, _index_u32, )(pg, bases, index);
 }
 
@@ -416,5 +460,7 @@ svuint32_t test_svldnt1sh_gather_u32base_index_u32(svbool_t pg, svuint32_t bases
 // CPP-CHECK-NEXT:    ret <vscale x 2 x i64> [[TMP3]]
 //
 svuint64_t test_svldnt1sh_gather_u64base_index_u64(svbool_t pg, svuint64_t bases, int64_t index) {
+  // overload-warning@+2 {{implicit declaration of function 'svldnt1sh_gather_index_u64'}}
+  // expected-warning@+1 {{implicit declaration of function 'svldnt1sh_gather_u64base_index_u64'}}
   return SVE_ACLE_FUNC(svldnt1sh_gather, _u64base, _index_u64, )(pg, bases, index);
 }

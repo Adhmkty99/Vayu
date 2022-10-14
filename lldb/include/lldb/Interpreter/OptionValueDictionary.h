@@ -12,7 +12,6 @@
 #include <map>
 
 #include "lldb/Interpreter/OptionValue.h"
-#include "lldb/lldb-private-types.h"
 
 namespace lldb_private {
 
@@ -20,10 +19,8 @@ class OptionValueDictionary
     : public Cloneable<OptionValueDictionary, OptionValue> {
 public:
   OptionValueDictionary(uint32_t type_mask = UINT32_MAX,
-                        OptionEnumValues enum_values = OptionEnumValues(),
                         bool raw_value_dump = true)
-      : m_type_mask(type_mask), m_enum_values(enum_values),
-        m_raw_value_dump(raw_value_dump) {}
+      : m_type_mask(type_mask), m_raw_value_dump(raw_value_dump) {}
 
   ~OptionValueDictionary() override = default;
 
@@ -78,7 +75,6 @@ public:
 protected:
   typedef std::map<ConstString, lldb::OptionValueSP> collection;
   uint32_t m_type_mask;
-  OptionEnumValues m_enum_values;
   collection m_values;
   bool m_raw_value_dump;
 };

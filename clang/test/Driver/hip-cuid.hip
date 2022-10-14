@@ -1,3 +1,4 @@
+// REQUIRES: clang-driver
 // REQUIRES: x86-registered-target
 // REQUIRES: amdgpu-registered-target
 
@@ -58,35 +59,35 @@
 
 // INVALID: invalid value 'invalid' in '-fuse-cuid=invalid'
 
-// COMMON: "-cc1"{{.*}} "-triple" "amdgcn-amd-amdhsa"
+// COMMON: "{{.*}}clang{{.*}}" "-cc1"{{.*}} "-triple" "amdgcn-amd-amdhsa"
 // COMMON-SAME: "-target-cpu" "gfx900"
 // HEX-SAME: "-cuid=[[CUID:[0-9a-f]+]]"
 // FIXED-SAME: "-cuid=[[CUID:xyz_123]]"
 // COMMON-SAME: "{{.*}}a.cu"
 
-// COMMON: "-cc1"{{.*}} "-triple" "amdgcn-amd-amdhsa"
+// COMMON: "{{.*}}clang{{.*}}" "-cc1"{{.*}} "-triple" "amdgcn-amd-amdhsa"
 // COMMON-SAME: "-target-cpu" "gfx906"
 // COMMON-SAME: "-cuid=[[CUID]]"
 // COMMON-SAME: "{{.*}}a.cu"
 
-// COMMON: "-cc1"{{.*}} "-triple" "x86_64-unknown-linux-gnu"
+// COMMON: "{{.*}}clang{{.*}}" "-cc1"{{.*}} "-triple" "x86_64-unknown-linux-gnu"
 // COMMON-SAME: "-cuid=[[CUID]]"
 // COMMON-SAME: "{{.*}}a.cu"
 
-// COMMON: "-cc1"{{.*}} "-triple" "amdgcn-amd-amdhsa"
+// COMMON: "{{.*}}clang{{.*}}" "-cc1"{{.*}} "-triple" "amdgcn-amd-amdhsa"
 // COMMON-SAME: "-target-cpu" "gfx900"
 // HEX-NOT: "-cuid=[[CUID]]"
 // HEX-SAME: "-cuid=[[CUID2:[0-9a-f]+]]"
 // FIXED-SAME: "-cuid=[[CUID2:xyz_123]]"
 // COMMON-SAME: "{{.*}}b.hip"
 
-// COMMON: "-cc1"{{.*}} "-triple" "amdgcn-amd-amdhsa"
+// COMMON: "{{.*}}clang{{.*}}" "-cc1"{{.*}} "-triple" "amdgcn-amd-amdhsa"
 // COMMON-SAME: "-target-cpu" "gfx906"
 // HEX-NOT: "-cuid=[[CUID]]"
 // COMMON-SAME: "-cuid=[[CUID2]]"
 // COMMON-SAME: "{{.*}}b.hip"
 
-// COMMON: "-cc1"{{.*}} "-triple" "x86_64-unknown-linux-gnu"
+// COMMON: "{{.*}}clang{{.*}}" "-cc1"{{.*}} "-triple" "x86_64-unknown-linux-gnu"
 // HEX-NOT: "-cuid=[[CUID]]"
 // COMMON-SAME: "-cuid=[[CUID2]]"
 // COMMON-SAME: "{{.*}}b.hip"

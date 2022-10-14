@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 class TypedefTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @expectedFailureAll(compiler="clang", bugnumber="llvm.org/pr19238")
     def test_typedef(self):
         """Test 'image lookup -t a' and check for correct display at different scopes."""

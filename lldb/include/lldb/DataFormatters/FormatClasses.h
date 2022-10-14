@@ -105,7 +105,7 @@ private:
 
 class TypeNameSpecifierImpl {
 public:
-  TypeNameSpecifierImpl() = default;
+  TypeNameSpecifierImpl() {}
 
   TypeNameSpecifierImpl(llvm::StringRef name, bool is_regex)
       : m_is_regex(is_regex) {

@@ -53,12 +53,9 @@ StringRef llvm::getName(MVT::SimpleValueType T) {
 }
 
 StringRef llvm::getEnumName(MVT::SimpleValueType T) {
-  // clang-format off
   switch (T) {
   case MVT::Other:    return "MVT::Other";
   case MVT::i1:       return "MVT::i1";
-  case MVT::i2:       return "MVT::i2";
-  case MVT::i4:       return "MVT::i4";
   case MVT::i8:       return "MVT::i8";
   case MVT::i16:      return "MVT::i16";
   case MVT::i32:      return "MVT::i32";
@@ -91,8 +88,6 @@ StringRef llvm::getEnumName(MVT::SimpleValueType T) {
   case MVT::v256i1:   return "MVT::v256i1";
   case MVT::v512i1:   return "MVT::v512i1";
   case MVT::v1024i1:  return "MVT::v1024i1";
-  case MVT::v128i2:   return "MVT::v128i2";
-  case MVT::v64i4:    return "MVT::v64i4";
   case MVT::v1i8:     return "MVT::v1i8";
   case MVT::v2i8:     return "MVT::v2i8";
   case MVT::v4i8:     return "MVT::v4i8";
@@ -229,8 +224,6 @@ StringRef llvm::getEnumName(MVT::SimpleValueType T) {
   case MVT::nxv2bf16:  return "MVT::nxv2bf16";
   case MVT::nxv4bf16:  return "MVT::nxv4bf16";
   case MVT::nxv8bf16:  return "MVT::nxv8bf16";
-  case MVT::nxv16bf16: return "MVT::nxv16bf16";
-  case MVT::nxv32bf16: return "MVT::nxv32bf16";
   case MVT::nxv1f32:   return "MVT::nxv1f32";
   case MVT::nxv2f32:   return "MVT::nxv2f32";
   case MVT::nxv4f32:   return "MVT::nxv4f32";
@@ -249,7 +242,6 @@ StringRef llvm::getEnumName(MVT::SimpleValueType T) {
   case MVT::externref: return "MVT::externref";
   default: llvm_unreachable("ILLEGAL VALUE TYPE!");
   }
-  // clang-format on
 }
 
 /// getQualifiedName - Return the name of the specified record, with a
@@ -476,7 +468,7 @@ GetInstByName(const char *Name,
   return I->second.get();
 }
 
-static const char *FixedInstrs[] = {
+static const char *const FixedInstrs[] = {
 #define HANDLE_TARGET_OPCODE(OPC) #OPC,
 #include "llvm/Support/TargetOpcodes.def"
     nullptr};
@@ -560,7 +552,7 @@ void CodeGenTarget::reverseBitsForLittleEndianEncoding() {
       NewBits[middle] = BI->getBit(middle);
     }
 
-    BitsInit *NewBI = BitsInit::get(Records, NewBits);
+    BitsInit *NewBI = BitsInit::get(NewBits);
 
     // Update the bits in reversed order so that emitInstrOpBits will get the
     // correct endianness.
@@ -688,8 +680,8 @@ CodeGenIntrinsic::CodeGenIntrinsic(Record *R,
 
   EnumName = DefName.substr(4);
 
-  if (R->getValue("ClangBuiltinName"))  // Ignore a missing ClangBuiltinName field.
-    ClangBuiltinName = std::string(R->getValueAsString("ClangBuiltinName"));
+  if (R->getValue("GCCBuiltinName"))  // Ignore a missing GCCBuiltinName field.
+    GCCBuiltinName = std::string(R->getValueAsString("GCCBuiltinName"));
   if (R->getValue("MSBuiltinName"))   // Ignore a missing MSBuiltinName field.
     MSBuiltinName = std::string(R->getValueAsString("MSBuiltinName"));
 

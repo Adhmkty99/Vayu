@@ -48,7 +48,6 @@ namespace Check {
 
 enum FileCheckKind {
   CheckNone = 0,
-  CheckMisspelled,
   CheckPlain,
   CheckNext,
   CheckSame,

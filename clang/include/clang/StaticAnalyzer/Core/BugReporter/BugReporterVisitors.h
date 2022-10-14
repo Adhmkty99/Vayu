@@ -397,7 +397,7 @@ class TrackConstraintBRVisitor final : public BugReporterVisitor {
 public:
   TrackConstraintBRVisitor(DefinedSVal constraint, bool assumption)
       : Constraint(constraint), Assumption(assumption),
-        IsZeroCheck(!Assumption && isa<Loc>(Constraint)) {}
+        IsZeroCheck(!Assumption && Constraint.getAs<Loc>()) {}
 
   void Profile(llvm::FoldingSetNodeID &ID) const override;
 
@@ -731,7 +731,7 @@ public:
 
   PathDiagnosticPieceRef VisitNode(const ExplodedNode *N,
                                    BugReporterContext &BR,
-                                   PathSensitiveBugReport &R) final;
+                                   PathSensitiveBugReport &R) override final;
 };
 
 } // namespace ento

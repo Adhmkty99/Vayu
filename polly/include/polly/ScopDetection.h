@@ -627,7 +627,7 @@ private:
   OptimizationRemarkEmitter &ORE;
 };
 
-struct ScopAnalysis : AnalysisInfoMixin<ScopAnalysis> {
+struct ScopAnalysis : public AnalysisInfoMixin<ScopAnalysis> {
   static AnalysisKey Key;
 
   using Result = ScopDetection;
@@ -637,7 +637,7 @@ struct ScopAnalysis : AnalysisInfoMixin<ScopAnalysis> {
   Result run(Function &F, FunctionAnalysisManager &FAM);
 };
 
-struct ScopAnalysisPrinterPass final : PassInfoMixin<ScopAnalysisPrinterPass> {
+struct ScopAnalysisPrinterPass : public PassInfoMixin<ScopAnalysisPrinterPass> {
   ScopAnalysisPrinterPass(raw_ostream &OS) : OS(OS) {}
 
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &FAM);
@@ -645,20 +645,19 @@ struct ScopAnalysisPrinterPass final : PassInfoMixin<ScopAnalysisPrinterPass> {
   raw_ostream &OS;
 };
 
-class ScopDetectionWrapperPass final : public FunctionPass {
+struct ScopDetectionWrapperPass : public FunctionPass {
+  static char ID;
   std::unique_ptr<ScopDetection> Result;
 
-public:
   ScopDetectionWrapperPass();
 
   /// @name FunctionPass interface
-  ///@{
-  static char ID;
+  //@{
   void getAnalysisUsage(AnalysisUsage &AU) const override;
   void releaseMemory() override;
   bool runOnFunction(Function &F) override;
   void print(raw_ostream &OS, const Module *M = nullptr) const override;
-  ///@}
+  //@}
 
   ScopDetection &getSD() const { return *Result; }
 };

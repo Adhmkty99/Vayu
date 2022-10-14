@@ -9,7 +9,7 @@
 // <string>
 
 // basic_string<charT,traits,Allocator>&
-//   replace(const_iterator i1, const_iterator i2, const basic_string& str); // constexpr since C++20
+//   replace(const_iterator i1, const_iterator i2, const basic_string& str);
 
 #include <string>
 #include <algorithm>
@@ -34,7 +34,7 @@ test(S s, typename S::size_type pos1, typename S::size_type n1, S str, S expecte
 }
 
 template <class S>
-TEST_CONSTEXPR_CXX20 bool test0()
+TEST_CONSTEXPR_CXX20 void test0()
 {
     test(S(""), 0, 0, S(""), S(""));
     test(S(""), 0, 0, S("12345"), S("12345"));
@@ -136,12 +136,10 @@ TEST_CONSTEXPR_CXX20 bool test0()
     test(S("abcdefghij"), 1, 1, S("12345"), S("a12345cdefghij"));
     test(S("abcdefghij"), 1, 1, S("1234567890"), S("a1234567890cdefghij"));
     test(S("abcdefghij"), 1, 1, S("12345678901234567890"), S("a12345678901234567890cdefghij"));
-
-    return true;
 }
 
 template <class S>
-TEST_CONSTEXPR_CXX20 bool test1()
+TEST_CONSTEXPR_CXX20 void test1()
 {
     test(S("abcdefghij"), 1, 4, S(""), S("afghij"));
     test(S("abcdefghij"), 1, 4, S("12345"), S("a12345fghij"));
@@ -243,12 +241,10 @@ TEST_CONSTEXPR_CXX20 bool test1()
     test(S("abcdefghijklmnopqrst"), 10, 9, S("12345"), S("abcdefghij12345t"));
     test(S("abcdefghijklmnopqrst"), 10, 9, S("1234567890"), S("abcdefghij1234567890t"));
     test(S("abcdefghijklmnopqrst"), 10, 9, S("12345678901234567890"), S("abcdefghij12345678901234567890t"));
-
-    return true;
 }
 
 template <class S>
-TEST_CONSTEXPR_CXX20 bool test2()
+TEST_CONSTEXPR_CXX20 void test2()
 {
     test(S("abcdefghijklmnopqrst"), 10, 10, S(""), S("abcdefghij"));
     test(S("abcdefghijklmnopqrst"), 10, 10, S("12345"), S("abcdefghij12345"));
@@ -266,22 +262,23 @@ TEST_CONSTEXPR_CXX20 bool test2()
     test(S("abcdefghijklmnopqrst"), 20, 0, S("12345"), S("abcdefghijklmnopqrst12345"));
     test(S("abcdefghijklmnopqrst"), 20, 0, S("1234567890"), S("abcdefghijklmnopqrst1234567890"));
     test(S("abcdefghijklmnopqrst"), 20, 0, S("12345678901234567890"), S("abcdefghijklmnopqrst12345678901234567890"));
-
-    return true;
 }
 
-template <class S>
-void test() {
+bool test() {
   {
+    typedef std::string S;
     test0<S>();
     test1<S>();
     test2<S>();
-#if TEST_STD_VER > 17
-    static_assert(test0<S>());
-    static_assert(test1<S>());
-    static_assert(test2<S>());
-#endif
   }
+#if TEST_STD_VER >= 11
+  {
+    typedef std::basic_string<char, std::char_traits<char>, min_allocator<char>> S;
+    test0<S>();
+    test1<S>();
+    test2<S>();
+  }
+#endif
 
 #if TEST_STD_VER > 3
   { // LWG 2946
@@ -291,13 +288,15 @@ void test() {
     assert(s == "a");
   }
 #endif
+
+  return true;
 }
 
 int main(int, char**)
 {
-  test<std::string>();
-#if TEST_STD_VER >= 11
-  test<std::basic_string<char, std::char_traits<char>, min_allocator<char>>>();
+  test();
+#if TEST_STD_VER > 17
+  // static_assert(test());
 #endif
 
   return 0;

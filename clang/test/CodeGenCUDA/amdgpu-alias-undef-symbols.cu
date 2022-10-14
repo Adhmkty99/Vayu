@@ -1,4 +1,4 @@
-// REQUIRES: amdgpu-registered-target
+// REQUIRES: amdgpu-registered-target, clang-driver
 
 // RUN: %clang -Xclang -no-opaque-pointers -target x86_64-unknown-linux-gnu --offload-arch=gfx906 --cuda-device-only -nogpulib -nogpuinc -x hip -emit-llvm -S -o - %s \
 // RUN:   -fgpu-rdc -O3 -mllvm -amdgpu-early-inline-all=true -mllvm -amdgpu-function-calls=false | \

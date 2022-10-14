@@ -11,6 +11,7 @@
 
 #include "../ClangTidyCheck.h"
 #include "llvm/ADT/StringRef.h"
+#include <string>
 #include <vector>
 
 namespace clang {
@@ -21,7 +22,7 @@ namespace objc {
 /// documented to not support subclassing.
 ///
 /// For the user-facing documentation see:
-/// http://clang.llvm.org/extra/clang-tidy/checks/objc/forbidden-subclassing.html
+/// http://clang.llvm.org/extra/clang-tidy/checks/objc-forbidden-subclassing.html
 class ForbiddenSubclassingCheck : public ClangTidyCheck {
 public:
   ForbiddenSubclassingCheck(StringRef Name, ClangTidyContext *Context);
@@ -33,7 +34,7 @@ public:
   void storeOptions(ClangTidyOptions::OptionMap &Options) override;
 
 private:
-  const std::vector<StringRef> ForbiddenSuperClassNames;
+  const std::vector<std::string> ForbiddenSuperClassNames;
 };
 
 } // namespace objc

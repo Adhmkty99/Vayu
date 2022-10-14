@@ -102,6 +102,7 @@ Expr<Type<TypeCategory::Character, KIND>> FoldIntrinsicFunction(
           CharacterUtils<KIND>::TRIM(std::get<Scalar<T>>(*scalar))}};
     }
   }
+  // TODO: transfer
   return Expr<T>{std::move(funcRef)};
 }
 

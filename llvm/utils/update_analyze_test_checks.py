@@ -110,21 +110,10 @@ def main():
 
       raw_tool_outputs = common.invoke_tool(ti.args.opt_binary, opt_args, ti.path)
 
-      if re.search(r'Printing analysis ', raw_tool_outputs) is not None:
-        # Split analysis outputs by "Printing analysis " declarations.
-        for raw_tool_output in re.split(r'Printing analysis ', raw_tool_outputs):
-          builder.process_run_line(common.ANALYZE_FUNCTION_RE, common.scrub_body,
-                                  raw_tool_output, prefixes, False)
-      elif re.search(r'LV: Checking a loop in ', raw_tool_outputs) is not None:
-        # Split analysis outputs by "Printing analysis " declarations.
-        for raw_tool_output in re.split(r'LV: Checking a loop in ', raw_tool_outputs):
-          builder.process_run_line(common.LV_DEBUG_RE, common.scrub_body,
-                                  raw_tool_output, prefixes, False)
-      else:
-        common.warn('Don\'t know how to deal with this output')
-        continue
-
-      builder.processed_prefixes(prefixes)
+      # Split analysis outputs by "Printing analysis " declarations.
+      for raw_tool_output in re.split(r'Printing analysis ', raw_tool_outputs):
+        builder.process_run_line(common.ANALYZE_FUNCTION_RE, common.scrub_body,
+                                 raw_tool_output, prefixes, False)
 
     func_dict = builder.finish_and_get_func_dict()
     is_in_function = False

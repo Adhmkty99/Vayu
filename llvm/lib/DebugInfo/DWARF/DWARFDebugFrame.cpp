@@ -1101,8 +1101,8 @@ Error DWARFDebugFrame::parse(DWARFDataExtractor Data) {
           default:
             return createStringError(
                 errc::invalid_argument,
-                "unknown augmentation character %c in entry at 0x%" PRIx64,
-                AugmentationString[i], StartOffset);
+                "unknown augmentation character in entry at 0x%" PRIx64,
+                StartOffset);
           case 'L':
             LSDAPointerEncoding = Data.getU8(&Offset);
             break;
@@ -1138,14 +1138,10 @@ Error DWARFDebugFrame::parse(DWARFDataExtractor Data) {
             // B-Key is used for signing functions associated with this
             // augmentation string
             break;
-            // This stack frame contains MTE tagged data, so needs to be
-            // untagged on unwind.
-          case 'G':
-            break;
           }
         }
 
-        if (AugmentationLength) {
+        if (AugmentationLength.hasValue()) {
           if (Offset != EndAugmentationOffset)
             return createStringError(errc::invalid_argument,
                                      "parsing augmentation data at 0x%" PRIx64

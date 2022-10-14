@@ -96,8 +96,9 @@ define amdgpu_kernel void @use_local_size_x_8_16_2(i64 addrspace(1)* %out) #0 !r
   %group.size.x.zext = zext i16 %group.size.x to i32
   %group.id_x_group.size.x = mul i32 %group.id, %group.size.x.zext
   %sub = sub i32 %grid.size.x, %group.id_x_group.size.x
-  %umin = call i32 @llvm.umin.i32(i32 %sub, i32 %group.size.x.zext)
-  %zext = zext i32 %umin to i64
+  %cmp = icmp ult i32 %sub, %group.size.x.zext
+  %select = select i1 %cmp, i32 %sub, i32 %group.size.x.zext
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -116,8 +117,9 @@ define amdgpu_kernel void @use_local_size_y_8_16_2(i64 addrspace(1)* %out) #0 !r
   %group.size.y.zext = zext i16 %group.size.y to i32
   %group.id_x_group.size.y = mul i32 %group.id, %group.size.y.zext
   %sub = sub i32 %grid.size.y, %group.id_x_group.size.y
-  %umin = call i32 @llvm.umin.i32(i32 %sub, i32 %group.size.y.zext)
-  %zext = zext i32 %umin to i64
+  %cmp = icmp ult i32 %sub, %group.size.y.zext
+  %select = select i1 %cmp, i32 %sub, i32 %group.size.y.zext
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -136,8 +138,9 @@ define amdgpu_kernel void @use_local_size_z_8_16_2(i64 addrspace(1)* %out) #0 !r
   %group.size.z.zext = zext i16 %group.size.z to i32
   %group.id_x_group.size.z = mul i32 %group.id, %group.size.z.zext
   %sub = sub i32 %grid.size.z, %group.id_x_group.size.z
-  %umin = call i32 @llvm.umin.i32(i32 %sub, i32 %group.size.z.zext)
-  %zext = zext i32 %umin to i64
+  %cmp = icmp ult i32 %sub, %group.size.z.zext
+  %select = select i1 %cmp, i32 %sub, i32 %group.size.z.zext
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -160,8 +163,9 @@ define amdgpu_kernel void @local_size_x_8_16_2_wrong_group_id(i64 addrspace(1)* 
   %group.size.x.zext = zext i16 %group.size.x to i32
   %group.id_x_group.size.x = mul i32 %group.id, %group.size.x.zext
   %sub = sub i32 %grid.size.x, %group.id_x_group.size.x
-  %umin = call i32 @llvm.umin.i32(i32 %sub, i32 %group.size.x.zext)
-  %zext = zext i32 %umin to i64
+  %cmp = icmp ult i32 %sub, %group.size.x.zext
+  %select = select i1 %cmp, i32 %sub, i32 %group.size.x.zext
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -182,8 +186,9 @@ define amdgpu_kernel void @local_size_x_8_16_2_wrong_group_id(i64 addrspace(1)* 
   %group.size.x.zext = zext i16 %group.size.x to i32
   %group.id_x_group.size.x = mul i32 %group.id, %group.size.x.zext
   %sub = sub i32 %grid.size.x, %group.id_x_group.size.x
-  %umin = call i32 @llvm.umin.i32(i32 %sub, i32 %group.size.x.zext)
-  %zext = zext i32 %umin to i64
+  %cmp = icmp ult i32 %sub, %group.size.x.zext
+  %select = select i1 %cmp, i32 %sub, i32 %group.size.x.zext
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -193,7 +198,7 @@ define amdgpu_kernel void @local_size_x_8_16_2_wrong_group_id(i64 addrspace(1)* 
 ; CHECK: %group.id = tail call i32 @llvm.amdgcn.workgroup.id.x()
 ; CHECK: %group.id_x_group.size.x.neg = mul i32 %group.id, -8
 ; CHECK: %sub = add i32 %group.id_x_group.size.x.neg, %grid.size.x
-; CHECK: %smin = call i32 @llvm.smin.i32(i32 %sub, i32 8)
+; CHECK: %1 = call i32 @llvm.smin.i32(i32 %sub, i32 8)
 define amdgpu_kernel void @local_size_x_8_16_2_wrong_cmp_type(i64 addrspace(1)* %out) #0 !reqd_work_group_size !0 {
   %dispatch.ptr = tail call i8 addrspace(4)* @llvm.amdgcn.dispatch.ptr()
   %gep.group.size.x = getelementptr inbounds i8, i8 addrspace(4)* %dispatch.ptr, i64 4
@@ -206,8 +211,9 @@ define amdgpu_kernel void @local_size_x_8_16_2_wrong_cmp_type(i64 addrspace(1)* 
   %group.size.x.zext = zext i16 %group.size.x to i32
   %group.id_x_group.size.x = mul i32 %group.id, %group.size.x.zext
   %sub = sub i32 %grid.size.x, %group.id_x_group.size.x
-  %smin = call i32 @llvm.smin.i32(i32 %sub, i32 %group.size.x.zext)
-  %zext = zext i32 %smin to i64
+  %cmp = icmp slt i32 %sub, %group.size.x.zext
+  %select = select i1 %cmp, i32 %sub, i32 %group.size.x.zext
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -215,8 +221,8 @@ define amdgpu_kernel void @local_size_x_8_16_2_wrong_cmp_type(i64 addrspace(1)* 
 ; CHECK-LABEL: @local_size_x_8_16_2_wrong_select(
 ; CHECK: %group.id_x_group.size.x.neg = mul i32 %group.id, -8
 ; CHECK: %sub = add i32 %group.id_x_group.size.x.neg, %grid.size.x
-; CHECK: %umax = call i32 @llvm.umax.i32(i32 %sub, i32 8)
-; CHECK: %zext = zext i32 %umax to i64
+; CHECK: %1 = call i32 @llvm.umax.i32(i32 %sub, i32 8)
+; CHECK: %zext = zext i32 %1 to i64
 define amdgpu_kernel void @local_size_x_8_16_2_wrong_select(i64 addrspace(1)* %out) #0 !reqd_work_group_size !0 {
   %dispatch.ptr = tail call i8 addrspace(4)* @llvm.amdgcn.dispatch.ptr()
   %gep.group.size.x = getelementptr inbounds i8, i8 addrspace(4)* %dispatch.ptr, i64 4
@@ -229,8 +235,9 @@ define amdgpu_kernel void @local_size_x_8_16_2_wrong_select(i64 addrspace(1)* %o
   %group.size.x.zext = zext i16 %group.size.x to i32
   %group.id_x_group.size.x = mul i32 %group.id, %group.size.x.zext
   %sub = sub i32 %grid.size.x, %group.id_x_group.size.x
-  %umax = call i32 @llvm.umax.i32(i32 %sub, i32 %group.size.x.zext)
-  %zext = zext i32 %umax to i64
+  %cmp = icmp ult i32 %sub, %group.size.x.zext
+  %select = select i1 %cmp, i32 %group.size.x.zext, i32 %sub
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -254,8 +261,9 @@ define amdgpu_kernel void @use_local_size_x_8_16_2_wrong_grid_load_size(i64 addr
   %group.size.x.zext = zext i16 %group.size.x to i32
   %group.id_x_group.size.x = mul i32 %group.id, %group.size.x.zext
   %sub = sub i32 %grid.size.x.zext, %group.id_x_group.size.x
-  %umin = call i32 @llvm.umin.i32(i32 %sub, i32 %group.size.x.zext)
-  %zext = zext i32 %umin to i64
+  %cmp = icmp ult i32 %sub, %group.size.x.zext
+  %select = select i1 %cmp, i32 %sub, i32 %group.size.x.zext
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -319,8 +327,9 @@ bb25:                                             ; preds = %bb17, %bb9, %bb1, %
   %tmp29 = zext i16 %group.size to i32
   %tmp30 = mul i32 %tmp28, %tmp29
   %tmp31 = sub i32 %tmp26, %tmp30
-  %umin = call i32 @llvm.umin.i32(i32 %tmp31, i32 %tmp29)
-  %tmp34 = zext i32 %umin to i64
+  %tmp32 = icmp ult i32 %tmp31, %tmp29
+  %tmp33 = select i1 %tmp32, i32 %tmp31, i32 %tmp29
+  %tmp34 = zext i32 %tmp33 to i64
   ret i64 %tmp34
 }
 
@@ -340,8 +349,9 @@ define amdgpu_kernel void @all_local_size(i64 addrspace(1)* nocapture readnone %
   %tmp29.i = zext i16 %tmp8.i to i32
   %tmp30.i = mul i32 %tmp2.i, %tmp29.i
   %tmp31.i = sub i32 %tmp5.i, %tmp30.i
-  %umin0 = call i32 @llvm.umin.i32(i32 %tmp31.i, i32 %tmp29.i)
-  %tmp34.i = zext i32 %umin0 to i64
+  %tmp32.i = icmp ult i32 %tmp31.i, %tmp29.i
+  %tmp33.i = select i1 %tmp32.i, i32 %tmp31.i, i32 %tmp29.i
+  %tmp34.i = zext i32 %tmp33.i to i64
   %tmp10.i = tail call i32 @llvm.amdgcn.workgroup.id.y() #0
   %tmp11.i = getelementptr inbounds i8, i8 addrspace(4)* %tmp.i, i64 16
   %tmp12.i = bitcast i8 addrspace(4)* %tmp11.i to i32 addrspace(4)*
@@ -352,8 +362,9 @@ define amdgpu_kernel void @all_local_size(i64 addrspace(1)* nocapture readnone %
   %tmp29.i9 = zext i16 %tmp16.i to i32
   %tmp30.i10 = mul i32 %tmp10.i, %tmp29.i9
   %tmp31.i11 = sub i32 %tmp13.i, %tmp30.i10
-  %umin1 = call i32 @llvm.umin.i32(i32 %tmp31.i11, i32 %tmp29.i9)
-  %tmp34.i14 = zext i32 %umin1 to i64
+  %tmp32.i12 = icmp ult i32 %tmp31.i11, %tmp29.i9
+  %tmp33.i13 = select i1 %tmp32.i12, i32 %tmp31.i11, i32 %tmp29.i9
+  %tmp34.i14 = zext i32 %tmp33.i13 to i64
   %tmp18.i = tail call i32 @llvm.amdgcn.workgroup.id.z() #0
   %tmp19.i = getelementptr inbounds i8, i8 addrspace(4)* %tmp.i, i64 20
   %tmp20.i = bitcast i8 addrspace(4)* %tmp19.i to i32 addrspace(4)*
@@ -364,8 +375,9 @@ define amdgpu_kernel void @all_local_size(i64 addrspace(1)* nocapture readnone %
   %tmp29.i2 = zext i16 %tmp24.i to i32
   %tmp30.i3 = mul i32 %tmp18.i, %tmp29.i2
   %tmp31.i4 = sub i32 %tmp21.i, %tmp30.i3
-  %umin2 = call i32 @llvm.umin.i32(i32 %tmp31.i4, i32 %tmp29.i2)
-  %tmp34.i7 = zext i32 %umin2 to i64
+  %tmp32.i5 = icmp ult i32 %tmp31.i4, %tmp29.i2
+  %tmp33.i6 = select i1 %tmp32.i5, i32 %tmp31.i4, i32 %tmp29.i2
+  %tmp34.i7 = zext i32 %tmp33.i6 to i64
   store volatile i64 %tmp34.i, i64 addrspace(1)* %out, align 4
   store volatile i64 %tmp34.i14, i64 addrspace(1)* %out, align 4
   store volatile i64 %tmp34.i7, i64 addrspace(1)* %out, align 4
@@ -450,8 +462,9 @@ define amdgpu_kernel void @use_local_size_x_uniform_work_group_size(i64 addrspac
   %group.size.x.zext = zext i16 %group.size.x to i32
   %group.id_x_group.size.x = mul i32 %group.id, %group.size.x.zext
   %sub = sub i32 %grid.size.x, %group.id_x_group.size.x
-  %umin = call i32 @llvm.umin.i32(i32 %sub, i32 %group.size.x.zext)
-  %zext = zext i32 %umin to i64
+  %cmp = icmp ult i32 %sub, %group.size.x.zext
+  %select = select i1 %cmp, i32 %sub, i32 %group.size.x.zext
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -470,8 +483,9 @@ define amdgpu_kernel void @use_local_size_x_uniform_work_group_size_false(i64 ad
   %group.size.x.zext = zext i16 %group.size.x to i32
   %group.id_x_group.size.x = mul i32 %group.id, %group.size.x.zext
   %sub = sub i32 %grid.size.x, %group.id_x_group.size.x
-  %umin = call i32 @llvm.umin.i32(i32 %sub, i32 %group.size.x.zext)
-  %zext = zext i32 %umin to i64
+  %cmp = icmp ult i32 %sub, %group.size.x.zext
+  %select = select i1 %cmp, i32 %sub, i32 %group.size.x.zext
+  %zext = zext i32 %select to i64
   store i64 %zext, i64 addrspace(1)* %out
   ret void
 }
@@ -487,9 +501,6 @@ declare i8 addrspace(4)* @llvm.amdgcn.dispatch.ptr() #1
 declare i32 @llvm.amdgcn.workgroup.id.x() #1
 declare i32 @llvm.amdgcn.workgroup.id.y() #1
 declare i32 @llvm.amdgcn.workgroup.id.z() #1
-declare i32 @llvm.umin.i32(i32, i32) #1
-declare i32 @llvm.smin.i32(i32, i32) #1
-declare i32 @llvm.umax.i32(i32, i32) #1
 
 attributes #0 = { nounwind "uniform-work-group-size"="true" }
 attributes #1 = { nounwind readnone speculatable }

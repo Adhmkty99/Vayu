@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class TestSourceRegexBreakpoints(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_location(self):
         self.build()
         self.source_regex_locations()

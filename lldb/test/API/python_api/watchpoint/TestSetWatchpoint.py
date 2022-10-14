@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 
 class SetWatchpointAPITestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def setUp(self):
@@ -46,8 +48,8 @@ class SetWatchpointAPITestCase(TestBase):
 
         # We should be stopped due to the breakpoint.  Get frame #0.
         process = target.GetProcess()
-        self.assertState(process.GetState(), lldb.eStateStopped,
-                         PROCESS_STOPPED)
+        self.assertEqual(process.GetState(), lldb.eStateStopped,
+                        PROCESS_STOPPED)
         thread = lldbutil.get_stopped_thread(
             process, lldb.eStopReasonBreakpoint)
         frame0 = thread.GetFrameAtIndex(0)

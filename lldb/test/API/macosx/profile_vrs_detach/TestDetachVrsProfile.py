@@ -17,6 +17,8 @@ import signal
 
 class TestDetachVrsProfile(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     NO_DEBUG_INFO_TESTCASE = True
 
     @skipUnlessDarwin
@@ -68,7 +70,7 @@ class TestDetachVrsProfile(TestBase):
         success = listener.WaitForEventForBroadcaster(0, process.GetBroadcaster(), event)
         self.assertTrue(success, "Got an event which should be running.")
         event_state = process.GetStateFromEvent(event)
-        self.assertState(event_state, lldb.eStateRunning, "Got the running event")
+        self.assertEqual(event_state, lldb.eStateRunning, "Got the running event")
 
         # Now detach:
         error = process.Detach()

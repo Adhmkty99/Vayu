@@ -26,7 +26,6 @@ struct __tgt_bin_desc;
 
 struct RTLInfoTy {
   typedef int32_t(is_valid_binary_ty)(void *);
-  typedef int32_t(is_valid_binary_info_ty)(void *, void *);
   typedef int32_t(is_data_exchangable_ty)(int32_t, int32_t);
   typedef int32_t(number_of_devices_ty)();
   typedef int32_t(init_device_ty)(int32_t);
@@ -83,7 +82,6 @@ struct RTLInfoTy {
 
   // Functions implemented in the RTL.
   is_valid_binary_ty *is_valid_binary = nullptr;
-  is_valid_binary_info_ty *is_valid_binary_info = nullptr;
   is_data_exchangable_ty *is_data_exchangable = nullptr;
   number_of_devices_ty *number_of_devices = nullptr;
   init_device_ty *init_device = nullptr;
@@ -118,7 +116,7 @@ struct RTLInfoTy {
   release_async_info_ty *release_async_info = nullptr;
 
   // Are there images associated with this RTL.
-  bool IsUsed = false;
+  bool isUsed = false;
 
   // Mutex for thread-safety when calling RTL interface functions.
   // It is easier to enforce thread-safety at the libomptarget level,
@@ -140,7 +138,7 @@ struct RTLsTy {
   explicit RTLsTy() = default;
 
   // Register the clauses of the requires directive.
-  void registerRequires(int64_t Flags);
+  void RegisterRequires(int64_t flags);
 
   // Initialize RTL if it has not been initialized
   void initRTLonce(RTLInfoTy &RTL);
@@ -149,15 +147,15 @@ struct RTLsTy {
   void initAllRTLs();
 
   // Register a shared library with all (compatible) RTLs.
-  void registerLib(__tgt_bin_desc *Desc);
+  void RegisterLib(__tgt_bin_desc *desc);
 
   // Unregister a shared library from all RTLs.
-  void unregisterLib(__tgt_bin_desc *Desc);
+  void UnregisterLib(__tgt_bin_desc *desc);
 
   // Mutex-like object to guarantee thread-safety and unique initialization
   // (i.e. the library attempts to load the RTLs (plugins) only once).
-  std::once_flag InitFlag;
-  void loadRTLs(); // not thread-safe
+  std::once_flag initFlag;
+  void LoadRTLs(); // not thread-safe
 };
 
 /// Map between the host entry begin and the translation table. Each
@@ -181,8 +179,8 @@ struct TableMap {
   TranslationTable *Table = nullptr; // table associated with the host ptr.
   uint32_t Index = 0; // index in which the host ptr translated entry is found.
   TableMap() = default;
-  TableMap(TranslationTable *Table, uint32_t Index)
-      : Table(Table), Index(Index) {}
+  TableMap(TranslationTable *table, uint32_t index)
+      : Table(table), Index(index) {}
 };
 typedef std::map<void *, TableMap> HostPtrToTableMapTy;
 

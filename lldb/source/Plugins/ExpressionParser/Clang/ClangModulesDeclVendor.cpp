@@ -663,11 +663,9 @@ ClangModulesDeclVendor::Create(Target &target) {
            llvm::make_range(compiler_invocation_arguments.begin(),
                             compiler_invocation_arguments.end()));
 
-  clang::CreateInvocationOptions CIOpts;
-  CIOpts.Diags = diagnostics_engine;
   std::shared_ptr<clang::CompilerInvocation> invocation =
-      clang::createInvocation(compiler_invocation_argument_cstrs,
-                              std::move(CIOpts));
+      clang::createInvocationFromCommandLine(compiler_invocation_argument_cstrs,
+                                             diagnostics_engine);
 
   if (!invocation)
     return nullptr;

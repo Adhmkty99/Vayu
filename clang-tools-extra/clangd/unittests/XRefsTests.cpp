@@ -1786,11 +1786,11 @@ TEST(FindImplementations, CaptureDefintion) {
 
 TEST(FindType, All) {
   Annotations HeaderA(R"cpp(
-    struct $Target[[Target]] { operator int() const; };
+    struct [[Target]] { operator int() const; };
     struct Aggregate { Target a, b; };
     Target t;
 
-    template <typename T> class $smart_ptr[[smart_ptr]] {
+    template <typename T> class smart_ptr {
       T& operator*();
       T* operator->();
       T* get();
@@ -1829,11 +1829,11 @@ TEST(FindType, All) {
     ASSERT_GT(A.points().size(), 0u) << Case;
     for (auto Pos : A.points())
       EXPECT_THAT(findType(AST, Pos),
-                  ElementsAre(
-                    sym("Target", HeaderA.range("Target"), HeaderA.range("Target"))))
+                  ElementsAre(sym("Target", HeaderA.range(), HeaderA.range())))
           << Case;
   }
 
+  // FIXME: We'd like these cases to work. Fix them and move above.
   for (const llvm::StringRef Case : {
            "smart_ptr<Target> ^tsmart;",
        }) {
@@ -1842,10 +1842,7 @@ TEST(FindType, All) {
     ParsedAST AST = TU.build();
 
     EXPECT_THAT(findType(AST, A.point()),
-                UnorderedElementsAre(
-                  sym("Target", HeaderA.range("Target"), HeaderA.range("Target")),
-                  sym("smart_ptr", HeaderA.range("smart_ptr"), HeaderA.range("smart_ptr"))
-                ))
+                Not(Contains(sym("Target", HeaderA.range(), HeaderA.range()))))
         << Case;
   }
 }
@@ -1853,8 +1850,6 @@ TEST(FindType, All) {
 void checkFindRefs(llvm::StringRef Test, bool UseIndex = false) {
   Annotations T(Test);
   auto TU = TestTU::withCode(T.code());
-  TU.ExtraArgs.push_back("-std=c++20");
-
   auto AST = TU.build();
   std::vector<Matcher<ReferencesResult::Reference>> ExpectedLocations;
   for (const auto &R : T.ranges())
@@ -2067,51 +2062,6 @@ TEST(FindReferences, WithinAST) {
   };
   for (const char *Test : Tests)
     checkFindRefs(Test);
-}
-
-TEST(FindReferences, ConceptsWithinAST) {
-  constexpr llvm::StringLiteral Code = R"cpp(
-    template <class T>
-    concept $def[[IsSmal^l]] = sizeof(T) <= 8;
-
-    template <class T>
-    concept IsSmallPtr = requires(T x) {
-      { *x } -> [[IsSmal^l]];
-    };
-
-    [[IsSmall]] auto i = 'c';
-    template<[[IsSmal^l]] U> void foo();
-    template<class U> void bar() requires [[IsSmal^l]]<U>;
-    template<class U> requires [[IsSmal^l]]<U> void baz();
-    static_assert([[IsSma^ll]]<char>);
-  )cpp";
-  checkFindRefs(Code);
-}
-
-TEST(FindReferences, ConceptReq) {
-  constexpr llvm::StringLiteral Code = R"cpp(
-    template <class T>
-    concept $def[[IsSmal^l]] = sizeof(T) <= 8;
-
-    template <class T>
-    concept IsSmallPtr = requires(T x) {
-      { *x } -> [[IsSmal^l]];
-    };
-  )cpp";
-  checkFindRefs(Code);
-}
-
-TEST(FindReferences, RequiresExprParameters) {
-  constexpr llvm::StringLiteral Code = R"cpp(
-    template <class T>
-    concept IsSmall = sizeof(T) <= 8;
-
-    template <class T>
-    concept IsSmallPtr = requires(T $def[[^x]]) {
-      { *[[^x]] } -> IsSmall;
-    };
-  )cpp";
-  checkFindRefs(Code);
 }
 
 TEST(FindReferences, IncludeOverrides) {

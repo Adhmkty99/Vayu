@@ -53,7 +53,6 @@
 #define	at	sat
 #define	match	smat
 #define	nope	snope
-#define step_back	sstep_back
 #endif
 #ifdef LNAMES
 #define	matcher	lmatcher
@@ -66,7 +65,6 @@
 #define	at	lat
 #define	match	lmat
 #define	nope	lnope
-#define step_back	lstep_back
 #endif
 
 /* another structure passed up and down to avoid zillions of parameters */
@@ -290,38 +288,6 @@ matcher(struct re_guts *g, const char *string, size_t nmatch,
 	return(0);
 }
 
-/* Step back from "stop" to a position where the strip startst..stopst might
- * match. This can always conservatively return "stop - 1", but may return an
- * earlier position if matches at later positions are impossible. */
-static const char *
-step_back(struct re_guts *g, const char *start, const char *stop, sopno startst,
-          sopno stopst)
-{
-	/* Always step back at least one character. */
-	assert(stop > start);
-	const char *res = stop - 1;
-
-	/* Check whether the strip startst..stropst starts with a fixed character,
-	 * ignoring any closing parentheses. If not, return a conservative result. */
-	for (;;) {
-		if (startst >= stopst)
-			return res;
-		if (OP(g->strip[startst]) != ORPAREN)
-			break;
-		startst++;
-	}
-	if (OP(g->strip[startst]) != OCHAR)
-		return res;
-
-	/* Find the character that starts the following match. */
-	char ch = OPND(g->strip[startst]);
-	for (; res != start; --res) {
-		if (*res == ch)
-			break;
-	}
-	return res;
-}
-
 /*
  - dissect - figure out what matched what, no back references
  */
@@ -392,7 +358,7 @@ dissect(struct match *m, const char *start, const char *stop, sopno startst,
 				if (tail == stop)
 					break;		/* yes! */
 				/* no -- try a shorter match for this one */
-				stp = step_back(m->g, sp, rest, es, stopst);
+				stp = rest - 1;
 				assert(stp >= sp);	/* it did work */
 			}
 			ssub = ss + 1;
@@ -417,7 +383,7 @@ dissect(struct match *m, const char *start, const char *stop, sopno startst,
 				if (tail == stop)
 					break;		/* yes! */
 				/* no -- try a shorter match for this one */
-				stp = step_back(m->g, sp, rest, es, stopst);
+				stp = rest - 1;
 				assert(stp >= sp);	/* it did work */
 			}
 			ssub = ss + 1;
@@ -1066,4 +1032,3 @@ pchar(int ch)
 #undef	at
 #undef	match
 #undef	nope
-#undef	step_back

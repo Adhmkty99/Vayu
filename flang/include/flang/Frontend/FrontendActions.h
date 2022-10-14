@@ -5,23 +5,15 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-//
-// Coding style: https://mlir.llvm.org/getting_started/DeveloperGuide/
-//
-//===----------------------------------------------------------------------===//
 
-#ifndef FORTRAN_FRONTEND_FRONTENDACTIONS_H
-#define FORTRAN_FRONTEND_FRONTENDACTIONS_H
+#ifndef LLVM_FLANG_FRONTEND_FRONTENDACTIONS_H
+#define LLVM_FLANG_FRONTEND_FRONTENDACTIONS_H
 
-#include "flang/Frontend/CodeGenOptions.h"
 #include "flang/Frontend/FrontendAction.h"
-#include "flang/Parser/parsing.h"
 #include "flang/Semantics/semantics.h"
 
 #include "mlir/IR/BuiltinOps.h"
-#include "llvm/ADT/StringRef.h"
 #include "llvm/IR/Module.h"
-#include "llvm/Target/TargetMachine.h"
 #include <memory>
 
 namespace Fortran::frontend {
@@ -42,51 +34,51 @@ struct MeasurementVisitor {
 //===----------------------------------------------------------------------===//
 
 class InputOutputTestAction : public FrontendAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class InitOnlyAction : public FrontendAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 //===----------------------------------------------------------------------===//
 // Prescan Actions
 //===----------------------------------------------------------------------===//
 class PrescanAction : public FrontendAction {
-  void executeAction() override = 0;
-  bool beginSourceFileAction() override;
+  void ExecuteAction() override = 0;
+  bool BeginSourceFileAction() override;
 };
 
 class PrintPreprocessedAction : public PrescanAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class DebugDumpProvenanceAction : public PrescanAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class DebugDumpParsingLogAction : public PrescanAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class DebugMeasureParseTreeAction : public PrescanAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 //===----------------------------------------------------------------------===//
 // PrescanAndParse Actions
 //===----------------------------------------------------------------------===//
 class PrescanAndParseAction : public FrontendAction {
-  void executeAction() override = 0;
-  bool beginSourceFileAction() override;
+  void ExecuteAction() override = 0;
+  bool BeginSourceFileAction() override;
 };
 
 class DebugUnparseNoSemaAction : public PrescanAndParseAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class DebugDumpParseTreeNoSemaAction : public PrescanAndParseAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 //===----------------------------------------------------------------------===//
@@ -97,59 +89,48 @@ class DebugDumpParseTreeNoSemaAction : public PrescanAndParseAction {
 //===----------------------------------------------------------------------===//
 class PrescanAndSemaAction : public FrontendAction {
 
-  void executeAction() override = 0;
-  bool beginSourceFileAction() override;
+  void ExecuteAction() override = 0;
+  bool BeginSourceFileAction() override;
 };
 
 class DebugUnparseWithSymbolsAction : public PrescanAndSemaAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class DebugUnparseAction : public PrescanAndSemaAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class DebugDumpSymbolsAction : public PrescanAndSemaAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class DebugDumpParseTreeAction : public PrescanAndSemaAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class DebugDumpPFTAction : public PrescanAndSemaAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class DebugPreFIRTreeAction : public PrescanAndSemaAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class GetDefinitionAction : public PrescanAndSemaAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class GetSymbolsSourcesAction : public PrescanAndSemaAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class ParseSyntaxOnlyAction : public PrescanAndSemaAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 class PluginParseTreeAction : public PrescanAndSemaAction {
-  void executeAction() override = 0;
-
-public:
-  Fortran::parser::Parsing &getParsing();
-  /// Creates an output file. This is just a wrapper for calling
-  /// CreateDefaultOutputFile from CompilerInstance. Use it to make sure that
-  /// your plugin respects driver's `-o` flag.
-  /// \param extension  The extension to use for the output file (ignored when
-  ///                   the user decides to print to stdout via `-o -`)
-  /// \return           Null on error, ostream for the output file otherwise
-  std::unique_ptr<llvm::raw_pwrite_stream> createOutputFile(
-      llvm::StringRef extension);
+  void ExecuteAction() override = 0;
 };
 
 //===----------------------------------------------------------------------===//
@@ -165,48 +146,28 @@ public:
 //===----------------------------------------------------------------------===//
 class PrescanAndSemaDebugAction : public FrontendAction {
 
-  void executeAction() override = 0;
-  bool beginSourceFileAction() override;
+  void ExecuteAction() override = 0;
+  bool BeginSourceFileAction() override;
 };
 
 class DebugDumpAllAction : public PrescanAndSemaDebugAction {
-  void executeAction() override;
+  void ExecuteAction() override;
 };
 
 //===----------------------------------------------------------------------===//
 // CodeGen Actions
 //===----------------------------------------------------------------------===//
-/// Represents the type of "backend" action to perform by the corresponding
-/// CodeGenAction. Note that from Flang's perspective, both LLVM and MLIR are
-/// "backends" that are used for generating LLVM IR/BC, assembly files or
-/// machine code. This enum captures "what" exactly one of these backends is to
-/// do. The names are similar to what is used in Clang - this allows us to
-/// maintain some level of consistency/similarity between the drivers.
-enum class BackendActionTy {
-  Backend_EmitAssembly, ///< Emit native assembly files
-  Backend_EmitObj, ///< Emit native object files
-  Backend_EmitBC, ///< Emit LLVM bitcode files
-  Backend_EmitLL, ///< Emit human-readable LLVM assembly
-  Backend_EmitMLIR ///< Emit MLIR files
-};
-
 /// Abstract base class for actions that generate code (MLIR, LLVM IR, assembly
 /// and machine code). Every action that inherits from this class will at
 /// least run the prescanning, parsing, semantic checks and lower the parse
 /// tree to an MLIR module.
 class CodeGenAction : public FrontendAction {
 
-  void executeAction() override;
+  void ExecuteAction() override = 0;
   /// Runs prescan, parsing, sema and lowers to MLIR.
-  bool beginSourceFileAction() override;
-  /// Sets up LLVM's TargetMachine, configures llvmModule accordingly.
-  void setUpTargetMachine();
-  /// Runs the optimization (aka middle-end) pipeline on the LLVM module
-  /// associated with this action.
-  void runOptimizationPipeline(llvm::raw_pwrite_stream &os);
+  bool BeginSourceFileAction() override;
 
 protected:
-  CodeGenAction(BackendActionTy act) : action{act} {};
   /// @name MLIR
   /// {
   std::unique_ptr<mlir::ModuleOp> mlirModule;
@@ -219,41 +180,33 @@ protected:
 
   /// Generates an LLVM IR module from CodeGenAction::mlirModule and saves it
   /// in CodeGenAction::llvmModule.
-  void generateLLVMIR();
-
-  BackendActionTy action;
-
-  std::unique_ptr<llvm::TargetMachine> tm;
+  void GenerateLLVMIR();
   /// }
-public:
-  ~CodeGenAction() override;
 };
 
 class EmitMLIRAction : public CodeGenAction {
-public:
-  EmitMLIRAction() : CodeGenAction(BackendActionTy::Backend_EmitMLIR) {}
+  void ExecuteAction() override;
 };
 
 class EmitLLVMAction : public CodeGenAction {
-public:
-  EmitLLVMAction() : CodeGenAction(BackendActionTy::Backend_EmitLL) {}
+  void ExecuteAction() override;
 };
 
-class EmitLLVMBitcodeAction : public CodeGenAction {
+class BackendAction : public CodeGenAction {
 public:
-  EmitLLVMBitcodeAction() : CodeGenAction(BackendActionTy::Backend_EmitBC) {}
-};
+  enum class BackendActionTy {
+    Backend_EmitAssembly, ///< Emit native assembly files
+    Backend_EmitObj ///< Emit native object files
+  };
 
-class EmitObjAction : public CodeGenAction {
-public:
-  EmitObjAction() : CodeGenAction(BackendActionTy::Backend_EmitObj) {}
-};
+  BackendAction(BackendActionTy act) : action{act} {};
 
-class EmitAssemblyAction : public CodeGenAction {
-public:
-  EmitAssemblyAction() : CodeGenAction(BackendActionTy::Backend_EmitAssembly) {}
+private:
+  void ExecuteAction() override;
+
+  BackendActionTy action;
 };
 
 } // namespace Fortran::frontend
 
-#endif // FORTRAN_FRONTEND_FRONTENDACTIONS_H
+#endif // LLVM_FLANG_FRONTEND_FRONTENDACTIONS_H

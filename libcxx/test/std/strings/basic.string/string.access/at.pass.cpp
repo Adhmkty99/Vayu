@@ -8,8 +8,8 @@
 
 // <string>
 
-// const_reference at(size_type pos) const; // constexpr since C++20
-//       reference at(size_type pos); // constexpr since C++20
+// const_reference at(size_type pos) const;
+//       reference at(size_type pos);
 
 #include <string>
 #include <stdexcept>
@@ -30,7 +30,7 @@ test(S s, typename S::size_type pos)
         assert(cs.at(pos) == cs[pos]);
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else
     {
         try
         {
@@ -54,7 +54,7 @@ test(S s, typename S::size_type pos)
 #endif
 }
 
-TEST_CONSTEXPR_CXX20 bool test() {
+bool test() {
   {
     typedef std::string S;
     test(S(), 0);
@@ -81,7 +81,7 @@ int main(int, char**)
 {
   test();
 #if TEST_STD_VER > 17
-  static_assert(test());
+  // static_assert(test());
 #endif
 
   return 0;

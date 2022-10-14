@@ -25,7 +25,7 @@ void fir::runtime::genExit(fir::FirOpBuilder &builder, mlir::Location loc,
 void fir::runtime::genReportFatalUserError(fir::FirOpBuilder &builder,
                                            mlir::Location loc,
                                            llvm::StringRef message) {
-  mlir::func::FuncOp crashFunc =
+  mlir::FuncOp crashFunc =
       fir::runtime::getRuntimeFunc<mkRTKey(ReportFatalUserError)>(loc, builder);
   mlir::FunctionType funcTy = crashFunc.getFunctionType();
   mlir::Value msgVal = fir::getBase(

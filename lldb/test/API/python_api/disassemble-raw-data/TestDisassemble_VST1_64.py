@@ -15,6 +15,8 @@ from lldbsuite.test import lldbutil
 
 class Disassemble_VST1_64(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @no_debug_info_test
     @skipIfLLVMTargetMissing("ARM")
     def test_disassemble_invalid_vst_1_64_raw_data(self):
@@ -47,17 +49,19 @@ class Disassemble_VST1_64(TestBase):
             for i in insts:
                 print("Disassembled %s" % str(i))
 
-        sio = StringIO()
-        insts.Print(sio)
-        self.assertEqual(split(assembly), split(sio.getvalue()))
+        if sys.version_info.major >= 3:
+            sio = StringIO()
+            insts.Print(sio)
+            self.assertEqual(split(assembly), split(sio.getvalue()))
 
         self.assertEqual(insts.GetSize(), len(split(assembly)))
 
-        for i,asm in enumerate(split(assembly)):
-            inst = insts.GetInstructionAtIndex(i)
-            sio = StringIO()
-            inst.Print(sio)
-            self.assertEqual(asm, sio.getvalue().strip())
+        if sys.version_info.major >= 3:
+            for i,asm in enumerate(split(assembly)):
+                inst = insts.GetInstructionAtIndex(i)
+                sio = StringIO()
+                inst.Print(sio)
+                self.assertEqual(asm, sio.getvalue().strip())
 
         raw_bytes = bytearray([0x04, 0xf9, 0xed, 0x82])
 

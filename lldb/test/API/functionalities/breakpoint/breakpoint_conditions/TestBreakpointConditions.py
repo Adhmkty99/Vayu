@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 class BreakpointConditionsTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_breakpoint_condition_and_run_command(self):
         """Exercise breakpoint condition with 'breakpoint modify -c <expr> id'."""
         self.build()

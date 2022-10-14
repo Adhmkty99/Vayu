@@ -212,7 +212,7 @@ bool ELFAsmParser::ParseSectionSwitch(StringRef Section, unsigned Type,
   }
   Lex();
 
-  getStreamer().switchSection(getContext().getELFSection(Section, Type, Flags),
+  getStreamer().SwitchSection(getContext().getELFSection(Section, Type, Flags),
                               Subsection);
 
   return false;
@@ -379,10 +379,10 @@ unsigned ELFAsmParser::parseSunStyleSectionFlags() {
 
 
 bool ELFAsmParser::ParseDirectivePushSection(StringRef s, SMLoc loc) {
-  getStreamer().pushSection();
+  getStreamer().PushSection();
 
   if (ParseSectionArguments(/*IsPush=*/true, loc)) {
-    getStreamer().popSection();
+    getStreamer().PopSection();
     return true;
   }
 
@@ -390,7 +390,7 @@ bool ELFAsmParser::ParseDirectivePushSection(StringRef s, SMLoc loc) {
 }
 
 bool ELFAsmParser::ParseDirectivePopSection(StringRef, SMLoc) {
-  if (!getStreamer().popSection())
+  if (!getStreamer().PopSection())
     return TokError(".popsection without corresponding .pushsection");
   return false;
 }
@@ -660,8 +660,6 @@ EndStmt:
       Type = ELF::SHT_LLVM_SYMPART;
     else if (TypeName == "llvm_bb_addr_map")
       Type = ELF::SHT_LLVM_BB_ADDR_MAP;
-    else if (TypeName == "llvm_offloading")
-      Type = ELF::SHT_LLVM_OFFLOADING;
     else if (TypeName.getAsInteger(0, Type))
       return TokError("unknown section type");
   }
@@ -680,7 +678,7 @@ EndStmt:
   MCSectionELF *Section =
       getContext().getELFSection(SectionName, Type, Flags, Size, GroupName,
                                  IsComdat, UniqueID, LinkedToSym);
-  getStreamer().switchSection(Section, Subsection);
+  getStreamer().SwitchSection(Section, Subsection);
   // Check that flags are used consistently. However, the GNU assembler permits
   // to leave out in subsequent uses of the same sections; for compatibility,
   // do likewise.
@@ -720,7 +718,7 @@ bool ELFAsmParser::ParseDirectivePrevious(StringRef DirName, SMLoc) {
   MCSectionSubPair PreviousSection = getStreamer().getPreviousSection();
   if (PreviousSection.first == nullptr)
       return TokError(".previous without corresponding .section");
-  getStreamer().switchSection(PreviousSection.first, PreviousSection.second);
+  getStreamer().SwitchSection(PreviousSection.first, PreviousSection.second);
 
   return false;
 }
@@ -862,15 +860,15 @@ bool ELFAsmParser::ParseDirectiveVersion(StringRef, SMLoc) {
 
   MCSection *Note = getContext().getELFSection(".note", ELF::SHT_NOTE, 0);
 
-  getStreamer().pushSection();
-  getStreamer().switchSection(Note);
+  getStreamer().PushSection();
+  getStreamer().SwitchSection(Note);
   getStreamer().emitInt32(Data.size() + 1); // namesz
   getStreamer().emitInt32(0);               // descsz = 0 (no description).
   getStreamer().emitInt32(1);               // type = NT_VERSION
   getStreamer().emitBytes(Data);            // name
   getStreamer().emitInt8(0);                // NUL
   getStreamer().emitValueToAlignment(4);
-  getStreamer().popSection();
+  getStreamer().PopSection();
   return false;
 }
 
@@ -912,7 +910,7 @@ bool ELFAsmParser::ParseDirectiveSubsection(StringRef, SMLoc) {
 
   Lex();
 
-  getStreamer().subSection(Subsection);
+  getStreamer().SubSection(Subsection);
   return false;
 }
 

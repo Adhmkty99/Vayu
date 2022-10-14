@@ -103,7 +103,8 @@ private:
 
   /// Checks whether the given LLVM::CallOp is a vulkan launch call op.
   bool isVulkanLaunchCallOp(LLVM::CallOp callOp) {
-    return (callOp.getCallee() && *callOp.getCallee() == kVulkanLaunch &&
+    return (callOp.getCallee() &&
+            callOp.getCallee().getValue() == kVulkanLaunch &&
             callOp.getNumOperands() >= kVulkanLaunchNumConfigOperands);
   }
 
@@ -111,7 +112,7 @@ private:
   /// op.
   bool isCInterfaceVulkanLaunchCallOp(LLVM::CallOp callOp) {
     return (callOp.getCallee() &&
-            *callOp.getCallee() == kCInterfaceVulkanLaunch &&
+            callOp.getCallee().getValue() == kCInterfaceVulkanLaunch &&
             callOp.getNumOperands() >= kVulkanLaunchNumConfigOperands);
   }
 

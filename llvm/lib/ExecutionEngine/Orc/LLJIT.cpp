@@ -143,7 +143,7 @@ public:
         JITEvaluatedSymbol(pointerToJITTargetAddress(this),
                            JITSymbolFlags::Exported);
     StdInterposes[J.mangleAndIntern("__lljit.cxa_atexit_helper")] =
-        JITEvaluatedSymbol(pointerToJITTargetAddress(registerCxaAtExitHelper),
+        JITEvaluatedSymbol(pointerToJITTargetAddress(registerAtExitHelper),
                            JITSymbolFlags());
 
     cantFail(
@@ -161,9 +161,6 @@ public:
     SymbolMap PerJDInterposes;
     PerJDInterposes[J.mangleAndIntern("__lljit.run_atexits_helper")] =
         JITEvaluatedSymbol(pointerToJITTargetAddress(runAtExitsHelper),
-                           JITSymbolFlags());
-    PerJDInterposes[J.mangleAndIntern("__lljit.atexit_helper")] =
-        JITEvaluatedSymbol(pointerToJITTargetAddress(registerAtExitHelper),
                            JITSymbolFlags());
     cantFail(JD.define(absoluteSymbols(std::move(PerJDInterposes))));
 
@@ -192,14 +189,6 @@ public:
         *M, "__lljit_run_atexits", FunctionType::get(VoidTy, {}, false),
         GlobalValue::HiddenVisibility, "__lljit.run_atexits_helper",
         {PlatformInstanceDecl, DSOHandle});
-
-    auto *IntTy = Type::getIntNTy(*Ctx, sizeof(int) * CHAR_BIT);
-    auto *AtExitCallbackTy = FunctionType::get(VoidTy, {}, false);
-    auto *AtExitCallbackPtrTy = PointerType::getUnqual(AtExitCallbackTy);
-    addHelperAndWrapper(*M, "atexit",
-                        FunctionType::get(IntTy, {AtExitCallbackPtrTy}, false),
-                        GlobalValue::HiddenVisibility, "__lljit.atexit_helper",
-                        {PlatformInstanceDecl, DSOHandle});
 
     return J.addIRModule(JD, ThreadSafeModule(std::move(M), std::move(Ctx)));
   }
@@ -424,23 +413,14 @@ private:
         .takeError();
   }
 
-  static void registerCxaAtExitHelper(void *Self, void (*F)(void *), void *Ctx,
-                                      void *DSOHandle) {
-    LLVM_DEBUG({
-      dbgs() << "Registering cxa atexit function " << (void *)F << " for JD "
-             << (*static_cast<JITDylib **>(DSOHandle))->getName() << "\n";
-    });
-    static_cast<GenericLLVMIRPlatformSupport *>(Self)->AtExitMgr.registerAtExit(
-        F, Ctx, DSOHandle);
-  }
-
-  static void registerAtExitHelper(void *Self, void *DSOHandle, void (*F)()) {
+  static void registerAtExitHelper(void *Self, void (*F)(void *), void *Ctx,
+                                   void *DSOHandle) {
     LLVM_DEBUG({
       dbgs() << "Registering atexit function " << (void *)F << " for JD "
              << (*static_cast<JITDylib **>(DSOHandle))->getName() << "\n";
     });
     static_cast<GenericLLVMIRPlatformSupport *>(Self)->AtExitMgr.registerAtExit(
-        reinterpret_cast<void (*)(void *)>(F), nullptr, DSOHandle);
+        F, Ctx, DSOHandle);
   }
 
   static void runAtExitsHelper(void *Self, void *DSOHandle) {
@@ -470,12 +450,12 @@ private:
     auto *IntTy = Type::getIntNTy(*Ctx, sizeof(int) * CHAR_BIT);
     auto *VoidTy = Type::getVoidTy(*Ctx);
     auto *BytePtrTy = PointerType::getUnqual(Int8Ty);
-    auto *CxaAtExitCallbackTy = FunctionType::get(VoidTy, {BytePtrTy}, false);
-    auto *CxaAtExitCallbackPtrTy = PointerType::getUnqual(CxaAtExitCallbackTy);
+    auto *AtExitCallbackTy = FunctionType::get(VoidTy, {BytePtrTy}, false);
+    auto *AtExitCallbackPtrTy = PointerType::getUnqual(AtExitCallbackTy);
 
     addHelperAndWrapper(
         *M, "__cxa_atexit",
-        FunctionType::get(IntTy, {CxaAtExitCallbackPtrTy, BytePtrTy, BytePtrTy},
+        FunctionType::get(IntTy, {AtExitCallbackPtrTy, BytePtrTy, BytePtrTy},
                           false),
         GlobalValue::DefaultVisibility, "__lljit.cxa_atexit_helper",
         {PlatformInstanceDecl});
@@ -541,7 +521,11 @@ GlobalCtorDtorScraper::operator()(ThreadSafeModule TSM,
 
       for (auto E : COrDtors)
         InitsOrDeInits.push_back(std::make_pair(E.Func, E.Priority));
-      llvm::sort(InitsOrDeInits, llvm::less_second());
+      llvm::sort(InitsOrDeInits,
+                 [](const std::pair<Function *, unsigned> &LHS,
+                    const std::pair<Function *, unsigned> &RHS) {
+                   return LHS.first < RHS.first;
+                 });
 
       auto *InitOrDeInitFuncEntryBlock =
           BasicBlock::Create(Ctx, "entry", InitOrDeInitFunc);
@@ -666,9 +650,8 @@ Error LLJITBuilderState::prepareForConstruction() {
   // JIT linker.
   if (!CreateObjectLinkingLayer) {
     auto &TT = JTMB->getTargetTriple();
-    if (TT.getArch() == Triple::riscv64 ||
-        (TT.isOSBinFormatMachO() &&
-         (TT.getArch() == Triple::aarch64 || TT.getArch() == Triple::x86_64))) {
+    if (TT.isOSBinFormatMachO() &&
+        (TT.getArch() == Triple::aarch64 || TT.getArch() == Triple::x86_64)) {
 
       JTMB->setRelocationModel(Reloc::PIC_);
       JTMB->setCodeModel(CodeModel::Small);
@@ -718,14 +701,10 @@ Error LLJIT::addObjectFile(JITDylib &JD, std::unique_ptr<MemoryBuffer> Obj) {
   return addObjectFile(JD.getDefaultResourceTracker(), std::move(Obj));
 }
 
-Expected<ExecutorAddr> LLJIT::lookupLinkerMangled(JITDylib &JD,
-                                                  SymbolStringPtr Name) {
-  if (auto Sym = ES->lookup(
-        makeJITDylibSearchOrder(&JD, JITDylibLookupFlags::MatchAllSymbols),
-        Name))
-    return ExecutorAddr(Sym->getAddress());
-  else
-    return Sym.takeError();
+Expected<JITEvaluatedSymbol> LLJIT::lookupLinkerMangled(JITDylib &JD,
+                                                        SymbolStringPtr Name) {
+  return ES->lookup(
+      makeJITDylibSearchOrder(&JD, JITDylibLookupFlags::MatchAllSymbols), Name);
 }
 
 Expected<std::unique_ptr<ObjectLayer>>
@@ -918,7 +897,7 @@ LLLazyJIT::LLLazyJIT(LLLazyJITBuilderState &S, Error &Err) : LLJIT(S, Err) {
     LCTMgr = std::move(S.LCTMgr);
   else {
     if (auto LCTMgrOrErr = createLocalLazyCallThroughManager(
-        S.TT, *ES, S.LazyCompileFailureAddr.getValue()))
+            S.TT, *ES, S.LazyCompileFailureAddr))
       LCTMgr = std::move(*LCTMgrOrErr);
     else {
       Err = LCTMgrOrErr.takeError();

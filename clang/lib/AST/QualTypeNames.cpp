@@ -80,12 +80,8 @@ static bool getFullyQualifiedTemplateName(const ASTContext &Ctx,
         Ctx, ArgTDecl, true, WithGlobalNsPrefix);
   }
   if (NNS) {
-    TemplateName UnderlyingTN(ArgTDecl);
-    if (UsingShadowDecl *USD = TName.getAsUsingShadowDecl())
-      UnderlyingTN = TemplateName(USD);
-    TName =
-        Ctx.getQualifiedTemplateName(NNS,
-                                     /*TemplateKeyword=*/false, UnderlyingTN);
+    TName = Ctx.getQualifiedTemplateName(NNS,
+                                         /*TemplateKeyword=*/false, ArgTDecl);
     Changed = true;
   }
   return Changed;

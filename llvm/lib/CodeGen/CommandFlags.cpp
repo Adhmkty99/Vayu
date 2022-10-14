@@ -539,7 +539,7 @@ codegen::InitTargetOptionsFromCodeGenFlags(const Triple &TheTriple) {
   Options.LowerGlobalDtorsViaCxaAtExit = getLowerGlobalDtorsViaCxaAtExit();
   Options.RelaxELFRelocations = getRelaxELFRelocations();
   Options.DataSections =
-      getExplicitDataSections().value_or(TheTriple.hasDefaultDataSections());
+      getExplicitDataSections().getValueOr(TheTriple.hasDefaultDataSections());
   Options.FunctionSections = getFunctionSections();
   Options.IgnoreXCOFFVisibility = getIgnoreXCOFFVisibility();
   Options.XCOFFTracebackTable = getXCOFFTracebackTable();
@@ -714,3 +714,4 @@ void codegen::setFunctionAttributes(StringRef CPU, StringRef Features,
   for (Function &F : M)
     setFunctionAttributes(CPU, Features, F);
 }
+

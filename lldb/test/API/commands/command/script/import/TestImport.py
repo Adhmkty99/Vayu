@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 class ImportTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @add_test_categories(['pyapi'])
     @no_debug_info_test
     def test_import_command(self):
@@ -38,13 +40,12 @@ class ImportTestCase(TestBase):
         self.runCmd("command script import ./foo/bar/foobar.py --allow-reload")
         self.runCmd("command script import ./bar/bar.py --allow-reload")
 
-        self.expect("command script import ''",
-                    error=True, startstr="error: module importing failed: empty path")
         self.expect("command script import ./nosuchfile.py",
-                    error=True, startstr="error: module importing failed: invalid pathname './nosuchfile.py'")
+                    error=True, startstr='error: module importing failed')
         self.expect("command script import ./nosuchfolder/",
-                    error=True, startstr="error: module importing failed: invalid pathname './nosuchfolder/'")
+                    error=True, startstr='error: module importing failed')
         self.expect("command script import ./foo/foo.py", error=False)
+
         self.runCmd("command script import --allow-reload ./thepackage")
         self.expect("TPcommandA", substrs=["hello world A"])
         self.expect("TPcommandB", substrs=["hello world B"])

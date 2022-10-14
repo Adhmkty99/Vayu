@@ -1,7 +1,5 @@
 # RUN: not llvm-mc -triple riscv32 -mattr=+zfhmin < %s 2>&1 | \
 # RUN:   FileCheck %s
-# RUN: not llvm-mc -triple riscv64 -mattr=+zfhmin < %s 2>&1 | \
-# RUN:   FileCheck %s
 
 # Out of range immediates
 ## simm12

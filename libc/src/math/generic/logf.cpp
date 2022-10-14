@@ -49,6 +49,7 @@
 
 namespace __llvm_libc {
 
+INLINE_FMA
 LLVM_LIBC_FUNCTION(float, logf, (float x)) {
   constexpr double LOG_2 = 0x1.62e42fefa39efp-1;
   using FPBits = typename fputil::FPBits<float>;

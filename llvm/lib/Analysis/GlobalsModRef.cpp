@@ -256,6 +256,22 @@ FunctionModRefBehavior GlobalsAAResult::getModRefBehavior(const Function *F) {
   return FunctionModRefBehavior(AAResultBase::getModRefBehavior(F) & Min);
 }
 
+FunctionModRefBehavior
+GlobalsAAResult::getModRefBehavior(const CallBase *Call) {
+  FunctionModRefBehavior Min = FMRB_UnknownModRefBehavior;
+
+  if (!Call->hasOperandBundles())
+    if (const Function *F = Call->getCalledFunction())
+      if (FunctionInfo *FI = getFunctionInfo(F)) {
+        if (!isModOrRefSet(FI->getModRefInfo()))
+          Min = FMRB_DoesNotAccessMemory;
+        else if (!isModSet(FI->getModRefInfo()))
+          Min = FMRB_OnlyReadsMemory;
+      }
+
+  return FunctionModRefBehavior(AAResultBase::getModRefBehavior(Call) & Min);
+}
+
 /// Returns the function info for the function, or null if we don't have
 /// anything useful to say about it.
 GlobalsAAResult::FunctionInfo *
@@ -361,7 +377,7 @@ bool GlobalsAAResult::AnalyzeUsesOfPointer(Value *V,
       if (Call->isDataOperand(&U)) {
         // Detect calls to free.
         if (Call->isArgOperand(&U) &&
-            getFreedOperand(Call, &GetTLI(*Call->getFunction())) == U) {
+            isFreeCall(I, &GetTLI(*Call->getFunction()))) {
           if (Writers)
             Writers->insert(Call->getParent()->getParent());
         } else {
@@ -495,18 +511,6 @@ void GlobalsAAResult::AnalyzeCallGraph(CallGraph &CG, Module &M) {
     Handles.front().I = Handles.begin();
     bool KnowNothing = false;
 
-    // Intrinsics, like any other synchronizing function, can make effects
-    // of other threads visible. Without nosync we know nothing really.
-    // Similarly, if `nocallback` is missing the function, or intrinsic,
-    // can call into the module arbitrarily. If both are set the function
-    // has an effect but will not interact with accesses of internal
-    // globals inside the module. We are conservative here for optnone
-    // functions, might not be necessary.
-    auto MaySyncOrCallIntoModule = [](const Function &F) {
-      return !F.isDeclaration() || !F.hasNoSync() ||
-             !F.hasFnAttribute(Attribute::NoCallback);
-    };
-
     // Collect the mod/ref properties due to called functions.  We only compute
     // one mod-ref set.
     for (unsigned i = 0, e = SCC.size(); i != e && !KnowNothing; ++i) {
@@ -521,7 +525,7 @@ void GlobalsAAResult::AnalyzeCallGraph(CallGraph &CG, Module &M) {
           // Can't do better than that!
         } else if (F->onlyReadsMemory()) {
           FI.addModRefInfo(ModRefInfo::Ref);
-          if (!F->onlyAccessesArgMemory() && MaySyncOrCallIntoModule(*F))
+          if (!F->isIntrinsic() && !F->onlyAccessesArgMemory())
             // This function might call back into the module and read a global -
             // consider every global as possibly being read by this function.
             FI.setMayReadAnyGlobal();
@@ -529,7 +533,7 @@ void GlobalsAAResult::AnalyzeCallGraph(CallGraph &CG, Module &M) {
           FI.addModRefInfo(ModRefInfo::ModRef);
           if (!F->onlyAccessesArgMemory())
             FI.setMayReadAnyGlobal();
-          if (MaySyncOrCallIntoModule(*F)) {
+          if (!F->isIntrinsic()) {
             KnowNothing = true;
             break;
           }
@@ -581,7 +585,12 @@ void GlobalsAAResult::AnalyzeCallGraph(CallGraph &CG, Module &M) {
         // We handle calls specially because the graph-relevant aspects are
         // handled above.
         if (auto *Call = dyn_cast<CallBase>(&I)) {
-          if (Function *Callee = Call->getCalledFunction()) {
+          auto &TLI = GetTLI(*Node->getFunction());
+          if (isAllocationFn(Call, &TLI) || isFreeCall(Call, &TLI)) {
+            // FIXME: It is completely unclear why this is necessary and not
+            // handled by the above graph code.
+            FI.addModRefInfo(ModRefInfo::ModRef);
+          } else if (Function *Callee = Call->getCalledFunction()) {
             // The callgraph doesn't include intrinsic calls.
             if (Callee->isIntrinsic()) {
               if (isa<DbgInfoIntrinsic>(Call))
@@ -906,7 +915,7 @@ ModRefInfo GlobalsAAResult::getModRefInfoForArgument(const CallBase *Call,
 
   // Iterate through all the arguments to the called function. If any argument
   // is based on GV, return the conservative result.
-  for (const auto &A : Call->args()) {
+  for (auto &A : Call->args()) {
     SmallVector<const Value*, 4> Objects;
     getUnderlyingObjects(A, Objects);
 

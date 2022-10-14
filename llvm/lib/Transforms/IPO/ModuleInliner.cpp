@@ -84,9 +84,7 @@ InlineAdvisor &ModuleInlinerPass::getAdvisor(const ModuleAnalysisManager &MAM,
     // inliner pass, and thus the lifetime of the owned advisor. The one we
     // would get from the MAM can be invalidated as a result of the inliner's
     // activity.
-    OwnedAdvisor = std::make_unique<DefaultInlineAdvisor>(
-        M, FAM, Params,
-        InlineContext{LTOPhase, InlinePass::ModuleInliner});
+    OwnedAdvisor = std::make_unique<DefaultInlineAdvisor>(M, FAM, Params);
 
     return *OwnedAdvisor;
   }
@@ -111,9 +109,7 @@ PreservedAnalyses ModuleInlinerPass::run(Module &M,
   LLVM_DEBUG(dbgs() << "---- Module Inliner is Running ---- \n");
 
   auto &IAA = MAM.getResult<InlineAdvisorAnalysis>(M);
-  if (!IAA.tryCreate(
-          Params, Mode, {},
-          InlineContext{LTOPhase, InlinePass::ModuleInliner})) {
+  if (!IAA.tryCreate(Params, Mode, {})) {
     M.getContext().emitError(
         "Could not setup Inlining Advisor for the requested "
         "mode and/or options");
@@ -147,8 +143,7 @@ PreservedAnalyses ModuleInlinerPass::run(Module &M,
   // the SCC inliner, which need some refactoring.
   std::unique_ptr<InlineOrder<std::pair<CallBase *, int>>> Calls;
   if (InlineEnablePriorityOrder)
-    Calls = std::make_unique<PriorityInlineOrder>(
-              std::make_unique<SizePriority>());
+    Calls = std::make_unique<PriorityInlineOrder<InlineSizePriority>>();
   else
     Calls = std::make_unique<DefaultInlineOrder<std::pair<CallBase *, int>>>();
   assert(Calls != nullptr && "Expected an initialized InlineOrder");

@@ -31,10 +31,6 @@ MATCHER_P2(lineIndent, Line, Indent, "") {
   return arg.Line == (unsigned)Line && arg.Indent == (unsigned)Indent;
 }
 
-MATCHER_P(originalIndex, index, "") {
-  return arg.OriginalIndex == (Token::Index)index;
-}
-
 TEST(TokenTest, Lex) {
   LangOptions Opts;
   std::string Code = R"cpp(
@@ -109,23 +105,20 @@ tokens
       Raw.tokens(),
       ElementsAre(AllOf(token("one_\\\ntoken", tok::raw_identifier),
                         hasFlag(LexFlags::StartsPPLine),
-                        hasFlag(LexFlags::NeedsCleaning), lineIndent(1, 0),
-                        originalIndex(0)),
+                        hasFlag(LexFlags::NeedsCleaning), lineIndent(1, 0)),
                   AllOf(token("two", tok::raw_identifier),
                         hasFlag(LexFlags::StartsPPLine),
-                        Not(hasFlag(LexFlags::NeedsCleaning)),
-                        originalIndex(1)),
+                        Not(hasFlag(LexFlags::NeedsCleaning))),
                   AllOf(token("\\\ntokens", tok::raw_identifier),
                         Not(hasFlag(LexFlags::StartsPPLine)),
-                        hasFlag(LexFlags::NeedsCleaning), originalIndex(2))));
+                        hasFlag(LexFlags::NeedsCleaning))));
 
   TokenStream Cooked = cook(Raw, Opts);
   EXPECT_THAT(
       Cooked.tokens(),
-      ElementsAre(AllOf(token("one_token", tok::identifier), lineIndent(1, 0),
-                        originalIndex(0)),
-                  AllOf(token("two", tok::identifier), originalIndex(1)),
-                  AllOf(token("tokens", tok::identifier), originalIndex(2))));
+      ElementsAre(AllOf(token("one_token", tok::identifier), lineIndent(1, 0)),
+                  token("two", tok::identifier),
+                  token("tokens", tok::identifier)));
 }
 
 TEST(TokenTest, EncodedCharacters) {
@@ -189,14 +182,13 @@ TEST(TokenTest, SplitGreaterGreater) {
 )cpp";
   TokenStream Cook = cook(lex(Code, Opts), Opts);
   TokenStream Split = stripComments(Cook);
-  EXPECT_THAT(Split.tokens(),
-              ElementsAre(AllOf(token(">", tok::greater), originalIndex(0)),
-                          AllOf(token(">", tok::greater), originalIndex(0)),
-                          // Token 1 and 2 are comments.
-                          AllOf(token(">", tok::greater), originalIndex(3)),
-                          AllOf(token(">", tok::greater), originalIndex(3)),
-                          AllOf(token(">>=", tok::greatergreaterequal),
-                                originalIndex(4))));
+  EXPECT_THAT(Split.tokens(), ElementsAreArray({
+                                  token(">", tok::greater),
+                                  token(">", tok::greater),
+                                  token(">", tok::greater),
+                                  token(">", tok::greater),
+                                  token(">>=", tok::greatergreaterequal),
+                              }));
 }
 
 TEST(TokenTest, DropComments) {
@@ -207,16 +199,13 @@ TEST(TokenTest, DropComments) {
 )cpp";
   TokenStream Raw = cook(lex(Code, Opts), Opts);
   TokenStream Stripped = stripComments(Raw);
-  EXPECT_THAT(
-      Raw.tokens(),
-      ElementsAre(AllOf(token("// comment", tok::comment), originalIndex(0)),
-                  AllOf(token("int", tok::kw_int), originalIndex(1)),
-                  AllOf(token("/*abc*/", tok::comment), originalIndex(2)),
-                  AllOf(token(";", tok::semi), originalIndex(3))));
+  EXPECT_THAT(Raw.tokens(),
+              ElementsAreArray(
+                  {token("// comment", tok::comment), token("int", tok::kw_int),
+                   token("/*abc*/", tok::comment), token(";", tok::semi)}));
 
-  EXPECT_THAT(Stripped.tokens(),
-              ElementsAre(AllOf(token("int", tok::kw_int), originalIndex(1)),
-                          AllOf(token(";", tok::semi), originalIndex(3))));
+  EXPECT_THAT(Stripped.tokens(), ElementsAreArray({token("int", tok::kw_int),
+                                                   token(";", tok::semi)}));
 }
 
 } // namespace

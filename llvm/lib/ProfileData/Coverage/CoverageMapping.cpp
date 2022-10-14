@@ -25,6 +25,7 @@
 #include "llvm/Support/Errc.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
@@ -122,15 +123,13 @@ Counter CounterExpressionBuilder::simplify(Counter ExpressionTree) {
   return C;
 }
 
-Counter CounterExpressionBuilder::add(Counter LHS, Counter RHS, bool Simplify) {
-  auto Cnt = get(CounterExpression(CounterExpression::Add, LHS, RHS));
-  return Simplify ? simplify(Cnt) : Cnt;
+Counter CounterExpressionBuilder::add(Counter LHS, Counter RHS) {
+  return simplify(get(CounterExpression(CounterExpression::Add, LHS, RHS)));
 }
 
-Counter CounterExpressionBuilder::subtract(Counter LHS, Counter RHS,
-                                           bool Simplify) {
-  auto Cnt = get(CounterExpression(CounterExpression::Subtract, LHS, RHS));
-  return Simplify ? simplify(Cnt) : Cnt;
+Counter CounterExpressionBuilder::subtract(Counter LHS, Counter RHS) {
+  return simplify(
+      get(CounterExpression(CounterExpression::Subtract, LHS, RHS)));
 }
 
 void CounterMappingContext::dump(const Counter &C, raw_ostream &OS) const {
@@ -349,7 +348,7 @@ CoverageMapping::load(ArrayRef<StringRef> ObjectFilenames,
                       StringRef CompilationDir) {
   auto ProfileReaderOrErr = IndexedInstrProfReader::create(ProfileFilename);
   if (Error E = ProfileReaderOrErr.takeError())
-    return createFileError(ProfileFilename, std::move(E));
+    return std::move(E);
   auto ProfileReader = std::move(ProfileReaderOrErr.get());
   auto Coverage = std::unique_ptr<CoverageMapping>(new CoverageMapping());
   bool DataFound = false;
@@ -358,7 +357,7 @@ CoverageMapping::load(ArrayRef<StringRef> ObjectFilenames,
     auto CovMappingBufOrErr = MemoryBuffer::getFileOrSTDIN(
         File.value(), /*IsText=*/false, /*RequiresNullTerminator=*/false);
     if (std::error_code EC = CovMappingBufOrErr.getError())
-      return createFileError(File.value(), errorCodeToError(EC));
+      return errorCodeToError(EC);
     StringRef Arch = Arches.empty() ? StringRef() : Arches[File.index()];
     MemoryBufferRef CovMappingBufRef =
         CovMappingBufOrErr.get()->getMemBufferRef();
@@ -368,7 +367,7 @@ CoverageMapping::load(ArrayRef<StringRef> ObjectFilenames,
     if (Error E = CoverageReadersOrErr.takeError()) {
       E = handleMaybeNoDataFoundError(std::move(E));
       if (E)
-        return createFileError(File.value(), std::move(E));
+        return std::move(E);
       // E == success (originally a no_data_found error).
       continue;
     }
@@ -378,14 +377,12 @@ CoverageMapping::load(ArrayRef<StringRef> ObjectFilenames,
       Readers.push_back(std::move(Reader));
     DataFound |= !Readers.empty();
     if (Error E = loadFromReaders(Readers, *ProfileReader, *Coverage))
-      return createFileError(File.value(), std::move(E));
+      return std::move(E);
   }
   // If no readers were created, either no objects were provided or none of them
   // had coverage data. Return an error in the latter case.
   if (!DataFound && !ObjectFilenames.empty())
-    return createFileError(
-        join(ObjectFilenames.begin(), ObjectFilenames.end(), ", "),
-        make_error<CoverageMapError>(coveragemap_error::no_data_found));
+    return make_error<CoverageMapError>(coveragemap_error::no_data_found);
   return std::move(Coverage);
 }
 
@@ -898,9 +895,10 @@ std::string CoverageMapError::message() const {
   return getCoverageMapErrString(Err);
 }
 
+static ManagedStatic<CoverageMappingErrorCategoryType> ErrorCategory;
+
 const std::error_category &llvm::coverage::coveragemap_category() {
-  static CoverageMappingErrorCategoryType ErrorCategory;
-  return ErrorCategory;
+  return *ErrorCategory;
 }
 
 char CoverageMapError::ID = 0;

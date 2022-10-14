@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class ChangeValueAPITestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         # Call super's setUp().
         TestBase.setUp(self)
@@ -57,7 +59,7 @@ class ChangeValueAPITestCase(TestBase):
         self.assertTrue(process, PROCESS_IS_VALID)
 
         # Get Frame #0.
-        self.assertState(process.GetState(), lldb.eStateStopped)
+        self.assertEquals(process.GetState(), lldb.eStateStopped)
         thread = lldbutil.get_stopped_thread(
             process, lldb.eStopReasonBreakpoint)
         self.assertTrue(
@@ -134,7 +136,7 @@ class ChangeValueAPITestCase(TestBase):
         # Now continue.
         process.Continue()
 
-        self.assertState(process.GetState(), lldb.eStateStopped)
+        self.assertEquals(process.GetState(), lldb.eStateStopped)
         thread = lldbutil.get_stopped_thread(
             process, lldb.eStopReasonBreakpoint)
         self.assertTrue(
@@ -167,7 +169,7 @@ class ChangeValueAPITestCase(TestBase):
 
         process.Continue()
 
-        self.assertState(process.GetState(), lldb.eStateStopped)
+        self.assertEquals(process.GetState(), lldb.eStateStopped)
         thread = lldbutil.get_stopped_thread(
             process, lldb.eStopReasonBreakpoint)
         self.assertTrue(

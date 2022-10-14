@@ -296,14 +296,14 @@ static void addGHashTypeInfo(COFFLinkerContext &ctx,
   // Start the TPI or IPI stream header.
   builder.getTpiBuilder().setVersionHeader(pdb::PdbTpiV80);
   builder.getIpiBuilder().setVersionHeader(pdb::PdbTpiV80);
-  for (TpiSource *source : ctx.tpiSourceList) {
+  for_each(ctx.tpiSourceList, [&](TpiSource *source) {
     builder.getTpiBuilder().addTypeRecords(source->mergedTpi.recs,
                                            source->mergedTpi.recSizes,
                                            source->mergedTpi.recHashes);
     builder.getIpiBuilder().addTypeRecords(source->mergedIpi.recs,
                                            source->mergedIpi.recSizes,
                                            source->mergedIpi.recHashes);
-  }
+  });
 }
 
 static void
@@ -1134,8 +1134,7 @@ void PDBLinker::addObjectsToPDB() {
   ScopedTimer t1(ctx.addObjectsTimer);
 
   // Create module descriptors
-  for (ObjFile *obj : ctx.objFileInstances)
-    createModuleDBI(obj);
+  for_each(ctx.objFileInstances, [&](ObjFile *obj) { createModuleDBI(obj); });
 
   // Reorder dependency type sources to come first.
   tMerger.sortDependencies();
@@ -1145,10 +1144,9 @@ void PDBLinker::addObjectsToPDB() {
     tMerger.mergeTypesWithGHash();
 
   // Merge dependencies and then regular objects.
-  for (TpiSource *source : tMerger.dependencySources)
-    addDebug(source);
-  for (TpiSource *source : tMerger.objectSources)
-    addDebug(source);
+  for_each(tMerger.dependencySources,
+           [&](TpiSource *source) { addDebug(source); });
+  for_each(tMerger.objectSources, [&](TpiSource *source) { addDebug(source); });
 
   builder.getStringTableBuilder().setStrings(pdbStrTab);
   t1.stop();
@@ -1165,10 +1163,10 @@ void PDBLinker::addObjectsToPDB() {
   t2.stop();
 
   if (config->showSummary) {
-    for (TpiSource *source : ctx.tpiSourceList) {
+    for_each(ctx.tpiSourceList, [&](TpiSource *source) {
       nbTypeRecords += source->nbTypeRecords;
       nbTypeRecordsBytes += source->nbTypeRecordsBytes;
-    }
+    });
   }
 }
 

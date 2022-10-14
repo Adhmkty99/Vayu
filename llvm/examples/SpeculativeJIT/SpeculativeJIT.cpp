@@ -29,7 +29,7 @@ static cl::list<std::string> InputFiles(cl::Positional, cl::OneOrMore,
 
 static cl::list<std::string> InputArgv("args", cl::Positional,
                                        cl::desc("<program arguments>..."),
-                                       cl::PositionalEatsArgs);
+                                       cl::ZeroOrMore, cl::PositionalEatsArgs);
 
 static cl::opt<unsigned> NumThreads("num-threads", cl::Optional,
                                     cl::desc("Number of compile threads"),

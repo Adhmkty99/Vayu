@@ -1,5 +1,4 @@
 ; RUN: llc < %s -march=nvptx -mcpu=sm_20 | FileCheck %s
-; RUN: %if ptxas %{ llc < %s -march=nvptx -mcpu=sm_20 | %ptxas-verify %}
 
 ; CHECK: .visible .func foo1
 ; CHECK: st.v2.f32

@@ -69,7 +69,7 @@ public:
   /// Return true if the specified register number is in
   /// the virtual register namespace.
   static bool isVirtualRegister(unsigned Reg) {
-    return Reg & MCRegister::VirtualRegFlag;
+    return Reg & MCRegister::VirtualRegFlag && !isStackSlot(Reg);
   }
 
   /// Convert a virtual register number to a 0-based index.

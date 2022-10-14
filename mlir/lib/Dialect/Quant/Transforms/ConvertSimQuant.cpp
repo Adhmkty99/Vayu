@@ -69,7 +69,7 @@ private:
     // TODO: Map to a qbarrier with an attribute like [Forced] to signal that
     // this is a forced/hard-coded constraint.
     auto qbarrier = rewriter.create<QuantizeCastOp>(op.getLoc(), quantizedType,
-                                                    op.getInputs());
+                                                    op.inputs());
     rewriter.replaceOpWithNewOp<DequantizeCastOp>(op, converter.inputType,
                                                   qbarrier.getResult());
 
@@ -88,9 +88,9 @@ public:
   QuantizedType convertFakeQuantAttrsToType(ConstFakeQuant fqOp,
                                             Type expressedType) const {
     return fakeQuantAttrsToType(
-        fqOp.getLoc(), fqOp.getNumBits(), fqOp.getMin().convertToFloat(),
-        fqOp.getMax().convertToFloat(), fqOp.getNarrowRange(), expressedType,
-        fqOp.getIsSigned());
+        fqOp.getLoc(), fqOp.num_bits(), fqOp.min().convertToFloat(),
+        fqOp.max().convertToFloat(), fqOp.narrow_range(), expressedType,
+        fqOp.is_signed());
   }
 };
 
@@ -107,16 +107,16 @@ public:
   QuantizedType convertFakeQuantAttrsToType(ConstFakeQuantPerAxis fqOp,
                                             Type expressedType) const {
     SmallVector<double, 4> min, max;
-    min.reserve(fqOp.getMin().size());
-    max.reserve(fqOp.getMax().size());
-    for (auto m : fqOp.getMin())
+    min.reserve(fqOp.min().size());
+    max.reserve(fqOp.max().size());
+    for (auto m : fqOp.min())
       min.push_back(m.cast<FloatAttr>().getValueAsDouble());
-    for (auto m : fqOp.getMax())
+    for (auto m : fqOp.max())
       max.push_back(m.cast<FloatAttr>().getValueAsDouble());
 
-    return fakeQuantAttrsToType(fqOp.getLoc(), fqOp.getNumBits(),
-                                fqOp.getAxis(), min, max, fqOp.getNarrowRange(),
-                                expressedType, fqOp.getIsSigned());
+    return fakeQuantAttrsToType(fqOp.getLoc(), fqOp.num_bits(), fqOp.axis(),
+                                min, max, fqOp.narrow_range(), expressedType,
+                                fqOp.is_signed());
   }
 };
 
@@ -134,7 +134,7 @@ void ConvertSimulatedQuantPass::runOnOperation() {
     signalPassFailure();
 }
 
-std::unique_ptr<OperationPass<func::FuncOp>>
+std::unique_ptr<OperationPass<FuncOp>>
 mlir::quant::createConvertSimulatedQuantPass() {
   return std::make_unique<ConvertSimulatedQuantPass>();
 }

@@ -23,27 +23,29 @@
 using namespace llvm;
 using namespace sampleprof;
 
-cl::opt<bool> ShowDisassemblyOnly("show-disassembly-only",
+cl::opt<bool> ShowDisassemblyOnly("show-disassembly-only", cl::init(false),
+                                  cl::ZeroOrMore,
                                   cl::desc("Print disassembled code."));
 
-cl::opt<bool> ShowSourceLocations("show-source-locations",
+cl::opt<bool> ShowSourceLocations("show-source-locations", cl::init(false),
+                                  cl::ZeroOrMore,
                                   cl::desc("Print source locations."));
 
 static cl::opt<bool>
-    ShowCanonicalFnName("show-canonical-fname",
+    ShowCanonicalFnName("show-canonical-fname", cl::init(false), cl::ZeroOrMore,
                         cl::desc("Print canonical function name."));
 
 static cl::opt<bool> ShowPseudoProbe(
-    "show-pseudo-probe",
+    "show-pseudo-probe", cl::init(false), cl::ZeroOrMore,
     cl::desc("Print pseudo probe section and disassembled info."));
 
 static cl::opt<bool> UseDwarfCorrelation(
-    "use-dwarf-correlation",
+    "use-dwarf-correlation", cl::init(false), cl::ZeroOrMore,
     cl::desc("Use dwarf for profile correlation even when binary contains "
              "pseudo probe."));
 
 static cl::opt<std::string>
-    DWPPath("dwp", cl::init(""),
+    DWPPath("dwp", cl::init(""), cl::ZeroOrMore,
             cl::desc("Path of .dwp file. When not specified, it will be "
                      "<binary>.dwp in the same directory as the main binary."));
 
@@ -83,40 +85,43 @@ void BinarySizeContextTracker::addInstructionForContext(
 }
 
 uint32_t
-BinarySizeContextTracker::getFuncSizeForContext(const ContextTrieNode *Node) {
+BinarySizeContextTracker::getFuncSizeForContext(const SampleContext &Context) {
   ContextTrieNode *CurrNode = &RootContext;
   ContextTrieNode *PrevNode = nullptr;
-
+  SampleContextFrames Frames = Context.getContextFrames();
+  int32_t I = Frames.size() - 1;
   Optional<uint32_t> Size;
 
   // Start from top-level context-less function, traverse down the reverse
   // context trie to find the best/longest match for given context, then
   // retrieve the size.
-  LineLocation CallSiteLoc(0, 0);
-  while (CurrNode && Node->getParentContext() != nullptr) {
+
+  while (CurrNode && I >= 0) {
+    // Process from leaf function to callers (added to context).
+    const auto &ChildFrame = Frames[I--];
     PrevNode = CurrNode;
-    CurrNode = CurrNode->getChildContext(CallSiteLoc, Node->getFuncName());
-    if (CurrNode && CurrNode->getFunctionSize())
-      Size = CurrNode->getFunctionSize().value();
-    CallSiteLoc = Node->getCallSiteLoc();
-    Node = Node->getParentContext();
+    CurrNode =
+        CurrNode->getChildContext(ChildFrame.Location, ChildFrame.FuncName);
+    if (CurrNode && CurrNode->getFunctionSize().hasValue())
+      Size = CurrNode->getFunctionSize().getValue();
   }
 
   // If we traversed all nodes along the path of the context and haven't
   // found a size yet, pivot to look for size from sibling nodes, i.e size
   // of inlinee under different context.
-  if (!Size) {
+  if (!Size.hasValue()) {
     if (!CurrNode)
       CurrNode = PrevNode;
-    while (!Size && CurrNode && !CurrNode->getAllChildContext().empty()) {
+    while (!Size.hasValue() && CurrNode &&
+           !CurrNode->getAllChildContext().empty()) {
       CurrNode = &CurrNode->getAllChildContext().begin()->second;
-      if (CurrNode->getFunctionSize())
-        Size = CurrNode->getFunctionSize().value();
+      if (CurrNode->getFunctionSize().hasValue())
+        Size = CurrNode->getFunctionSize().getValue();
     }
   }
 
-  assert(Size && "We should at least find one context size.");
-  return Size.value();
+  assert(Size.hasValue() && "We should at least find one context size.");
+  return Size.getValue();
 }
 
 void BinarySizeContextTracker::trackInlineesOptimizedAway(
@@ -251,8 +256,6 @@ SampleContextFrameVector
 ProfiledBinary::getExpandedContext(const SmallVectorImpl<uint64_t> &Stack,
                                    bool &WasLeafInlined) {
   SampleContextFrameVector ContextVec;
-  if (Stack.empty())
-    return ContextVec;
   // Process from frame root to leaf
   for (auto Address : Stack) {
     uint64_t Offset = virtualAddrToOffset(Address);
@@ -490,17 +493,12 @@ bool ProfiledBinary::dissassembleSymbol(std::size_t SI, ArrayRef<uint8_t> Bytes,
 
       // Populate address maps.
       CodeAddrOffsets.push_back(Offset);
-      if (MCDesc.isCall()) {
+      if (MCDesc.isCall())
         CallOffsets.insert(Offset);
-        UncondBranchOffsets.insert(Offset);
-      } else if (MCDesc.isReturn()) {
+      else if (MCDesc.isReturn())
         RetOffsets.insert(Offset);
-        UncondBranchOffsets.insert(Offset);
-      } else if (MCDesc.isBranch()) {
-        if (MCDesc.isUnconditionalBranch())
-          UncondBranchOffsets.insert(Offset);
+      else if (MCDesc.isBranch())
         BranchOffsets.insert(Offset);
-      }
 
       if (InvalidInstLength) {
         WarnInvalidInsts(Offset - InvalidInstLength, Offset - 1);

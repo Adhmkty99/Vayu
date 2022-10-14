@@ -343,7 +343,7 @@ void APInt::flipAllBitsSlowCase() {
 /// In the slow case, we know the result is large.
 APInt APInt::concatSlowCase(const APInt &NewLSB) const {
   unsigned NewWidth = getBitWidth() + NewLSB.getBitWidth();
-  APInt Result = NewLSB.zext(NewWidth);
+  APInt Result = NewLSB.zextOrSelf(NewWidth);
   Result.insertBits(*this, NewLSB.getBitWidth());
   return Result;
 }
@@ -612,7 +612,7 @@ APInt APInt::getLoBits(unsigned numBits) const {
 APInt APInt::getSplat(unsigned NewLen, const APInt &V) {
   assert(NewLen >= V.getBitWidth() && "Can't splat to smaller bit width!");
 
-  APInt Val = V.zext(NewLen);
+  APInt Val = V.zextOrSelf(NewLen);
   for (unsigned I = V.getBitWidth(); I < NewLen; I <<= 1)
     Val |= Val << I;
 
@@ -896,13 +896,10 @@ double APInt::roundToDouble(bool isSigned) const {
 
 // Truncate to new width.
 APInt APInt::trunc(unsigned width) const {
-  assert(width <= BitWidth && "Invalid APInt Truncate request");
+  assert(width < BitWidth && "Invalid APInt Truncate request");
 
   if (width <= APINT_BITS_PER_WORD)
     return APInt(width, getRawData()[0]);
-
-  if (width == BitWidth)
-    return *this;
 
   APInt Result(getMemory(getNumWords(width)), width);
 
@@ -921,7 +918,7 @@ APInt APInt::trunc(unsigned width) const {
 
 // Truncate to new width with unsigned saturation.
 APInt APInt::truncUSat(unsigned width) const {
-  assert(width <= BitWidth && "Invalid APInt Truncate request");
+  assert(width < BitWidth && "Invalid APInt Truncate request");
 
   // Can we just losslessly truncate it?
   if (isIntN(width))
@@ -932,7 +929,7 @@ APInt APInt::truncUSat(unsigned width) const {
 
 // Truncate to new width with signed saturation.
 APInt APInt::truncSSat(unsigned width) const {
-  assert(width <= BitWidth && "Invalid APInt Truncate request");
+  assert(width < BitWidth && "Invalid APInt Truncate request");
 
   // Can we just losslessly truncate it?
   if (isSignedIntN(width))
@@ -944,13 +941,10 @@ APInt APInt::truncSSat(unsigned width) const {
 
 // Sign extend to a new width.
 APInt APInt::sext(unsigned Width) const {
-  assert(Width >= BitWidth && "Invalid APInt SignExtend request");
+  assert(Width > BitWidth && "Invalid APInt SignExtend request");
 
   if (Width <= APINT_BITS_PER_WORD)
     return APInt(Width, SignExtend64(U.VAL, BitWidth));
-
-  if (Width == BitWidth)
-    return *this;
 
   APInt Result(getMemory(getNumWords(Width)), Width);
 
@@ -971,13 +965,10 @@ APInt APInt::sext(unsigned Width) const {
 
 //  Zero extend to a new width.
 APInt APInt::zext(unsigned width) const {
-  assert(width >= BitWidth && "Invalid APInt ZeroExtend request");
+  assert(width > BitWidth && "Invalid APInt ZeroExtend request");
 
   if (width <= APINT_BITS_PER_WORD)
     return APInt(width, U.VAL);
-
-  if (width == BitWidth)
-    return *this;
 
   APInt Result(getMemory(getNumWords(width)), width);
 
@@ -1004,6 +995,24 @@ APInt APInt::sextOrTrunc(unsigned width) const {
     return sext(width);
   if (BitWidth > width)
     return trunc(width);
+  return *this;
+}
+
+APInt APInt::truncOrSelf(unsigned width) const {
+  if (BitWidth > width)
+    return trunc(width);
+  return *this;
+}
+
+APInt APInt::zextOrSelf(unsigned width) const {
+  if (BitWidth < width)
+    return zext(width);
+  return *this;
+}
+
+APInt APInt::sextOrSelf(unsigned width) const {
+  if (BitWidth < width)
+    return sext(width);
   return *this;
 }
 
@@ -2968,8 +2977,7 @@ llvm::APIntOps::GetMostSignificantDifferentBit(const APInt &A, const APInt &B) {
   return A.getBitWidth() - ((A ^ B).countLeadingZeros() + 1);
 }
 
-APInt llvm::APIntOps::ScaleBitMask(const APInt &A, unsigned NewBitWidth,
-                                   bool MatchAllBits) {
+APInt llvm::APIntOps::ScaleBitMask(const APInt &A, unsigned NewBitWidth) {
   unsigned OldBitWidth = A.getBitWidth();
   assert((((OldBitWidth % NewBitWidth) == 0) ||
           ((NewBitWidth % OldBitWidth) == 0)) &&
@@ -2993,16 +3001,11 @@ APInt llvm::APIntOps::ScaleBitMask(const APInt &A, unsigned NewBitWidth,
       if (A[i])
         NewA.setBits(i * Scale, (i + 1) * Scale);
   } else {
+    // Merge bits - if any old bit is set, then set scale equivalent new bit.
     unsigned Scale = OldBitWidth / NewBitWidth;
-    for (unsigned i = 0; i != NewBitWidth; ++i) {
-      if (MatchAllBits) {
-        if (A.extractBits(Scale, i * Scale).isAllOnes())
-          NewA.setBit(i);
-      } else {
-        if (!A.extractBits(Scale, i * Scale).isZero())
-          NewA.setBit(i);
-      }
-    }
+    for (unsigned i = 0; i != NewBitWidth; ++i)
+      if (!A.extractBits(Scale, i * Scale).isZero())
+        NewA.setBit(i);
   }
 
   return NewA;

@@ -4,17 +4,27 @@
 ; CHECK-INTERESTINGNESS: define void @func(
 ; CHECK-FINAL: define void @func()
 define void @func(i1 %arg) {
-; CHECK-ALL: entry:
-; CHECK-INTERESTINGNESS: call void @foo({{.*}}blockaddress
-; CHECK-FINAL: call void @foo(i8* blockaddress(@func, %bb5))
-entry:
-  call void @foo(i8* blockaddress(@func, %bb5))
-  ret void
+; CHECK-ALL: bb:
+; CHECK-ALL: br label %bb4
+bb:
+  br label %bb4
+
+; CHECK-ALL: bb4
+bb4:
+; CHECK-INTERESTINGNESS: callbr void asm
+; CHECK-INTERESTINGNESS-SAME: blockaddress
+; CHECK-FINAL: callbr void asm sideeffect "", "i"(i8* blockaddress(@func, %bb11))
+; CHECK-ALL: to label %bb5 [label %bb11]
+  callbr void asm sideeffect "", "i"(i8* blockaddress(@func, %bb11))
+          to label %bb5 [label %bb11]
 
 ; CHECK-ALL: bb5:
-; CHECK-ALL: ret void
+; CHECK-ALL: br label %bb11
 bb5:
+  br label %bb11
+
+; CHECK-ALL: bb11:
+; CHECK-ALL: ret void
+bb11:
   ret void
 }
-
-declare void @foo(i8*)

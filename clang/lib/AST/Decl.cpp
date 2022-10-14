@@ -30,8 +30,6 @@
 #include "clang/AST/ODRHash.h"
 #include "clang/AST/PrettyDeclStackTrace.h"
 #include "clang/AST/PrettyPrinter.h"
-#include "clang/AST/Randstruct.h"
-#include "clang/AST/RecordLayout.h"
 #include "clang/AST/Redeclarable.h"
 #include "clang/AST/Stmt.h"
 #include "clang/AST/TemplateBase.h"
@@ -394,6 +392,7 @@ void LinkageComputer::mergeTemplateLV(
     shouldConsiderTemplateVisibility(fn, specInfo);
 
   FunctionTemplateDecl *temp = specInfo->getTemplate();
+
   // Merge information from the template declaration.
   LinkageInfo tempLV = getLVForDecl(temp, computation);
   // The linkage of the specialization should be consistent with the
@@ -467,16 +466,11 @@ void LinkageComputer::mergeTemplateLV(
 
   // Merge information from the template parameters, but ignore
   // visibility if we're only considering template arguments.
-  ClassTemplateDecl *temp = spec->getSpecializedTemplate();
-  // Merge information from the template declaration.
-  LinkageInfo tempLV = getLVForDecl(temp, computation);
-  // The linkage of the specialization should be consistent with the
-  // template declaration.
-  LV.setLinkage(tempLV.getLinkage());
 
-  LinkageInfo paramsLV =
+  ClassTemplateDecl *temp = spec->getSpecializedTemplate();
+  LinkageInfo tempLV =
     getLVForTemplateParameterList(temp->getTemplateParameters(), computation);
-  LV.mergeMaybeWithVisibility(paramsLV,
+  LV.mergeMaybeWithVisibility(tempLV,
            considerVisibility && !hasExplicitVisibilityAlready(computation));
 
   // Merge information from the template arguments.  We ignore
@@ -524,6 +518,7 @@ void LinkageComputer::mergeTemplateLV(LinkageInfo &LV,
 
   // Merge information from the template parameters, but ignore
   // visibility if we're only considering template arguments.
+
   VarTemplateDecl *temp = spec->getSpecializedTemplate();
   LinkageInfo tempLV =
     getLVForTemplateParameterList(temp->getTemplateParameters(), computation);
@@ -591,7 +586,6 @@ static bool isExportedFromModuleInterfaceUnit(const NamedDecl *D) {
   // FIXME: Handle isModulePrivate.
   switch (D->getModuleOwnershipKind()) {
   case Decl::ModuleOwnershipKind::Unowned:
-  case Decl::ModuleOwnershipKind::ReachableWhenImported:
   case Decl::ModuleOwnershipKind::ModulePrivate:
     return false;
   case Decl::ModuleOwnershipKind::Visible:
@@ -1080,6 +1074,7 @@ LinkageComputer::getLVForClassMember(const NamedDecl *D,
 
   // Finally, merge in information from the class.
   LV.mergeMaybeWithVisibility(classLV, considerClassVisibility);
+
   return LV;
 }
 
@@ -1854,7 +1849,7 @@ bool NamedDecl::hasLinkage() const {
 
 NamedDecl *NamedDecl::getUnderlyingDeclImpl() {
   NamedDecl *ND = this;
-  if (auto *UD = dyn_cast<UsingShadowDecl>(ND))
+  while (auto *UD = dyn_cast<UsingShadowDecl>(ND))
     ND = UD->getTargetDecl();
 
   if (auto *AD = dyn_cast<ObjCCompatibleAliasDecl>(ND))
@@ -2726,42 +2721,6 @@ VarDecl::needsDestruction(const ASTContext &Ctx) const {
   return getType().isDestructedType();
 }
 
-bool VarDecl::hasFlexibleArrayInit(const ASTContext &Ctx) const {
-  assert(hasInit() && "Expect initializer to check for flexible array init");
-  auto *Ty = getType()->getAs<RecordType>();
-  if (!Ty || !Ty->getDecl()->hasFlexibleArrayMember())
-    return false;
-  auto *List = dyn_cast<InitListExpr>(getInit()->IgnoreParens());
-  if (!List)
-    return false;
-  const Expr *FlexibleInit = List->getInit(List->getNumInits() - 1);
-  auto InitTy = Ctx.getAsConstantArrayType(FlexibleInit->getType());
-  if (!InitTy)
-    return false;
-  return InitTy->getSize() != 0;
-}
-
-CharUnits VarDecl::getFlexibleArrayInitChars(const ASTContext &Ctx) const {
-  assert(hasInit() && "Expect initializer to check for flexible array init");
-  auto *Ty = getType()->getAs<RecordType>();
-  if (!Ty || !Ty->getDecl()->hasFlexibleArrayMember())
-    return CharUnits::Zero();
-  auto *List = dyn_cast<InitListExpr>(getInit()->IgnoreParens());
-  if (!List)
-    return CharUnits::Zero();
-  const Expr *FlexibleInit = List->getInit(List->getNumInits() - 1);
-  auto InitTy = Ctx.getAsConstantArrayType(FlexibleInit->getType());
-  if (!InitTy)
-    return CharUnits::Zero();
-  CharUnits FlexibleArraySize = Ctx.getTypeSizeInChars(InitTy);
-  const ASTRecordLayout &RL = Ctx.getASTRecordLayout(Ty->getDecl());
-  CharUnits FlexibleArrayOffset =
-      Ctx.toCharUnitsFromBits(RL.getFieldOffset(RL.getFieldCount() - 1));
-  if (FlexibleArrayOffset + FlexibleArraySize < RL.getSize())
-    return CharUnits::Zero();
-  return FlexibleArrayOffset + FlexibleArraySize - RL.getSize();
-}
-
 MemberSpecializationInfo *VarDecl::getMemberSpecializationInfo() const {
   if (isStaticDataMember())
     // FIXME: Remove ?
@@ -2870,8 +2829,7 @@ Expr *ParmVarDecl::getDefaultArg() {
 
   Expr *Arg = getInit();
   if (auto *E = dyn_cast_or_null<FullExpr>(Arg))
-    if (!isa<ConstantExpr>(E))
-      return E->getSubExpr();
+    return E->getSubExpr();
 
   return Arg;
 }
@@ -2958,7 +2916,6 @@ FunctionDecl::FunctionDecl(Kind DK, ASTContext &C, DeclContext *DC,
   FunctionDeclBits.IsDefaulted = false;
   FunctionDeclBits.IsExplicitlyDefaulted = false;
   FunctionDeclBits.HasDefaultedFunctionInfo = false;
-  FunctionDeclBits.IsIneligibleOrNotSelected = false;
   FunctionDeclBits.HasImplicitReturnZero = false;
   FunctionDeclBits.IsLateTemplateParsed = false;
   FunctionDeclBits.ConstexprKind = static_cast<uint64_t>(ConstexprKind);
@@ -3734,13 +3691,8 @@ const IdentifierInfo *FunctionDecl::getLiteralIdentifier() const {
 FunctionDecl::TemplatedKind FunctionDecl::getTemplatedKind() const {
   if (TemplateOrSpecialization.isNull())
     return TK_NonTemplate;
-  if (const auto *ND = TemplateOrSpecialization.dyn_cast<NamedDecl *>()) {
-    if (isa<FunctionDecl>(ND))
-      return TK_DependentNonTemplate;
-    assert(isa<FunctionTemplateDecl>(ND) &&
-           "No other valid types in NamedDecl");
+  if (TemplateOrSpecialization.is<FunctionTemplateDecl *>())
     return TK_FunctionTemplate;
-  }
   if (TemplateOrSpecialization.is<MemberSpecializationInfo *>())
     return TK_MemberSpecialization;
   if (TemplateOrSpecialization.is<FunctionTemplateSpecializationInfo *>())
@@ -3781,26 +3733,13 @@ FunctionDecl::setInstantiationOfMemberFunction(ASTContext &C,
 }
 
 FunctionTemplateDecl *FunctionDecl::getDescribedFunctionTemplate() const {
-  return dyn_cast_or_null<FunctionTemplateDecl>(
-      TemplateOrSpecialization.dyn_cast<NamedDecl *>());
+  return TemplateOrSpecialization.dyn_cast<FunctionTemplateDecl *>();
 }
 
-void FunctionDecl::setDescribedFunctionTemplate(
-    FunctionTemplateDecl *Template) {
+void FunctionDecl::setDescribedFunctionTemplate(FunctionTemplateDecl *Template) {
   assert(TemplateOrSpecialization.isNull() &&
          "Member function is already a specialization");
   TemplateOrSpecialization = Template;
-}
-
-void FunctionDecl::setInstantiatedFromDecl(FunctionDecl *FD) {
-  assert(TemplateOrSpecialization.isNull() &&
-         "Function is already a specialization");
-  TemplateOrSpecialization = FD;
-}
-
-FunctionDecl *FunctionDecl::getInstantiatedFromDecl() const {
-  return dyn_cast_or_null<FunctionDecl>(
-      TemplateOrSpecialization.dyn_cast<NamedDecl *>());
 }
 
 bool FunctionDecl::isImplicitlyInstantiable() const {
@@ -4644,7 +4583,6 @@ RecordDecl::RecordDecl(Kind DK, TagKind TK, const ASTContext &C,
   setHasNonTrivialToPrimitiveCopyCUnion(false);
   setParamDestroyedInCallee(false);
   setArgPassingRestrictions(APK_CanPassInRegs);
-  setIsRandomized(false);
 }
 
 RecordDecl *RecordDecl::Create(const ASTContext &C, TagKind TK, DeclContext *DC,
@@ -4726,12 +4664,6 @@ void RecordDecl::completeDefinition() {
 /// -mms-bitfields command-line option.
 bool RecordDecl::isMsStruct(const ASTContext &C) const {
   return hasAttr<MSStructAttr>() || C.getLangOpts().MSBitfields == 1;
-}
-
-void RecordDecl::reorderDecls(const SmallVectorImpl<Decl *> &Decls) {
-  std::tie(FirstDecl, LastDecl) = DeclContext::BuildDeclChain(Decls, false);
-  LastDecl->NextInContextAndBits.setPointer(nullptr);
-  setIsRandomized(true);
 }
 
 void RecordDecl::LoadFieldsFromExternalStorage() const {

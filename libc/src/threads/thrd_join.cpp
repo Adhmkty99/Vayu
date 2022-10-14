@@ -14,13 +14,17 @@
 
 namespace __llvm_libc {
 
-static_assert(sizeof(thrd_t) == sizeof(__llvm_libc::Thread),
-              "Mismatch between thrd_t and internal Thread.");
+static_assert(sizeof(thrd_t) == sizeof(__llvm_libc::Thread<int>),
+              "Mismatch between thrd_t and internal Thread<int>.");
 
 LLVM_LIBC_FUNCTION(int, thrd_join, (thrd_t * th, int *retval)) {
-  auto *thread = reinterpret_cast<Thread *>(th);
-  int result = thread->join(retval);
-  return result == 0 ? thrd_success : thrd_error;
+  auto *thread = reinterpret_cast<Thread<int> *>(th);
+  int result = thread->join();
+  if (result == 0) {
+    *retval = thread->return_value();
+    return thrd_success;
+  }
+  return thrd_error;
 }
 
 } // namespace __llvm_libc

@@ -95,11 +95,12 @@ using namespace llvm::X86Disassembler;
 
 namespace llvm {
 
-extern void EmitDecoder(RecordKeeper &RK, raw_ostream &OS,
-                        const std::string &PredicateNamespace,
-                        const std::string &GPrefix, const std::string &GPostfix,
-                        const std::string &ROK, const std::string &RFail,
-                        const std::string &L);
+extern void EmitFixedLenDecoder(RecordKeeper &RK, raw_ostream &OS,
+                                const std::string &PredicateNamespace,
+                                const std::string &GPrefix,
+                                const std::string &GPostfix,
+                                const std::string &ROK,
+                                const std::string &RFail, const std::string &L);
 
 void EmitDisassembler(RecordKeeper &Records, raw_ostream &OS) {
   CodeGenTarget Target(Records);
@@ -139,16 +140,17 @@ void EmitDisassembler(RecordKeeper &Records, raw_ostream &OS) {
     if (PredicateNamespace == "Thumb")
       PredicateNamespace = "ARM";
 
-    EmitDecoder(Records, OS, PredicateNamespace, "if (!Check(S, ", "))", "S",
-                "MCDisassembler::Fail",
-                "  MCDisassembler::DecodeStatus S = "
-                "MCDisassembler::Success;\n(void)S;");
+    EmitFixedLenDecoder(Records, OS, PredicateNamespace,
+                        "if (!Check(S, ", "))",
+                        "S", "MCDisassembler::Fail",
+                        "  MCDisassembler::DecodeStatus S = "
+                          "MCDisassembler::Success;\n(void)S;");
     return;
   }
 
-  EmitDecoder(Records, OS, std::string(Target.getName()), "if (",
-              " == MCDisassembler::Fail)", "MCDisassembler::Success",
-              "MCDisassembler::Fail", "");
+  EmitFixedLenDecoder(Records, OS, std::string(Target.getName()), "if (",
+                      " == MCDisassembler::Fail)", "MCDisassembler::Success",
+                      "MCDisassembler::Fail", "");
 }
 
 } // end namespace llvm

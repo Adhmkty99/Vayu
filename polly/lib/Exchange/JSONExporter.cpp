@@ -51,8 +51,7 @@ static cl::opt<std::string>
                   cl::Hidden, cl::value_desc("File postfix"), cl::ValueRequired,
                   cl::init(""), cl::cat(PollyCategory));
 
-class JSONExporter : public ScopPass {
-public:
+struct JSONExporter : public ScopPass {
   static char ID;
   explicit JSONExporter() : ScopPass(ID) {}
 
@@ -66,8 +65,7 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override;
 };
 
-class JSONImporter : public ScopPass {
-public:
+struct JSONImporter : public ScopPass {
   static char ID;
   std::vector<std::string> NewAccessStrings;
   explicit JSONImporter() : ScopPass(ID) {}
@@ -218,8 +216,8 @@ static bool importContext(Scop &S, const json::Object &JScop) {
     return false;
   }
 
-  isl::set NewContext =
-      isl::set{S.getIslCtx().get(), JScop.getString("context").value().str()};
+  isl::set NewContext = isl::set{S.getIslCtx().get(),
+                                 JScop.getString("context").getValue().str()};
 
   // Check whether the context was parsed successfully.
   if (NewContext.is_null()) {
@@ -290,10 +288,10 @@ static bool importSchedule(Scop &S, const json::Object &JScop,
     }
     Optional<StringRef> Schedule =
         statements[Index].getAsObject()->getString("schedule");
-    assert(Schedule.has_value() &&
+    assert(Schedule.hasValue() &&
            "Schedules that contain extension nodes require special handling.");
     isl_map *Map = isl_map_read_from_str(S.getIslCtx().get(),
-                                         Schedule.value().str().c_str());
+                                         Schedule.getValue().str().c_str());
 
     // Check whether the schedule was parsed successfully
     if (!Map) {
@@ -397,7 +395,7 @@ importAccesses(Scop &S, const json::Object &JScop, const DataLayout &DL,
                << StatementIdx << ".\n";
         return false;
       }
-      StringRef Accesses = *JsonMemoryAccess->getString("relation");
+      StringRef Accesses = JsonMemoryAccess->getString("relation").getValue();
       isl_map *NewAccessMap =
           isl_map_read_from_str(S.getIslCtx().get(), Accesses.str().c_str());
 
@@ -451,12 +449,14 @@ importAccesses(Scop &S, const json::Object &JScop, const DataLayout &DL,
         bool SpecialAlignment = true;
         if (LoadInst *LoadI = dyn_cast<LoadInst>(MA->getAccessInstruction())) {
           SpecialAlignment =
-              DL.getABITypeAlign(LoadI->getType()) != LoadI->getAlign();
+              LoadI->getAlignment() &&
+              DL.getABITypeAlignment(LoadI->getType()) != LoadI->getAlignment();
         } else if (StoreInst *StoreI =
                        dyn_cast<StoreInst>(MA->getAccessInstruction())) {
           SpecialAlignment =
-              DL.getABITypeAlign(StoreI->getValueOperand()->getType()) !=
-              StoreI->getAlign();
+              StoreI->getAlignment() &&
+              DL.getABITypeAlignment(StoreI->getValueOperand()->getType()) !=
+                  StoreI->getAlignment();
         }
 
         if (SpecialAlignment) {
@@ -566,7 +566,7 @@ static bool areArraysEqual(ScopArrayInfo *SAI, const json::Object &Array) {
     return false;
   }
 
-  if (SAI->getName() != *Array.getString("name"))
+  if (SAI->getName() != Array.getString("name").getValue())
     return false;
 
   if (SAI->getNumberOfDimensions() != Array.getArray("sizes")->size())
@@ -575,14 +575,14 @@ static bool areArraysEqual(ScopArrayInfo *SAI, const json::Object &Array) {
   for (unsigned i = 1; i < Array.getArray("sizes")->size(); i++) {
     SAI->getDimensionSize(i)->print(RawStringOstream);
     const json::Array &SizesArray = *Array.getArray("sizes");
-    if (RawStringOstream.str() != SizesArray[i].getAsString().value())
+    if (RawStringOstream.str() != SizesArray[i].getAsString().getValue())
       return false;
     Buffer.clear();
   }
 
   // Check if key 'type' differs from the current one or is not valid.
   SAI->getElementType()->print(RawStringOstream);
-  if (RawStringOstream.str() != Array.getString("type").value()) {
+  if (RawStringOstream.str() != Array.getString("type").getValue()) {
     errs() << "Array has not a valid type.\n";
     return false;
   }
@@ -653,7 +653,7 @@ static bool importArrays(Scop &S, const json::Object &JScop) {
   for (; ArrayIdx < Arrays.size(); ArrayIdx++) {
     const json::Object &Array = *Arrays[ArrayIdx].getAsObject();
     auto *ElementType =
-        parseTextType(Array.get("type")->getAsString().value().str(),
+        parseTextType(Array.get("type")->getAsString().getValue().str(),
                       S.getSE()->getContext());
     if (!ElementType) {
       errs() << "Error while parsing element type for new array.\n";
@@ -662,7 +662,7 @@ static bool importArrays(Scop &S, const json::Object &JScop) {
     const json::Array &SizesArray = *Array.getArray("sizes");
     std::vector<unsigned> DimSizes;
     for (unsigned i = 0; i < SizesArray.size(); i++) {
-      auto Size = std::stoi(SizesArray[i].getAsString()->str());
+      auto Size = std::stoi(SizesArray[i].getAsString().getValue().str());
 
       // Check if the size if positive.
       if (Size <= 0) {
@@ -674,10 +674,10 @@ static bool importArrays(Scop &S, const json::Object &JScop) {
     }
 
     auto NewSAI = S.createScopArrayInfo(
-        ElementType, Array.getString("name").value().str(), DimSizes);
+        ElementType, Array.getString("name").getValue().str(), DimSizes);
 
     if (Array.get("allocation")) {
-      NewSAI->setIsOnHeap(Array.getString("allocation").value() == "heap");
+      NewSAI->setIsOnHeap(Array.getString("allocation").getValue() == "heap");
     }
   }
 
@@ -838,7 +838,7 @@ INITIALIZE_PASS_END(JSONImporter, "polly-import-jscop",
 
 namespace {
 /// Print result from JSONImporter.
-class JSONImporterPrinterLegacyPass final : public ScopPass {
+class JSONImporterPrinterLegacyPass : public ScopPass {
 public:
   static char ID;
 

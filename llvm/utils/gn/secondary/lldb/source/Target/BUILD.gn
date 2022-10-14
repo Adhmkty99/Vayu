@@ -95,7 +95,7 @@ static_library("Target") {
     "Trace.cpp",
     "TraceCursor.cpp",
     "TraceExporter.cpp",
-    "TraceDumper.cpp",
+    "TraceInstructionDumper.cpp",
     "UnixSignals.cpp",
     "UnwindAssembly.cpp",
     "UnwindLLDB.cpp",

@@ -95,9 +95,8 @@ getCommentSplit(StringRef Text, unsigned ContentStartColumn,
     StringRef::size_type SpaceOffset =
         Text.find_first_of(Blanks, MaxSplitBytes);
     if (SpaceOffset != StringRef::npos && SpaceOffset + 1 < Text.size() &&
-        Text[SpaceOffset + 1] == '{') {
+        Text[SpaceOffset + 1] == '{')
       MaxSplitBytes = SpaceOffset + 1;
-    }
   }
 
   StringRef::size_type SpaceOffset = Text.find_last_of(Blanks, MaxSplitBytes);
@@ -142,10 +141,9 @@ getCommentSplit(StringRef Text, unsigned ContentStartColumn,
     // Make sure that we don't break at leading whitespace that
     // reaches past MaxSplit.
     StringRef::size_type FirstNonWhitespace = Text.find_first_not_of(Blanks);
-    if (FirstNonWhitespace == StringRef::npos) {
+    if (FirstNonWhitespace == StringRef::npos)
       // If the comment is only whitespace, we cannot split.
       return BreakableToken::Split(StringRef::npos, 0);
-    }
     SpaceOffset = Text.find_first_of(
         Blanks, std::max<unsigned>(MaxSplitBytes, FirstNonWhitespace));
   }
@@ -398,9 +396,8 @@ BreakableBlockComment::BreakableBlockComment(
   // ** blah blah blah
   // */
   if (Lines.size() >= 2 && Content[1].startswith("**") &&
-      static_cast<unsigned>(ContentColumn[1]) == StartColumn) {
+      static_cast<unsigned>(ContentColumn[1]) == StartColumn)
     DecorationColumn = StartColumn;
-  }
 
   Decoration = "* ";
   if (Lines.size() == 1 && !FirstInLine) {
@@ -454,10 +451,9 @@ BreakableBlockComment::BreakableBlockComment(
     if (DecorationSize)
       ContentColumn[i] = DecorationColumn + DecorationSize;
     Content[i] = Content[i].substr(DecorationSize);
-    if (!Decoration.startswith(Content[i])) {
+    if (!Decoration.startswith(Content[i]))
       IndentAtLineBreak =
           std::min<int>(IndentAtLineBreak, std::max(0, ContentColumn[i]));
-    }
   }
   IndentAtLineBreak = std::max<unsigned>(IndentAtLineBreak, Decoration.size());
 
@@ -482,11 +478,10 @@ BreakableBlockComment::BreakableBlockComment(
   LLVM_DEBUG({
     llvm::dbgs() << "IndentAtLineBreak " << IndentAtLineBreak << "\n";
     llvm::dbgs() << "DelimitersOnNewline " << DelimitersOnNewline << "\n";
-    for (size_t i = 0; i < Lines.size(); ++i) {
+    for (size_t i = 0; i < Lines.size(); ++i)
       llvm::dbgs() << i << " |" << Content[i] << "| "
                    << "CC=" << ContentColumn[i] << "| "
                    << "IN=" << (Content[i].data() - Lines[i].data()) << "\n";
-    }
   });
 }
 
@@ -591,9 +586,8 @@ unsigned BreakableBlockComment::getContentIndent(unsigned LineIndex) const {
   StringRef FirstWord = ContentWithNoDecoration.substr(
       0, ContentWithNoDecoration.find_first_of(Blanks));
   if (ContentIndentingJavadocAnnotations.find(FirstWord) !=
-      ContentIndentingJavadocAnnotations.end()) {
+      ContentIndentingJavadocAnnotations.end())
     return Style.ContinuationIndentWidth;
-  }
   return 0;
 }
 
@@ -639,9 +633,8 @@ BreakableToken::Split BreakableBlockComment::getReflowSplit(
   if (LineIndex) {
     unsigned PreviousContentIndent = getContentIndent(LineIndex - 1);
     if (PreviousContentIndent && Trimmed != StringRef::npos &&
-        Trimmed != PreviousContentIndent) {
+        Trimmed != PreviousContentIndent)
       return Split(StringRef::npos, 0);
-    }
   }
 
   return Split(0, Trimmed != StringRef::npos ? Trimmed : 0);
@@ -683,10 +676,9 @@ void BreakableBlockComment::adaptStartOfLine(
       // Note: this works because getCommentSplit is careful never to split at
       // the beginning of a line.
       size_t BreakLength = Lines[0].substr(1).find_first_not_of(Blanks);
-      if (BreakLength != StringRef::npos) {
+      if (BreakLength != StringRef::npos)
         insertBreak(LineIndex, 0, Split(1, BreakLength), /*ContentIndent=*/0,
                     Whitespaces);
-      }
     }
     return;
   }
@@ -705,9 +697,11 @@ void BreakableBlockComment::adaptStartOfLine(
       // contain a trailing whitespace.
       Prefix = Prefix.substr(0, 1);
     }
-  } else if (ContentColumn[LineIndex] == 1) {
-    // This line starts immediately after the decorating *.
-    Prefix = Prefix.substr(0, 1);
+  } else {
+    if (ContentColumn[LineIndex] == 1) {
+      // This line starts immediately after the decorating *.
+      Prefix = Prefix.substr(0, 1);
+    }
   }
   // This is the offset of the end of the last line relative to the start of the
   // token text in the token.
@@ -789,9 +783,8 @@ BreakableLineCommentSection::BreakableLineCommentSection(
             encoding::getCodePointNumBytes(FirstCommentChar, Encoding);
         if (encoding::columnWidth(
                 Lines[i].substr(IndentPrefix.size(), FirstCharByteSize),
-                Encoding) != 1) {
+                Encoding) != 1)
           return false;
-        }
         // In C-like comments, add a space before #. For example this is useful
         // to preserve the relative indentation when commenting out code with
         // #includes.

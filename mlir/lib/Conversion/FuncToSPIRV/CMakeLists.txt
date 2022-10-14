@@ -10,10 +10,10 @@ add_mlir_conversion_library(MLIRFuncToSPIRV
   MLIRConversionPassIncGen
 
   LINK_LIBS PUBLIC
-  MLIRFuncDialect
+  MLIRFunc
   MLIRIR
   MLIRPass
-  MLIRSPIRVDialect
+  MLIRSPIRV
   MLIRSPIRVConversion
   MLIRSupport
   MLIRTransformUtils

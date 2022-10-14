@@ -119,7 +119,7 @@ static isl::union_map underapproximatedAddMap(isl::union_map UMap,
   return UResult;
 }
 
-class SimplifyImpl final {
+class SimplifyImpl {
 private:
   /// The invocation id (if there are multiple instances in the pass manager's
   /// pipeline) to determine which statistics to update.
@@ -754,7 +754,7 @@ void SimplifyImpl::printScop(raw_ostream &OS, Scop &S) const {
   printAccesses(OS);
 }
 
-class SimplifyWrapperPass final : public ScopPass {
+class SimplifyWrapperPass : public ScopPass {
 public:
   static char ID;
   int CallNo;
@@ -855,7 +855,7 @@ INITIALIZE_PASS_END(SimplifyWrapperPass, "polly-simplify", "Polly - Simplify",
 
 namespace {
 /// Print result from SimplifyWrapperPass.
-class SimplifyPrinterLegacyPass final : public ScopPass {
+class SimplifyPrinterLegacyPass : public ScopPass {
 public:
   static char ID;
 

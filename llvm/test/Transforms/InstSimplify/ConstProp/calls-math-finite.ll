@@ -36,26 +36,26 @@ define void @T() {
 ; CHECK-LABEL: @T(
 ; CHECK-NEXT:    [[SLOT:%.*]] = alloca double
 ; CHECK-NEXT:    [[SLOTF:%.*]] = alloca float
-; CHECK-NEXT:    store double 0.000000e+00, ptr [[SLOT]]
-; CHECK-NEXT:    store double 0x3FF921FB54442D18, ptr [[SLOT]]
-; CHECK-NEXT:    store double 0x3FE4978FA3269EE1, ptr [[SLOT]]
-; CHECK-NEXT:    store double 0x402422A497D6185E, ptr [[SLOT]]
-; CHECK-NEXT:    store double 0x403415E5BF6FB106, ptr [[SLOT]]
-; CHECK-NEXT:    store double 8.000000e+00, ptr [[SLOT]]
-; CHECK-NEXT:    store double 0x3FF193EA7AAD030{{[AB]}}, ptr [[SLOT]]
-; CHECK-NEXT:    store double 0x3FDE8927964FD5FD, ptr [[SLOT]]
-; CHECK-NEXT:    store double 1.000000e+00, ptr [[SLOT]]
-; CHECK-NEXT:    store double 0x40240926E70949AE, ptr [[SLOT]]
-; CHECK-NEXT:    store float 0.000000e+00, ptr [[SLOTF]]
-; CHECK-NEXT:    store float 0x3FF921FB60000000, ptr [[SLOTF]]
-; CHECK-NEXT:    store float 0x3FE4978FA0000000, ptr [[SLOTF]]
-; CHECK-NEXT:    store float 0x402422A4A0000000, ptr [[SLOTF]]
-; CHECK-NEXT:    store float 0x403415E5C0000000, ptr [[SLOTF]]
-; CHECK-NEXT:    store float 8.000000e+00, ptr [[SLOTF]]
-; CHECK-NEXT:    store float 0x3FF193EA80000000, ptr [[SLOTF]]
-; CHECK-NEXT:    store float 0x3FDE8927A0000000, ptr [[SLOTF]]
-; CHECK-NEXT:    store float 8.100000e+01, ptr [[SLOTF]]
-; CHECK-NEXT:    store float 0x40240926E0000000, ptr [[SLOTF]]
+; CHECK-NEXT:    store double 0.000000e+00, double* [[SLOT]]
+; CHECK-NEXT:    store double 0x3FF921FB54442D18, double* [[SLOT]]
+; CHECK-NEXT:    store double 0x3FE4978FA3269EE1, double* [[SLOT]]
+; CHECK-NEXT:    store double 0x402422A497D6185E, double* [[SLOT]]
+; CHECK-NEXT:    store double 0x403415E5BF6FB106, double* [[SLOT]]
+; CHECK-NEXT:    store double 8.000000e+00, double* [[SLOT]]
+; CHECK-NEXT:    store double 0x3FF193EA7AAD030{{[AB]}}, double* [[SLOT]]
+; CHECK-NEXT:    store double 0x3FDE8927964FD5FD, double* [[SLOT]]
+; CHECK-NEXT:    store double 1.000000e+00, double* [[SLOT]]
+; CHECK-NEXT:    store double 0x40240926E70949AE, double* [[SLOT]]
+; CHECK-NEXT:    store float 0.000000e+00, float* [[SLOTF]]
+; CHECK-NEXT:    store float 0x3FF921FB60000000, float* [[SLOTF]]
+; CHECK-NEXT:    store float 0x3FE4978FA0000000, float* [[SLOTF]]
+; CHECK-NEXT:    store float 0x402422A4A0000000, float* [[SLOTF]]
+; CHECK-NEXT:    store float 0x403415E5C0000000, float* [[SLOTF]]
+; CHECK-NEXT:    store float 8.000000e+00, float* [[SLOTF]]
+; CHECK-NEXT:    store float 0x3FF193EA80000000, float* [[SLOTF]]
+; CHECK-NEXT:    store float 0x3FDE8927A0000000, float* [[SLOTF]]
+; CHECK-NEXT:    store float 8.100000e+01, float* [[SLOTF]]
+; CHECK-NEXT:    store float 0x40240926E0000000, float* [[SLOTF]]
 ; CHECK-NEXT:    ret void
 ;
 ; MUSL-LABEL: @T(
@@ -104,46 +104,46 @@ define void @T() {
   %slotf = alloca float
 
   %ACOS = call fast double @__acos_finite(double 1.000000e+00)
-  store double %ACOS, ptr %slot
+  store double %ACOS, double* %slot
   %ASIN = call fast double @__asin_finite(double 1.000000e+00)
-  store double %ASIN, ptr %slot
+  store double %ASIN, double* %slot
   %ATAN2 = call fast double @__atan2_finite(double 3.000000e+00, double 4.000000e+00)
-  store double %ATAN2, ptr %slot
+  store double %ATAN2, double* %slot
   %COSH = call fast double @__cosh_finite(double 3.000000e+00)
-  store double %COSH, ptr %slot
+  store double %COSH, double* %slot
   %EXP = call fast double @__exp_finite(double 3.000000e+00)
-  store double %EXP, ptr %slot
+  store double %EXP, double* %slot
   %EXP2 = call fast double @__exp2_finite(double 3.000000e+00)
-  store double %EXP2, ptr %slot
+  store double %EXP2, double* %slot
   %LOG = call fast double @__log_finite(double 3.000000e+00)
-  store double %LOG, ptr %slot
+  store double %LOG, double* %slot
   %LOG10 = call fast double @__log10_finite(double 3.000000e+00)
-  store double %LOG10, ptr %slot
+  store double %LOG10, double* %slot
   %POW = call fast double @__pow_finite(double 1.000000e+00, double 4.000000e+00)
-  store double %POW, ptr %slot
+  store double %POW, double* %slot
   %SINH = call fast double @__sinh_finite(double 3.000000e+00)
-  store double %SINH, ptr %slot
+  store double %SINH, double* %slot
 
   %ACOSF = call fast float @__acosf_finite(float 1.000000e+00)
-  store float %ACOSF, ptr %slotf
+  store float %ACOSF, float* %slotf
   %ASINF = call fast float @__asinf_finite(float 1.000000e+00)
-  store float %ASINF, ptr %slotf
+  store float %ASINF, float* %slotf
   %ATAN2F = call fast float @__atan2f_finite(float 3.000000e+00, float 4.000000e+00)
-  store float %ATAN2F, ptr %slotf
+  store float %ATAN2F, float* %slotf
   %COSHF = call fast float @__coshf_finite(float 3.000000e+00)
-  store float %COSHF, ptr %slotf
+  store float %COSHF, float* %slotf
   %EXPF = call fast float @__expf_finite(float 3.000000e+00)
-  store float %EXPF, ptr %slotf
+  store float %EXPF, float* %slotf
   %EXP2F = call fast float @__exp2f_finite(float 3.000000e+00)
-  store float %EXP2F, ptr %slotf
+  store float %EXP2F, float* %slotf
   %LOGF = call fast float @__logf_finite(float 3.000000e+00)
-  store float %LOGF, ptr %slotf
+  store float %LOGF, float* %slotf
   %LOG10F = call fast float @__log10f_finite(float 3.000000e+00)
-  store float %LOG10F, ptr %slotf
+  store float %LOG10F, float* %slotf
   %POWF = call fast float @__powf_finite(float 3.000000e+00, float 4.000000e+00)
-  store float %POWF, ptr %slotf
+  store float %POWF, float* %slotf
   %SINHF = call fast float @__sinhf_finite(float 3.000000e+00)
-  store float %SINHF, ptr %slotf
+  store float %SINHF, float* %slotf
   ret void
 }
 

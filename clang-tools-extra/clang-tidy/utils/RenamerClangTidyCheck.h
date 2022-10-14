@@ -34,11 +34,12 @@ public:
   /// class will do the matching and call the derived class'
   /// getDeclFailureInfo() and getMacroFailureInfo() for determining whether a
   /// given identifier passes or fails the check.
-  void registerMatchers(ast_matchers::MatchFinder *Finder) final;
-  void check(const ast_matchers::MatchFinder::MatchResult &Result) final;
+  void registerMatchers(ast_matchers::MatchFinder *Finder) override final;
+  void
+  check(const ast_matchers::MatchFinder::MatchResult &Result) override final;
   void registerPPCallbacks(const SourceManager &SM, Preprocessor *PP,
-                           Preprocessor *ModuleExpanderPP) final;
-  void onEndOfTranslationUnit() final;
+                           Preprocessor *ModuleExpanderPP) override final;
+  void onEndOfTranslationUnit() override final;
 
   /// Derived classes that override this function should call this method from
   /// the overridden method.

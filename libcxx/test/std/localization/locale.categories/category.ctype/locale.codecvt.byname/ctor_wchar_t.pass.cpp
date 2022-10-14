@@ -15,7 +15,7 @@
 // explicit codecvt_byname(const char* nm, size_t refs = 0);
 // explicit codecvt_byname(const string& nm, size_t refs = 0);
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 #include <locale>
 #include <cassert>

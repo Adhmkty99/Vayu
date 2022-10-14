@@ -34,7 +34,6 @@ static_library("MacOSX") {
   include_dirs = [ "//lldb/source" ]
   sources = [
     "PlatformDarwin.cpp",
-    "PlatformDarwinDevice.cpp",
     "PlatformDarwinKernel.cpp",
     "PlatformMacOSX.cpp",
     "PlatformRemoteAppleBridge.cpp",

@@ -13,6 +13,8 @@ from lldbsuite.test.lldbbench import *
 
 class StartupDelaysBench(BenchBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         BenchBase.setUp(self)
         # Create self.stopwatch2 for measuring "set first breakpoint".

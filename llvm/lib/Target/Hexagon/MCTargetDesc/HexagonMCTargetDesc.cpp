@@ -46,7 +46,6 @@
 using namespace llvm;
 
 #define GET_INSTRINFO_MC_DESC
-#define ENABLE_INSTR_PREDICATE_VERIFIER
 #include "HexagonGenInstrInfo.inc"
 
 #define GET_SUBTARGETINFO_MC_DESC
@@ -412,7 +411,7 @@ std::string selectHexagonFS(StringRef CPU, StringRef FS) {
 }
 
 static bool isCPUValid(StringRef CPU) {
-  return Hexagon::getCpu(CPU).has_value();
+  return Hexagon::getCpu(CPU).hasValue();
 }
 
 namespace {

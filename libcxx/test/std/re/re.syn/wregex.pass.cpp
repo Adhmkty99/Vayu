@@ -10,7 +10,7 @@
 
 // typedef basic_regex<wchar_t> wregex;
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 #include <regex>
 #include <type_traits>

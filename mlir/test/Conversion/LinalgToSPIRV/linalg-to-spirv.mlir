@@ -14,7 +14,7 @@
 
 module attributes {
   spv.target_env = #spv.target_env<
-    #spv.vce<v1.3, [Shader, GroupNonUniformArithmetic], []>, #spv.resource_limits<>>
+    #spv.vce<v1.3, [Shader, GroupNonUniformArithmetic], []>, {}>
 } {
 
 // CHECK:      spv.GlobalVariable
@@ -44,8 +44,8 @@ module attributes {
 // CHECK:        }
 // CHECK:        spv.Return
 
-func.func @single_workgroup_reduction(%input: memref<16xi32>, %output: memref<1xi32>) attributes {
-  spv.entry_point_abi = #spv.entry_point_abi<local_size = dense<[16, 1, 1]>: vector<3xi32>>
+func @single_workgroup_reduction(%input: memref<16xi32>, %output: memref<1xi32>) attributes {
+  spv.entry_point_abi = {local_size = dense<[16, 1, 1]>: vector<3xi32>}
 } {
   linalg.generic #single_workgroup_reduction_trait
       ins(%input : memref<16xi32>)
@@ -72,9 +72,9 @@ func.func @single_workgroup_reduction(%input: memref<16xi32>, %output: memref<1x
 
 module attributes {
   spv.target_env = #spv.target_env<
-    #spv.vce<v1.3, [Shader, GroupNonUniformArithmetic], []>, #spv.resource_limits<>>
+    #spv.vce<v1.3, [Shader, GroupNonUniformArithmetic], []>, {}>
 } {
-func.func @single_workgroup_reduction(%input: memref<16xi32>, %output: memref<1xi32>) {
+func @single_workgroup_reduction(%input: memref<16xi32>, %output: memref<1xi32>) {
   // expected-error @+1 {{failed to legalize operation 'linalg.generic'}}
   linalg.generic #single_workgroup_reduction_trait
       ins(%input : memref<16xi32>)
@@ -101,10 +101,10 @@ func.func @single_workgroup_reduction(%input: memref<16xi32>, %output: memref<1x
 
 module attributes {
   spv.target_env = #spv.target_env<
-    #spv.vce<v1.3, [Shader, GroupNonUniformArithmetic], []>, #spv.resource_limits<>>
+    #spv.vce<v1.3, [Shader, GroupNonUniformArithmetic], []>, {}>
 } {
-func.func @single_workgroup_reduction(%input: memref<16xi32>, %output: memref<1xi32>) attributes {
-  spv.entry_point_abi = #spv.entry_point_abi<local_size = dense<[32, 1, 1]>: vector<3xi32>>
+func @single_workgroup_reduction(%input: memref<16xi32>, %output: memref<1xi32>) attributes {
+  spv.entry_point_abi = {local_size = dense<[32, 1, 1]>: vector<3xi32>}
 } {
   // expected-error @+1 {{failed to legalize operation 'linalg.generic'}}
   linalg.generic #single_workgroup_reduction_trait
@@ -132,10 +132,10 @@ func.func @single_workgroup_reduction(%input: memref<16xi32>, %output: memref<1x
 
 module attributes {
   spv.target_env = #spv.target_env<
-    #spv.vce<v1.3, [Shader, GroupNonUniformArithmetic], []>, #spv.resource_limits<>>
+    #spv.vce<v1.3, [Shader, GroupNonUniformArithmetic], []>, {}>
 } {
-func.func @single_workgroup_reduction(%input: memref<16x8xi32>, %output: memref<16xi32>) attributes {
-  spv.entry_point_abi = #spv.entry_point_abi<local_size = dense<[16, 8, 1]>: vector<3xi32>>
+func @single_workgroup_reduction(%input: memref<16x8xi32>, %output: memref<16xi32>) attributes {
+  spv.entry_point_abi = {local_size = dense<[16, 8, 1]>: vector<3xi32>}
 } {
   // expected-error @+1 {{failed to legalize operation 'linalg.generic'}}
   linalg.generic #single_workgroup_reduction_trait

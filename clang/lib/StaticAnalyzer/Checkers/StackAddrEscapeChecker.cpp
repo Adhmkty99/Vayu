@@ -42,7 +42,7 @@ public:
     CK_NumCheckKinds
   };
 
-  bool ChecksEnabled[CK_NumCheckKinds] = {false};
+  DefaultBool ChecksEnabled[CK_NumCheckKinds];
   CheckerNameRef CheckNames[CK_NumCheckKinds];
 
   void checkPreCall(const CallEvent &Call, CheckerContext &C) const;

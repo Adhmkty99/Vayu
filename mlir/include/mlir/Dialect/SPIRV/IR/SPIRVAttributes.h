@@ -18,8 +18,7 @@
 #include "mlir/Support/LLVM.h"
 
 // Pull in TableGen'erated SPIR-V attribute definitions for target and ABI.
-#define GET_ATTRDEF_CLASSES
-#include "mlir/Dialect/SPIRV/IR/SPIRVAttributes.h.inc"
+#include "mlir/Dialect/SPIRV/IR/TargetAndABI.h.inc"
 
 namespace mlir {
 namespace spirv {
@@ -140,7 +139,7 @@ public:
   /// Gets a TargetEnvAttr instance.
   static TargetEnvAttr get(VerCapExtAttr triple, Vendor vendorID,
                            DeviceType deviceType, uint32_t deviceId,
-                           ResourceLimitsAttr limits);
+                           DictionaryAttr limits);
 
   /// Returns the attribute kind's name (without the 'spv.' prefix).
   static StringRef getKindName();
@@ -172,6 +171,11 @@ public:
 
   /// Returns the target resource limits.
   ResourceLimitsAttr getResourceLimits() const;
+
+  static LogicalResult verify(function_ref<InFlightDiagnostic()> emitError,
+                              VerCapExtAttr triple, Vendor vendorID,
+                              DeviceType deviceType, uint32_t deviceID,
+                              DictionaryAttr limits);
 };
 } // namespace spirv
 } // namespace mlir

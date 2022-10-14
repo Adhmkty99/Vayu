@@ -435,8 +435,8 @@ public:
   /// Note that, unlike AllocateReg, this shadows ALL of the shadow registers.
   unsigned AllocateStack(unsigned Size, Align Alignment,
                          ArrayRef<MCPhysReg> ShadowRegs) {
-    for (MCPhysReg Reg : ShadowRegs)
-      MarkAllocated(Reg);
+    for (unsigned i = 0; i < ShadowRegs.size(); ++i)
+      MarkAllocated(ShadowRegs[i]);
     return AllocateStack(Size, Alignment);
   }
 

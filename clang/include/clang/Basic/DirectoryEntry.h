@@ -130,31 +130,18 @@ public:
 
   void reset() { MaybeRef = optional_none_tag(); }
 
-  bool has_value() const { return MaybeRef.hasOptionalValue(); }
   bool hasValue() const { return MaybeRef.hasOptionalValue(); }
 
-  RefTy &value() & {
-    assert(has_value());
-    return MaybeRef;
-  }
   RefTy &getValue() & {
-    assert(has_value());
-    return MaybeRef;
-  }
-  RefTy const &value() const & {
-    assert(has_value());
+    assert(hasValue());
     return MaybeRef;
   }
   RefTy const &getValue() const & {
-    assert(has_value());
+    assert(hasValue());
     return MaybeRef;
   }
-  RefTy &&value() && {
-    assert(has_value());
-    return std::move(MaybeRef);
-  }
   RefTy &&getValue() && {
-    assert(has_value());
+    assert(hasValue());
     return std::move(MaybeRef);
   }
 
@@ -299,7 +286,7 @@ public:
   /// DirectoryEntry::getName have been deleted, delete this class and replace
   /// instances with Optional<DirectoryEntryRef>
   operator const DirectoryEntry *() const {
-    return has_value() ? &value().getDirEntry() : nullptr;
+    return hasValue() ? &getValue().getDirEntry() : nullptr;
   }
 };
 

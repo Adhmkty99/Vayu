@@ -13,7 +13,6 @@
 #include "Symbols.h"
 #include "Writer.h"
 #include "llvm/ADT/Twine.h"
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/BinaryFormat/COFF.h"
 #include "llvm/Object/COFF.h"
 #include "llvm/Support/Debug.h"
@@ -816,7 +815,7 @@ void RVATableChunk::writeTo(uint8_t *buf) const {
   size_t cnt = 0;
   for (const ChunkAndOffset &co : syms)
     begin[cnt++] = co.inputChunk->getRVA() + co.offset;
-  llvm::sort(begin, begin + cnt);
+  std::sort(begin, begin + cnt);
   assert(std::unique(begin, begin + cnt) == begin + cnt &&
          "RVA tables should be de-duplicated");
 }

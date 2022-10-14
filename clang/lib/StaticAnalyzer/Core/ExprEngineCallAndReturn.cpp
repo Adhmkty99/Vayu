@@ -129,7 +129,7 @@ static std::pair<const Stmt*,
 static SVal adjustReturnValue(SVal V, QualType ExpectedTy, QualType ActualTy,
                               StoreManager &StoreMgr) {
   // For now, the only adjustments we handle apply only to locations.
-  if (!isa<Loc>(V))
+  if (!V.getAs<Loc>())
     return V;
 
   // If the types already match, don't do any unnecessary work.
@@ -227,13 +227,6 @@ void ExprEngine::processCallExit(ExplodedNode *CEBNode) {
 
   // Step 2: generate node with bound return value: CEBNode -> BindedRetNode.
 
-  // If this variable is set to 'true' the analyzer will evaluate the call
-  // statement we are about to exit again, instead of continuing the execution
-  // from the statement after the call. This is useful for non-POD type array
-  // construction where the CXXConstructExpr is referenced only once in the CFG,
-  // but we want to evaluate it as many times as many elements the array has.
-  bool ShouldRepeatCall = false;
-
   // If the callee returns an expression, bind its value to CallExpr.
   if (CE) {
     if (const ReturnStmt *RS = dyn_cast_or_null<ReturnStmt>(LastSt)) {
@@ -262,12 +255,6 @@ void ExprEngine::processCallExit(ExplodedNode *CEBNode) {
       SVal ThisV = state->getSVal(This);
       ThisV = state->getSVal(ThisV.castAs<Loc>());
       state = state->BindExpr(CCE, callerCtx, ThisV);
-
-      ShouldRepeatCall = shouldRepeatCtorCall(state, CCE, callerCtx);
-
-      if (!ShouldRepeatCall &&
-          getIndexOfElementToConstruct(state, CCE, callerCtx))
-        state = removeIndexOfElementToConstruct(state, CCE, callerCtx);
     }
 
     if (const auto *CNE = dyn_cast<CXXNewExpr>(CE)) {
@@ -371,10 +358,9 @@ void ExprEngine::processCallExit(ExplodedNode *CEBNode) {
 
     // Enqueue the next element in the block.
     for (ExplodedNodeSet::iterator PSI = Dst.begin(), PSE = Dst.end();
-         PSI != PSE; ++PSI) {
-      unsigned Idx = calleeCtx->getIndex() + (ShouldRepeatCall ? 0 : 1);
-
-      Engine.getWorkList()->enqueue(*PSI, calleeCtx->getCallSiteBlock(), Idx);
+                                   PSI != PSE; ++PSI) {
+      Engine.getWorkList()->enqueue(*PSI, calleeCtx->getCallSiteBlock(),
+                                    calleeCtx->getIndex()+1);
     }
   }
 }
@@ -441,39 +427,10 @@ namespace {
 
 REGISTER_MAP_WITH_PROGRAMSTATE(DynamicDispatchBifurcationMap,
                                const MemRegion *, unsigned)
-REGISTER_TRAIT_WITH_PROGRAMSTATE(CTUDispatchBifurcation, bool)
 
-void ExprEngine::ctuBifurcate(const CallEvent &Call, const Decl *D,
-                              NodeBuilder &Bldr, ExplodedNode *Pred,
-                              ProgramStateRef State) {
-  ProgramStateRef ConservativeEvalState = nullptr;
-  if (Call.isForeign() && !isSecondPhaseCTU()) {
-    const auto IK = AMgr.options.getCTUPhase1Inlining();
-    const bool DoInline = IK == CTUPhase1InliningKind::All ||
-                          (IK == CTUPhase1InliningKind::Small &&
-                           isSmall(AMgr.getAnalysisDeclContext(D)));
-    if (DoInline) {
-      inlineCall(Engine.getWorkList(), Call, D, Bldr, Pred, State);
-      return;
-    }
-    const bool BState = State->get<CTUDispatchBifurcation>();
-    if (!BState) { // This is the first time we see this foreign function.
-      // Enqueue it to be analyzed in the second (ctu) phase.
-      inlineCall(Engine.getCTUWorkList(), Call, D, Bldr, Pred, State);
-      // Conservatively evaluate in the first phase.
-      ConservativeEvalState = State->set<CTUDispatchBifurcation>(true);
-      conservativeEvalCall(Call, Bldr, Pred, ConservativeEvalState);
-    } else {
-      conservativeEvalCall(Call, Bldr, Pred, State);
-    }
-    return;
-  }
-  inlineCall(Engine.getWorkList(), Call, D, Bldr, Pred, State);
-}
-
-void ExprEngine::inlineCall(WorkList *WList, const CallEvent &Call,
-                            const Decl *D, NodeBuilder &Bldr,
-                            ExplodedNode *Pred, ProgramStateRef State) {
+bool ExprEngine::inlineCall(const CallEvent &Call, const Decl *D,
+                            NodeBuilder &Bldr, ExplodedNode *Pred,
+                            ProgramStateRef State) {
   assert(D);
 
   const LocationContext *CurLC = Pred->getLocationContext();
@@ -508,7 +465,7 @@ void ExprEngine::inlineCall(WorkList *WList, const CallEvent &Call,
   if (ExplodedNode *N = G.getNode(Loc, State, false, &isNew)) {
     N->addPredecessor(Pred, G);
     if (isNew)
-      WList->enqueue(N);
+      Engine.getWorkList()->enqueue(N);
   }
 
   // If we decided to inline the call, the successor has been manually
@@ -518,17 +475,11 @@ void ExprEngine::inlineCall(WorkList *WList, const CallEvent &Call,
   NumInlinedCalls++;
   Engine.FunctionSummaries->bumpNumTimesInlined(D);
 
-  // Do not mark as visited in the 2nd run (CTUWList), so the function will
-  // be visited as top-level, this way we won't loose reports in non-ctu
-  // mode. Considering the case when a function in a foreign TU calls back
-  // into the main TU.
-  // Note, during the 1st run, it doesn't matter if we mark the foreign
-  // functions as visited (or not) because they can never appear as a top level
-  // function in the main TU.
-  if (!isSecondPhaseCTU())
-    // Mark the decl as visited.
-    if (VisitedCallees)
-      VisitedCallees->insert(D);
+  // Mark the decl as visited.
+  if (VisitedCallees)
+    VisitedCallees->insert(D);
+
+  return true;
 }
 
 static ProgramStateRef getInlineFailedState(ProgramStateRef State,
@@ -746,7 +697,7 @@ ProgramStateRef ExprEngine::bindReturnValue(const CallEvent &Call,
 
       // Store the extent of the allocated object(s).
       SVal ElementCount;
-      if (const Expr *SizeExpr = CNE->getArraySize().value_or(nullptr)) {
+      if (const Expr *SizeExpr = CNE->getArraySize().getValueOr(nullptr)) {
         ElementCount = State->getSVal(SizeExpr, LCtx);
       } else {
         ElementCount = svalBuilder.makeIntVal(1, /*IsUnsigned=*/true);
@@ -814,11 +765,8 @@ ExprEngine::mayInlineCallKind(const CallEvent &Call, const ExplodedNode *Pred,
     // initializers for array fields in default move/copy constructors.
     // We still allow construction into ElementRegion targets when they don't
     // represent array elements.
-    if (CallOpts.IsArrayCtorOrDtor) {
-      if (!shouldInlineArrayConstruction(
-              dyn_cast<ArrayType>(CtorExpr->getType())))
-        return CIP_DisallowedOnce;
-    }
+    if (CallOpts.IsArrayCtorOrDtor)
+      return CIP_DisallowedOnce;
 
     // Inlining constructors requires including initializers in the CFG.
     const AnalysisDeclContext *ADC = CallerSFC->getAnalysisDeclContext();
@@ -869,7 +817,7 @@ ExprEngine::mayInlineCallKind(const CallEvent &Call, const ExplodedNode *Pred,
     assert(ADC->getCFGBuildOptions().AddImplicitDtors && "No CFG destructors");
     (void)ADC;
 
-    // FIXME: We don't handle destructors for arrays properly.
+    // FIXME: We don't handle constructors or destructors for arrays properly.
     if (CallOpts.IsArrayCtorOrDtor)
       return CIP_DisallowedOnce;
 
@@ -1032,8 +980,8 @@ bool ExprEngine::shouldInlineCall(const CallEvent &Call, const Decl *D,
 
   // Check if this function has been marked as non-inlinable.
   Optional<bool> MayInline = Engine.FunctionSummaries->mayInline(D);
-  if (MayInline) {
-    if (!MayInline.value())
+  if (MayInline.hasValue()) {
+    if (!MayInline.getValue())
       return false;
 
   } else {
@@ -1054,7 +1002,7 @@ bool ExprEngine::shouldInlineCall(const CallEvent &Call, const Decl *D,
   CallInlinePolicy CIP = mayInlineCallKind(Call, Pred, Opts, CallOpts);
   if (CIP != CIP_Allowed) {
     if (CIP == CIP_DisallowedAlways) {
-      assert(!MayInline || *MayInline);
+      assert(!MayInline.hasValue() || MayInline.getValue());
       Engine.FunctionSummaries->markShouldNotInline(D);
     }
     return false;
@@ -1080,38 +1028,6 @@ bool ExprEngine::shouldInlineCall(const CallEvent &Call, const Decl *D,
     return false;
 
   return true;
-}
-
-bool ExprEngine::shouldInlineArrayConstruction(const ArrayType *Type) {
-  if (!Type)
-    return false;
-
-  // FIXME: Handle other arrays types.
-  if (const auto *CAT = dyn_cast<ConstantArrayType>(Type)) {
-    unsigned Size = getContext().getConstantArrayElementCount(CAT);
-
-    return Size <= AMgr.options.maxBlockVisitOnPath;
-  }
-
-  return false;
-}
-
-bool ExprEngine::shouldRepeatCtorCall(ProgramStateRef State,
-                                      const CXXConstructExpr *E,
-                                      const LocationContext *LCtx) {
-
-  if (!E)
-    return false;
-
-  auto Ty = E->getType();
-
-  // FIXME: Handle non constant array types
-  if (const auto *CAT = dyn_cast<ConstantArrayType>(Ty)) {
-    unsigned Size = getContext().getConstantArrayElementCount(CAT);
-    return Size > getIndexOfElementToConstruct(State, E, LCtx);
-  }
-
-  return false;
 }
 
 static bool isTrivialObjectAssignment(const CallEvent &Call) {
@@ -1152,7 +1068,6 @@ void ExprEngine::defaultEvalCall(NodeBuilder &Bldr, ExplodedNode *Pred,
     State = InlinedFailedState;
   } else {
     RuntimeDefinition RD = Call->getRuntimeDefinition();
-    Call->setForeign(RD.isForeign());
     const Decl *D = RD.getDecl();
     if (shouldInlineCall(*Call, D, Pred, CallOpts)) {
       if (RD.mayHaveOtherDefinitions()) {
@@ -1170,8 +1085,10 @@ void ExprEngine::defaultEvalCall(NodeBuilder &Bldr, ExplodedNode *Pred,
           return;
         }
       }
-      ctuBifurcate(*Call, D, Bldr, Pred, State);
-      return;
+
+      // We are not bifurcating and we do have a Decl, so just inline.
+      if (inlineCall(*Call, D, Bldr, Pred, State))
+        return;
     }
   }
 
@@ -1193,7 +1110,8 @@ void ExprEngine::BifurcateCall(const MemRegion *BifurReg,
   if (BState) {
     // If we are on "inline path", keep inlining if possible.
     if (*BState == DynamicDispatchModeInlined)
-      ctuBifurcate(Call, D, Bldr, Pred, State);
+      if (inlineCall(Call, D, Bldr, Pred, State))
+        return;
     // If inline failed, or we are on the path where we assume we
     // don't have enough info about the receiver to inline, conjure the
     // return value and invalidate the regions.
@@ -1206,7 +1124,7 @@ void ExprEngine::BifurcateCall(const MemRegion *BifurReg,
   ProgramStateRef IState =
       State->set<DynamicDispatchBifurcationMap>(BifurReg,
                                                DynamicDispatchModeInlined);
-  ctuBifurcate(Call, D, Bldr, Pred, IState);
+  inlineCall(Call, D, Bldr, Pred, IState);
 
   ProgramStateRef NoIState =
       State->set<DynamicDispatchBifurcationMap>(BifurReg,

@@ -1,7 +1,7 @@
 ; Tests that allocas escaped through function calls will live on the frame.
 ; RUN: opt < %s -passes='cgscc(coro-split),simplifycfg,early-cse' -S | FileCheck %s
 
-define i8* @f() presplitcoroutine {
+define i8* @f() "coroutine.presplit"="1" {
 entry:
   %x = alloca i64
   %y = alloca i64

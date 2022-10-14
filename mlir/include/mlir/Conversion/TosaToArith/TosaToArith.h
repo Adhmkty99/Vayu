@@ -22,8 +22,7 @@ std::unique_ptr<Pass> createTosaToArith();
 
 void populateTosaToArithConversionPatterns(RewritePatternSet *patterns);
 
-void populateTosaRescaleToArithConversionPatterns(RewritePatternSet *patterns,
-                                                  bool include32Bit = false);
+void populateTosaRescaleToArithConversionPatterns(RewritePatternSet *patterns);
 
 } // namespace tosa
 } // namespace mlir

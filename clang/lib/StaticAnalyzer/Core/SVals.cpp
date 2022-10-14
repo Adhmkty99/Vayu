@@ -43,6 +43,25 @@ using namespace ento;
 // Utility methods.
 //===----------------------------------------------------------------------===//
 
+bool SVal::hasConjuredSymbol() const {
+  if (Optional<nonloc::SymbolVal> SV = getAs<nonloc::SymbolVal>()) {
+    SymbolRef sym = SV->getSymbol();
+    if (isa<SymbolConjured>(sym))
+      return true;
+  }
+
+  if (Optional<loc::MemRegionVal> RV = getAs<loc::MemRegionVal>()) {
+    const MemRegion *R = RV->getRegion();
+    if (const auto *SR = dyn_cast<SymbolicRegion>(R)) {
+      SymbolRef sym = SR->getSymbol();
+      if (isa<SymbolConjured>(sym))
+        return true;
+    }
+  }
+
+  return false;
+}
+
 const FunctionDecl *SVal::getAsFunctionDecl() const {
   if (Optional<loc::MemRegionVal> X = getAs<loc::MemRegionVal>()) {
     const MemRegion* R = X->getRegion();
@@ -109,14 +128,6 @@ SymbolRef SVal::getAsSymbol(bool IncludeBaseRegions) const {
   return getAsLocSymbol(IncludeBaseRegions);
 }
 
-const llvm::APSInt *SVal::getAsInteger() const {
-  if (auto CI = getAs<nonloc::ConcreteInt>())
-    return &CI->getValue();
-  if (auto CI = getAs<loc::ConcreteInt>())
-    return &CI->getValue();
-  return nullptr;
-}
-
 const MemRegion *SVal::getAsRegion() const {
   if (Optional<loc::MemRegionVal> X = getAs<loc::MemRegionVal>())
     return X->getRegion();
@@ -144,8 +155,6 @@ public:
   }
   template <class ConcreteInt> QualType VisitConcreteInt(ConcreteInt CI) {
     const llvm::APSInt &Value = CI.getValue();
-    if (1 == Value.getBitWidth())
-      return Context.BoolTy;
     return Context.getIntTypeForBitwidth(Value.getBitWidth(), Value.isSigned());
   }
   QualType VisitLocConcreteInt(loc::ConcreteInt CI) {
@@ -187,7 +196,8 @@ QualType SVal::getType(const ASTContext &Context) const {
 }
 
 const MemRegion *loc::MemRegionVal::stripCasts(bool StripBaseCasts) const {
-  return getRegion()->StripCasts(StripBaseCasts);
+  const MemRegion *R = getRegion();
+  return R ?  R->StripCasts(StripBaseCasts) : nullptr;
 }
 
 const void *nonloc::LazyCompoundVal::getStore() const {
@@ -260,6 +270,49 @@ bool SVal::isConstant(int I) const {
 
 bool SVal::isZeroConstant() const {
   return isConstant(0);
+}
+
+//===----------------------------------------------------------------------===//
+// Transfer function dispatch for Non-Locs.
+//===----------------------------------------------------------------------===//
+
+SVal nonloc::ConcreteInt::evalBinOp(SValBuilder &svalBuilder,
+                                    BinaryOperator::Opcode Op,
+                                    const nonloc::ConcreteInt& R) const {
+  const llvm::APSInt* X =
+    svalBuilder.getBasicValueFactory().evalAPSInt(Op, getValue(), R.getValue());
+
+  if (X)
+    return nonloc::ConcreteInt(*X);
+  else
+    return UndefinedVal();
+}
+
+nonloc::ConcreteInt
+nonloc::ConcreteInt::evalComplement(SValBuilder &svalBuilder) const {
+  return svalBuilder.makeIntVal(~getValue());
+}
+
+nonloc::ConcreteInt
+nonloc::ConcreteInt::evalMinus(SValBuilder &svalBuilder) const {
+  return svalBuilder.makeIntVal(-getValue());
+}
+
+//===----------------------------------------------------------------------===//
+// Transfer function dispatch for Locs.
+//===----------------------------------------------------------------------===//
+
+SVal loc::ConcreteInt::evalBinOp(BasicValueFactory& BasicVals,
+                                 BinaryOperator::Opcode Op,
+                                 const loc::ConcreteInt& R) const {
+  assert(BinaryOperator::isComparisonOp(Op) || Op == BO_Sub);
+
+  const llvm::APSInt *X = BasicVals.evalAPSInt(Op, getValue(), R.getValue());
+
+  if (X)
+    return nonloc::ConcreteInt(*X);
+  else
+    return UndefinedVal();
 }
 
 //===----------------------------------------------------------------------===//
@@ -348,7 +401,7 @@ void NonLoc::dumpToStream(raw_ostream &os) const {
         else
           os << ", ";
 
-        os << I->getType();
+        os << (*I).getType().getAsString();
       }
 
       os << '}';

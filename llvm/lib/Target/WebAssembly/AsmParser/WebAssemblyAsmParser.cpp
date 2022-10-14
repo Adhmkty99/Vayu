@@ -375,7 +375,7 @@ public:
       auto Type = WebAssembly::parseType(Lexer.getTok().getString());
       if (!Type)
         return error("unknown type: ", Lexer.getTok());
-      Types.push_back(*Type);
+      Types.push_back(Type.getValue());
       Parser.Lex();
       if (!isNext(AsmToken::Comma))
         break;
@@ -817,7 +817,8 @@ public:
       // Now set this symbol with the correct type.
       auto WasmSym = cast<MCSymbolWasm>(Ctx.getOrCreateSymbol(SymName));
       WasmSym->setType(wasm::WASM_SYMBOL_TYPE_GLOBAL);
-      WasmSym->setGlobalType(wasm::WasmGlobalType{uint8_t(*Type), Mutable});
+      WasmSym->setGlobalType(
+          wasm::WasmGlobalType{uint8_t(Type.getValue()), Mutable});
       // And emit the directive again.
       TOut.emitGlobalType(WasmSym);
       return expect(AsmToken::EndOfStatement, "EOL");
@@ -847,7 +848,7 @@ public:
       // symbol
       auto WasmSym = cast<MCSymbolWasm>(Ctx.getOrCreateSymbol(SymName));
       WasmSym->setType(wasm::WASM_SYMBOL_TYPE_TABLE);
-      wasm::WasmTableType Type = {uint8_t(*ElemType), Limits};
+      wasm::WasmTableType Type = {uint8_t(ElemType.getValue()), Limits};
       WasmSym->setTableType(Type);
       TOut.emitTableType(WasmSym);
       return expect(AsmToken::EndOfStatement, "EOL");
@@ -1095,15 +1096,14 @@ public:
     auto *WS =
         getContext().getWasmSection(SecName, SectionKind::getText(), 0, Group,
                                     MCContext::GenericSectionID, nullptr);
-    getStreamer().switchSection(WS);
+    getStreamer().SwitchSection(WS);
     // Also generate DWARF for this section if requested.
     if (getContext().getGenDwarfForAssembly())
       getContext().addGenDwarfSection(WS);
   }
 
   void onEndOfFunction(SMLoc ErrorLoc) {
-    if (!SkipTypeCheck)
-      TC.endOfFunction(ErrorLoc);
+    TC.endOfFunction(ErrorLoc);
     // Reset the type checker state.
     TC.Clear();
 

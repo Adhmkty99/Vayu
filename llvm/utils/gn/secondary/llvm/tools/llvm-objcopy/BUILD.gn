@@ -1,7 +1,6 @@
 import("//llvm/tools/binutils_symlinks.gni")
 import("//llvm/tools/cctools_symlinks.gni")
 import("//llvm/utils/TableGen/tablegen.gni")
-import("//llvm/utils/gn/build/driver_executable.gni")
 import("//llvm/utils/gn/build/symlink_or_copy.gni")
 
 tablegen("BitcodeStripOpts") {
@@ -57,7 +56,7 @@ group("symlinks") {
   }
 }
 
-driver_executable("llvm-objcopy") {
+executable("llvm-objcopy") {
   deps = [
     ":BitcodeStripOpts",
     ":InstallNameToolOpts",

@@ -305,7 +305,6 @@ long double    truncl(long double x);
 // back to C++ linkage before including these C++ headers.
 extern "C++" {
 
-#include <__type_traits/promote.h>
 #include <limits>
 #include <stdlib.h>
 #include <type_traits>

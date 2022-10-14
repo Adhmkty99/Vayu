@@ -174,7 +174,7 @@ Status OptionValuePathMappings::SetValueFromString(llvm::StringRef value,
       }
 
       // Sort and then erase in reverse so indexes are always valid
-      llvm::sort(remove_indexes);
+      llvm::sort(remove_indexes.begin(), remove_indexes.end());
       for (auto index : llvm::reverse(remove_indexes))
         m_path_mappings.Remove(index, m_notify_changes);
       NotifyValueChanged();

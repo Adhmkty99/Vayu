@@ -30,8 +30,8 @@ public:
 private:
   const bool IgnoreDestructors;
   const bool AllowOverrideAndFinal;
-  const StringRef OverrideSpelling;
-  const StringRef FinalSpelling;
+  const std::string OverrideSpelling;
+  const std::string FinalSpelling;
 };
 
 } // namespace modernize

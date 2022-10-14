@@ -29,7 +29,7 @@ public:
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
 
 private:
-  std::vector<StringRef> StringNames;
+  std::vector<std::string> StringNames;
 };
 
 } // namespace readability

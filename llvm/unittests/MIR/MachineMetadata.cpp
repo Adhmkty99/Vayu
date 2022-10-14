@@ -6,7 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/MIRParser/MIRParser.h"
 #include "llvm/CodeGen/MIRPrinter.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -272,8 +271,8 @@ body:             |
   for (auto &MD : MDList)
     Collected.push_back(MD.second);
 
-  llvm::sort(Generated);
-  llvm::sort(Collected);
+  std::sort(Generated.begin(), Generated.end());
+  std::sort(Collected.begin(), Collected.end());
   EXPECT_EQ(Collected, Generated);
 
   // FileCheck the output from MIR printer.
@@ -422,8 +421,8 @@ body:             |
   for (auto &MD : MDList)
     Collected.push_back(MD.second);
 
-  llvm::sort(Generated);
-  llvm::sort(Collected);
+  std::sort(Generated.begin(), Generated.end());
+  std::sort(Collected.begin(), Collected.end());
   EXPECT_EQ(Collected, Generated);
 
   // FileCheck the output from MIR printer.
@@ -521,8 +520,8 @@ body:             |
   for (auto &MD : MDList)
     Collected.push_back(MD.second);
 
-  llvm::sort(Generated);
-  llvm::sort(Collected);
+  std::sort(Generated.begin(), Generated.end());
+  std::sort(Collected.begin(), Collected.end());
   EXPECT_EQ(Collected, Generated);
 
   // FileCheck the output from MIR printer.

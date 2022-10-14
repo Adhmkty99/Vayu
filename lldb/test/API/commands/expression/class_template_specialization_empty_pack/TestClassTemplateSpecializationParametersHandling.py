@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class TestClassTemplateSpecializationParametersHandling(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_class_template_specialization(self):
         self.build()
 

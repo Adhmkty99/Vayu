@@ -128,7 +128,6 @@ private:
     Dict.handle("UnusedIncludes", [&](Node &N) {
       F.UnusedIncludes = scalarValue(N, "UnusedIncludes");
     });
-    Dict.handle("Includes", [&](Node &N) { parse(F.Includes, N); });
     Dict.handle("ClangTidy", [&](Node &N) { parse(F.ClangTidy, N); });
     Dict.parse(N);
   }
@@ -155,15 +154,6 @@ private:
     Dict.parse(N);
   }
 
-  void parse(Fragment::DiagnosticsBlock::IncludesBlock &F, Node &N) {
-    DictParser Dict("Includes", this);
-    Dict.handle("IgnoreHeader", [&](Node &N) {
-      if (auto Values = scalarValues(N))
-        F.IgnoreHeader = std::move(*Values);
-    });
-    Dict.parse(N);
-  }
-
   void parse(Fragment::IndexBlock &F, Node &N) {
     DictParser Dict("Index", this);
     Dict.handle("Background",
@@ -176,17 +166,13 @@ private:
         parse(External, N);
       } else if (N.getType() == Node::NK_Scalar ||
                  N.getType() == Node::NK_BlockScalar) {
-        parse(External, *scalarValue(N, "External"));
+        parse(External, scalarValue(N, "External").getValue());
       } else {
         error("External must be either a scalar or a mapping.", N);
         return;
       }
       F.External.emplace(std::move(External));
       F.External->Range = N.getSourceRange();
-    });
-    Dict.handle("StandardLibrary", [&](Node &N) {
-      if (auto StandardLibrary = boolValue(N, "StandardLibrary"))
-        F.StandardLibrary = *StandardLibrary;
     });
     Dict.parse(N);
   }

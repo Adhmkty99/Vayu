@@ -57,8 +57,6 @@ namespace {
 
 // --------- COMMAND LINE FLAGS ---------
 
-cl::OptionCategory Cat("sancov Options");
-
 enum ActionType {
   CoveredFunctionsAction,
   HtmlReportAction,
@@ -86,50 +84,35 @@ cl::opt<ActionType> Action(
                    "REMOVED. Use -symbolize & coverage-report-server.py."),
         clEnumValN(SymbolizeAction, "symbolize",
                    "Produces a symbolized JSON report from binary report."),
-        clEnumValN(MergeAction, "merge", "Merges reports.")),
-    cl::cat(Cat));
+        clEnumValN(MergeAction, "merge", "Merges reports.")));
 
 static cl::list<std::string>
     ClInputFiles(cl::Positional, cl::OneOrMore,
                  cl::desc("<action> <binary files...> <.sancov files...> "
-                          "<.symcov files...>"),
-                 cl::cat(Cat));
+                          "<.symcov files...>"));
 
 static cl::opt<bool> ClDemangle("demangle", cl::init(true),
-                                cl::desc("Print demangled function name"),
-                                cl::cat(Cat));
+                                cl::desc("Print demangled function name."));
 
 static cl::opt<bool>
     ClSkipDeadFiles("skip-dead-files", cl::init(true),
-                    cl::desc("Do not list dead source files in reports"),
-                    cl::cat(Cat));
+                    cl::desc("Do not list dead source files in reports."));
+
+static cl::opt<std::string> ClStripPathPrefix(
+    "strip_path_prefix", cl::init(""),
+    cl::desc("Strip this prefix from file paths in reports."));
 
 static cl::opt<std::string>
-    ClStripPathPrefix("strip_path_prefix", cl::init(""),
-                      cl::desc("Strip this prefix from file paths in reports"),
-                      cl::cat(Cat));
-
-static cl::opt<std::string>
-    ClIgnorelist("ignorelist", cl::init(""),
-                 cl::desc("Ignorelist file (sanitizer ignorelist format)"),
-                 cl::cat(Cat));
-
-static cl::opt<std::string>
-    ClBlacklist("blacklist", cl::init(""), cl::Hidden,
-                cl::desc("ignorelist file (sanitizer ignorelist format)"),
-                cl::cat(Cat));
+    ClBlacklist("blacklist", cl::init(""),
+                cl::desc("Blacklist file (sanitizer blacklist format)."));
 
 static cl::opt<bool> ClUseDefaultBlacklist(
     "use_default_blacklist", cl::init(true), cl::Hidden,
-    cl::desc("Controls if default ignorelist should be used"), cl::cat(Cat));
+    cl::desc("Controls if default blacklist should be used."));
 
-static cl::opt<bool> ClUseDefaultIgnorelist(
-    "use_default_ignorelist", cl::init(true), cl::Hidden,
-    cl::desc("Controls if default ignorelist should be used"), cl::cat(Cat));
-
-static const char *const DefaultIgnorelistStr = "fun:__sanitizer_.*\n"
-                                                "src:/usr/include/.*\n"
-                                                "src:.*/libc\\+\\+/.*\n";
+static const char *const DefaultBlacklistStr = "fun:__sanitizer_.*\n"
+                                               "src:/usr/include/.*\n"
+                                               "src:.*/libc\\+\\+/.*\n";
 
 // --------- FORMAT SPECIFICATION ---------
 
@@ -490,53 +473,48 @@ static std::string normalizeFilename(const std::string &FileName) {
   return stripPathPrefix(sys::path::convert_to_slash(std::string(S)));
 }
 
-class Ignorelists {
+class Blacklists {
 public:
-  Ignorelists()
-      : DefaultIgnorelist(createDefaultIgnorelist()),
-        UserIgnorelist(createUserIgnorelist()) {}
+  Blacklists()
+      : DefaultBlacklist(createDefaultBlacklist()),
+        UserBlacklist(createUserBlacklist()) {}
 
-  bool isIgnorelisted(const DILineInfo &I) {
-    if (DefaultIgnorelist &&
-        DefaultIgnorelist->inSection("sancov", "fun", I.FunctionName))
+  bool isBlacklisted(const DILineInfo &I) {
+    if (DefaultBlacklist &&
+        DefaultBlacklist->inSection("sancov", "fun", I.FunctionName))
       return true;
-    if (DefaultIgnorelist &&
-        DefaultIgnorelist->inSection("sancov", "src", I.FileName))
+    if (DefaultBlacklist &&
+        DefaultBlacklist->inSection("sancov", "src", I.FileName))
       return true;
-    if (UserIgnorelist &&
-        UserIgnorelist->inSection("sancov", "fun", I.FunctionName))
+    if (UserBlacklist &&
+        UserBlacklist->inSection("sancov", "fun", I.FunctionName))
       return true;
-    if (UserIgnorelist &&
-        UserIgnorelist->inSection("sancov", "src", I.FileName))
+    if (UserBlacklist && UserBlacklist->inSection("sancov", "src", I.FileName))
       return true;
     return false;
   }
 
 private:
-  static std::unique_ptr<SpecialCaseList> createDefaultIgnorelist() {
-    if ((!ClUseDefaultIgnorelist) && (!ClUseDefaultBlacklist))
+  static std::unique_ptr<SpecialCaseList> createDefaultBlacklist() {
+    if (!ClUseDefaultBlacklist)
       return std::unique_ptr<SpecialCaseList>();
     std::unique_ptr<MemoryBuffer> MB =
-        MemoryBuffer::getMemBuffer(DefaultIgnorelistStr);
+        MemoryBuffer::getMemBuffer(DefaultBlacklistStr);
     std::string Error;
-    auto Ignorelist = SpecialCaseList::create(MB.get(), Error);
+    auto Blacklist = SpecialCaseList::create(MB.get(), Error);
     failIfNotEmpty(Error);
-    return Ignorelist;
+    return Blacklist;
   }
 
-  static std::unique_ptr<SpecialCaseList> createUserIgnorelist() {
-    if ((ClBlacklist.empty()) && ClIgnorelist.empty())
+  static std::unique_ptr<SpecialCaseList> createUserBlacklist() {
+    if (ClBlacklist.empty())
       return std::unique_ptr<SpecialCaseList>();
 
-    if (!ClBlacklist.empty())
-      return SpecialCaseList::createOrDie({{ClBlacklist}},
-                                          *vfs::getRealFileSystem());
-
-    return SpecialCaseList::createOrDie({{ClIgnorelist}},
+    return SpecialCaseList::createOrDie({{ClBlacklist}},
                                         *vfs::getRealFileSystem());
   }
-  std::unique_ptr<SpecialCaseList> DefaultIgnorelist;
-  std::unique_ptr<SpecialCaseList> UserIgnorelist;
+  std::unique_ptr<SpecialCaseList> DefaultBlacklist;
+  std::unique_ptr<SpecialCaseList> UserBlacklist;
 };
 
 static std::vector<CoveragePoint>
@@ -545,7 +523,7 @@ getCoveragePoints(const std::string &ObjectFile,
                   const std::set<uint64_t> &CoveredAddrs) {
   std::vector<CoveragePoint> Result;
   auto Symbolizer(createSymbolizer());
-  Ignorelists Ig;
+  Blacklists B;
 
   std::set<std::string> CoveredFiles;
   if (ClSkipDeadFiles) {
@@ -583,7 +561,7 @@ getCoveragePoints(const std::string &ObjectFile,
         CoveredFiles.find(LineInfo->FileName) == CoveredFiles.end())
       continue;
     LineInfo->FileName = normalizeFilename(LineInfo->FileName);
-    if (Ig.isIgnorelisted(*LineInfo))
+    if (B.isBlacklisted(*LineInfo))
       continue;
 
     auto Id = utohexstr(Addr, true);
@@ -600,7 +578,7 @@ getCoveragePoints(const std::string &ObjectFile,
           CoveredFiles.find(FrameInfo.FileName) == CoveredFiles.end())
         continue;
       FrameInfo.FileName = normalizeFilename(FrameInfo.FileName);
-      if (Ig.isIgnorelisted(FrameInfo))
+      if (B.isBlacklisted(FrameInfo))
         continue;
       if (Infos.find(FrameInfo) == Infos.end()) {
         Infos.insert(FrameInfo);
@@ -900,7 +878,7 @@ symbolize(const RawCoverage &Data, const std::string ObjectFile) {
   Hasher.update((*BufOrErr)->getBuffer());
   Coverage->BinaryHash = toHex(Hasher.final());
 
-  Ignorelists Ig;
+  Blacklists B;
   auto Symbolizer(createSymbolizer());
 
   for (uint64_t Addr : *Data.Addrs) {
@@ -909,7 +887,7 @@ symbolize(const RawCoverage &Data, const std::string ObjectFile) {
     auto LineInfo = Symbolizer->symbolizeCode(
         ObjectFile, {Addr, object::SectionedAddress::UndefSection});
     failIfError(LineInfo);
-    if (Ig.isIgnorelisted(*LineInfo))
+    if (B.isBlacklisted(*LineInfo))
       continue;
 
     Coverage->CoveredIds.insert(utohexstr(Addr, true));
@@ -1158,7 +1136,6 @@ readSymbolizeAndMergeCmdArguments(std::vector<std::string> FileNames) {
 
 int main(int Argc, char **Argv) {
   llvm::InitLLVM X(Argc, Argv);
-  cl::HideUnrelatedOptions(Cat);
 
   llvm::InitializeAllTargetInfos();
   llvm::InitializeAllTargetMCs();

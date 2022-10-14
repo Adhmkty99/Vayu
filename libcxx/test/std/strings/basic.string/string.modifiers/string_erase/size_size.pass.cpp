@@ -9,7 +9,7 @@
 // <string>
 
 // basic_string<charT,traits,Allocator>&
-//   erase(size_type pos = 0, size_type n = npos); // constexpr since C++20
+//   erase(size_type pos = 0, size_type n = npos);
 
 #include <string>
 #include <stdexcept>
@@ -32,7 +32,7 @@ test(S s, typename S::size_type pos, typename S::size_type n, S expected)
         assert(s == expected);
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else
     {
         try
         {
@@ -62,7 +62,7 @@ test(S s, typename S::size_type pos, S expected)
         assert(s == expected);
     }
 #ifndef TEST_HAS_NO_EXCEPTIONS
-    else if (!TEST_IS_CONSTANT_EVALUATED)
+    else
     {
         try
         {
@@ -88,7 +88,7 @@ test(S s, S expected)
     assert(s == expected);
 }
 
-TEST_CONSTEXPR_CXX20 bool test() {
+bool test() {
   {
     typedef std::string S;
     test(S(""), 0, 0, S(""));
@@ -305,7 +305,7 @@ int main(int, char**)
 {
   test();
 #if TEST_STD_VER > 17
-  static_assert(test());
+  // static_assert(test());
 #endif
 
   return 0;

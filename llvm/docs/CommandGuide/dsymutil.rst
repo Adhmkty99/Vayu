@@ -21,7 +21,7 @@ OPTIONS
 .. option:: --accelerator=<accelerator type>
 
  Specify the desired type of accelerator table. Valid options are 'Apple',
- 'Dwarf', 'Default' and 'None'.
+ 'Dwarf' and 'Default'.
 
 .. option:: --arch <arch>
 
@@ -44,8 +44,7 @@ OPTIONS
 
 .. option:: --gen-reproducer
 
- Generate a reproducer consisting of the input object files. Alias for
- --reproducer=GenerateOnExit.
+ Generate a reproducer consisting of the input object files.
 
 .. option:: --help, -h
 
@@ -111,11 +110,6 @@ OPTIONS
 
  Specify a directory to prepend the paths of the external remark files.
 
-.. option:: --reproducer <mode>
-
- Specify the reproducer generation mode. Valid options are 'GenerateOnExit',
- 'GenerateOnCrash', 'Use', 'Off'.
-
 .. option:: --statistics
 
  Print statistics about the contribution of each object file to the linked
@@ -148,8 +142,7 @@ OPTIONS
 
 .. option:: --use-reproducer <path>
 
- Use the object files from the given reproducer path. Alias for
- --reproducer=Use.
+ Use the object files from the given reproducer path.
 
 .. option:: --verbose
 

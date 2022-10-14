@@ -36,7 +36,6 @@
 
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/FileEntry.h"
-#include "clang/Basic/FileManager.h"
 #include "clang/Basic/SourceLocation.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/BitVector.h"
@@ -900,26 +899,22 @@ public:
   FileID getOrCreateFileID(const FileEntry *SourceFile,
                            SrcMgr::CharacteristicKind FileCharacter);
 
-  /// Creates an expansion SLocEntry for the substitution of an argument into a
-  /// function-like macro's body. Returns the start of the expansion.
-  ///
-  /// The macro argument was written at \p SpellingLoc with length \p Length.
-  /// \p ExpansionLoc is the parameter name in the (expanded) macro body.
-  SourceLocation createMacroArgExpansionLoc(SourceLocation SpellingLoc,
+  /// Return a new SourceLocation that encodes the
+  /// fact that a token from SpellingLoc should actually be referenced from
+  /// ExpansionLoc, and that it represents the expansion of a macro argument
+  /// into the function-like macro body.
+  SourceLocation createMacroArgExpansionLoc(SourceLocation Loc,
                                             SourceLocation ExpansionLoc,
-                                            unsigned Length);
+                                            unsigned TokLength);
 
-  /// Creates an expansion SLocEntry for a macro use. Returns its start.
-  ///
-  /// The macro body begins at \p SpellingLoc with length \p Length.
-  /// The macro use spans [ExpansionLocStart, ExpansionLocEnd].
-  SourceLocation createExpansionLoc(SourceLocation SpellingLoc,
-                                    SourceLocation ExpansionLocStart,
-                                    SourceLocation ExpansionLocEnd,
-                                    unsigned Length,
-                                    bool ExpansionIsTokenRange = true,
-                                    int LoadedID = 0,
-                                    SourceLocation::UIntTy LoadedOffset = 0);
+  /// Return a new SourceLocation that encodes the fact
+  /// that a token from SpellingLoc should actually be referenced from
+  /// ExpansionLoc.
+  SourceLocation
+  createExpansionLoc(SourceLocation Loc, SourceLocation ExpansionLocStart,
+                     SourceLocation ExpansionLocEnd, unsigned TokLength,
+                     bool ExpansionIsTokenRange = true, int LoadedID = 0,
+                     SourceLocation::UIntTy LoadedOffset = 0);
 
   /// Return a new SourceLocation that encodes that the token starting
   /// at \p TokenStart ends prematurely at \p TokenEnd.
@@ -1473,35 +1468,24 @@ public:
 
   /// Returns whether \p Loc is located in a <built-in> file.
   bool isWrittenInBuiltinFile(SourceLocation Loc) const {
-    PresumedLoc Presumed = getPresumedLoc(Loc);
-    if (Presumed.isInvalid())
-      return false;
-    StringRef Filename(Presumed.getFilename());
+    StringRef Filename(getPresumedLoc(Loc).getFilename());
     return Filename.equals("<built-in>");
   }
 
   /// Returns whether \p Loc is located in a <command line> file.
   bool isWrittenInCommandLineFile(SourceLocation Loc) const {
-    PresumedLoc Presumed = getPresumedLoc(Loc);
-    if (Presumed.isInvalid())
-      return false;
-    StringRef Filename(Presumed.getFilename());
+    StringRef Filename(getPresumedLoc(Loc).getFilename());
     return Filename.equals("<command line>");
   }
 
   /// Returns whether \p Loc is located in a <scratch space> file.
   bool isWrittenInScratchSpace(SourceLocation Loc) const {
-    PresumedLoc Presumed = getPresumedLoc(Loc);
-    if (Presumed.isInvalid())
-      return false;
-    StringRef Filename(Presumed.getFilename());
+    StringRef Filename(getPresumedLoc(Loc).getFilename());
     return Filename.equals("<scratch space>");
   }
 
   /// Returns if a SourceLocation is in a system header.
   bool isInSystemHeader(SourceLocation Loc) const {
-    if (Loc.isInvalid())
-      return false;
     return isSystem(getFileCharacteristic(Loc));
   }
 
@@ -1818,7 +1802,7 @@ private:
   /// the SLocEntry table and producing a source location that refers to it.
   SourceLocation
   createExpansionLocImpl(const SrcMgr::ExpansionInfo &Expansion,
-                         unsigned Length, int LoadedID = 0,
+                         unsigned TokLength, int LoadedID = 0,
                          SourceLocation::UIntTy LoadedOffset = 0);
 
   /// Return true if the specified FileID contains the

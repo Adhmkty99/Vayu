@@ -10,6 +10,7 @@
 #define LLDB_SOURCE_PLUGINS_TRACE_INTEL_PT_TRACECURSORINTELPT_H
 
 #include "ThreadDecoder.h"
+#include "TraceIntelPTSessionFileParser.h"
 
 namespace lldb_private {
 namespace trace_intel_pt {
@@ -19,39 +20,32 @@ public:
   TraceCursorIntelPT(lldb::ThreadSP thread_sp,
                      DecodedThreadSP decoded_thread_sp);
 
-  bool Seek(int64_t offset, SeekType origin) override;
+  uint64_t Seek(int64_t offset, SeekType origin) override;
 
-  void Next() override;
+  virtual bool Next() override;
 
-  bool HasValue() const override;
+  const char *GetError() override;
 
-  const char *GetError() const override;
+  lldb::addr_t GetLoadAddress() override;
 
-  lldb::addr_t GetLoadAddress() const override;
+  llvm::Optional<uint64_t> GetCounter(lldb::TraceCounter counter_type) override;
 
-  llvm::Optional<uint64_t>
-  GetCounter(lldb::TraceCounter counter_type) const override;
+  lldb::TraceInstructionControlFlowType
+  GetInstructionControlFlowType() override;
 
-  lldb::TraceEvent GetEventType() const override;
-
-  llvm::Optional<lldb::cpu_id_t> GetCPU() const override;
-
-  lldb::TraceItemKind GetItemKind() const override;
+  bool IsError() override;
 
   bool GoToId(lldb::user_id_t id) override;
 
   lldb::user_id_t GetId() const override;
 
-  bool HasId(lldb::user_id_t id) const override;
-
 private:
-  /// Calculate the tsc range for the current position if needed.
-  void CalculateTscRange();
+  size_t GetInternalInstructionSize();
 
   /// Storage of the actual instructions
   DecodedThreadSP m_decoded_thread_sp;
   /// Internal instruction index currently pointing at.
-  int64_t m_pos;
+  size_t m_pos;
   /// Tsc range covering the current instruction.
   llvm::Optional<DecodedThread::TscRange> m_tsc_range;
 };

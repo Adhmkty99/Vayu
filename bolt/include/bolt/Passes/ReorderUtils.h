@@ -36,7 +36,8 @@ public:
   }
 
   template <typename F> void forAllAdjacent(const Cluster *C, F Func) {
-    for (int I : Bits[C->id()].set_bits())
+    for (int I = Bits[C->id()].find_first(); I != -1;
+         I = Bits[C->id()].find_next(I))
       Func(Clusters[I]);
   }
 
@@ -47,7 +48,8 @@ public:
     Bits[A->id()][A->id()] = false;
     Bits[A->id()][B->id()] = false;
     Bits[B->id()][A->id()] = false;
-    for (int I : Bits[B->id()].set_bits()) {
+    for (int I = Bits[B->id()].find_first(); I != -1;
+         I = Bits[B->id()].find_next(I)) {
       Bits[I][A->id()] = true;
       Bits[I][B->id()] = false;
     }

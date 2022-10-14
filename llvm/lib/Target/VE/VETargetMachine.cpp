@@ -61,7 +61,7 @@ static std::string computeDataLayout(const Triple &T) {
 }
 
 static Reloc::Model getEffectiveRelocModel(Optional<Reloc::Model> RM) {
-  return RM.value_or(Reloc::Static);
+  return RM.getValueOr(Reloc::Static);
 }
 
 class VEELFTargetObjectFile : public TargetLoweringObjectFileELF {

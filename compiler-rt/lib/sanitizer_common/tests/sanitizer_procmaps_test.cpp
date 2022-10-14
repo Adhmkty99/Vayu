@@ -57,7 +57,7 @@ TEST(MemoryMappingLayout, DumpListOfModules) {
 }
 
 TEST(MemoryMapping, LoadedModuleArchAndUUID) {
-  if (SANITIZER_APPLE) {
+  if (SANITIZER_MAC) {
     MemoryMappingLayout memory_mapping(false);
     const uptr kMaxModules = 100;
     InternalMmapVector<LoadedModule> modules;

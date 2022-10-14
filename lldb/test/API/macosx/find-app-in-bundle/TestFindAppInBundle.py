@@ -11,6 +11,8 @@ from lldbsuite.test.lldbtest import *
 @decorators.skipUnlessDarwin
 class FindAppInMacOSAppBundle(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     NO_DEBUG_INFO_TESTCASE = True
 
     def test_find_app_in_bundle(self):

@@ -28,7 +28,6 @@ add_llvm_component_library(LLVMInstrumentation
   LINK_COMPONENTS
   Analysis
   Core
-  Demangle
   MC
   Support
   TransformUtils

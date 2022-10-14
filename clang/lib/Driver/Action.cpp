@@ -45,8 +45,6 @@ const char *Action::getClassName(ActionClass AC) {
     return "clang-offload-unbundler";
   case OffloadWrapperJobClass:
     return "clang-offload-wrapper";
-  case OffloadPackagerJobClass:
-    return "clang-offload-packager";
   case LinkerWrapperJobClass:
     return "clang-linker-wrapper";
   case StaticLibJobClass:
@@ -56,8 +54,7 @@ const char *Action::getClassName(ActionClass AC) {
   llvm_unreachable("invalid class");
 }
 
-void Action::propagateDeviceOffloadInfo(OffloadKind OKind, const char *OArch,
-                                        const ToolChain *OToolChain) {
+void Action::propagateDeviceOffloadInfo(OffloadKind OKind, const char *OArch) {
   // Offload action set its own kinds on their dependences.
   if (Kind == OffloadClass)
     return;
@@ -70,10 +67,9 @@ void Action::propagateDeviceOffloadInfo(OffloadKind OKind, const char *OArch,
   assert(!ActiveOffloadKindMask && "Setting a device kind in a host action??");
   OffloadingDeviceKind = OKind;
   OffloadingArch = OArch;
-  OffloadingToolChain = OToolChain;
 
   for (auto *A : Inputs)
-    A->propagateDeviceOffloadInfo(OffloadingDeviceKind, OArch, OToolChain);
+    A->propagateDeviceOffloadInfo(OffloadingDeviceKind, OArch);
 }
 
 void Action::propagateHostOffloadInfo(unsigned OKinds, const char *OArch) {
@@ -95,8 +91,7 @@ void Action::propagateOffloadInfo(const Action *A) {
     propagateHostOffloadInfo(HK, A->getOffloadingArch());
   else
     propagateDeviceOffloadInfo(A->getOffloadingDeviceKind(),
-                               A->getOffloadingArch(),
-                               A->getOffloadingToolChain());
+                               A->getOffloadingArch());
 }
 
 std::string Action::getOffloadingKindPrefix() const {
@@ -197,7 +192,6 @@ OffloadAction::OffloadAction(const DeviceDependences &DDeps, types::ID Ty)
       DevToolChains(DDeps.getToolChains()) {
   auto &OKinds = DDeps.getOffloadKinds();
   auto &BArchs = DDeps.getBoundArchs();
-  auto &OTCs = DDeps.getToolChains();
 
   // If all inputs agree on the same kind, use it also for this action.
   if (llvm::all_of(OKinds, [&](OffloadKind K) { return K == OKinds.front(); }))
@@ -209,7 +203,7 @@ OffloadAction::OffloadAction(const DeviceDependences &DDeps, types::ID Ty)
 
   // Propagate info to the dependencies.
   for (unsigned i = 0, e = getInputs().size(); i != e; ++i)
-    getInputs()[i]->propagateDeviceOffloadInfo(OKinds[i], BArchs[i], OTCs[i]);
+    getInputs()[i]->propagateDeviceOffloadInfo(OKinds[i], BArchs[i]);
 }
 
 OffloadAction::OffloadAction(const HostDependence &HDep,
@@ -228,8 +222,7 @@ OffloadAction::OffloadAction(const HostDependence &HDep,
     if (auto *A = DDeps.getActions()[i]) {
       getInputs().push_back(A);
       A->propagateDeviceOffloadInfo(DDeps.getOffloadKinds()[i],
-                                    DDeps.getBoundArchs()[i],
-                                    DDeps.getToolChains()[i]);
+                                    DDeps.getBoundArchs()[i]);
     }
 }
 
@@ -433,12 +426,6 @@ void OffloadWrapperJobAction::anchor() {}
 OffloadWrapperJobAction::OffloadWrapperJobAction(ActionList &Inputs,
                                                  types::ID Type)
   : JobAction(OffloadWrapperJobClass, Inputs, Type) {}
-
-void OffloadPackagerJobAction::anchor() {}
-
-OffloadPackagerJobAction::OffloadPackagerJobAction(ActionList &Inputs,
-                                                   types::ID Type)
-    : JobAction(OffloadPackagerJobClass, Inputs, Type) {}
 
 void LinkerWrapperJobAction::anchor() {}
 

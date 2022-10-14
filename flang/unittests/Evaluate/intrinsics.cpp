@@ -2,7 +2,6 @@
 #include "testing.h"
 #include "flang/Evaluate/common.h"
 #include "flang/Evaluate/expression.h"
-#include "flang/Evaluate/target.h"
 #include "flang/Evaluate/tools.h"
 #include "flang/Parser/provenance.h"
 #include "llvm/Support/raw_ostream.h"
@@ -104,8 +103,7 @@ struct TestCall {
     llvm::outs().flush();
     CallCharacteristics call{fName.ToString()};
     auto messages{strings.Messages(buffer)};
-    TargetCharacteristics targetCharacteristics;
-    FoldingContext context{messages, defaults, table, targetCharacteristics};
+    FoldingContext context{messages, defaults, table};
     std::optional<SpecificCall> si{table.Probe(call, args, context)};
     if (resultType.has_value()) {
       TEST(si.has_value());
@@ -238,6 +236,9 @@ void TestIntrinsics() {
       .DoCall(Complex4::GetType());
   TestCall{defaults, table, "conjg"}
       .Push(Const(Scalar<Complex8>{}))
+      .DoCall(Complex8::GetType());
+  TestCall{defaults, table, "dconjg"}
+      .Push(Const(Scalar<Complex4>{}))
       .DoCall(Complex8::GetType());
   TestCall{defaults, table, "dconjg"}
       .Push(Const(Scalar<Complex8>{}))

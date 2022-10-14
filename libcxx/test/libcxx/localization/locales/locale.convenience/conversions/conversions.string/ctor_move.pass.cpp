@@ -6,11 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 // UNSUPPORTED: c++03
-
-// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DISABLE_DEPRECATION_WARNINGS
 
 // <locale>
 

@@ -36,8 +36,7 @@ public:
     mlir::tosa::populateTosaToArithConversionPatterns(&patterns);
 
     if (this->includeApplyRescale) {
-      mlir::tosa::populateTosaRescaleToArithConversionPatterns(&patterns,
-                                                               this->use32Bit);
+      mlir::tosa::populateTosaRescaleToArithConversionPatterns(&patterns);
       target.addIllegalOp<tosa::ApplyScaleOp>();
     }
 

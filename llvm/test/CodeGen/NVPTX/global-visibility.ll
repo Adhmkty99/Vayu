@@ -1,5 +1,4 @@
 ; RUN: llc < %s -march=nvptx -mcpu=sm_20 | FileCheck %s
-; RUN: %if ptxas %{ llc < %s -march=nvptx -mcpu=sm_20 | %ptxas-verify %}
 
 ; PTX does not support .hidden or .protected.
 ; Make sure we do not emit them.

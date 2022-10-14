@@ -9,7 +9,7 @@
 // <string>
 
 // basic_string<charT,traits,Allocator>&
-//   replace(const_iterator i1, const_iterator i2, size_type n, charT c); // constexpr since C++20
+//   replace(const_iterator i1, const_iterator i2, size_type n, charT c);
 
 #include <string>
 #include <algorithm>
@@ -35,7 +35,7 @@ test(S s, typename S::size_type pos1, typename S::size_type n1, typename S::size
 }
 
 template <class S>
-TEST_CONSTEXPR_CXX20 void test0()
+void test0()
 {
     test(S(""), 0, 0, 0, '3', S(""));
     test(S(""), 0, 0, 5, '3', S("33333"));
@@ -140,7 +140,7 @@ TEST_CONSTEXPR_CXX20 void test0()
 }
 
 template <class S>
-TEST_CONSTEXPR_CXX20 void test1()
+void test1()
 {
     test(S("abcdefghij"), 1, 4, 0, '3', S("afghij"));
     test(S("abcdefghij"), 1, 4, 5, '3', S("a33333fghij"));
@@ -245,7 +245,7 @@ TEST_CONSTEXPR_CXX20 void test1()
 }
 
 template <class S>
-TEST_CONSTEXPR_CXX20 void test2()
+void test2()
 {
     test(S("abcdefghijklmnopqrst"), 10, 10, 0, '3', S("abcdefghij"));
     test(S("abcdefghijklmnopqrst"), 10, 10, 5, '3', S("abcdefghij33333"));
@@ -265,7 +265,7 @@ TEST_CONSTEXPR_CXX20 void test2()
     test(S("abcdefghijklmnopqrst"), 20, 0, 20, '3', S("abcdefghijklmnopqrst33333333333333333333"));
 }
 
-TEST_CONSTEXPR_CXX20 bool test() {
+bool test() {
   {
     typedef std::string S;
     test0<S>();
@@ -288,7 +288,7 @@ int main(int, char**)
 {
   test();
 #if TEST_STD_VER > 17
-  static_assert(test());
+  // static_assert(test());
 #endif
 
   return 0;

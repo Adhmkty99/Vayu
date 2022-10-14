@@ -621,10 +621,9 @@ struct ObjectFileInstance : public PluginInstance<ObjectFileCreateInstance> {
       CallbackType create_callback,
       ObjectFileCreateMemoryInstance create_memory_callback,
       ObjectFileGetModuleSpecifications get_module_specifications,
-      ObjectFileSaveCore save_core,
-      DebuggerInitializeCallback debugger_init_callback)
-      : PluginInstance<ObjectFileCreateInstance>(
-            name, description, create_callback, debugger_init_callback),
+      ObjectFileSaveCore save_core)
+      : PluginInstance<ObjectFileCreateInstance>(name, description,
+                                                 create_callback),
         create_memory_callback(create_memory_callback),
         get_module_specifications(get_module_specifications),
         save_core(save_core) {}
@@ -645,11 +644,10 @@ bool PluginManager::RegisterPlugin(
     ObjectFileCreateInstance create_callback,
     ObjectFileCreateMemoryInstance create_memory_callback,
     ObjectFileGetModuleSpecifications get_module_specifications,
-    ObjectFileSaveCore save_core,
-    DebuggerInitializeCallback debugger_init_callback) {
+    ObjectFileSaveCore save_core) {
   return GetObjectFileInstances().RegisterPlugin(
       name, description, create_callback, create_memory_callback,
-      get_module_specifications, save_core, debugger_init_callback);
+      get_module_specifications, save_core);
 }
 
 bool PluginManager::UnregisterPlugin(ObjectFileCreateInstance create_callback) {
@@ -1033,14 +1031,14 @@ PluginManager::GetSymbolVendorCreateCallbackAtIndex(uint32_t idx) {
 #pragma mark Trace
 
 struct TraceInstance
-    : public PluginInstance<TraceCreateInstanceFromBundle> {
+    : public PluginInstance<TraceCreateInstanceForSessionFile> {
   TraceInstance(
       llvm::StringRef name, llvm::StringRef description,
-      CallbackType create_callback_from_bundle,
+      CallbackType create_callback_for_session_file,
       TraceCreateInstanceForLiveProcess create_callback_for_live_process,
       llvm::StringRef schema)
-      : PluginInstance<TraceCreateInstanceFromBundle>(
-            name, description, create_callback_from_bundle),
+      : PluginInstance<TraceCreateInstanceForSessionFile>(
+            name, description, create_callback_for_session_file),
         schema(schema),
         create_callback_for_live_process(create_callback_for_live_process) {}
 
@@ -1057,21 +1055,21 @@ static TraceInstances &GetTracePluginInstances() {
 
 bool PluginManager::RegisterPlugin(
     llvm::StringRef name, llvm::StringRef description,
-    TraceCreateInstanceFromBundle create_callback_from_bundle,
+    TraceCreateInstanceForSessionFile create_callback_for_session_file,
     TraceCreateInstanceForLiveProcess create_callback_for_live_process,
     llvm::StringRef schema) {
   return GetTracePluginInstances().RegisterPlugin(
-      name, description, create_callback_from_bundle,
+      name, description, create_callback_for_session_file,
       create_callback_for_live_process, schema);
 }
 
 bool PluginManager::UnregisterPlugin(
-    TraceCreateInstanceFromBundle create_callback_from_bundle) {
+    TraceCreateInstanceForSessionFile create_callback_for_session_file) {
   return GetTracePluginInstances().UnregisterPlugin(
-      create_callback_from_bundle);
+      create_callback_for_session_file);
 }
 
-TraceCreateInstanceFromBundle
+TraceCreateInstanceForSessionFile
 PluginManager::GetTraceCreateCallback(llvm::StringRef plugin_name) {
   return GetTracePluginInstances().GetCallbackForName(plugin_name);
 }
@@ -1366,7 +1364,6 @@ LanguageSet PluginManager::GetREPLAllTypeSystemSupportedLanguages() {
 void PluginManager::DebuggerInitialize(Debugger &debugger) {
   GetDynamicLoaderInstances().PerformDebuggerCallback(debugger);
   GetJITLoaderInstances().PerformDebuggerCallback(debugger);
-  GetObjectFileInstances().PerformDebuggerCallback(debugger);
   GetPlatformInstances().PerformDebuggerCallback(debugger);
   GetProcessInstances().PerformDebuggerCallback(debugger);
   GetSymbolFileInstances().PerformDebuggerCallback(debugger);
@@ -1493,7 +1490,6 @@ CreateSettingForPlugin(Debugger &debugger, ConstString plugin_type_name,
 static const char *kDynamicLoaderPluginName("dynamic-loader");
 static const char *kPlatformPluginName("platform");
 static const char *kProcessPluginName("process");
-static const char *kObjectFilePluginName("object-file");
 static const char *kSymbolFilePluginName("symbol-file");
 static const char *kJITLoaderPluginName("jit-loader");
 static const char *kStructuredDataPluginName("structured-data");
@@ -1544,22 +1540,6 @@ bool PluginManager::CreateSettingForProcessPlugin(
   return CreateSettingForPlugin(debugger, ConstString(kProcessPluginName),
                                 ConstString("Settings for process plug-ins"),
                                 properties_sp, description, is_global_property);
-}
-
-lldb::OptionValuePropertiesSP
-PluginManager::GetSettingForObjectFilePlugin(Debugger &debugger,
-                                             ConstString setting_name) {
-  return GetSettingForPlugin(debugger, setting_name,
-                             ConstString(kObjectFilePluginName));
-}
-
-bool PluginManager::CreateSettingForObjectFilePlugin(
-    Debugger &debugger, const lldb::OptionValuePropertiesSP &properties_sp,
-    ConstString description, bool is_global_property) {
-  return CreateSettingForPlugin(
-      debugger, ConstString(kObjectFilePluginName),
-      ConstString("Settings for object file plug-ins"), properties_sp,
-      description, is_global_property);
 }
 
 lldb::OptionValuePropertiesSP

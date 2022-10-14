@@ -27,7 +27,7 @@ public:
   }
   void destroy() {
     if (Data != &LocalData[0])
-      unmap(Data, CapacityBytes, 0, &MapData);
+      unmap(Data, CapacityBytes);
   }
   T &operator[](uptr I) {
     DCHECK_LT(I, Size);
@@ -83,8 +83,8 @@ private:
     DCHECK_GT(NewCapacity, 0);
     DCHECK_LE(Size, NewCapacity);
     NewCapacity = roundUpTo(NewCapacity * sizeof(T), getPageSizeCached());
-    T *NewData = reinterpret_cast<T *>(
-        map(nullptr, NewCapacity, "scudo:vector", 0, &MapData));
+    T *NewData =
+        reinterpret_cast<T *>(map(nullptr, NewCapacity, "scudo:vector"));
     memcpy(NewData, Data, Size * sizeof(T));
     destroy();
     Data = NewData;
@@ -95,7 +95,6 @@ private:
   T LocalData[256 / sizeof(T)] = {};
   uptr CapacityBytes = 0;
   uptr Size = 0;
-  [[no_unique_address]] MapPlatformData MapData = {};
 };
 
 template <typename T> class Vector : public VectorNoCtor<T> {

@@ -12,6 +12,8 @@ import lldbsuite.test.lldbutil as lldbutil
 
 class ThreadExitTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         # Call super's setUp().
         TestBase.setUp(self)
@@ -116,4 +118,4 @@ class ThreadExitTestCase(TestBase):
         self.runCmd("continue")
 
         # At this point, the inferior process should have exited.
-        self.assertState(process.GetState(), lldb.eStateExited, PROCESS_EXITED)
+        self.assertEqual(process.GetState(), lldb.eStateExited, PROCESS_EXITED)

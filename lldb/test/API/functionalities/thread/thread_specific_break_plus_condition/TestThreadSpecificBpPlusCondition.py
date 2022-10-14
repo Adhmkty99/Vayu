@@ -13,6 +13,8 @@ from lldbsuite.test import lldbutil
 
 class ThreadSpecificBreakPlusConditionTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     # test frequently times out or hangs
     @skipIfDarwin
     # hits break in another thread in testrun

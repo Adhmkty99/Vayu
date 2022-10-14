@@ -9,14 +9,14 @@
 
 // <string>
 
-// constexpr bool starts_with(string_view x) const noexcept;
+//   bool starts_with(string_view x) const noexcept;
 
 #include <string>
 #include <cassert>
 
 #include "test_macros.h"
 
-constexpr bool test() {
+bool test() {
     typedef std::string S;
     typedef std::string_view SV;
     const char *s = "abcde";
@@ -72,7 +72,9 @@ constexpr bool test() {
 int main(int, char**)
 {
   test();
-  static_assert(test());
+#if TEST_STD_VER > 17
+  // static_assert(test());
+#endif
 
   return 0;
 }

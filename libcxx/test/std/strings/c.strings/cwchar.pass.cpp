@@ -8,7 +8,7 @@
 
 // <cwchar>
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 #include <cwchar>
 #include <ctime>

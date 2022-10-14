@@ -25,8 +25,8 @@ using CopySignOpLowering =
 using CosOpLowering = VectorConvertToLLVMPattern<math::CosOp, LLVM::CosOp>;
 using CtPopFOpLowering =
     VectorConvertToLLVMPattern<math::CtPopOp, LLVM::CtPopOp>;
-using Exp2OpLowering = VectorConvertToLLVMPattern<math::Exp2Op, LLVM::Exp2Op>;
 using ExpOpLowering = VectorConvertToLLVMPattern<math::ExpOp, LLVM::ExpOp>;
+using Exp2OpLowering = VectorConvertToLLVMPattern<math::Exp2Op, LLVM::Exp2Op>;
 using FloorOpLowering =
     VectorConvertToLLVMPattern<math::FloorOp, LLVM::FFloorOp>;
 using FmaOpLowering = VectorConvertToLLVMPattern<math::FmaOp, LLVM::FMAOp>;
@@ -35,8 +35,6 @@ using Log10OpLowering =
 using Log2OpLowering = VectorConvertToLLVMPattern<math::Log2Op, LLVM::Log2Op>;
 using LogOpLowering = VectorConvertToLLVMPattern<math::LogOp, LLVM::LogOp>;
 using PowFOpLowering = VectorConvertToLLVMPattern<math::PowFOp, LLVM::PowOp>;
-using RoundOpLowering =
-    VectorConvertToLLVMPattern<math::RoundOp, LLVM::RoundOp>;
 using SinOpLowering = VectorConvertToLLVMPattern<math::SinOp, LLVM::SinOp>;
 using SqrtOpLowering = VectorConvertToLLVMPattern<math::SqrtOp, LLVM::SqrtOp>;
 
@@ -76,8 +74,8 @@ struct CountOpLowering : public ConvertOpToLLVMPattern<MathOp> {
         [&](Type llvm1DVectorTy, ValueRange operands) {
           LLVM::ConstantOp zero =
               rewriter.create<LLVM::ConstantOp>(loc, boolType, boolZero);
-          return rewriter.create<LLVMOp>(loc, llvm1DVectorTy, operands[0],
-                                         zero);
+          return rewriter.replaceOpWithNewOp<LLVMOp>(op, llvm1DVectorTy,
+                                                     operands[0], zero);
         },
         rewriter);
   }
@@ -275,9 +273,9 @@ void mlir::populateMathToLLVMConversionPatterns(LLVMTypeConverter &converter,
     CountLeadingZerosOpLowering,
     CountTrailingZerosOpLowering,
     CtPopFOpLowering,
+    ExpOpLowering,
     Exp2OpLowering,
     ExpM1OpLowering,
-    ExpOpLowering,
     FloorOpLowering,
     FmaOpLowering,
     Log10OpLowering,
@@ -285,7 +283,6 @@ void mlir::populateMathToLLVMConversionPatterns(LLVMTypeConverter &converter,
     Log2OpLowering,
     LogOpLowering,
     PowFOpLowering,
-    RoundOpLowering,
     RsqrtOpLowering,
     SinOpLowering,
     SqrtOpLowering

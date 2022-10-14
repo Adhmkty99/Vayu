@@ -516,8 +516,7 @@ public:
   SourceLocation getTypeSpecSatLoc() const { return TSSatLoc; }
 
   SourceLocation getTypeSpecTypeNameLoc() const {
-    assert(isDeclRep((TST)TypeSpecType) || isTypeRep((TST)TypeSpecType) ||
-           isExprRep((TST)TypeSpecType));
+    assert(isDeclRep((TST) TypeSpecType) || TypeSpecType == TST_typename);
     return TSTNameLoc;
   }
 
@@ -1786,8 +1785,7 @@ enum class DeclaratorContext {
   TemplateTypeArg,     // Template type argument (in default argument).
   AliasDecl,           // C++11 alias-declaration.
   AliasTemplate,       // C++11 alias-declaration template.
-  RequiresExpr,        // C++2a requires-expression.
-  Association          // C11 _Generic selection expression association.
+  RequiresExpr         // C++2a requires-expression.
 };
 
 /// Information about one declarator, including the parsed type
@@ -1852,12 +1850,8 @@ private:
   /// Indicates whether this declarator has an initializer.
   unsigned HasInitializer : 1;
 
-  /// Attributes attached to the declarator.
+  /// Attrs - Attributes.
   ParsedAttributes Attrs;
-
-  /// Attributes attached to the declaration. See also documentation for the
-  /// corresponding constructor parameter.
-  const ParsedAttributesView &DeclarationAttrs;
 
   /// The asm label, if specified.
   Expr *AsmLabel;
@@ -1897,40 +1891,16 @@ private:
   friend struct DeclaratorChunk;
 
 public:
-  /// `DS` and `DeclarationAttrs` must outlive the `Declarator`. In particular,
-  /// take care not to pass temporary objects for these parameters.
-  ///
-  /// `DeclarationAttrs` contains [[]] attributes from the
-  /// attribute-specifier-seq at the beginning of a declaration, which appertain
-  /// to the declared entity itself. Attributes with other syntax (e.g. GNU)
-  /// should not be placed in this attribute list; if they occur at the
-  /// beginning of a declaration, they apply to the `DeclSpec` and should be
-  /// attached to that instead.
-  ///
-  /// Here is an example of an attribute associated with a declaration:
-  ///
-  ///  [[deprecated]] int x, y;
-  ///
-  /// This attribute appertains to all of the entities declared in the
-  /// declaration, i.e. `x` and `y` in this case.
-  Declarator(const DeclSpec &DS, const ParsedAttributesView &DeclarationAttrs,
-             DeclaratorContext C)
-      : DS(DS), Range(DS.getSourceRange()), Context(C),
+  Declarator(const DeclSpec &ds, DeclaratorContext C)
+      : DS(ds), Range(ds.getSourceRange()), Context(C),
         InvalidType(DS.getTypeSpecType() == DeclSpec::TST_error),
         GroupingParens(false), FunctionDefinition(static_cast<unsigned>(
                                    FunctionDefinitionKind::Declaration)),
         Redeclaration(false), Extension(false), ObjCIvar(false),
         ObjCWeakProperty(false), InlineStorageUsed(false),
-        HasInitializer(false), Attrs(DS.getAttributePool().getFactory()),
-        DeclarationAttrs(DeclarationAttrs), AsmLabel(nullptr),
-        TrailingRequiresClause(nullptr),
-        InventedTemplateParameterList(nullptr) {
-    assert(llvm::all_of(DeclarationAttrs,
-                        [](const ParsedAttr &AL) {
-                          return AL.isStandardAttributeSyntax();
-                        }) &&
-           "DeclarationAttrs may only contain [[]] attributes");
-  }
+        HasInitializer(false), Attrs(ds.getAttributePool().getFactory()),
+        AsmLabel(nullptr), TrailingRequiresClause(nullptr),
+        InventedTemplateParameterList(nullptr) {}
 
   ~Declarator() {
     clear();
@@ -2053,7 +2023,6 @@ public:
     case DeclaratorContext::TrailingReturn:
     case DeclaratorContext::TrailingReturnVar:
     case DeclaratorContext::RequiresExpr:
-    case DeclaratorContext::Association:
       return true;
     }
     llvm_unreachable("unknown context kind!");
@@ -2093,7 +2062,6 @@ public:
     case DeclaratorContext::TemplateTypeArg:
     case DeclaratorContext::TrailingReturn:
     case DeclaratorContext::TrailingReturnVar:
-    case DeclaratorContext::Association:
       return false;
     }
     llvm_unreachable("unknown context kind!");
@@ -2137,7 +2105,6 @@ public:
     case DeclaratorContext::TemplateTypeArg:
     case DeclaratorContext::TrailingReturn:
     case DeclaratorContext::TrailingReturnVar:
-    case DeclaratorContext::Association:
       return false;
     }
     llvm_unreachable("unknown context kind!");
@@ -2194,7 +2161,6 @@ public:
     case DeclaratorContext::TemplateTypeArg:
     case DeclaratorContext::TrailingReturn:
     case DeclaratorContext::RequiresExpr:
-    case DeclaratorContext::Association:
       return false;
     }
     llvm_unreachable("unknown context kind!");
@@ -2417,7 +2383,6 @@ public:
     case DeclaratorContext::TrailingReturn:
     case DeclaratorContext::TrailingReturnVar:
     case DeclaratorContext::RequiresExpr:
-    case DeclaratorContext::Association:
       return false;
     }
     llvm_unreachable("unknown context kind!");
@@ -2452,7 +2417,6 @@ public:
     case DeclaratorContext::TrailingReturnVar:
     case DeclaratorContext::TemplateTypeArg:
     case DeclaratorContext::RequiresExpr:
-    case DeclaratorContext::Association:
       return false;
 
     case DeclaratorContext::Block:
@@ -2559,14 +2523,9 @@ public:
   const ParsedAttributes &getAttributes() const { return Attrs; }
   ParsedAttributes &getAttributes() { return Attrs; }
 
-  const ParsedAttributesView &getDeclarationAttributes() const {
-    return DeclarationAttrs;
-  }
-
   /// hasAttributes - do we contain any attributes?
   bool hasAttributes() const {
-    if (!getAttributes().empty() || !getDeclarationAttributes().empty() ||
-        getDeclSpec().hasAttributes())
+    if (!getAttributes().empty() || getDeclSpec().hasAttributes())
       return true;
     for (unsigned i = 0, e = getNumTypeObjects(); i != e; ++i)
       if (!getTypeObject(i).getAttrs().empty())
@@ -2648,10 +2607,8 @@ public:
 struct FieldDeclarator {
   Declarator D;
   Expr *BitfieldSize;
-  explicit FieldDeclarator(const DeclSpec &DS,
-                           const ParsedAttributes &DeclarationAttrs)
-      : D(DS, DeclarationAttrs, DeclaratorContext::Member),
-        BitfieldSize(nullptr) {}
+  explicit FieldDeclarator(const DeclSpec &DS)
+      : D(DS, DeclaratorContext::Member), BitfieldSize(nullptr) {}
 };
 
 /// Represents a C++11 virt-specifier-seq.

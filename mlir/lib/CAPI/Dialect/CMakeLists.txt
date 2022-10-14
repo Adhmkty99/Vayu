@@ -8,7 +8,7 @@ add_mlir_upstream_c_api_library(MLIRCAPIAsync
 
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRAsyncDialect
+  MLIRAsync
   MLIRAsyncTransforms
   MLIRPass
 )
@@ -19,7 +19,7 @@ add_mlir_upstream_c_api_library(MLIRCAPIControlFlow
   PARTIAL_SOURCES_INTENDED
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRControlFlowDialect
+  MLIRControlFlow
 )
 
 add_mlir_upstream_c_api_library(MLIRCAPIGPU
@@ -42,7 +42,7 @@ add_mlir_upstream_c_api_library(MLIRCAPILLVM
   PARTIAL_SOURCES_INTENDED
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRLLVMDialect
+  MLIRLLVMIR
 )
 
 add_mlir_upstream_c_api_library(MLIRCAPILinalg
@@ -55,7 +55,7 @@ add_mlir_upstream_c_api_library(MLIRCAPILinalg
 
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRLinalgDialect
+  MLIRLinalg
   MLIRPass
   MLIRLinalgTransforms
 )
@@ -66,7 +66,7 @@ add_mlir_upstream_c_api_library(MLIRCAPISCF
   PARTIAL_SOURCES_INTENDED
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRSCFDialect
+  MLIRSCF
 )
 
 add_mlir_upstream_c_api_library(MLIRCAPIShape
@@ -75,7 +75,7 @@ add_mlir_upstream_c_api_library(MLIRCAPIShape
   PARTIAL_SOURCES_INTENDED
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRShapeDialect
+  MLIRShape
 )
 
 add_mlir_upstream_c_api_library(MLIRCAPISparseTensor
@@ -85,7 +85,7 @@ add_mlir_upstream_c_api_library(MLIRCAPISparseTensor
   PARTIAL_SOURCES_INTENDED
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRSparseTensorDialect
+  MLIRSparseTensor
   MLIRSparseTensorTransforms
 )
 
@@ -95,7 +95,7 @@ add_mlir_upstream_c_api_library(MLIRCAPIFunc
   PARTIAL_SOURCES_INTENDED
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRFuncDialect
+  MLIRFunc
 )
 
 add_mlir_upstream_c_api_library(MLIRCAPITensor
@@ -104,7 +104,7 @@ add_mlir_upstream_c_api_library(MLIRCAPITensor
   PARTIAL_SOURCES_INTENDED
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRTensorDialect
+  MLIRTensor
 )
 
 add_mlir_upstream_c_api_library(MLIRCAPIQuant
@@ -113,7 +113,7 @@ add_mlir_upstream_c_api_library(MLIRCAPIQuant
   PARTIAL_SOURCES_INTENDED
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRQuantDialect
+  MLIRQuant
 )
 
 add_mlir_upstream_c_api_library(MLIRCAPIPDL
@@ -122,5 +122,5 @@ add_mlir_upstream_c_api_library(MLIRCAPIPDL
   PARTIAL_SOURCES_INTENDED
   LINK_LIBS PUBLIC
   MLIRCAPIIR
-  MLIRPDLDialect
+  MLIRPDL
 )

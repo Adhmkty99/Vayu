@@ -72,17 +72,17 @@ class VPRecipeBuilder {
   VPRecipeBase *tryToWidenMemory(Instruction *I, ArrayRef<VPValue *> Operands,
                                  VFRange &Range, VPlanPtr &Plan);
 
-  /// Check if an induction recipe should be constructed for \p Phi. If so build
-  /// and return it. If not, return null.
+  /// Check if an induction recipe should be constructed for \I. If so build and
+  /// return it. If not, return null.
   VPRecipeBase *tryToOptimizeInductionPHI(PHINode *Phi,
                                           ArrayRef<VPValue *> Operands,
-                                          VPlan &Plan, VFRange &Range);
+                                          VFRange &Range) const;
 
   /// Optimize the special case where the operand of \p I is a constant integer
   /// induction variable.
   VPWidenIntOrFpInductionRecipe *
   tryToOptimizeInductionTruncate(TruncInst *I, ArrayRef<VPValue *> Operands,
-                                 VFRange &Range, VPlan &Plan);
+                                 VFRange &Range, VPlan &Plan) const;
 
   /// Handle non-loop phi nodes. Return a VPValue, if all incoming values match
   /// or a new VPBlendRecipe otherwise. Currently all such phi nodes are turned
@@ -157,8 +157,9 @@ public:
     return Ingredient2Recipe[I];
   }
 
-  /// Create a replicating region for \p PredRecipe.
-  VPRegionBlock *createReplicateRegion(VPReplicateRecipe *PredRecipe,
+  /// Create a replicating region for instruction \p I that requires
+  /// predication. \p PredRecipe is a VPReplicateRecipe holding \p I.
+  VPRegionBlock *createReplicateRegion(Instruction *I, VPRecipeBase *PredRecipe,
                                        VPlanPtr &Plan);
 
   /// Build a VPReplicationRecipe for \p I and enclose it within a Region if it

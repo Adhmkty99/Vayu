@@ -2110,7 +2110,7 @@ bool ARMLoadStoreOpt::runOnMachineFunction(MachineFunction &Fn) {
     return false;
 
   MF = &Fn;
-  STI = &Fn.getSubtarget<ARMSubtarget>();
+  STI = &static_cast<const ARMSubtarget &>(Fn.getSubtarget());
   TL = STI->getTargetLowering();
   AFI = Fn.getInfo<ARMFunctionInfo>();
   TII = STI->getInstrInfo();
@@ -2201,7 +2201,7 @@ bool ARMPreAllocLoadStoreOpt::runOnMachineFunction(MachineFunction &Fn) {
     return false;
 
   TD = &Fn.getDataLayout();
-  STI = &Fn.getSubtarget<ARMSubtarget>();
+  STI = &static_cast<const ARMSubtarget &>(Fn.getSubtarget());
   TII = STI->getInstrInfo();
   TRI = STI->getRegisterInfo();
   MRI = &Fn.getRegInfo();
@@ -2896,12 +2896,10 @@ bool ARMPreAllocLoadStoreOpt::DistributeIncrements(Register Base) {
     LLVM_DEBUG(dbgs() << "\nAttempting to distribute increments on VirtualReg "
                       << Base.virtRegIndex() << "\n");
 
-    // Make sure that Increment has no uses before BaseAccess that are not PHI
-    // uses.
+    // Make sure that Increment has no uses before BaseAccess.
     for (MachineInstr &Use :
         MRI->use_nodbg_instructions(Increment->getOperand(0).getReg())) {
-      if (&Use == BaseAccess || (Use.getOpcode() != TargetOpcode::PHI &&
-                                 !DT->dominates(BaseAccess, &Use))) {
+      if (!DT->dominates(BaseAccess, &Use) || &Use == BaseAccess) {
         LLVM_DEBUG(dbgs() << "  BaseAccess doesn't dominate use of increment\n");
         return false;
       }

@@ -14,7 +14,7 @@
 // RUN:  -shared-libs=%mlir_integration_test_dir/libmlir_c_runner_utils%shlibext | \
 // RUN: FileCheck %s
 
-!Filename = !llvm.ptr<i8>
+!Filename = type !llvm.ptr<i8>
 
 #DCSR = #sparse_tensor.encoding<{
   dimLevelType = [ "compressed", "compressed" ],
@@ -41,7 +41,7 @@ module {
   // a sparse tensor as output, but although the values of the
   // sparse tensor change, its nonzero structure remains the same.
   //
-  func.func @kernel_eltwise_mult(%argx: tensor<?x?xf64, #DCSR>)
+  func @kernel_eltwise_mult(%argx: tensor<?x?xf64, #DCSR> {linalg.inplaceable = true})
     -> tensor<?x?xf64, #DCSR> {
     %0 = linalg.generic #eltwise_mult
       outs(%argx: tensor<?x?xf64, #DCSR>) {
@@ -52,12 +52,12 @@ module {
     return %0 : tensor<?x?xf64, #DCSR>
   }
 
-  func.func private @getTensorFilename(index) -> (!Filename)
+  func private @getTensorFilename(index) -> (!Filename)
 
   //
   // Main driver that reads matrix from file and calls the sparse kernel.
   //
-  func.func @entry() {
+  func @entry() {
     %d0 = arith.constant 0.0 : f64
     %c0 = arith.constant 0 : index
 
@@ -77,7 +77,7 @@ module {
     vector.print %v : vector<9xf64>
 
     // Release the resources.
-    bufferization.dealloc_tensor %x : tensor<?x?xf64, #DCSR>
+    sparse_tensor.release %x : tensor<?x?xf64, #DCSR>
 
     return
   }

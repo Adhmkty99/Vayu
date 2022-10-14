@@ -245,19 +245,10 @@ public:
 };
 
 class TypeLocWriter : public TypeLocVisitor<TypeLocWriter> {
-  using LocSeq = SourceLocationSequence;
-
   ASTRecordWriter &Record;
-  LocSeq *Seq;
-
-  void addSourceLocation(SourceLocation Loc) {
-    Record.AddSourceLocation(Loc, Seq);
-  }
-  void addSourceRange(SourceRange Range) { Record.AddSourceRange(Range, Seq); }
 
 public:
-  TypeLocWriter(ASTRecordWriter &Record, LocSeq *Seq)
-      : Record(Record), Seq(Seq) {}
+  TypeLocWriter(ASTRecordWriter &Record) : Record(Record) {}
 
 #define ABSTRACT_TYPELOC(CLASS, PARENT)
 #define TYPELOC(CLASS, PARENT) \
@@ -275,7 +266,7 @@ void TypeLocWriter::VisitQualifiedTypeLoc(QualifiedTypeLoc TL) {
 }
 
 void TypeLocWriter::VisitBuiltinTypeLoc(BuiltinTypeLoc TL) {
-  addSourceLocation(TL.getBuiltinLoc());
+  Record.AddSourceLocation(TL.getBuiltinLoc());
   if (TL.needsExtraLocalData()) {
     Record.push_back(TL.getWrittenTypeSpec());
     Record.push_back(static_cast<uint64_t>(TL.getWrittenSignSpec()));
@@ -285,11 +276,11 @@ void TypeLocWriter::VisitBuiltinTypeLoc(BuiltinTypeLoc TL) {
 }
 
 void TypeLocWriter::VisitComplexTypeLoc(ComplexTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitPointerTypeLoc(PointerTypeLoc TL) {
-  addSourceLocation(TL.getStarLoc());
+  Record.AddSourceLocation(TL.getStarLoc());
 }
 
 void TypeLocWriter::VisitDecayedTypeLoc(DecayedTypeLoc TL) {
@@ -301,25 +292,25 @@ void TypeLocWriter::VisitAdjustedTypeLoc(AdjustedTypeLoc TL) {
 }
 
 void TypeLocWriter::VisitBlockPointerTypeLoc(BlockPointerTypeLoc TL) {
-  addSourceLocation(TL.getCaretLoc());
+  Record.AddSourceLocation(TL.getCaretLoc());
 }
 
 void TypeLocWriter::VisitLValueReferenceTypeLoc(LValueReferenceTypeLoc TL) {
-  addSourceLocation(TL.getAmpLoc());
+  Record.AddSourceLocation(TL.getAmpLoc());
 }
 
 void TypeLocWriter::VisitRValueReferenceTypeLoc(RValueReferenceTypeLoc TL) {
-  addSourceLocation(TL.getAmpAmpLoc());
+  Record.AddSourceLocation(TL.getAmpAmpLoc());
 }
 
 void TypeLocWriter::VisitMemberPointerTypeLoc(MemberPointerTypeLoc TL) {
-  addSourceLocation(TL.getStarLoc());
+  Record.AddSourceLocation(TL.getStarLoc());
   Record.AddTypeSourceInfo(TL.getClassTInfo());
 }
 
 void TypeLocWriter::VisitArrayTypeLoc(ArrayTypeLoc TL) {
-  addSourceLocation(TL.getLBracketLoc());
-  addSourceLocation(TL.getRBracketLoc());
+  Record.AddSourceLocation(TL.getLBracketLoc());
+  Record.AddSourceLocation(TL.getRBracketLoc());
   Record.push_back(TL.getSizeExpr() ? 1 : 0);
   if (TL.getSizeExpr())
     Record.AddStmt(TL.getSizeExpr());
@@ -344,56 +335,56 @@ void TypeLocWriter::VisitDependentSizedArrayTypeLoc(
 
 void TypeLocWriter::VisitDependentAddressSpaceTypeLoc(
     DependentAddressSpaceTypeLoc TL) {
-  addSourceLocation(TL.getAttrNameLoc());
+  Record.AddSourceLocation(TL.getAttrNameLoc());
   SourceRange range = TL.getAttrOperandParensRange();
-  addSourceLocation(range.getBegin());
-  addSourceLocation(range.getEnd());
+  Record.AddSourceLocation(range.getBegin());
+  Record.AddSourceLocation(range.getEnd());
   Record.AddStmt(TL.getAttrExprOperand());
 }
 
 void TypeLocWriter::VisitDependentSizedExtVectorTypeLoc(
                                         DependentSizedExtVectorTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitVectorTypeLoc(VectorTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitDependentVectorTypeLoc(
     DependentVectorTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitExtVectorTypeLoc(ExtVectorTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitConstantMatrixTypeLoc(ConstantMatrixTypeLoc TL) {
-  addSourceLocation(TL.getAttrNameLoc());
+  Record.AddSourceLocation(TL.getAttrNameLoc());
   SourceRange range = TL.getAttrOperandParensRange();
-  addSourceLocation(range.getBegin());
-  addSourceLocation(range.getEnd());
+  Record.AddSourceLocation(range.getBegin());
+  Record.AddSourceLocation(range.getEnd());
   Record.AddStmt(TL.getAttrRowOperand());
   Record.AddStmt(TL.getAttrColumnOperand());
 }
 
 void TypeLocWriter::VisitDependentSizedMatrixTypeLoc(
     DependentSizedMatrixTypeLoc TL) {
-  addSourceLocation(TL.getAttrNameLoc());
+  Record.AddSourceLocation(TL.getAttrNameLoc());
   SourceRange range = TL.getAttrOperandParensRange();
-  addSourceLocation(range.getBegin());
-  addSourceLocation(range.getEnd());
+  Record.AddSourceLocation(range.getBegin());
+  Record.AddSourceLocation(range.getEnd());
   Record.AddStmt(TL.getAttrRowOperand());
   Record.AddStmt(TL.getAttrColumnOperand());
 }
 
 void TypeLocWriter::VisitFunctionTypeLoc(FunctionTypeLoc TL) {
-  addSourceLocation(TL.getLocalRangeBegin());
-  addSourceLocation(TL.getLParenLoc());
-  addSourceLocation(TL.getRParenLoc());
-  addSourceRange(TL.getExceptionSpecRange());
-  addSourceLocation(TL.getLocalRangeEnd());
+  Record.AddSourceLocation(TL.getLocalRangeBegin());
+  Record.AddSourceLocation(TL.getLParenLoc());
+  Record.AddSourceLocation(TL.getRParenLoc());
+  Record.AddSourceRange(TL.getExceptionSpecRange());
+  Record.AddSourceLocation(TL.getLocalRangeEnd());
   for (unsigned i = 0, e = TL.getNumParams(); i != e; ++i)
     Record.AddDeclRef(TL.getParam(i));
 }
@@ -407,81 +398,81 @@ void TypeLocWriter::VisitFunctionNoProtoTypeLoc(FunctionNoProtoTypeLoc TL) {
 }
 
 void TypeLocWriter::VisitUnresolvedUsingTypeLoc(UnresolvedUsingTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitUsingTypeLoc(UsingTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitTypedefTypeLoc(TypedefTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitObjCTypeParamTypeLoc(ObjCTypeParamTypeLoc TL) {
   if (TL.getNumProtocols()) {
-    addSourceLocation(TL.getProtocolLAngleLoc());
-    addSourceLocation(TL.getProtocolRAngleLoc());
+    Record.AddSourceLocation(TL.getProtocolLAngleLoc());
+    Record.AddSourceLocation(TL.getProtocolRAngleLoc());
   }
   for (unsigned i = 0, e = TL.getNumProtocols(); i != e; ++i)
-    addSourceLocation(TL.getProtocolLoc(i));
+    Record.AddSourceLocation(TL.getProtocolLoc(i));
 }
 
 void TypeLocWriter::VisitTypeOfExprTypeLoc(TypeOfExprTypeLoc TL) {
-  addSourceLocation(TL.getTypeofLoc());
-  addSourceLocation(TL.getLParenLoc());
-  addSourceLocation(TL.getRParenLoc());
+  Record.AddSourceLocation(TL.getTypeofLoc());
+  Record.AddSourceLocation(TL.getLParenLoc());
+  Record.AddSourceLocation(TL.getRParenLoc());
 }
 
 void TypeLocWriter::VisitTypeOfTypeLoc(TypeOfTypeLoc TL) {
-  addSourceLocation(TL.getTypeofLoc());
-  addSourceLocation(TL.getLParenLoc());
-  addSourceLocation(TL.getRParenLoc());
+  Record.AddSourceLocation(TL.getTypeofLoc());
+  Record.AddSourceLocation(TL.getLParenLoc());
+  Record.AddSourceLocation(TL.getRParenLoc());
   Record.AddTypeSourceInfo(TL.getUnderlyingTInfo());
 }
 
 void TypeLocWriter::VisitDecltypeTypeLoc(DecltypeTypeLoc TL) {
-  addSourceLocation(TL.getDecltypeLoc());
-  addSourceLocation(TL.getRParenLoc());
+  Record.AddSourceLocation(TL.getDecltypeLoc());
+  Record.AddSourceLocation(TL.getRParenLoc());
 }
 
 void TypeLocWriter::VisitUnaryTransformTypeLoc(UnaryTransformTypeLoc TL) {
-  addSourceLocation(TL.getKWLoc());
-  addSourceLocation(TL.getLParenLoc());
-  addSourceLocation(TL.getRParenLoc());
+  Record.AddSourceLocation(TL.getKWLoc());
+  Record.AddSourceLocation(TL.getLParenLoc());
+  Record.AddSourceLocation(TL.getRParenLoc());
   Record.AddTypeSourceInfo(TL.getUnderlyingTInfo());
 }
 
 void TypeLocWriter::VisitAutoTypeLoc(AutoTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
   Record.push_back(TL.isConstrained());
   if (TL.isConstrained()) {
     Record.AddNestedNameSpecifierLoc(TL.getNestedNameSpecifierLoc());
-    addSourceLocation(TL.getTemplateKWLoc());
-    addSourceLocation(TL.getConceptNameLoc());
+    Record.AddSourceLocation(TL.getTemplateKWLoc());
+    Record.AddSourceLocation(TL.getConceptNameLoc());
     Record.AddDeclRef(TL.getFoundDecl());
-    addSourceLocation(TL.getLAngleLoc());
-    addSourceLocation(TL.getRAngleLoc());
+    Record.AddSourceLocation(TL.getLAngleLoc());
+    Record.AddSourceLocation(TL.getRAngleLoc());
     for (unsigned I = 0; I < TL.getNumArgs(); ++I)
       Record.AddTemplateArgumentLocInfo(TL.getTypePtr()->getArg(I).getKind(),
                                         TL.getArgLocInfo(I));
   }
   Record.push_back(TL.isDecltypeAuto());
   if (TL.isDecltypeAuto())
-    addSourceLocation(TL.getRParenLoc());
+    Record.AddSourceLocation(TL.getRParenLoc());
 }
 
 void TypeLocWriter::VisitDeducedTemplateSpecializationTypeLoc(
     DeducedTemplateSpecializationTypeLoc TL) {
-  addSourceLocation(TL.getTemplateNameLoc());
+  Record.AddSourceLocation(TL.getTemplateNameLoc());
 }
 
 void TypeLocWriter::VisitRecordTypeLoc(RecordTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitEnumTypeLoc(EnumTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitAttributedTypeLoc(AttributedTypeLoc TL) {
@@ -493,107 +484,107 @@ void TypeLocWriter::VisitBTFTagAttributedTypeLoc(BTFTagAttributedTypeLoc TL) {
 }
 
 void TypeLocWriter::VisitTemplateTypeParmTypeLoc(TemplateTypeParmTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitSubstTemplateTypeParmTypeLoc(
                                             SubstTemplateTypeParmTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitSubstTemplateTypeParmPackTypeLoc(
                                           SubstTemplateTypeParmPackTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitTemplateSpecializationTypeLoc(
                                            TemplateSpecializationTypeLoc TL) {
-  addSourceLocation(TL.getTemplateKeywordLoc());
-  addSourceLocation(TL.getTemplateNameLoc());
-  addSourceLocation(TL.getLAngleLoc());
-  addSourceLocation(TL.getRAngleLoc());
+  Record.AddSourceLocation(TL.getTemplateKeywordLoc());
+  Record.AddSourceLocation(TL.getTemplateNameLoc());
+  Record.AddSourceLocation(TL.getLAngleLoc());
+  Record.AddSourceLocation(TL.getRAngleLoc());
   for (unsigned i = 0, e = TL.getNumArgs(); i != e; ++i)
     Record.AddTemplateArgumentLocInfo(TL.getArgLoc(i).getArgument().getKind(),
                                       TL.getArgLoc(i).getLocInfo());
 }
 
 void TypeLocWriter::VisitParenTypeLoc(ParenTypeLoc TL) {
-  addSourceLocation(TL.getLParenLoc());
-  addSourceLocation(TL.getRParenLoc());
+  Record.AddSourceLocation(TL.getLParenLoc());
+  Record.AddSourceLocation(TL.getRParenLoc());
 }
 
 void TypeLocWriter::VisitMacroQualifiedTypeLoc(MacroQualifiedTypeLoc TL) {
-  addSourceLocation(TL.getExpansionLoc());
+  Record.AddSourceLocation(TL.getExpansionLoc());
 }
 
 void TypeLocWriter::VisitElaboratedTypeLoc(ElaboratedTypeLoc TL) {
-  addSourceLocation(TL.getElaboratedKeywordLoc());
+  Record.AddSourceLocation(TL.getElaboratedKeywordLoc());
   Record.AddNestedNameSpecifierLoc(TL.getQualifierLoc());
 }
 
 void TypeLocWriter::VisitInjectedClassNameTypeLoc(InjectedClassNameTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitDependentNameTypeLoc(DependentNameTypeLoc TL) {
-  addSourceLocation(TL.getElaboratedKeywordLoc());
+  Record.AddSourceLocation(TL.getElaboratedKeywordLoc());
   Record.AddNestedNameSpecifierLoc(TL.getQualifierLoc());
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitDependentTemplateSpecializationTypeLoc(
        DependentTemplateSpecializationTypeLoc TL) {
-  addSourceLocation(TL.getElaboratedKeywordLoc());
+  Record.AddSourceLocation(TL.getElaboratedKeywordLoc());
   Record.AddNestedNameSpecifierLoc(TL.getQualifierLoc());
-  addSourceLocation(TL.getTemplateKeywordLoc());
-  addSourceLocation(TL.getTemplateNameLoc());
-  addSourceLocation(TL.getLAngleLoc());
-  addSourceLocation(TL.getRAngleLoc());
+  Record.AddSourceLocation(TL.getTemplateKeywordLoc());
+  Record.AddSourceLocation(TL.getTemplateNameLoc());
+  Record.AddSourceLocation(TL.getLAngleLoc());
+  Record.AddSourceLocation(TL.getRAngleLoc());
   for (unsigned I = 0, E = TL.getNumArgs(); I != E; ++I)
     Record.AddTemplateArgumentLocInfo(TL.getArgLoc(I).getArgument().getKind(),
                                       TL.getArgLoc(I).getLocInfo());
 }
 
 void TypeLocWriter::VisitPackExpansionTypeLoc(PackExpansionTypeLoc TL) {
-  addSourceLocation(TL.getEllipsisLoc());
+  Record.AddSourceLocation(TL.getEllipsisLoc());
 }
 
 void TypeLocWriter::VisitObjCInterfaceTypeLoc(ObjCInterfaceTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void TypeLocWriter::VisitObjCObjectTypeLoc(ObjCObjectTypeLoc TL) {
   Record.push_back(TL.hasBaseTypeAsWritten());
-  addSourceLocation(TL.getTypeArgsLAngleLoc());
-  addSourceLocation(TL.getTypeArgsRAngleLoc());
+  Record.AddSourceLocation(TL.getTypeArgsLAngleLoc());
+  Record.AddSourceLocation(TL.getTypeArgsRAngleLoc());
   for (unsigned i = 0, e = TL.getNumTypeArgs(); i != e; ++i)
     Record.AddTypeSourceInfo(TL.getTypeArgTInfo(i));
-  addSourceLocation(TL.getProtocolLAngleLoc());
-  addSourceLocation(TL.getProtocolRAngleLoc());
+  Record.AddSourceLocation(TL.getProtocolLAngleLoc());
+  Record.AddSourceLocation(TL.getProtocolRAngleLoc());
   for (unsigned i = 0, e = TL.getNumProtocols(); i != e; ++i)
-    addSourceLocation(TL.getProtocolLoc(i));
+    Record.AddSourceLocation(TL.getProtocolLoc(i));
 }
 
 void TypeLocWriter::VisitObjCObjectPointerTypeLoc(ObjCObjectPointerTypeLoc TL) {
-  addSourceLocation(TL.getStarLoc());
+  Record.AddSourceLocation(TL.getStarLoc());
 }
 
 void TypeLocWriter::VisitAtomicTypeLoc(AtomicTypeLoc TL) {
-  addSourceLocation(TL.getKWLoc());
-  addSourceLocation(TL.getLParenLoc());
-  addSourceLocation(TL.getRParenLoc());
+  Record.AddSourceLocation(TL.getKWLoc());
+  Record.AddSourceLocation(TL.getLParenLoc());
+  Record.AddSourceLocation(TL.getRParenLoc());
 }
 
 void TypeLocWriter::VisitPipeTypeLoc(PipeTypeLoc TL) {
-  addSourceLocation(TL.getKWLoc());
+  Record.AddSourceLocation(TL.getKWLoc());
 }
 
 void TypeLocWriter::VisitBitIntTypeLoc(clang::BitIntTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 void TypeLocWriter::VisitDependentBitIntTypeLoc(
     clang::DependentBitIntTypeLoc TL) {
-  addSourceLocation(TL.getNameLoc());
+  Record.AddSourceLocation(TL.getNameLoc());
 }
 
 void ASTWriter::WriteTypeAbbrevs() {
@@ -607,6 +598,30 @@ void ASTWriter::WriteTypeAbbrevs() {
   Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6));   // Type
   Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 3));   // Quals
   TypeExtQualAbbrev = Stream.EmitAbbrev(std::move(Abv));
+
+  // Abbreviation for TYPE_FUNCTION_PROTO
+  Abv = std::make_shared<BitCodeAbbrev>();
+  Abv->Add(BitCodeAbbrevOp(serialization::TYPE_FUNCTION_PROTO));
+  // FunctionType
+  Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6));   // ReturnType
+  Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 1)); // NoReturn
+  Abv->Add(BitCodeAbbrevOp(0));                         // HasRegParm
+  Abv->Add(BitCodeAbbrevOp(0));                         // RegParm
+  Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 4)); // CC
+  Abv->Add(BitCodeAbbrevOp(0));                         // ProducesResult
+  Abv->Add(BitCodeAbbrevOp(0));                         // NoCallerSavedRegs
+  Abv->Add(BitCodeAbbrevOp(0));                         // NoCfCheck
+  Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 1)); // CmseNSCall
+  // FunctionProtoType
+  Abv->Add(BitCodeAbbrevOp(0));                         // IsVariadic
+  Abv->Add(BitCodeAbbrevOp(0));                         // HasTrailingReturn
+  Abv->Add(BitCodeAbbrevOp(0));                         // TypeQuals
+  Abv->Add(BitCodeAbbrevOp(0));                         // RefQualifier
+  Abv->Add(BitCodeAbbrevOp(EST_None));                  // ExceptionSpec
+  Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6));   // NumParams
+  Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Array));
+  Abv->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6));   // Params
+  TypeFunctionProtoAbbrev = Stream.EmitAbbrev(std::move(Abv));
 }
 
 //===----------------------------------------------------------------------===//
@@ -1233,24 +1248,15 @@ void ASTWriter::WriteControlBlock(Preprocessor &PP, ASTContext &Context,
   }
 
   if (WritingModule && WritingModule->Directory) {
-    SmallString<128> BaseDir;
-    if (PP.getHeaderSearchInfo().getHeaderSearchOpts().ModuleFileHomeIsCwd) {
-      // Use the current working directory as the base path for all inputs.
-      auto *CWD =
-          Context.getSourceManager().getFileManager().getDirectory(".").get();
-      BaseDir.assign(CWD->getName());
-    } else {
-      BaseDir.assign(WritingModule->Directory->getName());
-    }
+    SmallString<128> BaseDir(WritingModule->Directory->getName());
     cleanPathForOutput(Context.getSourceManager().getFileManager(), BaseDir);
 
     // If the home of the module is the current working directory, then we
     // want to pick up the cwd of the build process loading the module, not
     // our cwd, when we load this module.
-    if (!(PP.getHeaderSearchInfo()
-              .getHeaderSearchOpts()
-              .ModuleMapFileHomeIsCwd ||
-          PP.getHeaderSearchInfo().getHeaderSearchOpts().ModuleFileHomeIsCwd) ||
+    if (!PP.getHeaderSearchInfo()
+             .getHeaderSearchOpts()
+             .ModuleMapFileHomeIsCwd ||
         WritingModule->Directory->getName() != StringRef(".")) {
       // Module directory.
       auto Abbrev = std::make_shared<BitCodeAbbrev>();
@@ -1479,7 +1485,8 @@ void ASTWriter::WriteControlBlock(Preprocessor &PP, ASTContext &Context,
     unsigned AbbrevCode = Stream.EmitAbbrev(std::move(Abbrev));
 
     SmallString<128> OutputPath(OutputFile);
-    PreparePathForOutput(OutputPath);
+
+    SM.getFileManager().makeAbsolutePath(OutputPath);
     StringRef origDir = llvm::sys::path::parent_path(OutputPath);
 
     RecordData::value_type Record[] = {ORIGINAL_PCH_DIR};
@@ -1715,8 +1722,8 @@ static unsigned CreateSLocExpansionAbbrev(llvm::BitstreamWriter &Stream) {
   Abbrev->Add(BitCodeAbbrevOp(SM_SLOC_EXPANSION_ENTRY));
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // Offset
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // Spelling location
-  Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // Start location
-  Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // End location
+  Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // Start location
+  Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // End location
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Fixed, 1)); // Is token range
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 6)); // Token length
   return Stream.EmitAbbrev(std::move(Abbrev));
@@ -1888,8 +1895,8 @@ void ASTWriter::WriteHeaderSearch(const HeaderSearch &HS) {
         // without this file existing on disk.
         if (!U.Size || (!U.ModTime && IncludeTimestamps)) {
           PP->Diag(U.FileNameLoc, diag::err_module_no_size_mtime_for_header)
-              << WritingModule->getFullModuleName() << U.Size.has_value()
-              << U.FileName;
+            << WritingModule->getFullModuleName() << U.Size.hasValue()
+            << U.FileName;
           continue;
         }
 
@@ -2000,13 +2007,12 @@ static void emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
 
   // Compress the buffer if possible. We expect that almost all PCM
   // consumers will not want its contents.
-  SmallVector<uint8_t, 0> CompressedBuffer;
-  if (llvm::compression::zlib::isAvailable()) {
-    llvm::compression::zlib::compress(
-        llvm::arrayRefFromStringRef(Blob.drop_back(1)), CompressedBuffer);
+  SmallString<0> CompressedBuffer;
+  if (llvm::zlib::isAvailable()) {
+    llvm::zlib::compress(Blob.drop_back(1), CompressedBuffer);
     RecordDataType Record[] = {SM_SLOC_BUFFER_BLOB_COMPRESSED, Blob.size() - 1};
     Stream.EmitRecordWithBlob(SLocBufferBlobCompressedAbbrv, Record,
-                              llvm::toStringRef(CompressedBuffer));
+                              CompressedBuffer);
     return;
   }
 
@@ -2140,13 +2146,12 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr,
     } else {
       // The source location entry is a macro expansion.
       const SrcMgr::ExpansionInfo &Expansion = SLoc->getExpansion();
-      LocSeq::State Seq;
-      AddSourceLocation(Expansion.getSpellingLoc(), Record, Seq);
-      AddSourceLocation(Expansion.getExpansionLocStart(), Record, Seq);
+      AddSourceLocation(Expansion.getSpellingLoc(), Record);
+      AddSourceLocation(Expansion.getExpansionLocStart(), Record);
       AddSourceLocation(Expansion.isMacroArgExpansion()
                             ? SourceLocation()
                             : Expansion.getExpansionLocEnd(),
-                        Record, Seq);
+                        Record);
       Record.push_back(Expansion.isExpansionTokenRange());
 
       // Compute the token length for this macro expansion.
@@ -2307,7 +2312,7 @@ void ASTWriter::WritePreprocessor(const Preprocessor &PP, bool IsModule) {
   if (PP.isRecordingPreamble() && PP.hasRecordedPreamble()) {
     assert(!IsModule);
     auto SkipInfo = PP.getPreambleSkipInfo();
-    if (SkipInfo) {
+    if (SkipInfo.hasValue()) {
       Record.push_back(true);
       AddSourceLocation(SkipInfo->HashTokenLoc, Record);
       AddSourceLocation(SkipInfo->IfTokenLoc, Record);
@@ -2867,11 +2872,8 @@ void ASTWriter::WriteSubmodules(Module *WritingModule) {
     {
       auto TopHeaders = Mod->getTopHeaders(PP->getFileManager());
       RecordData::value_type Record[] = {SUBMODULE_TOPHEADER};
-      for (auto *H : TopHeaders) {
-        SmallString<128> HeaderName(H->getName());
-        PreparePathForOutput(HeaderName);
-        Stream.EmitRecordWithBlob(TopHeaderAbbrev, Record, HeaderName);
-      }
+      for (auto *H : TopHeaders)
+        Stream.EmitRecordWithBlob(TopHeaderAbbrev, Record, H->getName());
     }
 
     // Emit the imports.
@@ -3136,7 +3138,6 @@ void ASTWriter::WriteFileDeclIDsMap() {
   for (auto &FileDeclEntry : SortedFileDeclIDs) {
     DeclIDInFileInfo &Info = *FileDeclEntry.second;
     Info.FirstDeclIndex = FileGroupedDeclIDs.size();
-    llvm::stable_sort(Info.DeclIDs);
     for (auto &LocDeclEntry : Info.DeclIDs)
       FileGroupedDeclIDs.push_back(LocDeclEntry.second);
   }
@@ -5225,15 +5226,14 @@ void ASTWriter::AddAlignPackInfo(const Sema::AlignPackInfo &Info,
   Record.push_back(Raw);
 }
 
-void ASTWriter::AddSourceLocation(SourceLocation Loc, RecordDataImpl &Record,
-                                  SourceLocationSequence *Seq) {
-  Record.push_back(SourceLocationEncoding::encode(Loc, Seq));
+void ASTWriter::AddSourceLocation(SourceLocation Loc, RecordDataImpl &Record) {
+  SourceLocation::UIntTy Raw = Loc.getRawEncoding();
+  Record.push_back((Raw << 1) | (Raw >> (8 * sizeof(Raw) - 1)));
 }
 
-void ASTWriter::AddSourceRange(SourceRange Range, RecordDataImpl &Record,
-                               SourceLocationSequence *Seq) {
-  AddSourceLocation(Range.getBegin(), Record, Seq);
-  AddSourceLocation(Range.getEnd(), Record, Seq);
+void ASTWriter::AddSourceRange(SourceRange Range, RecordDataImpl &Record) {
+  AddSourceLocation(Range.getBegin(), Record);
+  AddSourceLocation(Range.getEnd(), Record);
 }
 
 void ASTRecordWriter::AddAPFloat(const llvm::APFloat &Value) {
@@ -5360,9 +5360,8 @@ void ASTRecordWriter::AddTypeSourceInfo(TypeSourceInfo *TInfo) {
   AddTypeLoc(TInfo->getTypeLoc());
 }
 
-void ASTRecordWriter::AddTypeLoc(TypeLoc TL, LocSeq *OuterSeq) {
-  LocSeq::State Seq(OuterSeq);
-  TypeLocWriter TLW(*this, Seq);
+void ASTRecordWriter::AddTypeLoc(TypeLoc TL) {
+  TypeLocWriter TLW(*this);
   for (; !TL.isNull(); TL = TL.getNextTypeLoc())
     TLW.Visit(TL);
 }
@@ -5487,7 +5486,16 @@ void ASTWriter::associateDeclWithFile(const Decl *D, DeclID ID) {
 
   std::pair<unsigned, serialization::DeclID> LocDecl(Offset, ID);
   LocDeclIDsTy &Decls = Info->DeclIDs;
-  Decls.push_back(LocDecl);
+
+  if (Decls.empty() || Decls.back().first <= Offset) {
+    Decls.push_back(LocDecl);
+    return;
+  }
+
+  LocDeclIDsTy::iterator I =
+      llvm::upper_bound(Decls, LocDecl, llvm::less_first());
+
+  Decls.insert(I, LocDecl);
 }
 
 unsigned ASTWriter::getAnonymousDeclarationNumber(const NamedDecl *D) {
@@ -6593,7 +6601,6 @@ void OMPClauseWriter::VisitOMPDependClause(OMPDependClause *C) {
   Record.push_back(C->getDependencyKind());
   Record.AddSourceLocation(C->getDependencyLoc());
   Record.AddSourceLocation(C->getColonLoc());
-  Record.AddSourceLocation(C->getOmpAllMemoryLoc());
   for (auto *VE : C->varlists())
     Record.AddStmt(VE);
   for (unsigned I = 0, E = C->getNumLoops(); I < E; ++I)
@@ -6805,26 +6812,6 @@ void OMPClauseWriter::VisitOMPUseDeviceAddrClause(OMPUseDeviceAddrClause *C) {
 }
 
 void OMPClauseWriter::VisitOMPIsDevicePtrClause(OMPIsDevicePtrClause *C) {
-  Record.push_back(C->varlist_size());
-  Record.push_back(C->getUniqueDeclarationsNum());
-  Record.push_back(C->getTotalComponentListNum());
-  Record.push_back(C->getTotalComponentsNum());
-  Record.AddSourceLocation(C->getLParenLoc());
-  for (auto *E : C->varlists())
-    Record.AddStmt(E);
-  for (auto *D : C->all_decls())
-    Record.AddDeclRef(D);
-  for (auto N : C->all_num_lists())
-    Record.push_back(N);
-  for (auto N : C->all_lists_sizes())
-    Record.push_back(N);
-  for (auto &M : C->all_components()) {
-    Record.AddStmt(M.getAssociatedExpression());
-    Record.AddDeclRef(M.getAssociatedDeclaration());
-  }
-}
-
-void OMPClauseWriter::VisitOMPHasDeviceAddrClause(OMPHasDeviceAddrClause *C) {
   Record.push_back(C->varlist_size());
   Record.push_back(C->getUniqueDeclarationsNum());
   Record.push_back(C->getTotalComponentListNum());

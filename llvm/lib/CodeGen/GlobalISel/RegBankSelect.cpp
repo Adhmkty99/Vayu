@@ -630,8 +630,7 @@ bool RegBankSelect::assignInstr(MachineInstr &MI) {
            "Unexpected hint opcode!");
     // The only correct mapping for these is to always use the source register
     // bank.
-    const RegisterBank *RB =
-        RBI->getRegBank(MI.getOperand(1).getReg(), *MRI, *TRI);
+    const RegisterBank *RB = MRI->getRegBankOrNull(MI.getOperand(1).getReg());
     // We can assume every instruction above this one has a selected register
     // bank.
     assert(RB && "Expected source register to have a register bank?");

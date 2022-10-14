@@ -11,6 +11,7 @@ from lldbsuite.test import lldbutil
 from functionalities.breakpoint.hardware_breakpoints.base import *
 
 class BreakpointLocationsTestCase(HardwareBreakpointTestBase):
+    mydir = TestBase.compute_mydir(__file__)
 
     @skipIf(oslist=["linux"], archs=["arm"])
     def supports_hw_breakpoints(self):

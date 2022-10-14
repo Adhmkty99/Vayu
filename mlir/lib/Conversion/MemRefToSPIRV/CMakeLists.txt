@@ -11,9 +11,9 @@ add_mlir_conversion_library(MLIRMemRefToSPIRV
 
   LINK_LIBS PUBLIC
   MLIRIR
-  MLIRMemRefDialect
+  MLIRMemRef
   MLIRPass
-  MLIRSPIRVDialect
+  MLIRSPIRV
   MLIRSPIRVConversion
   MLIRSupport
   MLIRTransformUtils

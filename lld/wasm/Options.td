@@ -1,23 +1,5 @@
 include "llvm/Option/OptParser.td"
 
-// Convenience classes for long options which only accept two dashes. For lld
-// specific or newer long options, we prefer two dashes to avoid collision with
-// short options. For many others, we have to accept both forms to be compatible
-// with GNU ld.
-class FF<string name> : Flag<["--"], name>;
-class JJ<string name>: Joined<["--"], name>;
-
-multiclass EEq<string name, string help> {
-  def NAME: Separate<["--"], name>;
-  def NAME # _eq: Joined<["--"], name # "=">, Alias<!cast<Separate>(NAME)>,
-    HelpText<help>;
-}
-
-multiclass BB<string name, string help1, string help2> {
-  def NAME: Flag<["--"], name>, HelpText<help1>;
-  def no_ # NAME: Flag<["--"], "no-" # name>, HelpText<help2>;
-}
-
 // For options whose names are multiple letters, either one dash or
 // two can precede the option name except those that start with 'o'.
 class F<string name>: Flag<["--", "-"], name>;
@@ -33,6 +15,11 @@ multiclass Eq<string name, string help> {
 multiclass B<string name, string help1, string help2> {
   def NAME: Flag<["--", "-"], name>, HelpText<help1>;
   def no_ # NAME: Flag<["--", "-"], "no-" # name>, HelpText<help2>;
+}
+
+multiclass BB<string name, string help1, string help2> {
+  def NAME: Flag<["--"], name>, HelpText<help1>;
+  def no_ # NAME: Flag<["--"], "no-" # name>, HelpText<help2>;
 }
 
 // The following flags are shared with the ELF linker
@@ -64,8 +51,8 @@ defm export_dynamic: B<"export-dynamic",
 def entry: S<"entry">, MetaVarName<"<entry>">,
   HelpText<"Name of entry point symbol">;
 
-defm error_limit:
-  EEq<"error-limit", "Maximum number of errors to emit before stopping (0 = no limit)">;
+def error_limit: J<"error-limit=">,
+  HelpText<"Maximum number of errors to emit before stopping (0 = no limit)">;
 
 def fatal_warnings: F<"fatal-warnings">,
   HelpText<"Treat warnings as errors">;
@@ -74,7 +61,7 @@ defm gc_sections: B<"gc-sections",
     "Enable garbage collection of unused sections",
     "Disable garbage collection of unused sections">;
 
-defm merge_data_segments: BB<"merge-data-segments",
+defm merge_data_segments: B<"merge-data-segments",
     "Enable merging data segments",
     "Disable merging data segments">;
 
@@ -88,7 +75,7 @@ def L: JoinedOrSeparate<["-"], "L">, MetaVarName<"<dir>">,
 
 def m: JoinedOrSeparate<["-"], "m">, HelpText<"Set target emulation">;
 
-defm mllvm: Eq<"mllvm", "Additional arguments to forward to LLVM's option processing">;
+def mllvm: S<"mllvm">, HelpText<"Options to pass to LLVM">;
 
 defm Map: Eq<"Map", "Print a link map to the specified file">;
 
@@ -112,7 +99,7 @@ def print_map: F<"print-map">,
 
 def relocatable: F<"relocatable">, HelpText<"Create relocatable object file">;
 
-defm reproduce: EEq<"reproduce", "Dump linker invocation and input files for debugging">;
+defm reproduce: Eq<"reproduce", "Dump linker invocation and input files for debugging">;
 
 defm rsp_quoting: Eq<"rsp-quoting", "Quoting style for response files">,
   MetaVarName<"[posix,windows]">;
@@ -172,44 +159,44 @@ defm export: Eq<"export", "Force a symbol to be exported">;
 defm export_if_defined: Eq<"export-if-defined",
      "Force a symbol to be exported, if it is defined in the input">;
 
-def export_all: FF<"export-all">,
+def export_all: F<"export-all">,
   HelpText<"Export all symbols (normally combined with --no-gc-sections)">;
 
-def export_table: FF<"export-table">,
+def export_table: F<"export-table">,
   HelpText<"Export function table to the environment">;
 
-def growable_table: FF<"growable-table">,
+def growable_table: F<"growable-table">,
   HelpText<"Remove maximum size from function table, allowing table to grow">;
 
-def global_base: JJ<"global-base=">,
+def global_base: J<"global-base=">,
   HelpText<"Where to start to place global data">;
 
-def import_memory: FF<"import-memory">,
+def import_memory: F<"import-memory">,
   HelpText<"Import memory from the environment">;
 
-def shared_memory: FF<"shared-memory">,
+def shared_memory: F<"shared-memory">,
   HelpText<"Use shared linear memory">;
 
-def import_table: FF<"import-table">,
+def import_table: F<"import-table">,
   HelpText<"Import function table from the environment">;
 
-def initial_memory: JJ<"initial-memory=">,
+def initial_memory: J<"initial-memory=">,
   HelpText<"Initial size of the linear memory">;
 
-def max_memory: JJ<"max-memory=">,
+def max_memory: J<"max-memory=">,
   HelpText<"Maximum size of the linear memory">;
 
-def no_entry: FF<"no-entry">,
+def no_entry: F<"no-entry">,
   HelpText<"Do not output any entry point">;
 
-def stack_first: FF<"stack-first">,
+def stack_first: F<"stack-first">,
   HelpText<"Place stack at start of linear memory rather than after data">;
 
 defm whole_archive: B<"whole-archive",
     "Force load of all members in a static library",
     "Do not force load of all members in a static library (default)">;
 
-defm check_features: BB<"check-features",
+defm check_features: B<"check-features",
     "Check feature compatibility of linked objects (default)",
     "Ignore feature compatibility of linked objects">;
 
@@ -230,22 +217,22 @@ def: JoinedOrSeparate<["-"], "y">, Alias<trace_symbol>, HelpText<"Alias for --tr
 def: JoinedOrSeparate<["-"], "u">, Alias<undefined>;
 
 // LTO-related options.
-def lto_O: JJ<"lto-O">, MetaVarName<"<opt-level>">,
+def lto_O: J<"lto-O">, MetaVarName<"<opt-level>">,
   HelpText<"Optimization level for LTO">;
-def lto_partitions: JJ<"lto-partitions=">,
+def lto_partitions: J<"lto-partitions=">,
   HelpText<"Number of LTO codegen partitions">;
 def disable_verify: F<"disable-verify">;
 def save_temps: F<"save-temps">, HelpText<"Save intermediate LTO compilation results">;
-def thinlto_cache_dir: JJ<"thinlto-cache-dir=">,
+def thinlto_cache_dir: J<"thinlto-cache-dir=">,
   HelpText<"Path to ThinLTO cached object file directory">;
-defm thinlto_cache_policy: EEq<"thinlto-cache-policy", "Pruning policy for the ThinLTO cache">;
-def thinlto_jobs: JJ<"thinlto-jobs=">,
+defm thinlto_cache_policy: Eq<"thinlto-cache-policy", "Pruning policy for the ThinLTO cache">;
+def thinlto_jobs: J<"thinlto-jobs=">,
   HelpText<"Number of ThinLTO jobs. Default to --threads=">;
-def no_lto_legacy_pass_manager: FF<"no-lto-legacy-pass-manager">,
+def no_lto_legacy_pass_manager: F<"no-lto-legacy-pass-manager">,
   HelpText<"Use new pass manager">;
-def lto_debug_pass_manager: FF<"lto-debug-pass-manager">,
+def lto_debug_pass_manager: F<"lto-debug-pass-manager">,
   HelpText<"Debug new pass manager">;
 
 // Experimental PIC mode.
-def experimental_pic: FF<"experimental-pic">,
+def experimental_pic: F<"experimental-pic">,
   HelpText<"Enable Experimental PIC">;

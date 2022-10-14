@@ -355,12 +355,6 @@ DiagnosticEngine &MLIRContext::getDiagEngine() { return getImpl().diagEngine; }
 //===----------------------------------------------------------------------===//
 
 void MLIRContext::appendDialectRegistry(const DialectRegistry &registry) {
-  if (registry.isSubsetOf(impl->dialectsRegistry))
-    return;
-
-  assert(impl->multiThreadedExecutionContext == 0 &&
-         "appending to the MLIRContext dialect registry while in a "
-         "multi-threaded execution context");
   registry.appendTo(impl->dialectsRegistry);
 
   // For the already loaded dialects, apply any possible extensions immediately.
@@ -476,9 +470,6 @@ bool MLIRContext::allowsUnregisteredDialects() {
 }
 
 void MLIRContext::allowUnregisteredDialects(bool allowing) {
-  assert(impl->multiThreadedExecutionContext == 0 &&
-         "changing MLIRContext `allow-unregistered-dialects` configuration "
-         "while in a multi-threaded execution context");
   impl->allowUnregisteredDialects = allowing;
 }
 
@@ -493,9 +484,6 @@ void MLIRContext::disableMultithreading(bool disable) {
   // --mlir-disable-threading
   if (isThreadingGloballyDisabled())
     return;
-  assert(impl->multiThreadedExecutionContext == 0 &&
-         "changing MLIRContext `disable-threading` configuration while "
-         "in a multi-threaded execution context");
 
   impl->threadingIsEnabled = !disable;
 
@@ -569,9 +557,6 @@ bool MLIRContext::shouldPrintOpOnDiagnostic() {
 /// Set the flag specifying if we should attach the operation to diagnostics
 /// emitted via Operation::emit.
 void MLIRContext::printOpOnDiagnostic(bool enable) {
-  assert(impl->multiThreadedExecutionContext == 0 &&
-         "changing MLIRContext `print-op-on-diagnostic` configuration while in "
-         "a multi-threaded execution context");
   impl->printOpOnDiagnostic = enable;
 }
 
@@ -584,9 +569,6 @@ bool MLIRContext::shouldPrintStackTraceOnDiagnostic() {
 /// Set the flag specifying if we should attach the current stacktrace when
 /// emitting diagnostics.
 void MLIRContext::printStackTraceOnDiagnostic(bool enable) {
-  assert(impl->multiThreadedExecutionContext == 0 &&
-         "changing MLIRContext `print-stacktrace-on-diagnostic` configuration "
-         "while in a multi-threaded execution context");
   impl->printStackTraceOnDiagnostic = enable;
 }
 
@@ -596,7 +578,7 @@ ArrayRef<RegisteredOperationName> MLIRContext::getRegisteredOperations() {
 }
 
 bool MLIRContext::isOperationRegistered(StringRef name) {
-  return RegisteredOperationName::lookup(name, this).has_value();
+  return RegisteredOperationName::lookup(name, this).hasValue();
 }
 
 void Dialect::addType(TypeID typeID, AbstractType &&typeInfo) {
@@ -707,10 +689,6 @@ RegisteredOperationName::parseAssembly(OpAsmParser &parser,
   return impl->parseAssemblyFn(parser, result);
 }
 
-void RegisteredOperationName::populateDefaultAttrs(NamedAttrList &attrs) const {
-  impl->populateDefaultAttrsFn(*this, attrs);
-}
-
 void RegisteredOperationName::insert(
     StringRef name, Dialect &dialect, TypeID typeID,
     ParseAssemblyFn &&parseAssembly, PrintAssemblyFn &&printAssembly,
@@ -718,8 +696,7 @@ void RegisteredOperationName::insert(
     VerifyRegionInvariantsFn &&verifyRegionInvariants, FoldHookFn &&foldHook,
     GetCanonicalizationPatternsFn &&getCanonicalizationPatterns,
     detail::InterfaceMap &&interfaceMap, HasTraitFn &&hasTrait,
-    ArrayRef<StringRef> attrNames,
-    PopulateDefaultAttrsFn &&populateDefaultAttrs) {
+    ArrayRef<StringRef> attrNames) {
   MLIRContext *ctx = dialect.getContext();
   auto &ctxImpl = ctx->getImpl();
   assert(ctxImpl.multiThreadedExecutionContext == 0 &&
@@ -774,7 +751,6 @@ void RegisteredOperationName::insert(
   impl.verifyInvariantsFn = std::move(verifyInvariants);
   impl.verifyRegionInvariantsFn = std::move(verifyRegionInvariants);
   impl.attributeNames = cachedAttrNames;
-  impl.populateDefaultAttrsFn = std::move(populateDefaultAttrs);
 }
 
 //===----------------------------------------------------------------------===//

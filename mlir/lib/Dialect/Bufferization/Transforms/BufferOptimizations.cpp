@@ -131,9 +131,8 @@ public:
     SmallVector<Value> allocsAndAllocas;
     for (BufferPlacementAllocs::AllocEntry &entry : allocs)
       allocsAndAllocas.push_back(std::get<0>(entry));
-    scopeOp->walk([&](memref::AllocaOp op) {
-      allocsAndAllocas.push_back(op.getMemref());
-    });
+    scopeOp->walk(
+        [&](memref::AllocaOp op) { allocsAndAllocas.push_back(op.memref()); });
 
     for (auto allocValue : allocsAndAllocas) {
       if (!StateT::shouldHoistOpType(allocValue.getDefiningOp()))

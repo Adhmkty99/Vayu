@@ -19,15 +19,7 @@
 
 // This is for backwards compatibility with code that might have been enabling
 // assertions through the Debug mode previously.
-// TODO: In LLVM 16, make it an error to define _LIBCPP_DEBUG
-#if defined(_LIBCPP_DEBUG)
-# ifndef _LIBCPP_ENABLE_ASSERTIONS
-#   define _LIBCPP_ENABLE_ASSERTIONS 1
-# endif
-#endif
-
-// Automatically enable assertions when the debug mode is enabled.
-#if defined(_LIBCPP_ENABLE_DEBUG_MODE)
+#if _LIBCPP_DEBUG_LEVEL >= 1
 # ifndef _LIBCPP_ENABLE_ASSERTIONS
 #   define _LIBCPP_ENABLE_ASSERTIONS 1
 # endif

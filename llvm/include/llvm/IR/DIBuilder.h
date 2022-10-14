@@ -752,8 +752,6 @@ namespace llvm {
     /// \param TParams       Function template parameters.
     /// \param ThrownTypes   Exception types this function may throw.
     /// \param Annotations   Attribute Annotations.
-    /// \param TargetFuncName The name of the target function if this is
-    ///                       a trampoline.
     DISubprogram *
     createFunction(DIScope *Scope, StringRef Name, StringRef LinkageName,
                    DIFile *File, unsigned LineNo, DISubroutineType *Ty,
@@ -762,8 +760,7 @@ namespace llvm {
                    DITemplateParameterArray TParams = nullptr,
                    DISubprogram *Decl = nullptr,
                    DITypeArray ThrownTypes = nullptr,
-                   DINodeArray Annotations = nullptr,
-                   StringRef TargetFuncName = "");
+                   DINodeArray Annotations = nullptr);
 
     /// Identical to createFunction,
     /// except that the resulting DbgNode is meant to be RAUWed.

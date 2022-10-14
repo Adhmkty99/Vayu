@@ -1,15 +1,17 @@
 ; RUN: llvm-as < %s >%t.bc
 ; PR21108: Diagnostic handlers get pass remarks, even if they're not enabled.
 
+; FIXME: Update checks for new pass manager.
+
 ; Confirm that there are -pass-remarks.
-; RUN: llvm-lto \
+; RUN: llvm-lto -use-new-pm=false \
 ; RUN:          -pass-remarks=inline \
 ; RUN:          -exported-symbol _func2 -pass-remarks-analysis=loop-vectorize \
 ; RUN:          -exported-symbol _main -o %t.o %t.bc 2>&1 | \
 ; RUN:     FileCheck %s -allow-empty -check-prefix=REMARKS
 ; RUN: llvm-nm %t.o | FileCheck %s -check-prefix NM
 
-; RUN: llvm-lto \
+; RUN: llvm-lto -use-new-pm=false \
 ; RUN:          -pass-remarks=inline -use-diagnostic-handler \
 ; RUN:          -exported-symbol _func2 -pass-remarks-analysis=loop-vectorize \
 ; RUN:          -exported-symbol _main -o %t.o %t.bc 2>&1 | \
@@ -17,13 +19,13 @@
 ; RUN: llvm-nm %t.o | FileCheck %s -check-prefix NM
 
 ; Confirm that -pass-remarks are not printed by default.
-; RUN: llvm-lto \
+; RUN: llvm-lto -use-new-pm=false \
 ; RUN:         -exported-symbol _func2 \
 ; RUN:         -exported-symbol _main -o %t.o %t.bc 2>&1 | \
 ; RUN:     FileCheck %s -allow-empty
 ; RUN: llvm-nm %t.o | FileCheck %s -check-prefix NM
 
-; RUN: llvm-lto \
+; RUN: llvm-lto -use-new-pm=false \
 ; RUN:          -use-diagnostic-handler \
 ; RUN:          -exported-symbol _func2 \
 ; RUN:          -exported-symbol _main -o %t.o %t.bc 2>&1 | \
@@ -32,27 +34,17 @@
 
 ; Optimization records are collected regardless of the diagnostic handler
 ; RUN: rm -f %t.yaml
-; RUN: llvm-lto \
+; RUN: llvm-lto -use-new-pm=false \
 ; RUN:          -lto-pass-remarks-output=%t.yaml \
 ; RUN:          -exported-symbol _func2 \
 ; RUN:          -exported-symbol _main -o %t.o %t.bc 2>&1 | \
 ; RUN:     FileCheck %s -allow-empty
-; RUN: cat %t.yaml | FileCheck %s -check-prefixes=YAML,YAML-NO-ANNOTATE
-
-; Try again with `-annotate-inline-lto-phase`.
-; RUN: rm -f %t.yaml
-; RUN: llvm-lto \
-; RUN:          -annotate-inline-phase \
-; RUN:          -lto-pass-remarks-output=%t.yaml \
-; RUN:          -exported-symbol _func2 \
-; RUN:          -exported-symbol _main -o %t.o %t.bc 2>&1 | \
-; RUN:     FileCheck %s -allow-empty
-; RUN: cat %t.yaml | FileCheck %s -check-prefixes=YAML,YAML-ANNOTATE
+; RUN: cat %t.yaml | FileCheck %s -check-prefix=YAML
 
 ; REMARKS: remark: {{.*}} 'foo' inlined into 'main'
-; REMARKS: remark: {{.*}} the cost-model indicates that interleaving is not beneficial
+; REMARKS: remark: {{.*}} loop not vectorized: cannot prove it is safe to reorder memory operations
 ; REMARKS_DH: llvm-lto: remark: {{.*}} 'foo' inlined into 'main'
-; REMARKS_DH: llvm-lto: remark: {{.*}} the cost-model indicates that interleaving is not beneficial
+; REMARKS_DH: llvm-lto: remark: {{.*}} loop not vectorized: cannot prove it is safe to reorder memory operations
 ; CHECK-NOT: remark:
 ; CHECK-NOT: llvm-lto:
 ; NM-NOT: foo
@@ -60,8 +52,7 @@
 ; NM: main
 
 ; YAML:      --- !Passed
-; YAML-NO-ANNOTATE-NEXT: Pass:            inline
-; YAML-ANNOTATE-NEXT: Pass:            postlink-cgscc-inline
+; YAML-NEXT: Pass:            inline
 ; YAML-NEXT: Name:            Inlined
 ; YAML-NEXT: Function:        main
 ; YAML-NEXT: Args:

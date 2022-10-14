@@ -11,6 +11,8 @@ from lldbsuite.test import lldbutil
 
 class TestPtrRefs(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfAsan # The output looks different under ASAN.
     @skipUnlessDarwin
     def test_ptr_refs(self):

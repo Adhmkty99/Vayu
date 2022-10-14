@@ -38,7 +38,6 @@
 #include "llvm/Support/WithColor.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
-#include <queue>
 
 using namespace llvm;
 
@@ -755,7 +754,7 @@ mergeSampleProfile(const WeightedFileVector &Inputs, SymbolRemapper *Remapper,
   LLVMContext Context;
   sampleprof::ProfileSymbolList WriterList;
   Optional<bool> ProfileIsProbeBased;
-  Optional<bool> ProfileIsCS;
+  Optional<bool> ProfileIsCSFlat;
   for (const auto &Input : Inputs) {
     auto ReaderOrErr = SampleProfileReader::create(Input.Filename, Context,
                                                    FSDiscriminatorPassOption);
@@ -777,14 +776,15 @@ mergeSampleProfile(const WeightedFileVector &Inputs, SymbolRemapper *Remapper,
     }
 
     SampleProfileMap &Profiles = Reader->getProfiles();
-    if (ProfileIsProbeBased &&
+    if (ProfileIsProbeBased.hasValue() &&
         ProfileIsProbeBased != FunctionSamples::ProfileIsProbeBased)
       exitWithError(
           "cannot merge probe-based profile with non-probe-based profile");
     ProfileIsProbeBased = FunctionSamples::ProfileIsProbeBased;
-    if (ProfileIsCS && ProfileIsCS != FunctionSamples::ProfileIsCS)
+    if (ProfileIsCSFlat.hasValue() &&
+        ProfileIsCSFlat != FunctionSamples::ProfileIsCSFlat)
       exitWithError("cannot merge CS profile with non-CS profile");
-    ProfileIsCS = FunctionSamples::ProfileIsCS;
+    ProfileIsCSFlat = FunctionSamples::ProfileIsCSFlat;
     for (SampleProfileMap::iterator I = Profiles.begin(), E = Profiles.end();
          I != E; ++I) {
       sampleprof_error Result = sampleprof_error::success;
@@ -807,7 +807,7 @@ mergeSampleProfile(const WeightedFileVector &Inputs, SymbolRemapper *Remapper,
       WriterList.merge(*ReaderList);
   }
 
-  if (ProfileIsCS && (SampleMergeColdContext || SampleTrimColdContext)) {
+  if (ProfileIsCSFlat && (SampleMergeColdContext || SampleTrimColdContext)) {
     // Use threshold calculated from profile summary unless specified.
     SampleProfileSummaryBuilder Builder(ProfileSummaryBuilder::DefaultCutoffs);
     auto Summary = Builder.computeSummaryForProfiles(ProfileMap);
@@ -822,10 +822,10 @@ mergeSampleProfile(const WeightedFileVector &Inputs, SymbolRemapper *Remapper,
             SampleMergeColdContext, SampleColdContextFrameDepth, false);
   }
 
-  if (ProfileIsCS && GenCSNestedProfile) {
+  if (ProfileIsCSFlat && GenCSNestedProfile) {
     CSProfileConverter CSConverter(ProfileMap);
     CSConverter.convertProfiles();
-    ProfileIsCS = FunctionSamples::ProfileIsCS = false;
+    ProfileIsCSFlat = FunctionSamples::ProfileIsCSFlat = false;
   }
 
   auto WriterOrErr =
@@ -979,7 +979,7 @@ static int merge_main(int argc, const char *argv[]) {
       cl::desc(
           "Trim context sample profiles whose count is below cold threshold"));
   cl::opt<uint32_t> SampleColdContextFrameDepth(
-      "sample-frame-depth-for-cold-context", cl::init(1),
+      "sample-frame-depth-for-cold-context", cl::init(1), cl::ZeroOrMore,
       cl::desc("Keep the last K frames while merging cold profile. 1 means the "
                "context-less base profile"));
   cl::opt<bool> GenPartialProfile(
@@ -995,7 +995,7 @@ static int merge_main(int argc, const char *argv[]) {
       "zero-counter-threshold", cl::init(0.7), cl::Hidden,
       cl::desc("For the function which is cold in instr profile but hot in "
                "sample profile, if the ratio of the number of zero counters "
-               "divided by the total number of counters is above the "
+               "divided by the the total number of counters is above the "
                "threshold, the profile of the function will be regarded as "
                "being harmful for performance and will be dropped."));
   cl::opt<unsigned> SupplMinSizeThreshold(
@@ -1985,7 +1985,7 @@ std::error_code SampleOverlapAggregator::loadProfiles() {
   if (BaseReader->profileIsProbeBased() != TestReader->profileIsProbeBased())
     exitWithError(
         "cannot compare probe-based profile with non-probe-based profile");
-  if (BaseReader->profileIsCS() != TestReader->profileIsCS())
+  if (BaseReader->profileIsCSFlat() != TestReader->profileIsCSFlat())
     exitWithError("cannot compare CS profile with non-CS profile");
 
   // Load BaseHotThreshold and TestHotThreshold as 99-percentile threshold in
@@ -2200,7 +2200,8 @@ static int showInstrProfile(const std::string &Filename, bool ShowCounts,
     Builder.addRecord(Func);
 
     if (ShowCovered) {
-      if (llvm::any_of(Func.Counts, [](uint64_t C) { return C; }))
+      if (std::any_of(Func.Counts.begin(), Func.Counts.end(),
+                      [](uint64_t C) { return C; }))
         OS << Func.Name << "\n";
       continue;
     }
@@ -2470,10 +2471,9 @@ static int showHotFunctionList(const sampleprof::SampleProfileMap &Profiles,
         (ProfileTotalSample > 0)
             ? (Func.getTotalSamples() * 100.0) / ProfileTotalSample
             : 0;
-    PrintValues.emplace_back(
-        HotFuncInfo(Func.getContext().toString(), Func.getTotalSamples(),
-                    TotalSamplePercent, FuncPair.second.second,
-                    Func.getHeadSamplesEstimate()));
+    PrintValues.emplace_back(HotFuncInfo(
+        Func.getContext().toString(), Func.getTotalSamples(),
+        TotalSamplePercent, FuncPair.second.second, Func.getEntrySamples()));
   }
   dumpHotFunctionList(ColumnTitle, ColumnOffset, PrintValues, HotFuncCount,
                       Profiles.size(), HotFuncSample, ProfileTotalSample,
@@ -2532,8 +2532,8 @@ static int showSampleProfile(const std::string &Filename, bool ShowCounts,
 static int showMemProfProfile(const std::string &Filename,
                               const std::string &ProfiledBinary,
                               raw_fd_ostream &OS) {
-  auto ReaderOr = llvm::memprof::RawMemProfReader::create(
-      Filename, ProfiledBinary, /*KeepNames=*/true);
+  auto ReaderOr =
+      llvm::memprof::RawMemProfReader::create(Filename, ProfiledBinary);
   if (Error E = ReaderOr.takeError())
     // Since the error can be related to the profile or the binary we do not
     // pass whence. Instead additional context is provided where necessary in

@@ -44,9 +44,9 @@ using namespace ento;
 namespace {
 struct ChecksFilter {
   /// Check for missing invalidation method declarations.
-  bool check_MissingInvalidationMethod = false;
+  DefaultBool check_MissingInvalidationMethod;
   /// Check that all ivars are invalidated.
-  bool check_InstanceVariableInvalidation = false;
+  DefaultBool check_InstanceVariableInvalidation;
 
   CheckerNameRef checkName_MissingInvalidationMethod;
   CheckerNameRef checkName_InstanceVariableInvalidation;

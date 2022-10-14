@@ -49,7 +49,6 @@ static_library("Checkers") {
     "DynamicTypeChecker.cpp",
     "DynamicTypePropagation.cpp",
     "EnumCastOutOfRangeChecker.cpp",
-    "ErrnoChecker.cpp",
     "ErrnoModeling.cpp",
     "ErrnoTesterChecker.cpp",
     "ExprInspectionChecker.cpp",

@@ -9,10 +9,10 @@ add_mlir_dialect_library(MLIRQuantTransforms
   MLIRQuantPassIncGen
 
   LINK_LIBS PUBLIC
-  MLIRArithmeticDialect
-  MLIRFuncDialect
+  MLIRArithmetic
+  MLIRFunc
   MLIRIR
-  MLIRQuantDialect
+  MLIRQuant
   MLIRQuantUtils
   MLIRPass
   MLIRSupport

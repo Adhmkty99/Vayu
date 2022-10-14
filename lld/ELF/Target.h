@@ -89,9 +89,6 @@ public:
     relocate(loc, Relocation{R_NONE, type, 0, 0, nullptr}, val);
   }
 
-  // Do a linker relaxation pass and return true if we changed something.
-  virtual bool relaxOnce(int pass) const { return false; }
-
   virtual void applyJumpInstrMod(uint8_t *loc, JumpModType type,
                                  JumpModType val) const {}
 
@@ -224,7 +221,6 @@ void writePrefixedInstruction(uint8_t *loc, uint64_t insn);
 void addPPC64SaveRestore();
 uint64_t getPPC64TocBase();
 uint64_t getAArch64Page(uint64_t expr);
-void riscvFinalizeRelax(int passes);
 
 class AArch64Relaxer {
   bool safeToRelaxAdrpLdr = true;

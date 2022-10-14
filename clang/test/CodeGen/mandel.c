@@ -26,7 +26,6 @@ int main(void) { return 0; }
 #define I 1.0iF
 
 int putchar(char c);
-double hypot(double, double);
 
 volatile double __complex__ accum;
 

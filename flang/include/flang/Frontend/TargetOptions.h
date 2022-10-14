@@ -10,15 +10,9 @@
 /// Defines the flang::TargetOptions class.
 ///
 //===----------------------------------------------------------------------===//
-//
-// Coding style: https://mlir.llvm.org/getting_started/DeveloperGuide/
-//
-//===----------------------------------------------------------------------===//
 
-#ifndef FORTRAN_FRONTEND_TARGETOPTIONS_H
-#define FORTRAN_FRONTEND_TARGETOPTIONS_H
-
-#include <string>
+#ifndef LLVM_FLANG_TARGETOPTIONS_H
+#define LLVM_FLANG_TARGETOPTIONS_H
 
 namespace Fortran::frontend {
 

@@ -71,7 +71,7 @@ Here's an example of an MLIR module:
 // Compute A*B using an implementation of multiply kernel and print the
 // result using a TensorFlow op. The dimensions of A and B are partially
 // known. The shapes are assumed to match.
-func.func @mul(%A: tensor<100x?xf32>, %B: tensor<?x50xf32>) -> (tensor<100x50xf32>) {
+func @mul(%A: tensor<100x?xf32>, %B: tensor<?x50xf32>) -> (tensor<100x50xf32>) {
   // Compute the inner dimension of %A using the dim operation.
   %n = memref.dim %A, 1 : tensor<100x?xf32>
 
@@ -95,13 +95,14 @@ func.func @mul(%A: tensor<100x?xf32>, %B: tensor<?x50xf32>) -> (tensor<100x50xf3
   memref.dealloc %C_m : memref<100x50xf32>
 
   // Call TensorFlow built-in function to print the result tensor.
-  "tf.Print"(%C){message: "mul result"} : (tensor<100x50xf32>) -> (tensor<100x50xf32>)
+  "tf.Print"(%C){message: "mul result"}
+                  : (tensor<100x50xf32) -> (tensor<100x50xf32>)
 
   return %C : tensor<100x50xf32>
 }
 
 // A function that multiplies two memrefs and returns the result.
-func.func @multiply(%A: memref<100x?xf32>, %B: memref<?x50xf32>)
+func @multiply(%A: memref<100x?xf32>, %B: memref<?x50xf32>)
           -> (memref<100x50xf32>)  {
   // Compute the inner dimension of %A.
   %n = memref.dim %A, 1 : memref<100x?xf32>
@@ -151,7 +152,7 @@ literal     ::= `abcd` // Matches the literal `abcd`.
 
 Code examples are presented in blue boxes.
 
-```
+```mlir
 // This is an example use of the grammar above:
 // This matches things like: ba, bana, boma, banana, banoma, bomana...
 example ::= `b` (`an` | `om`)* `a`
@@ -200,7 +201,6 @@ Syntax:
 bare-id ::= (letter|[_]) (letter|digit|[_$.])*
 bare-id-list ::= bare-id (`,` bare-id)*
 value-id ::= `%` suffix-id
-alias-name :: = bare-id
 suffix-id ::= (digit+ | ((letter|id-punct) (letter|id-punct|digit)*))
 
 symbol-ref-id ::= `@` (suffix-id | string-literal) (`::` symbol-ref-id)?
@@ -295,7 +295,7 @@ custom-operation     ::= bare-id custom-operation-format
 op-result-list       ::= op-result (`,` op-result)* `=`
 op-result            ::= value-id (`:` integer-literal)
 successor-list       ::= `[` successor (`,` successor)* `]`
-successor            ::= caret-id (`:` block-arg-list)?
+successor            ::= caret-id (`:` bb-arg-list)?
 region-list          ::= `(` region (`,` region)* `)`
 dictionary-attribute ::= `{` (attribute-entry (`,` attribute-entry)*)? `}`
 trailing-location    ::= (`loc` `(` location `)`)?
@@ -366,11 +366,11 @@ compiler [basic block](https://en.wikipedia.org/wiki/Basic_block) where
 instructions inside the block are executed in order and terminator operations
 implement control flow branches between basic blocks.
 
-The last operation in a block must be a
-[terminator operation](#control-flow-and-ssacfg-regions). A region with a single
-block may opt out of this requirement by attaching the `NoTerminator` on the
-enclosing op. The top-level `ModuleOp` is an example of such an operation which
-defines this trait and whose block body does not have a terminator.
+A region with a single block may not include a
+[terminator operation](#terminator-operations). The enclosing op can opt-out of
+this requirement with the `NoTerminator` trait. The top-level `ModuleOp` is an
+example of such operation which defined this trait and whose block body does not
+have a terminator.
 
 Blocks in MLIR take a list of block arguments, notated in a function-like way.
 Block arguments are bound to values specified by the semantics of individual
@@ -389,7 +389,7 @@ Here is a simple example function showing branches, returns, and block
 arguments:
 
 ```mlir
-func.func @simple(i64, i1) -> i64 {
+func @simple(i64, i1) -> i64 {
 ^bb0(%a: i64, %cond: i1): // Code dominated by ^bb0 may refer to %a
   cf.cond_br %cond, ^bb1, ^bb2
 
@@ -529,7 +529,7 @@ region, for example if a function call does not return.
 Example:
 
 ```mlir
-func.func @accelerator_compute(i64, i1) -> i64 { // An SSACFG region
+func @accelerator_compute(i64, i1) -> i64 { // An SSACFG region
 ^bb0(%a: i64, %cond: i1): // Code dominated by ^bb0 may refer to %a
   cf.cond_br %cond, ^bb1, ^bb2
 
@@ -645,18 +645,15 @@ type-list-parens ::= `(` `)`
 
 // This is a common way to refer to a value with a specified type.
 ssa-use-and-type ::= ssa-use `:` type
-ssa-use ::= value-use
 
 // Non-empty list of names and types.
 ssa-use-and-type-list ::= ssa-use-and-type (`,` ssa-use-and-type)*
-
-function-type ::= (type | type-list-parens) `->` (type | type-list-parens)
 ```
 
 ### Type Aliases
 
 ```
-type-alias-def ::= '!' alias-name '=' type
+type-alias-def ::= '!' alias-name '=' 'type' type
 type-alias ::= '!' alias-name
 ```
 
@@ -668,7 +665,7 @@ names are reserved for [dialect types](#dialect-types).
 Example:
 
 ```mlir
-!avx_m128 = vector<4 x f32>
+!avx_m128 = type vector<4 x f32>
 
 // Using the original type.
 "foo"(%x) : vector<4 x f32> -> ()
@@ -685,45 +682,55 @@ system.
 ```
 dialect-namespace ::= bare-id
 
-dialect-type ::= '!' (opaque-dialect-type | pretty-dialect-type)
-opaque-dialect-type ::= dialect-namespace dialect-type-body
-pretty-dialect-type ::= dialect-namespace '.' pretty-dialect-type-lead-ident
-                                              dialect-type-body?
-pretty-dialect-type-lead-ident ::= '[A-Za-z][A-Za-z0-9._]*'
+opaque-dialect-item ::= dialect-namespace '<' string-literal '>'
 
-dialect-type-body ::= '<' dialect-type-contents+ '>'
-dialect-type-contents ::= dialect-type-body
-                            | '(' dialect-type-contents+ ')'
-                            | '[' dialect-type-contents+ ']'
-                            | '{' dialect-type-contents+ '}'
-                            | '[^\[<({\]>)}\0]+'
+pretty-dialect-item ::= dialect-namespace '.' pretty-dialect-item-lead-ident
+                                              pretty-dialect-item-body?
+
+pretty-dialect-item-lead-ident ::= '[A-Za-z][A-Za-z0-9._]*'
+pretty-dialect-item-body ::= '<' pretty-dialect-item-contents+ '>'
+pretty-dialect-item-contents ::= pretty-dialect-item-body
+                              | '(' pretty-dialect-item-contents+ ')'
+                              | '[' pretty-dialect-item-contents+ ']'
+                              | '{' pretty-dialect-item-contents+ '}'
+                              | '[^[<({>\])}\0]+'
+
+dialect-type ::= '!' opaque-dialect-item
+dialect-type ::= '!' pretty-dialect-item
 ```
 
-Dialect types are generally specified in an opaque form, where the contents
-of the type are defined within a body wrapped with the dialect namespace
-and `<>`. Consider the following examples:
+Dialect types can be specified in a verbose form, e.g. like this:
 
 ```mlir
-// A tensorflow string type.
-!tf<string>
+// LLVM type that wraps around llvm IR types.
+!llvm<"i32*">
 
-// A type with complex components.
-!foo<something<abcd>>
-
-// An even more complex type.
-!foo<"a123^^^" + bar>
-```
-
-Dialect types that are simple enough may use a prettier format, which unwraps
-part of the syntax into an equivalent, but lighter weight form:
-
-```mlir
-// A tensorflow string type.
+// Tensor flow string type.
 !tf.string
 
-// A type with complex components.
+// Complex type
+!foo<"something<abcd>">
+
+// Even more complex type
+!foo<"something<a%%123^^^>>>">
+```
+
+Dialect types that are simple enough can use the pretty format, which is a
+lighter weight syntax that is equivalent to the above forms:
+
+```mlir
+// Tensor flow string type.
+!tf.string
+
+// Complex type
 !foo.something<abcd>
 ```
+
+Sufficiently complex dialect types are required to use the verbose form for
+generality. For example, the more complex type shown above wouldn't be valid in
+the lighter syntax: `!foo.something<a%%123^^^>>>` because it contains characters
+that are not allowed in the lighter syntax, as well as unbalanced `<>`
+characters.
 
 See [here](AttributesAndTypes.md) to learn how to define dialect types.
 
@@ -798,44 +805,39 @@ Example:
 
 ### Dialect Attribute Values
 
-Similarly to operations, dialects may define custom attribute values.
+Similarly to operations, dialects may define custom attribute values. The
+syntactic structure of these values is identical to custom dialect type values,
+except that dialect attribute values are distinguished with a leading '#', while
+dialect types are distinguished with a leading '!'.
 
 ```
-dialect-namespace ::= bare-id
-
-dialect-attribute ::= '#' (opaque-dialect-attribute | pretty-dialect-attribute)
-opaque-dialect-attribute ::= dialect-namespace dialect-attribute-body
-pretty-dialect-attribute ::= dialect-namespace '.' pretty-dialect-attribute-lead-ident
-                                              dialect-attribute-body?
-pretty-dialect-attribute-lead-ident ::= '[A-Za-z][A-Za-z0-9._]*'
-
-dialect-attribute-body ::= '<' dialect-attribute-contents+ '>'
-dialect-attribute-contents ::= dialect-attribute-body
-                            | '(' dialect-attribute-contents+ ')'
-                            | '[' dialect-attribute-contents+ ']'
-                            | '{' dialect-attribute-contents+ '}'
-                            | '[^\[<({\]>)}\0]+'
+dialect-attribute-value ::= '#' opaque-dialect-item
+dialect-attribute-value ::= '#' pretty-dialect-item
 ```
 
-Dialect attributes are generally specified in an opaque form, where the contents
-of the attribute are defined within a body wrapped with the dialect namespace
-and `<>`. Consider the following examples:
+Dialect attribute values can be specified in a verbose form, e.g. like this:
 
 ```mlir
-// A string attribute.
-#foo<string<"">>
+// Complex attribute value.
+#foo<"something<abcd>">
 
-// A complex attribute.
-#foo<"a123^^^" + bar>
+// Even more complex attribute value.
+#foo<"something<a%%123^^^>>>">
 ```
 
-Dialect attributes that are simple enough may use a prettier format, which unwraps
-part of the syntax into an equivalent, but lighter weight form:
+Dialect attribute values that are simple enough can use the pretty format, which
+is a lighter weight syntax that is equivalent to the above forms:
 
 ```mlir
-// A string attribute.
-#foo.string<"">
+// Complex attribute
+#foo.something<abcd>
 ```
+
+Sufficiently complex dialect attribute values are required to use the verbose
+form for generality. For example, the more complex type shown above would not be
+valid in the lighter syntax: `#foo.something<a%%123^^^>>>` because it contains
+characters that are not allowed in the lighter syntax, as well as unbalanced
+`<>` characters.
 
 See [here](AttributesAndTypes.md) on how to define dialect attribute values.
 

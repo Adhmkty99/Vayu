@@ -117,7 +117,7 @@ template <typename T> bool PointerAssignmentChecker::Check(const T &) {
 
 template <typename T>
 bool PointerAssignmentChecker::Check(const evaluate::Expr<T> &x) {
-  return common::visit([&](const auto &x) { return Check(x); }, x.u);
+  return std::visit([&](const auto &x) { return Check(x); }, x.u);
 }
 
 bool PointerAssignmentChecker::Check(const SomeExpr &rhs) {
@@ -128,7 +128,7 @@ bool PointerAssignmentChecker::Check(const SomeExpr &rhs) {
     Say("A coindexed object may not be a pointer target"_err_en_US);
     return false;
   } else {
-    return common::visit([&](const auto &x) { return Check(x); }, rhs.u);
+    return std::visit([&](const auto &x) { return Check(x); }, rhs.u);
   }
 }
 
@@ -257,10 +257,9 @@ bool PointerAssignmentChecker::Check(const evaluate::Designator<T> &d) {
 // Common handling for procedure pointer right-hand sides
 bool PointerAssignmentChecker::Check(
     parser::CharBlock rhsName, bool isCall, const Procedure *rhsProcedure) {
-  std::string whyNot;
-  if (std::optional<MessageFixedText> msg{evaluate::CheckProcCompatibility(
-          isCall, procedure_, rhsProcedure, whyNot)}) {
-    Say(std::move(*msg), description_, rhsName, whyNot);
+  if (std::optional<MessageFixedText> msg{
+          evaluate::CheckProcCompatibility(isCall, procedure_, rhsProcedure)}) {
+    Say(std::move(*msg), description_, rhsName);
     return false;
   }
   return true;
@@ -323,7 +322,7 @@ static bool CheckPointerBounds(
   const SomeExpr &lhs{assignment.lhs};
   const SomeExpr &rhs{assignment.rhs};
   bool isBoundsRemapping{false};
-  std::size_t numBounds{common::visit(
+  std::size_t numBounds{std::visit(
       common::visitors{
           [&](const evaluate::Assignment::BoundsSpec &bounds) {
             return bounds.size();

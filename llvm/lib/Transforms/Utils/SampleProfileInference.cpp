@@ -28,31 +28,35 @@ namespace {
 
 static cl::opt<bool> SampleProfileEvenCountDistribution(
     "sample-profile-even-count-distribution", cl::init(true), cl::Hidden,
+    cl::ZeroOrMore,
     cl::desc("Try to evenly distribute counts when there are multiple equally "
              "likely options."));
 
 static cl::opt<unsigned> SampleProfileMaxDfsCalls(
-    "sample-profile-max-dfs-calls", cl::init(10), cl::Hidden,
+    "sample-profile-max-dfs-calls", cl::init(10), cl::Hidden, cl::ZeroOrMore,
     cl::desc("Maximum number of dfs iterations for even count distribution."));
 
 static cl::opt<unsigned> SampleProfileProfiCostInc(
-    "sample-profile-profi-cost-inc", cl::init(10), cl::Hidden,
+    "sample-profile-profi-cost-inc", cl::init(10), cl::Hidden, cl::ZeroOrMore,
     cl::desc("A cost of increasing a block's count by one."));
 
 static cl::opt<unsigned> SampleProfileProfiCostDec(
-    "sample-profile-profi-cost-dec", cl::init(20), cl::Hidden,
+    "sample-profile-profi-cost-dec", cl::init(20), cl::Hidden, cl::ZeroOrMore,
     cl::desc("A cost of decreasing a block's count by one."));
 
 static cl::opt<unsigned> SampleProfileProfiCostIncZero(
     "sample-profile-profi-cost-inc-zero", cl::init(11), cl::Hidden,
+    cl::ZeroOrMore,
     cl::desc("A cost of increasing a count of zero-weight block by one."));
 
 static cl::opt<unsigned> SampleProfileProfiCostIncEntry(
     "sample-profile-profi-cost-inc-entry", cl::init(40), cl::Hidden,
+    cl::ZeroOrMore,
     cl::desc("A cost of increasing the entry block's count by one."));
 
 static cl::opt<unsigned> SampleProfileProfiCostDecEntry(
     "sample-profile-profi-cost-dec-entry", cl::init(10), cl::Hidden,
+    cl::ZeroOrMore,
     cl::desc("A cost of decreasing the entry block's count by one."));
 
 /// A value indicating an infinite flow/capacity/weight of a block/edge.

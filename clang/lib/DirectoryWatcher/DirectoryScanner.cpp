@@ -31,7 +31,7 @@ std::vector<std::string> scanDirectory(StringRef Path) {
             End = fs::directory_iterator();
        !EC && It != End; It.increment(EC)) {
     auto status = getFileStatus(It->path());
-    if (!status)
+    if (!status.hasValue())
       continue;
     Result.emplace_back(sys::path::filename(It->path()));
   }

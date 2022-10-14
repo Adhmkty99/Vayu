@@ -92,10 +92,9 @@ static cl::opt<std::string>
          cl::desc("Target a specific cpu type (-mcpu=help for details)"),
          cl::value_desc("cpu-name"), cl::cat(ToolOptions), cl::init("native"));
 
-static cl::list<std::string>
-    MATTRS("mattr", cl::CommaSeparated,
-           cl::desc("Target specific attributes (-mattr=help for details)"),
-           cl::value_desc("a1,+a2,-a3,..."), cl::cat(ToolOptions));
+static cl::opt<std::string> MATTR("mattr",
+                                  cl::desc("Additional target features."),
+                                  cl::cat(ToolOptions));
 
 static cl::opt<bool> PrintJson("json",
                                cl::desc("Print the output in json format"),
@@ -347,17 +346,8 @@ int main(int argc, char **argv) {
   if (MCPU == "native")
     MCPU = std::string(llvm::sys::getHostCPUName());
 
-  // Package up features to be passed to target/subtarget
-  std::string FeaturesStr;
-  if (MATTRS.size()) {
-    SubtargetFeatures Features;
-    for (std::string &MAttr : MATTRS)
-      Features.AddFeature(MAttr);
-    FeaturesStr = Features.getString();
-  }
-
   std::unique_ptr<MCSubtargetInfo> STI(
-      TheTarget->createMCSubtargetInfo(TripleName, MCPU, FeaturesStr));
+      TheTarget->createMCSubtargetInfo(TripleName, MCPU, MATTR));
   assert(STI && "Unable to create subtarget info!");
   if (!STI->isCPUStringValid(MCPU))
     return 1;
@@ -552,8 +542,7 @@ int main(int argc, char **argv) {
       LoweredSequence.emplace_back(std::move(Inst.get()));
     }
 
-    mca::CircularSourceMgr S(LoweredSequence,
-                             PrintInstructionTables ? 1 : Iterations);
+    mca::SourceMgr S(LoweredSequence, PrintInstructionTables ? 1 : Iterations);
 
     if (PrintInstructionTables) {
       //  Create a pipeline, stages, and a printer.

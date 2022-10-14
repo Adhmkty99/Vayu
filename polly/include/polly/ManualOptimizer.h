@@ -21,7 +21,7 @@ class OptimizationRemarkEmitter;
 
 namespace polly {
 class Scop;
-class Dependences;
+struct Dependences;
 
 /// Apply loop-transformation metadata.
 ///

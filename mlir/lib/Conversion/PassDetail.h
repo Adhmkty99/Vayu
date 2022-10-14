@@ -47,17 +47,9 @@ namespace func {
 class FuncDialect;
 } // namespace func
 
-namespace linalg {
-class LinalgDialect;
-} // namespace linalg
-
 namespace LLVM {
 class LLVMDialect;
 } // namespace LLVM
-
-namespace nvgpu {
-class NVGPUDialect;
-}
 
 namespace NVVM {
 class NVVMDialect;

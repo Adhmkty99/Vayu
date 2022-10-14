@@ -11,6 +11,8 @@ import lldbsuite.test.lldbutil as lldbutil
 
 class NamespaceDefinitionsTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     # See also llvm.org/pr28948
     @expectedFailureAll(
         bugnumber="llvm.org/pr50814",

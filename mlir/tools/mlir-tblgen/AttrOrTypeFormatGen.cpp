@@ -58,7 +58,7 @@ public:
 
   /// Generate the code to check whether the parameter should be printed.
   MethodBody &genPrintGuard(FmtContext &ctx, MethodBody &os) const {
-    std::string self = param.getAccessorName() + "()";
+    std::string self = getParameterAccessorName(getName()) + "()";
     ctx.withSelf(self);
     os << tgfmt("($_self", &ctx);
     if (llvm::Optional<StringRef> defaultValue = getParam().getDefaultValue()) {
@@ -249,12 +249,10 @@ private:
 void DefFormat::genParser(MethodBody &os) {
   FmtContext ctx;
   ctx.addSubst("_parser", "odsParser");
-  ctx.addSubst("_ctxt", "odsParser.getContext()");
-  ctx.withBuilder("odsBuilder");
+  ctx.addSubst("_ctx", "odsParser.getContext()");
   if (isa<AttrDef>(def))
     ctx.addSubst("_type", "odsType");
   os.indent();
-  os << "::mlir::Builder odsBuilder(odsParser.getContext());\n";
 
   // Declare variables to store all of the parameters. Allocated parameters
   // such as `ArrayRef` and `StringRef` must provide a `storageType`. Store
@@ -262,8 +260,6 @@ void DefFormat::genParser(MethodBody &os) {
   // a loop (parsers return FailureOr anyways).
   ArrayRef<AttrOrTypeParameter> params = def.getParameters();
   for (const AttrOrTypeParameter &param : params) {
-    if (isa<AttributeSelfTypeParameter>(param))
-      continue;
     os << formatv("::mlir::FailureOr<{0}> _result_{1};\n",
                   param.getCppStorageType(), param.getName());
   }
@@ -281,9 +277,10 @@ void DefFormat::genParser(MethodBody &os) {
   // Emit an assert for each mandatory parameter. Triggering an assert means
   // the generated parser is incorrect (i.e. there is a bug in this code).
   for (const AttrOrTypeParameter &param : params) {
-    if (param.isOptional() || isa<AttributeSelfTypeParameter>(param))
-      continue;
-    os << formatv("assert(::mlir::succeeded(_result_{0}));\n", param.getName());
+    if (!param.isOptional()) {
+      os << formatv("assert(::mlir::succeeded(_result_{0}));\n",
+                    param.getName());
+    }
   }
 
   // Generate call to the attribute or type builder. Use the checked getter
@@ -296,24 +293,16 @@ void DefFormat::genParser(MethodBody &os) {
                 def.getCppClassName());
   }
   for (const AttrOrTypeParameter &param : params) {
-    os << ",\n    ";
-    std::string paramSelfStr;
-    llvm::raw_string_ostream selfOs(paramSelfStr);
     if (param.isOptional()) {
-      selfOs << formatv("(_result_{0}.value_or(", param.getName());
+      os << formatv(",\n    _result_{0}.getValueOr(", param.getName());
       if (Optional<StringRef> defaultValue = param.getDefaultValue())
-        selfOs << tgfmt(*defaultValue, &ctx);
+        os << tgfmt(*defaultValue, &ctx);
       else
-        selfOs << param.getCppStorageType() << "()";
-      selfOs << "))";
-    } else if (isa<AttributeSelfTypeParameter>(param)) {
-      selfOs << tgfmt("$_type", &ctx);
+        os << param.getCppStorageType() << "()";
+      os << ")";
     } else {
-      selfOs << formatv("(*_result_{0})", param.getName());
+      os << formatv(",\n    *_result_{0}", param.getName());
     }
-    os << param.getCppType() << "("
-       << tgfmt(param.getConvertFromStorage(), &ctx.withSelf(selfOs.str()))
-       << ")";
   }
   os << ");";
 }
@@ -674,12 +663,10 @@ void DefFormat::genOptionalGroupParser(OptionalElement *el, FmtContext &ctx,
 void DefFormat::genPrinter(MethodBody &os) {
   FmtContext ctx;
   ctx.addSubst("_printer", "odsPrinter");
-  ctx.addSubst("_ctxt", "getContext()");
-  ctx.withBuilder("odsBuilder");
+  ctx.addSubst("_ctx", "getContext()");
   os.indent();
-  os << "::mlir::Builder odsBuilder(getContext());\n";
 
-  // Generate printers.
+  /// Generate printers.
   shouldEmitSpace = true;
   lastWasPunctuation = false;
   for (FormatElement *el : elements)
@@ -723,7 +710,7 @@ void DefFormat::genLiteralPrinter(StringRef value, FmtContext &ctx,
 void DefFormat::genVariablePrinter(ParameterElement *el, FmtContext &ctx,
                                    MethodBody &os, bool skipGuard) {
   const AttrOrTypeParameter &param = el->getParam();
-  ctx.withSelf(param.getAccessorName() + "()");
+  ctx.withSelf(getParameterAccessorName(param.getName()) + "()");
 
   // Guard the printer on the presence of optional parameters and that they
   // aren't equal to their default values (if they have one).
@@ -817,7 +804,8 @@ void DefFormat::genCustomPrinter(CustomDirective *el, FmtContext &ctx,
     if (auto *ref = dyn_cast<RefDirective>(arg))
       param = ref->getArg();
     os << ",\n"
-       << cast<ParameterElement>(param)->getParam().getAccessorName() << "()";
+       << getParameterAccessorName(cast<ParameterElement>(param)->getName())
+       << "()";
   }
   os.unindent() << ");\n";
 }
@@ -916,17 +904,9 @@ LogicalResult DefFormatParser::verify(SMLoc loc,
                                       ArrayRef<FormatElement *> elements) {
   // Check that all parameters are referenced in the format.
   for (auto &it : llvm::enumerate(def.getParameters())) {
-    if (it.value().isOptional())
-      continue;
-    if (!seenParams.test(it.index())) {
-      if (isa<AttributeSelfTypeParameter>(it.value()))
-        continue;
+    if (!it.value().isOptional() && !seenParams.test(it.index())) {
       return emitError(loc, "format is missing reference to parameter: " +
                                 it.value().getName());
-    }
-    if (isa<AttributeSelfTypeParameter>(it.value())) {
-      return emitError(loc,
-                       "unexpected self type parameter in assembly format");
     }
   }
   if (elements.empty())

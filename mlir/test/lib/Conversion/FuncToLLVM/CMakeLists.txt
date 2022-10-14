@@ -7,7 +7,7 @@ add_mlir_library(MLIRTestFuncToLLVM
   LINK_LIBS PUBLIC
   MLIRFuncToLLVM
   MLIRLLVMCommonConversion
-  MLIRLLVMDialect
+  MLIRLLVMIR
   MLIRLLVMIRTransforms
   MLIRPass
   MLIRTestDialect

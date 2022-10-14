@@ -16,7 +16,6 @@
 #include "AMDGPU.h"
 #include "GCNSubtarget.h"
 #include "SIMachineFunctionInfo.h"
-#include "SIRegisterInfo.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/LiveRegMatrix.h"
@@ -161,23 +160,15 @@ GCNNSAReassign::scavengeRegs(SmallVectorImpl<LiveInterval *> &Intervals) const {
 GCNNSAReassign::NSA_Status
 GCNNSAReassign::CheckNSA(const MachineInstr &MI, bool Fast) const {
   const AMDGPU::MIMGInfo *Info = AMDGPU::getMIMGInfo(MI.getOpcode());
-  if (!Info)
+  if (!Info || Info->MIMGEncoding != AMDGPU::MIMGEncGfx10NSA)
     return NSA_Status::NOT_NSA;
-
-  switch (Info->MIMGEncoding) {
-  case AMDGPU::MIMGEncGfx10NSA:
-  case AMDGPU::MIMGEncGfx11NSA:
-    break;
-  default:
-    return NSA_Status::NOT_NSA;
-  }
 
   int VAddr0Idx =
     AMDGPU::getNamedOperandIdx(MI.getOpcode(), AMDGPU::OpName::vaddr0);
 
   unsigned VgprBase = 0;
   bool NSA = false;
-  for (unsigned I = 0; I < Info->VAddrOperands; ++I) {
+  for (unsigned I = 0; I < Info->VAddrDwords; ++I) {
     const MachineOperand &Op = MI.getOperand(VAddr0Idx + I);
     Register Reg = Op.getReg();
     if (Reg.isPhysical() || !VRM->isAssignedReg(Reg))
@@ -189,7 +180,6 @@ GCNNSAReassign::CheckNSA(const MachineInstr &MI, bool Fast) const {
       if (!PhysReg)
         return NSA_Status::FIXED;
 
-      // TODO: address the below limitation to handle GFX11 BVH instructions
       // Bail if address is not a VGPR32. That should be possible to extend the
       // optimization to work with subregs of a wider register tuples, but the
       // logic to find free registers will be much more complicated with much
@@ -198,7 +188,7 @@ GCNNSAReassign::CheckNSA(const MachineInstr &MI, bool Fast) const {
       // parts of an address and it is either already consecutive or cannot
       // be reassigned if not. If needed it is better to rely on register
       // coalescer to process such address tuples.
-      if (TRI->getRegSizeInBits(*MRI->getRegClass(Reg)) != 32 || Op.getSubReg())
+      if (MRI->getRegClass(Reg) != &AMDGPU::VGPR_32RegClass || Op.getSubReg())
         return NSA_Status::FIXED;
 
       // InlineSpiller does not call LRM::assign() after an LI split leaving
@@ -289,7 +279,7 @@ bool GCNNSAReassign::runOnMachineFunction(MachineFunction &MF) {
     SmallVector<LiveInterval *, 16> Intervals;
     SmallVector<MCRegister, 16> OrigRegs;
     SlotIndex MinInd, MaxInd;
-    for (unsigned I = 0; I < Info->VAddrOperands; ++I) {
+    for (unsigned I = 0; I < Info->VAddrDwords; ++I) {
       const MachineOperand &Op = MI->getOperand(VAddr0Idx + I);
       Register Reg = Op.getReg();
       LiveInterval *LI = &LIS->getInterval(Reg);
@@ -342,11 +332,11 @@ bool GCNNSAReassign::runOnMachineFunction(MachineFunction &MF) {
     }
 
     if (!Success) {
-      for (unsigned I = 0; I < Info->VAddrOperands; ++I)
+      for (unsigned I = 0; I < Info->VAddrDwords; ++I)
         if (VRM->hasPhys(Intervals[I]->reg()))
           LRM->unassign(*Intervals[I]);
 
-      for (unsigned I = 0; I < Info->VAddrOperands; ++I)
+      for (unsigned I = 0; I < Info->VAddrDwords; ++I)
         LRM->assign(*Intervals[I], OrigRegs[I]);
 
       continue;

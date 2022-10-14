@@ -33,7 +33,7 @@ const Target *TargetRegistry::lookupTarget(const std::string &ArchName,
                      [&](const Target &T) { return ArchName == T.getName(); });
 
     if (I == targets().end()) {
-      Error = "invalid target '" + ArchName + "'.\n";
+      Error = "error: invalid target '" + ArchName + "'.\n";
       return nullptr;
     }
 
@@ -49,7 +49,7 @@ const Target *TargetRegistry::lookupTarget(const std::string &ArchName,
     std::string TempError;
     TheTarget = TargetRegistry::lookupTarget(TheTriple.getTriple(), TempError);
     if (!TheTarget) {
-      Error = "unable to get target for '"
+      Error = ": error: unable to get target for '"
             + TheTriple.getTriple()
             + "', see --version and --triple.\n";
       return nullptr;

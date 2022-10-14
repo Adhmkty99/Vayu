@@ -19,6 +19,6 @@ loopexit:
   ret i64 0
 deadcode:
 ; CHECK-LABEL: deadcode
-; CHECK: ret i64 poison
+; CHECK: ret i64 undef
   ret i64 %baddef
 }

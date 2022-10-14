@@ -13,6 +13,8 @@ from lldbsuite.test import lldbutil
 
 class LibCxxAtomicTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def get_variable(self, name):
         var = self.frame().FindVariable(name)
         var.SetPreferDynamicValue(lldb.eDynamicCanRunTarget)

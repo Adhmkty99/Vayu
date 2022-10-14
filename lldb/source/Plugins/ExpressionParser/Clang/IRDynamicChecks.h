@@ -30,7 +30,7 @@ public:
   ClangDynamicCheckerFunctions();
 
   /// Destructor
-  ~ClangDynamicCheckerFunctions() override;
+  virtual ~ClangDynamicCheckerFunctions();
 
   static bool classof(const DynamicCheckerFunctions *checker_funcs) {
     return checker_funcs->GetKind() == DCF_Clang;

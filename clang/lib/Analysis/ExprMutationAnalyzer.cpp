@@ -39,13 +39,8 @@ AST_MATCHER_P(Expr, maybeEvalCommaExpr, ast_matchers::internal::Matcher<Expr>,
   return InnerMatcher.matches(*Result, Finder, Builder);
 }
 
-AST_MATCHER_P(Stmt, canResolveToExpr, ast_matchers::internal::Matcher<Stmt>,
+AST_MATCHER_P(Expr, canResolveToExpr, ast_matchers::internal::Matcher<Expr>,
               InnerMatcher) {
-  auto *Exp = dyn_cast<Expr>(&Node);
-  if (!Exp) {
-    return stmt().matches(Node, Finder, Builder);
-  }
-
   auto DerivedToBase = [](const ast_matchers::internal::Matcher<Expr> &Inner) {
     return implicitCastExpr(anyOf(hasCastKind(CK_DerivedToBase),
                                   hasCastKind(CK_UncheckedDerivedToBase)),
@@ -76,7 +71,7 @@ AST_MATCHER_P(Stmt, canResolveToExpr, ast_matchers::internal::Matcher<Stmt>,
                  IgnoreDerivedToBase(ConditionalOperator),
                  IgnoreDerivedToBase(ElvisOperator))));
 
-  return ComplexMatcher.matches(*Exp, Finder, Builder);
+  return ComplexMatcher.matches(Node, Finder, Builder);
 }
 
 // Similar to 'hasAnyArgument', but does not work because 'InitListExpr' does
@@ -199,13 +194,12 @@ const Stmt *ExprMutationAnalyzer::tryEachDeclRef(const Decl *Dec,
   return nullptr;
 }
 
-bool ExprMutationAnalyzer::isUnevaluated(const Stmt *Exp, const Stmt &Stm,
-                                         ASTContext &Context) {
-  return selectFirst<Stmt>(
+bool ExprMutationAnalyzer::isUnevaluated(const Expr *Exp) {
+  return selectFirst<Expr>(
              NodeID<Expr>::value,
              match(
                  findAll(
-                     stmt(canResolveToExpr(equalsNode(Exp)),
+                     expr(canResolveToExpr(equalsNode(Exp)),
                           anyOf(
                               // `Exp` is part of the underlying expression of
                               // decltype/typeof if it has an ancestor of
@@ -229,10 +223,6 @@ bool ExprMutationAnalyzer::isUnevaluated(const Stmt *Exp, const Stmt &Stm,
                                   cxxNoexceptExpr())))))
                          .bind(NodeID<Expr>::value)),
                  Stm, Context)) != nullptr;
-}
-
-bool ExprMutationAnalyzer::isUnevaluated(const Expr *Exp) {
-  return isUnevaluated(Exp, Stm, Context);
 }
 
 const Stmt *
@@ -455,16 +445,14 @@ const Stmt *ExprMutationAnalyzer::findRangeLoopMutation(const Expr *Exp) {
   // array is considered modified if the loop-variable is a non-const reference.
   const auto DeclStmtToNonRefToArray = declStmt(hasSingleDecl(varDecl(hasType(
       hasUnqualifiedDesugaredType(referenceType(pointee(arrayType())))))));
-  const auto RefToArrayRefToElements =
-      match(findAll(stmt(cxxForRangeStmt(
-                             hasLoopVariable(
-                                 varDecl(anyOf(hasType(nonConstReferenceType()),
-                                               hasType(nonConstPointerType())))
-                                     .bind(NodeID<Decl>::value)),
-                             hasRangeStmt(DeclStmtToNonRefToArray),
-                             hasRangeInit(canResolveToExpr(equalsNode(Exp)))))
-                        .bind("stmt")),
-            Stm, Context);
+  const auto RefToArrayRefToElements = match(
+      findAll(stmt(cxxForRangeStmt(
+                       hasLoopVariable(varDecl(hasType(nonConstReferenceType()))
+                                           .bind(NodeID<Decl>::value)),
+                       hasRangeStmt(DeclStmtToNonRefToArray),
+                       hasRangeInit(canResolveToExpr(equalsNode(Exp)))))
+                  .bind("stmt")),
+      Stm, Context);
 
   if (const auto *BadRangeInitFromArray =
           selectFirst<Stmt>("stmt", RefToArrayRefToElements))

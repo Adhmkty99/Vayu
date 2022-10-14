@@ -10,13 +10,12 @@
 
 // Test std::sort stability randomization
 
-// UNSUPPORTED: c++03
-// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DEBUG_RANDOMIZE_UNSPECIFIED_STABILITY
+// UNSUPPORTED: libcxx-no-debug-mode, c++03, windows
+// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DEBUG=1
 
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <functional>
 #include <iterator>
 #include <vector>
 

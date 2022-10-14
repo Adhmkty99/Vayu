@@ -6,9 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef __LLVM_LIBC_TYPES___MUTEX_T_H
-#define __LLVM_LIBC_TYPES___MUTEX_T_H
-
 #include <llvm-libc-types/__futex_word.h>
 
 typedef struct {
@@ -25,5 +22,3 @@ typedef struct {
 #error "Mutex type not defined for the target platform."
 #endif
 } __mutex_type;
-
-#endif // __LLVM_LIBC_TYPES___MUTEX_T_H

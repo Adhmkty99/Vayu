@@ -37,7 +37,6 @@ class RISCVTTIImpl : public BasicTTIImplBase<RISCVTTIImpl> {
   const RISCVSubtarget *getST() const { return ST; }
   const RISCVTargetLowering *getTLI() const { return TLI; }
 
-  unsigned getMaxVLFor(VectorType *Ty);
 public:
   explicit RISCVTTIImpl(const RISCVTargetMachine *TM, const Function &F)
       : BaseT(TM, F.getParent()->getDataLayout()), ST(TM->getSubtargetImpl(F)),
@@ -57,16 +56,11 @@ public:
 
   bool shouldExpandReduction(const IntrinsicInst *II) const;
   bool supportsScalableVectors() const { return ST->hasVInstructions(); }
-  PredicationStyle emitGetActiveLaneMask() const {
-    return ST->hasVInstructions() ? PredicationStyle::Data
-                                  : PredicationStyle::None;
-  }
   Optional<unsigned> getMaxVScale() const;
-  Optional<unsigned> getVScaleForTuning() const;
 
   TypeSize getRegisterBitWidth(TargetTransformInfo::RegisterKind K) const;
 
-  unsigned getRegUsageForType(Type *Ty);
+  InstructionCost getRegUsageForType(Type *Ty);
 
   InstructionCost getMaskedMemoryOpCost(unsigned Opcode, Type *Src,
                                         Align Alignment, unsigned AddressSpace,
@@ -87,10 +81,7 @@ public:
   InstructionCost getShuffleCost(TTI::ShuffleKind Kind, VectorType *Tp,
                                  ArrayRef<int> Mask, int Index,
                                  VectorType *SubTp,
-                                 ArrayRef<const Value *> Args = None);
-
-  InstructionCost getIntrinsicInstrCost(const IntrinsicCostAttributes &ICA,
-                                        TTI::TargetCostKind CostKind);
+                                 ArrayRef<Value *> Args = None);
 
   InstructionCost getGatherScatterOpCost(unsigned Opcode, Type *DataTy,
                                          const Value *Ptr, bool VariableMask,
@@ -111,22 +102,18 @@ public:
                                              Optional<FastMathFlags> FMF,
                                              TTI::TargetCostKind CostKind);
 
-  bool isElementTypeLegalForScalableVector(Type *Ty) const {
-    return TLI->isLegalElementTypeForRVV(Ty);
-  }
-
   bool isLegalMaskedLoadStore(Type *DataType, Align Alignment) {
     if (!ST->hasVInstructions())
       return false;
 
     // Only support fixed vectors if we know the minimum vector size.
-    if (isa<FixedVectorType>(DataType) && !ST->useRVVForFixedLengthVectors())
+    if (isa<FixedVectorType>(DataType) && ST->getMinRVVVectorSizeInBits() == 0)
       return false;
 
     // Don't allow elements larger than the ELEN.
     // FIXME: How to limit for scalable vectors?
     if (isa<FixedVectorType>(DataType) &&
-        DataType->getScalarSizeInBits() > ST->getELEN())
+        DataType->getScalarSizeInBits() > ST->getMaxELENForFixedLengthVectors())
       return false;
 
     if (Alignment <
@@ -148,13 +135,13 @@ public:
       return false;
 
     // Only support fixed vectors if we know the minimum vector size.
-    if (isa<FixedVectorType>(DataType) && !ST->useRVVForFixedLengthVectors())
+    if (isa<FixedVectorType>(DataType) && ST->getMinRVVVectorSizeInBits() == 0)
       return false;
 
     // Don't allow elements larger than the ELEN.
     // FIXME: How to limit for scalable vectors?
     if (isa<FixedVectorType>(DataType) &&
-        DataType->getScalarSizeInBits() > ST->getELEN())
+        DataType->getScalarSizeInBits() > ST->getMaxELENForFixedLengthVectors())
       return false;
 
     if (Alignment <
@@ -171,16 +158,6 @@ public:
     return isLegalMaskedGatherScatter(DataType, Alignment);
   }
 
-  bool forceScalarizeMaskedGather(VectorType *VTy, Align Alignment) {
-    // Scalarize masked gather for RV64 if EEW=64 indices aren't supported.
-    return ST->is64Bit() && !ST->hasVInstructionsI64();
-  }
-
-  bool forceScalarizeMaskedScatter(VectorType *VTy, Align Alignment) {
-    // Scalarize masked scatter for RV64 if EEW=64 indices aren't supported.
-    return ST->is64Bit() && !ST->hasVInstructionsI64();
-  }
-
   /// \returns How the target needs this vector-predicated operation to be
   /// transformed.
   TargetTransformInfo::VPLegalization
@@ -191,6 +168,9 @@ public:
 
   bool isLegalToVectorizeReduction(const RecurrenceDescriptor &RdxDesc,
                                    ElementCount VF) const {
+    if (!ST->hasVInstructions())
+      return false;
+
     if (!VF.isScalable())
       return true;
 
@@ -222,53 +202,18 @@ public:
     return VF == 1 ? 1 : ST->getMaxInterleaveFactor();
   }
 
-  enum RISCVRegisterClass { GPRRC, FPRRC, VRRC };
+  // TODO: We should define RISC-V's own register classes.
+  //       e.g. register class for FPR.
   unsigned getNumberOfRegisters(unsigned ClassID) const {
-    switch (ClassID) {
-    case RISCVRegisterClass::GPRRC:
-      // 31 = 32 GPR - x0 (zero register)
-      // FIXME: Should we exclude fixed registers like SP, TP or GP?
-      return 31;
-    case RISCVRegisterClass::FPRRC:
-      if (ST->hasStdExtF())
+    bool Vector = (ClassID == 1);
+    if (Vector) {
+      if (ST->hasVInstructions())
         return 32;
       return 0;
-    case RISCVRegisterClass::VRRC:
-      // Although there are 32 vector registers, v0 is special in that it is the
-      // only register that can be used to hold a mask.
-      // FIXME: Should we conservatively return 31 as the number of usable
-      // vector registers?
-      return ST->hasVInstructions() ? 32 : 0;
     }
-    llvm_unreachable("unknown register class");
-  }
-
-  unsigned getRegisterClassForType(bool Vector, Type *Ty = nullptr) const {
-    if (Vector)
-      return RISCVRegisterClass::VRRC;
-    if (!Ty)
-      return RISCVRegisterClass::GPRRC;
-
-    Type *ScalarTy = Ty->getScalarType();
-    if ((ScalarTy->isHalfTy() && ST->hasStdExtZfh()) ||
-        (ScalarTy->isFloatTy() && ST->hasStdExtF()) ||
-        (ScalarTy->isDoubleTy() && ST->hasStdExtD())) {
-      return RISCVRegisterClass::FPRRC;
-    }
-
-    return RISCVRegisterClass::GPRRC;
-  }
-
-  const char *getRegisterClassName(unsigned ClassID) const {
-    switch (ClassID) {
-    case RISCVRegisterClass::GPRRC:
-      return "RISCV::GPRRC";
-    case RISCVRegisterClass::FPRRC:
-      return "RISCV::FPRRC";
-    case RISCVRegisterClass::VRRC:
-      return "RISCV::VRRC";
-    }
-    llvm_unreachable("unknown register class");
+    // 31 = 32 GPR - x0 (zero register)
+    // FIXME: Should we exclude fixed registers like SP, TP or GP?
+    return 31;
   }
 };
 

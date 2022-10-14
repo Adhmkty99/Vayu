@@ -85,6 +85,7 @@ public:
   int getAllocSizeOf(const Type *Ty) const;
   int getTypeAlignment(Type *Ty) const;
 
+  VectorType *getByteVectorTy(int ScLen) const;
   Constant *getNullValue(Type *Ty) const;
   Constant *getFullValue(Type *Ty) const;
 
@@ -1309,7 +1310,7 @@ auto HexagonVectorCombine::calculatePointerDifference(Value *Ptr0,
   auto Simplify = [&](Value *V) {
     if (auto *I = dyn_cast<Instruction>(V)) {
       SimplifyQuery Q(DL, &TLI, &DT, &AC, I);
-      if (Value *S = simplifyInstruction(I, Q))
+      if (Value *S = SimplifyInstruction(I, Q))
         return S;
     }
     return V;

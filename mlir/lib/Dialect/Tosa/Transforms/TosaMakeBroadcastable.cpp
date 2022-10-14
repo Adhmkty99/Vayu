@@ -144,8 +144,8 @@ struct ConvertTosaOp : public OpRewritePattern<OpTy> {
   LogicalResult matchAndRewrite(OpTy tosaBinaryOp,
                                 PatternRewriter &rewriter) const override {
 
-    Value input1 = tosaBinaryOp.getInput1();
-    Value input2 = tosaBinaryOp.getInput2();
+    Value input1 = tosaBinaryOp.input1();
+    Value input2 = tosaBinaryOp.input2();
     Value output = tosaBinaryOp.getResult();
 
     auto outputType = output.getType().dyn_cast<RankedTensorType>();
@@ -174,9 +174,9 @@ struct ConvertTosaOp<tosa::MulOp> : public OpRewritePattern<tosa::MulOp> {
   LogicalResult matchAndRewrite(tosa::MulOp tosaBinaryOp,
                                 PatternRewriter &rewriter) const override {
 
-    Value input1 = tosaBinaryOp.getInput1();
-    Value input2 = tosaBinaryOp.getInput2();
-    int32_t shift = tosaBinaryOp.getShift();
+    Value input1 = tosaBinaryOp.input1();
+    Value input2 = tosaBinaryOp.input2();
+    int32_t shift = tosaBinaryOp.shift();
     Value output = tosaBinaryOp.getResult();
     auto outputType = output.getType().dyn_cast<RankedTensorType>();
     if (!outputType)
@@ -206,9 +206,9 @@ struct ConvertTosaOp<tosa::ArithmeticRightShiftOp>
   LogicalResult matchAndRewrite(tosa::ArithmeticRightShiftOp tosaBinaryOp,
                                 PatternRewriter &rewriter) const override {
 
-    Value input1 = tosaBinaryOp.getInput1();
-    Value input2 = tosaBinaryOp.getInput2();
-    int32_t round = tosaBinaryOp.getRound();
+    Value input1 = tosaBinaryOp.input1();
+    Value input2 = tosaBinaryOp.input2();
+    int32_t round = tosaBinaryOp.round();
     Value output = tosaBinaryOp.getResult();
     auto outputType = output.getType().dyn_cast<RankedTensorType>();
     if (!outputType)

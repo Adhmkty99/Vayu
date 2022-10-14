@@ -9,7 +9,6 @@
 #include "big-radix-floating-point.h"
 #include "flang/Decimal/decimal.h"
 #include <cassert>
-#include <cfloat>
 #include <string>
 
 namespace Fortran::decimal {
@@ -350,14 +349,14 @@ ConversionToDecimalResult ConvertDoubleToDecimal(char *buffer, std::size_t size,
       rounding, Fortran::decimal::BinaryFloatingPointNumber<53>(x));
 }
 
-#if LDBL_MANT_DIG == 64
+#if LONG_DOUBLE == 80
 ConversionToDecimalResult ConvertLongDoubleToDecimal(char *buffer,
     std::size_t size, enum DecimalConversionFlags flags, int digits,
     enum FortranRounding rounding, long double x) {
   return Fortran::decimal::ConvertToDecimal(buffer, size, flags, digits,
       rounding, Fortran::decimal::BinaryFloatingPointNumber<64>(x));
 }
-#elif LDBL_MANT_DIG == 113
+#elif LONG_DOUBLE == 128
 ConversionToDecimalResult ConvertLongDoubleToDecimal(char *buffer,
     std::size_t size, enum DecimalConversionFlags flags, int digits,
     enum FortranRounding rounding, long double x) {

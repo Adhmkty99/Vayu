@@ -17,7 +17,6 @@
 #include "clang/AST/AbstractBasicWriter.h"
 #include "clang/AST/OpenMPClause.h"
 #include "clang/Serialization/ASTWriter.h"
-#include "clang/Serialization/SourceLocationEncoding.h"
 
 namespace clang {
 
@@ -26,8 +25,6 @@ class TypeLoc;
 /// An object for streaming information to a record.
 class ASTRecordWriter
     : public serialization::DataStreamBasicWriter<ASTRecordWriter> {
-  using LocSeq = SourceLocationSequence;
-
   ASTWriter *Writer;
   ASTWriter::RecordDataImpl *Record;
 
@@ -134,16 +131,16 @@ public:
   void AddFunctionDefinition(const FunctionDecl *FD);
 
   /// Emit a source location.
-  void AddSourceLocation(SourceLocation Loc, LocSeq *Seq = nullptr) {
-    return Writer->AddSourceLocation(Loc, *Record, Seq);
+  void AddSourceLocation(SourceLocation Loc) {
+    return Writer->AddSourceLocation(Loc, *Record);
   }
   void writeSourceLocation(SourceLocation Loc) {
     AddSourceLocation(Loc);
   }
 
   /// Emit a source range.
-  void AddSourceRange(SourceRange Range, LocSeq *Seq = nullptr) {
-    return Writer->AddSourceRange(Range, *Record, Seq);
+  void AddSourceRange(SourceRange Range) {
+    return Writer->AddSourceRange(Range, *Record);
   }
 
   void writeBool(bool Value) {
@@ -209,7 +206,7 @@ public:
   void AddTypeSourceInfo(TypeSourceInfo *TInfo);
 
   /// Emits source location information for a type. Does not emit the type.
-  void AddTypeLoc(TypeLoc TL, LocSeq *Seq = nullptr);
+  void AddTypeLoc(TypeLoc TL);
 
   /// Emits a template argument location info.
   void AddTemplateArgumentLocInfo(TemplateArgument::ArgKind Kind,

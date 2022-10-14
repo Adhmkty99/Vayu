@@ -14,7 +14,7 @@
 // RUN:  -shared-libs=%mlir_integration_test_dir/libmlir_c_runner_utils%shlibext | \
 // RUN: FileCheck %s
 
-!Filename = !llvm.ptr<i8>
+!Filename = type !llvm.ptr<i8>
 
 #SparseMatrix = #sparse_tensor.encoding<{
   dimLevelType = [ "compressed", "compressed" ]
@@ -38,8 +38,8 @@ module {
   //
   // A kernel that sum-reduces a matrix to a single scalar.
   //
-  func.func @kernel_sum_reduce(%arga: tensor<?x?xf64, #SparseMatrix>,
-                               %argx: tensor<f64>) -> tensor<f64> {
+  func @kernel_sum_reduce(%arga: tensor<?x?xf64, #SparseMatrix>,
+                          %argx: tensor<f64> {linalg.inplaceable = true}) -> tensor<f64> {
     %0 = linalg.generic #trait_sum_reduce
       ins(%arga: tensor<?x?xf64, #SparseMatrix>)
       outs(%argx: tensor<f64>) {
@@ -50,18 +50,20 @@ module {
     return %0 : tensor<f64>
   }
 
-  func.func private @getTensorFilename(index) -> (!Filename)
+  func private @getTensorFilename(index) -> (!Filename)
 
   //
   // Main driver that reads matrix from file and calls the sparse kernel.
   //
-  func.func @entry() {
+  func @entry() {
     %d0 = arith.constant 0.0 : f64
     %c0 = arith.constant 0 : index
 
     // Setup memory for a single reduction scalar,
     // initialized to zero.
-    %x = tensor.from_elements %d0 : tensor<f64>
+    %xdata = memref.alloc() : memref<f64>
+    memref.store %d0, %xdata[] : memref<f64>
+    %x = bufferization.to_tensor %xdata : memref<f64>
 
     // Read the sparse matrix from file, construct sparse storage.
     %fileName = call @getTensorFilename(%c0) : (index) -> (!Filename)
@@ -75,11 +77,13 @@ module {
     //
     // CHECK: 30.2
     //
-    %v = tensor.extract %0[] : tensor<f64>
+    %m = bufferization.to_memref %0 : memref<f64>
+    %v = memref.load %m[] : memref<f64>
     vector.print %v : f64
 
     // Release the resources.
-    bufferization.dealloc_tensor %a : tensor<?x?xf64, #SparseMatrix>
+    memref.dealloc %xdata : memref<f64>
+    sparse_tensor.release %a : tensor<?x?xf64, #SparseMatrix>
 
     return
   }

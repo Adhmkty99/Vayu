@@ -74,7 +74,7 @@ class DiagnosticOptions : public RefCountedBase<DiagnosticOptions>{
   friend class CompilerInvocation;
 
 public:
-  enum TextDiagnosticFormat { Clang, MSVC, Vi, SARIF };
+  enum TextDiagnosticFormat { Clang, MSVC, Vi };
 
   // Default values.
   enum {

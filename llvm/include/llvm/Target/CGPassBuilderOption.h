@@ -42,7 +42,6 @@ struct CGPassBuilderOption {
   bool DisableMergeICmps = false;
   bool DisablePartialLibcallInlining = false;
   bool DisableConstantHoisting = false;
-  bool DisableSelectOptimize = true;
   bool PrintISelInput = false;
   bool PrintGCInfo = false;
   bool RequiresCodeGenSCCOrder = false;

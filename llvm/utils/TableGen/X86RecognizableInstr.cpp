@@ -63,8 +63,26 @@ unsigned X86Disassembler::getRegOperandSize(const Record *RegRec) {
 }
 
 unsigned X86Disassembler::getMemOperandSize(const Record *MemRec) {
-  if (MemRec->isSubClassOf("X86MemOperand"))
-    return MemRec->getValueAsInt("Size");
+  if (MemRec->isSubClassOf("Operand")) {
+    StringRef Name =
+        MemRec->getValueAsDef("ParserMatchClass")->getValueAsString("Name");
+    if (Name == "Mem8")
+      return 8;
+    if (Name == "Mem16")
+      return 16;
+    if (Name == "Mem32")
+      return 32;
+    if (Name == "Mem64")
+      return 64;
+    if (Name == "Mem80")
+      return 80;
+    if (Name == "Mem128")
+      return 128;
+    if (Name == "Mem256")
+      return 256;
+    if (Name == "Mem512")
+      return 512;
+  }
 
   llvm_unreachable("Memory operand's size not known!");
 }
@@ -292,6 +310,11 @@ InstructionContext RecognizableInstr::insnContext() const {
       insnContext = IC_VEX_L_OPSIZE;
     else if (OpPrefix == X86Local::PD && HasVEX_W)
       insnContext = IC_VEX_W_OPSIZE;
+    else if (OpPrefix == X86Local::PD && Is64Bit &&
+             AdSize == X86Local::AdSize32)
+      insnContext = IC_64BIT_VEX_OPSIZE_ADSIZE;
+    else if (OpPrefix == X86Local::PD && Is64Bit)
+      insnContext = IC_64BIT_VEX_OPSIZE;
     else if (OpPrefix == X86Local::PD)
       insnContext = IC_VEX_OPSIZE;
     else if (HasVEX_L && OpPrefix == X86Local::XS)

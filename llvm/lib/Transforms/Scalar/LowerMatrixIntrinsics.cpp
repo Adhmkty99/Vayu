@@ -704,10 +704,10 @@ public:
         // We may remove II.  By default continue on the next/prev instruction.
         ++II;
         // If we were to erase II, move again.
-        auto EraseFromParent = [&II, &BB](Value *V) {
+        auto EraseFromParent = [&II](Value *V) {
           auto *Inst = cast<Instruction>(V);
           if (Inst->use_empty()) {
-            if (II != BB.rend() && Inst == &*II) {
+            if (Inst == &*II) {
               ++II;
             }
             Inst->eraseFromParent();
@@ -766,25 +766,28 @@ public:
     // If we have a TT matmul, lift the transpose.  We may be able to fold into
     // consuming multiply.
     for (BasicBlock &BB : Func) {
-      for (Instruction &I : llvm::make_early_inc_range(BB)) {
+      for (BasicBlock::iterator II = BB.begin(); II != BB.end();) {
+        Instruction *I = &*II;
+        // We may remove I.
+        ++II;
         Value *A, *B, *AT, *BT;
         ConstantInt *R, *K, *C;
         // A^t * B ^t -> (B * A)^t
-        if (match(&I, m_Intrinsic<Intrinsic::matrix_multiply>(
-                          m_Value(A), m_Value(B), m_ConstantInt(R),
-                          m_ConstantInt(K), m_ConstantInt(C))) &&
+        if (match(&*I, m_Intrinsic<Intrinsic::matrix_multiply>(
+                           m_Value(A), m_Value(B), m_ConstantInt(R),
+                           m_ConstantInt(K), m_ConstantInt(C))) &&
             match(A, m_Intrinsic<Intrinsic::matrix_transpose>(m_Value(AT))) &&
             match(B, m_Intrinsic<Intrinsic::matrix_transpose>(m_Value((BT))))) {
-          IRBuilder<> IB(&I);
+          IRBuilder<> IB(&*I);
           MatrixBuilder Builder(IB);
           Value *M = Builder.CreateMatrixMultiply(
               BT, AT, C->getZExtValue(), K->getZExtValue(), R->getZExtValue());
           setShapeInfo(M, {C, R});
           Instruction *NewInst = Builder.CreateMatrixTranspose(
               M, C->getZExtValue(), R->getZExtValue());
-          ReplaceAllUsesWith(I, NewInst);
-          if (I.use_empty())
-            I.eraseFromParent();
+          ReplaceAllUsesWith(*I, NewInst);
+          if (I->use_empty())
+            I->eraseFromParent();
           if (A->use_empty())
             cast<Instruction>(A)->eraseFromParent();
           if (A != B && B->use_empty())
@@ -888,27 +891,27 @@ public:
     // having to update as many def-use and use-def chains.
     //
     // Because we add to ToRemove during fusion we can't guarantee that defs
-    // are before uses.  Change uses to poison temporarily as these should get
+    // are before uses.  Change uses to undef temporarily as these should get
     // removed as well.
     //
-    // For verification, we keep track of where we changed uses to poison in
-    // PoisonedInsts and then check that we in fact remove them.
-    SmallSet<Instruction *, 16> PoisonedInsts;
+    // For verification, we keep track of where we changed uses to undefs in
+    // UndefedInsts and then check that we in fact remove them.
+    SmallSet<Instruction *, 16> UndefedInsts;
     for (auto *Inst : reverse(ToRemove)) {
       for (Use &U : llvm::make_early_inc_range(Inst->uses())) {
-        if (auto *Poisoned = dyn_cast<Instruction>(U.getUser()))
-          PoisonedInsts.insert(Poisoned);
-        U.set(PoisonValue::get(Inst->getType()));
+        if (auto *Undefed = dyn_cast<Instruction>(U.getUser()))
+          UndefedInsts.insert(Undefed);
+        U.set(UndefValue::get(Inst->getType()));
       }
       Inst->eraseFromParent();
-      PoisonedInsts.erase(Inst);
+      UndefedInsts.erase(Inst);
     }
-    if (!PoisonedInsts.empty()) {
-      // If we didn't remove all poisoned instructions, it's a hard error.
-      dbgs() << "Poisoned but present instructions:\n";
-      for (auto *I : PoisonedInsts)
+    if (!UndefedInsts.empty()) {
+      // If we didn't remove all undefed instructions, it's a hard error.
+      dbgs() << "Undefed but present instructions:\n";
+      for (auto *I : UndefedInsts)
         dbgs() << *I << "\n";
-      llvm_unreachable("Poisoned but instruction not removed");
+      llvm_unreachable("Undefed but instruction not removed");
     }
 
     return Changed;
@@ -1667,7 +1670,7 @@ public:
 
     for (unsigned I = 0; I < NewNumVecs; ++I) {
       // Build a single result vector. First initialize it.
-      Value *ResultVector = PoisonValue::get(
+      Value *ResultVector = UndefValue::get(
           FixedVectorType::get(VectorTy->getElementType(), NewNumElts));
       // Go through the old elements and insert it into the resulting vector.
       for (auto J : enumerate(InputMatrix.vectors())) {

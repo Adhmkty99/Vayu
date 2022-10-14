@@ -13,13 +13,13 @@ add_mlir_dialect_library(MLIRShapeOpsTransforms
 
 target_link_libraries(MLIRShapeOpsTransforms
   PUBLIC
-  MLIRArithmeticDialect
-  MLIRBufferizationDialect
+  MLIRArithmetic
+  MLIRBufferization
   MLIRBufferizationTransforms
   MLIRIR
-  MLIRMemRefDialect
+  MLIRMemRef
   MLIRPass
-  MLIRShapeDialect
+  MLIRShape
   MLIRSupport
   MLIRTransforms
   )

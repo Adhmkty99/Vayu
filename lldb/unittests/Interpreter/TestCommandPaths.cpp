@@ -51,7 +51,7 @@ public:
   }
 
 protected:
-  bool DoExecute(Args &command, CommandReturnObject &result) override {
+  virtual bool DoExecute(Args &command, CommandReturnObject &result) {
     result.SetStatus(eReturnStatusSuccessFinishResult);
     result.AppendMessage("I did nothing");
     return true;

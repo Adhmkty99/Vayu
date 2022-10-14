@@ -21,7 +21,7 @@
 using namespace llvm;
 
 static Reloc::Model getRelocModel(Optional<Reloc::Model> RM) {
-  return RM.value_or(Reloc::Static);
+  return RM.getValueOr(Reloc::Static);
 }
 
 /// ARCTargetMachine ctor - Create an ILP32 architecture model

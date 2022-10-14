@@ -67,8 +67,8 @@ using ProfiledCandidateQueue =
 // size by only keep context that is estimated to be inlined.
 class CSPreInliner {
 public:
-  CSPreInliner(SampleContextTracker &Tracker, ProfiledBinary &Binary,
-               ProfileSummary *Summary);
+  CSPreInliner(SampleProfileMap &Profiles, ProfiledBinary &Binary,
+               uint64_t HotThreshold, uint64_t ColdThreshold);
   void run();
 
 private:
@@ -77,11 +77,16 @@ private:
   std::vector<StringRef> buildTopDownOrder();
   void processFunction(StringRef Name);
   bool shouldInline(ProfiledInlineCandidate &Candidate);
-  uint32_t getFuncSize(const ContextTrieNode *ContextNode);
+  uint32_t getFuncSize(const FunctionSamples &FSamples);
   bool UseContextCost;
-  SampleContextTracker &ContextTracker;
+  SampleContextTracker ContextTracker;
+  SampleProfileMap &ProfileMap;
   ProfiledBinary &Binary;
-  ProfileSummary *Summary;
+
+  // Count thresholds to answer isHotCount and isColdCount queries.
+  // Mirrors the threshold in ProfileSummaryInfo.
+  uint64_t HotCountThreshold;
+  uint64_t ColdCountThreshold;
 };
 
 } // end namespace sampleprof

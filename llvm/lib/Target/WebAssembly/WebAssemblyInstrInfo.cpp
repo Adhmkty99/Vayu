@@ -40,7 +40,7 @@ WebAssemblyInstrInfo::WebAssemblyInstrInfo(const WebAssemblySubtarget &STI)
       RI(STI.getTargetTriple()) {}
 
 bool WebAssemblyInstrInfo::isReallyTriviallyReMaterializable(
-    const MachineInstr &MI) const {
+    const MachineInstr &MI, AAResults *AA) const {
   switch (MI.getOpcode()) {
   case WebAssembly::CONST_I32:
   case WebAssembly::CONST_I64:
@@ -66,7 +66,23 @@ void WebAssemblyInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
           ? MRI.getRegClass(DestReg)
           : MRI.getTargetRegisterInfo()->getMinimalPhysRegClass(DestReg);
 
-  unsigned CopyOpcode = WebAssembly::getCopyOpcodeForRegClass(RC);
+  unsigned CopyOpcode;
+  if (RC == &WebAssembly::I32RegClass)
+    CopyOpcode = WebAssembly::COPY_I32;
+  else if (RC == &WebAssembly::I64RegClass)
+    CopyOpcode = WebAssembly::COPY_I64;
+  else if (RC == &WebAssembly::F32RegClass)
+    CopyOpcode = WebAssembly::COPY_F32;
+  else if (RC == &WebAssembly::F64RegClass)
+    CopyOpcode = WebAssembly::COPY_F64;
+  else if (RC == &WebAssembly::V128RegClass)
+    CopyOpcode = WebAssembly::COPY_V128;
+  else if (RC == &WebAssembly::FUNCREFRegClass)
+    CopyOpcode = WebAssembly::COPY_FUNCREF;
+  else if (RC == &WebAssembly::EXTERNREFRegClass)
+    CopyOpcode = WebAssembly::COPY_EXTERNREF;
+  else
+    llvm_unreachable("Unexpected register class");
 
   BuildMI(MBB, I, DL, get(CopyOpcode), DestReg)
       .addReg(SrcReg, KillSrc ? RegState::Kill : 0);

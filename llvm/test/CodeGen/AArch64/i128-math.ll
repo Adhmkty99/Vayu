@@ -23,7 +23,7 @@ define i128 @u128_add(i128 %x, i128 %y) {
 ; CHECK-LABEL: u128_add:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    adds x0, x0, x2
-; CHECK-NEXT:    adc x1, x1, x3
+; CHECK-NEXT:    adcs x1, x1, x3
 ; CHECK-NEXT:    ret
   %1 = add i128 %x, %y
   ret i128 %1
@@ -32,10 +32,16 @@ define i128 @u128_add(i128 %x, i128 %y) {
 define { i128, i8 } @u128_checked_add(i128 %x, i128 %y) {
 ; CHECK-LABEL: u128_checked_add:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    adds x0, x0, x2
-; CHECK-NEXT:    adcs x1, x1, x3
-; CHECK-NEXT:    cset w8, hs
-; CHECK-NEXT:    eor w2, w8, #0x1
+; CHECK-NEXT:    adds x8, x0, x2
+; CHECK-NEXT:    adcs x9, x1, x3
+; CHECK-NEXT:    cmp x8, x0
+; CHECK-NEXT:    mov x0, x8
+; CHECK-NEXT:    cset w10, lo
+; CHECK-NEXT:    cmp x9, x1
+; CHECK-NEXT:    cset w11, lo
+; CHECK-NEXT:    mov x1, x9
+; CHECK-NEXT:    csel w10, w10, w11, eq
+; CHECK-NEXT:    eor w2, w10, #0x1
 ; CHECK-NEXT:    ret
   %1 = tail call { i128, i1 } @llvm.uadd.with.overflow.i128(i128 %x, i128 %y)
   %2 = extractvalue { i128, i1 } %1, 0
@@ -50,9 +56,15 @@ define { i128, i8 } @u128_checked_add(i128 %x, i128 %y) {
 define { i128, i8 } @u128_overflowing_add(i128 %x, i128 %y) {
 ; CHECK-LABEL: u128_overflowing_add:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    adds x0, x0, x2
-; CHECK-NEXT:    adcs x1, x1, x3
-; CHECK-NEXT:    cset w2, hs
+; CHECK-NEXT:    adds x8, x0, x2
+; CHECK-NEXT:    adcs x9, x1, x3
+; CHECK-NEXT:    cmp x8, x0
+; CHECK-NEXT:    mov x0, x8
+; CHECK-NEXT:    cset w10, lo
+; CHECK-NEXT:    cmp x9, x1
+; CHECK-NEXT:    cset w11, lo
+; CHECK-NEXT:    mov x1, x9
+; CHECK-NEXT:    csel w2, w10, w11, eq
 ; CHECK-NEXT:    ret
   %1 = tail call { i128, i1 } @llvm.uadd.with.overflow.i128(i128 %x, i128 %y)
   %2 = extractvalue { i128, i1 } %1, 0
@@ -68,7 +80,11 @@ define i128 @u128_saturating_add(i128 %x, i128 %y) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    adds x8, x0, x2
 ; CHECK-NEXT:    adcs x9, x1, x3
-; CHECK-NEXT:    cset w10, hs
+; CHECK-NEXT:    cmp x8, x0
+; CHECK-NEXT:    cset w10, lo
+; CHECK-NEXT:    cmp x9, x1
+; CHECK-NEXT:    cset w11, lo
+; CHECK-NEXT:    csel w10, w10, w11, eq
 ; CHECK-NEXT:    cmp w10, #0
 ; CHECK-NEXT:    csinv x0, x8, xzr, eq
 ; CHECK-NEXT:    csinv x1, x9, xzr, eq
@@ -81,7 +97,7 @@ define i128 @u128_sub(i128 %x, i128 %y) {
 ; CHECK-LABEL: u128_sub:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    subs x0, x0, x2
-; CHECK-NEXT:    sbc x1, x1, x3
+; CHECK-NEXT:    sbcs x1, x1, x3
 ; CHECK-NEXT:    ret
   %1 = sub i128 %x, %y
   ret i128 %1
@@ -90,10 +106,16 @@ define i128 @u128_sub(i128 %x, i128 %y) {
 define { i128, i8 } @u128_checked_sub(i128 %x, i128 %y) {
 ; CHECK-LABEL: u128_checked_sub:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    subs x0, x0, x2
-; CHECK-NEXT:    sbcs x1, x1, x3
-; CHECK-NEXT:    cset w8, lo
-; CHECK-NEXT:    eor w2, w8, #0x1
+; CHECK-NEXT:    subs x8, x0, x2
+; CHECK-NEXT:    sbcs x9, x1, x3
+; CHECK-NEXT:    cmp x8, x0
+; CHECK-NEXT:    mov x0, x8
+; CHECK-NEXT:    cset w10, hi
+; CHECK-NEXT:    cmp x9, x1
+; CHECK-NEXT:    cset w11, hi
+; CHECK-NEXT:    mov x1, x9
+; CHECK-NEXT:    csel w10, w10, w11, eq
+; CHECK-NEXT:    eor w2, w10, #0x1
 ; CHECK-NEXT:    ret
   %1 = tail call { i128, i1 } @llvm.usub.with.overflow.i128(i128 %x, i128 %y)
   %2 = extractvalue { i128, i1 } %1, 0
@@ -108,9 +130,15 @@ define { i128, i8 } @u128_checked_sub(i128 %x, i128 %y) {
 define { i128, i8 } @u128_overflowing_sub(i128 %x, i128 %y) {
 ; CHECK-LABEL: u128_overflowing_sub:
 ; CHECK:       // %bb.0:
-; CHECK-NEXT:    subs x0, x0, x2
-; CHECK-NEXT:    sbcs x1, x1, x3
-; CHECK-NEXT:    cset w2, lo
+; CHECK-NEXT:    subs x8, x0, x2
+; CHECK-NEXT:    sbcs x9, x1, x3
+; CHECK-NEXT:    cmp x8, x0
+; CHECK-NEXT:    mov x0, x8
+; CHECK-NEXT:    cset w10, hi
+; CHECK-NEXT:    cmp x9, x1
+; CHECK-NEXT:    cset w11, hi
+; CHECK-NEXT:    mov x1, x9
+; CHECK-NEXT:    csel w2, w10, w11, eq
 ; CHECK-NEXT:    ret
   %1 = tail call { i128, i1 } @llvm.usub.with.overflow.i128(i128 %x, i128 %y)
   %2 = extractvalue { i128, i1 } %1, 0
@@ -126,7 +154,11 @@ define i128 @u128_saturating_sub(i128 %x, i128 %y) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    subs x8, x0, x2
 ; CHECK-NEXT:    sbcs x9, x1, x3
-; CHECK-NEXT:    cset w10, lo
+; CHECK-NEXT:    cmp x8, x0
+; CHECK-NEXT:    cset w10, hi
+; CHECK-NEXT:    cmp x9, x1
+; CHECK-NEXT:    cset w11, hi
+; CHECK-NEXT:    csel w10, w10, w11, eq
 ; CHECK-NEXT:    cmp w10, #0
 ; CHECK-NEXT:    csel x0, xzr, x8, ne
 ; CHECK-NEXT:    csel x1, xzr, x9, ne
@@ -139,7 +171,7 @@ define i128 @i128_add(i128 %x, i128 %y) {
 ; CHECK-LABEL: i128_add:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    adds x0, x0, x2
-; CHECK-NEXT:    adc x1, x1, x3
+; CHECK-NEXT:    adcs x1, x1, x3
 ; CHECK-NEXT:    ret
   %1 = add i128 %x, %y
   ret i128 %1
@@ -149,9 +181,12 @@ define { i128, i8 } @i128_checked_add(i128 %x, i128 %y) {
 ; CHECK-LABEL: i128_checked_add:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    adds x0, x0, x2
-; CHECK-NEXT:    adcs x1, x1, x3
-; CHECK-NEXT:    cset w8, vs
-; CHECK-NEXT:    eor w2, w8, #0x1
+; CHECK-NEXT:    eor x9, x1, x3
+; CHECK-NEXT:    adcs x8, x1, x3
+; CHECK-NEXT:    eor x10, x1, x8
+; CHECK-NEXT:    mov x1, x8
+; CHECK-NEXT:    bics xzr, x10, x9
+; CHECK-NEXT:    cset w2, ge
 ; CHECK-NEXT:    ret
   %1 = tail call { i128, i1 } @llvm.sadd.with.overflow.i128(i128 %x, i128 %y)
   %2 = extractvalue { i128, i1 } %1, 0
@@ -167,8 +202,12 @@ define { i128, i8 } @i128_overflowing_add(i128 %x, i128 %y) {
 ; CHECK-LABEL: i128_overflowing_add:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    adds x0, x0, x2
-; CHECK-NEXT:    adcs x1, x1, x3
-; CHECK-NEXT:    cset w2, vs
+; CHECK-NEXT:    eor x9, x1, x3
+; CHECK-NEXT:    adcs x8, x1, x3
+; CHECK-NEXT:    eor x10, x1, x8
+; CHECK-NEXT:    mov x1, x8
+; CHECK-NEXT:    bics xzr, x10, x9
+; CHECK-NEXT:    cset w2, lt
 ; CHECK-NEXT:    ret
   %1 = tail call { i128, i1 } @llvm.sadd.with.overflow.i128(i128 %x, i128 %y)
   %2 = extractvalue { i128, i1 } %1, 0
@@ -183,13 +222,14 @@ define i128 @i128_saturating_add(i128 %x, i128 %y) {
 ; CHECK-LABEL: i128_saturating_add:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    adds x8, x0, x2
+; CHECK-NEXT:    eor x11, x1, x3
 ; CHECK-NEXT:    adcs x9, x1, x3
 ; CHECK-NEXT:    asr x10, x9, #63
-; CHECK-NEXT:    cset w11, vs
-; CHECK-NEXT:    cmp w11, #0
+; CHECK-NEXT:    eor x12, x1, x9
+; CHECK-NEXT:    bics xzr, x12, x11
 ; CHECK-NEXT:    eor x11, x10, #0x8000000000000000
-; CHECK-NEXT:    csel x0, x10, x8, ne
-; CHECK-NEXT:    csel x1, x11, x9, ne
+; CHECK-NEXT:    csel x0, x10, x8, lt
+; CHECK-NEXT:    csel x1, x11, x9, lt
 ; CHECK-NEXT:    ret
   %1 = tail call i128 @llvm.sadd.sat.i128(i128 %x, i128 %y)
   ret i128 %1
@@ -199,7 +239,7 @@ define i128 @i128_sub(i128 %x, i128 %y) {
 ; CHECK-LABEL: i128_sub:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    subs x0, x0, x2
-; CHECK-NEXT:    sbc x1, x1, x3
+; CHECK-NEXT:    sbcs x1, x1, x3
 ; CHECK-NEXT:    ret
   %1 = sub i128 %x, %y
   ret i128 %1
@@ -209,9 +249,12 @@ define { i128, i8 } @i128_checked_sub(i128 %x, i128 %y) {
 ; CHECK-LABEL: i128_checked_sub:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    subs x0, x0, x2
-; CHECK-NEXT:    sbcs x1, x1, x3
-; CHECK-NEXT:    cset w8, vs
-; CHECK-NEXT:    eor w2, w8, #0x1
+; CHECK-NEXT:    eor x9, x1, x3
+; CHECK-NEXT:    sbcs x8, x1, x3
+; CHECK-NEXT:    eor x10, x1, x8
+; CHECK-NEXT:    mov x1, x8
+; CHECK-NEXT:    tst x9, x10
+; CHECK-NEXT:    cset w2, ge
 ; CHECK-NEXT:    ret
   %1 = tail call { i128, i1 } @llvm.ssub.with.overflow.i128(i128 %x, i128 %y)
   %2 = extractvalue { i128, i1 } %1, 0
@@ -227,8 +270,12 @@ define { i128, i8 } @i128_overflowing_sub(i128 %x, i128 %y) {
 ; CHECK-LABEL: i128_overflowing_sub:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    subs x0, x0, x2
-; CHECK-NEXT:    sbcs x1, x1, x3
-; CHECK-NEXT:    cset w2, vs
+; CHECK-NEXT:    eor x9, x1, x3
+; CHECK-NEXT:    sbcs x8, x1, x3
+; CHECK-NEXT:    eor x10, x1, x8
+; CHECK-NEXT:    mov x1, x8
+; CHECK-NEXT:    tst x9, x10
+; CHECK-NEXT:    cset w2, lt
 ; CHECK-NEXT:    ret
   %1 = tail call { i128, i1 } @llvm.ssub.with.overflow.i128(i128 %x, i128 %y)
   %2 = extractvalue { i128, i1 } %1, 0
@@ -243,13 +290,14 @@ define i128 @i128_saturating_sub(i128 %x, i128 %y) {
 ; CHECK-LABEL: i128_saturating_sub:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    subs x8, x0, x2
+; CHECK-NEXT:    eor x11, x1, x3
 ; CHECK-NEXT:    sbcs x9, x1, x3
 ; CHECK-NEXT:    asr x10, x9, #63
-; CHECK-NEXT:    cset w11, vs
-; CHECK-NEXT:    cmp w11, #0
+; CHECK-NEXT:    eor x12, x1, x9
+; CHECK-NEXT:    tst x11, x12
 ; CHECK-NEXT:    eor x11, x10, #0x8000000000000000
-; CHECK-NEXT:    csel x0, x10, x8, ne
-; CHECK-NEXT:    csel x1, x11, x9, ne
+; CHECK-NEXT:    csel x0, x10, x8, lt
+; CHECK-NEXT:    csel x1, x11, x9, lt
 ; CHECK-NEXT:    ret
   %1 = tail call i128 @llvm.ssub.sat.i128(i128 %x, i128 %y)
   ret i128 %1

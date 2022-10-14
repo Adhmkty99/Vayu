@@ -45,11 +45,6 @@ public:
 
   explicit XCoreFunctionInfo(MachineFunction &MF) {}
 
-  MachineFunctionInfo *
-  clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
-        const DenseMap<MachineBasicBlock *, MachineBasicBlock *> &Src2DstMBB)
-      const override;
-
   ~XCoreFunctionInfo() override = default;
 
   void setVarArgsFrameIndex(int off) { VarArgsFrameIndex = off; }

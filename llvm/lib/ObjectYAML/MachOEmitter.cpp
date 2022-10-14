@@ -521,7 +521,9 @@ void MachOWriter::writeLinkEditData(raw_ostream &OS) {
     }
   }
 
-  llvm::sort(WriteQueue, llvm::less_first());
+  llvm::sort(WriteQueue, [](const writeOperation &a, const writeOperation &b) {
+    return a.first < b.first;
+  });
 
   for (auto writeOp : WriteQueue) {
     ZeroToOffset(OS, writeOp.first);

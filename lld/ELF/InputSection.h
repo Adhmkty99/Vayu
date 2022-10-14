@@ -10,9 +10,7 @@
 #define LLD_ELF_INPUT_SECTION_H
 
 #include "Relocations.h"
-#include "lld/Common/CommonLinkerContext.h"
 #include "lld/Common/LLVM.h"
-#include "lld/Common/Memory.h"
 #include "llvm/ADT/CachedHashString.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/TinyPtrVector.h"
@@ -99,8 +97,6 @@ protected:
         link(link), info(info) {}
 };
 
-struct RISCVRelaxAux;
-
 // This corresponds to a section of an input file.
 class InputSectionBase : public SectionBase {
 public:
@@ -133,10 +129,11 @@ public:
     return cast_or_null<ObjFile<ELFT>>(file);
   }
 
-  // Used by --optimize-bb-jumps and RISC-V linker relaxation temporarily to
-  // indicate the number of bytes which is not counted in the size. This should
-  // be reset to zero after uses.
-  uint16_t bytesDropped = 0;
+  // If basic block sections are enabled, many code sections could end up with
+  // one or two jump instructions at the end that could be relaxed to a smaller
+  // instruction. The members below help trimming the trailing jump instruction
+  // and shrinking a section.
+  uint8_t bytesDropped = 0;
 
   // Whether the section needs to be padded with a NOP filler due to
   // deleteFallThruJmpInsn.
@@ -151,8 +148,6 @@ public:
     assert(bytesDropped >= num);
     bytesDropped -= num;
   }
-
-  mutable ArrayRef<uint8_t> rawData;
 
   void trim() {
     if (bytesDropped) {
@@ -204,17 +199,11 @@ public:
   // This vector contains such "cooked" relocations.
   SmallVector<Relocation, 0> relocations;
 
-  union {
-    // These are modifiers to jump instructions that are necessary when basic
-    // block sections are enabled.  Basic block sections creates opportunities
-    // to relax jump instructions at basic block boundaries after reordering the
-    // basic blocks.
-    JumpInstrMod *jumpInstrMod = nullptr;
-
-    // Auxiliary information for RISC-V linker relaxation. RISC-V does not use
-    // jumpInstrMod.
-    RISCVRelaxAux *relaxAux;
-  };
+  // These are modifiers to jump instructions that are necessary when basic
+  // block sections are enabled.  Basic block sections creates opportunities to
+  // relax jump instructions at basic block boundaries after reordering the
+  // basic blocks.
+  JumpInstrMod *jumpInstrMod = nullptr;
 
   // A function compiled with -fsplit-stack calling a function
   // compiled without -fsplit-stack needs its prologue adjusted. Find
@@ -230,6 +219,8 @@ public:
     assert(s % sizeof(T) == 0);
     return llvm::makeArrayRef<T>((const T *)rawData.data(), s / sizeof(T));
   }
+
+  mutable ArrayRef<uint8_t> rawData;
 
 protected:
   template <typename ELFT>
@@ -396,7 +387,7 @@ static_assert(sizeof(InputSection) <= 160, "InputSection is too big");
 
 inline bool isDebugSection(const InputSectionBase &sec) {
   return (sec.flags & llvm::ELF::SHF_ALLOC) == 0 &&
-         sec.name.startswith(".debug");
+         (sec.name.startswith(".debug") || sec.name.startswith(".zdebug"));
 }
 
 // The list of all input sections.

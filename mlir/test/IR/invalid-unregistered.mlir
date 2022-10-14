@@ -11,4 +11,4 @@
 // -----
 
 // expected-error @below {{type created with unregistered dialect}}
-!type = !unregistered_dialect.type
+!type = type !unregistered_dialect.type

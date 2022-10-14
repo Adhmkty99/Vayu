@@ -46,15 +46,9 @@ void NORETURN ReportMmapFailureAndDie(uptr size, const char *mem_type,
     Die();
   }
   recursion_count++;
-  if (ErrorIsOOM(err)) {
-    ERROR_OOM("failed to %s 0x%zx (%zd) bytes of %s (error code: %d)\n",
-              mmap_type, size, size, mem_type, err);
-  } else {
-    Report(
-        "ERROR: %s failed to "
-        "%s 0x%zx (%zd) bytes of %s (error code: %d)\n",
-        SanitizerToolName, mmap_type, size, size, mem_type, err);
-  }
+  Report("ERROR: %s failed to "
+         "%s 0x%zx (%zd) bytes of %s (error code: %d)\n",
+         SanitizerToolName, mmap_type, size, size, mem_type, err);
 #if !SANITIZER_GO
   DumpProcessMap();
 #endif
@@ -316,22 +310,18 @@ struct MallocFreeHook {
 
 static MallocFreeHook MFHooks[kMaxMallocFreeHooks];
 
-void RunMallocHooks(void *ptr, uptr size) {
-  __sanitizer_malloc_hook(ptr, size);
+void RunMallocHooks(const void *ptr, uptr size) {
   for (int i = 0; i < kMaxMallocFreeHooks; i++) {
     auto hook = MFHooks[i].malloc_hook;
-    if (!hook)
-      break;
+    if (!hook) return;
     hook(ptr, size);
   }
 }
 
-void RunFreeHooks(void *ptr) {
-  __sanitizer_free_hook(ptr);
+void RunFreeHooks(const void *ptr) {
   for (int i = 0; i < kMaxMallocFreeHooks; i++) {
     auto hook = MFHooks[i].free_hook;
-    if (!hook)
-      break;
+    if (!hook) return;
     hook(ptr);
   }
 }
@@ -357,13 +347,6 @@ void SleepForSeconds(unsigned seconds) {
 }
 void SleepForMillis(unsigned millis) { internal_usleep((u64)millis * 1000); }
 
-void WaitForDebugger(unsigned seconds, const char *label) {
-  if (seconds) {
-    Report("Sleeping for %u second(s) %s\n", seconds, label);
-    SleepForSeconds(seconds);
-  }
-}
-
 } // namespace __sanitizer
 
 using namespace __sanitizer;
@@ -386,16 +369,4 @@ int __sanitizer_install_malloc_and_free_hooks(void (*malloc_hook)(const void *,
                                               void (*free_hook)(const void *)) {
   return InstallMallocFreeHooks(malloc_hook, free_hook);
 }
-
-// Provide default (no-op) implementation of malloc hooks.
-SANITIZER_INTERFACE_WEAK_DEF(void, __sanitizer_malloc_hook, void *ptr,
-                             uptr size) {
-  (void)ptr;
-  (void)size;
-}
-
-SANITIZER_INTERFACE_WEAK_DEF(void, __sanitizer_free_hook, void *ptr) {
-  (void)ptr;
-}
-
 } // extern "C"

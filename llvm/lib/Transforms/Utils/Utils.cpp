@@ -28,6 +28,7 @@ void llvm::initializeTransformUtils(PassRegistry &Registry) {
   initializeAssumeSimplifyPassLegacyPassPass(Registry);
   initializeAssumeBuilderPassLegacyPassPass(Registry);
   initializeBreakCriticalEdgesPass(Registry);
+  initializeCanonicalizeAliasesLegacyPassPass(Registry);
   initializeCanonicalizeFreezeInLoopsPass(Registry);
   initializeInstNamerPass(Registry);
   initializeLCSSAWrapperPassPass(Registry);
@@ -36,6 +37,7 @@ void llvm::initializeTransformUtils(PassRegistry &Registry) {
   initializeLowerGlobalDtorsLegacyPassPass(Registry);
   initializeLowerInvokeLegacyPassPass(Registry);
   initializeLowerSwitchLegacyPassPass(Registry);
+  initializeNameAnonGlobalLegacyPassPass(Registry);
   initializePromoteLegacyPassPass(Registry);
   initializeStripNonLineTableDebugLegacyPassPass(Registry);
   initializeUnifyFunctionExitNodesLegacyPassPass(Registry);

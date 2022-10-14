@@ -663,10 +663,6 @@ void CodeGenPassBuilder<Derived>::addIRPasses(AddIRPass &addPass) const {
 
   // Expand reduction intrinsics into shuffle sequences if the target wants to.
   addPass(ExpandReductionsPass());
-
-  // Convert conditional moves to conditional jumps when profitable.
-  if (getOptLevel() != CodeGenOpt::None && !Opt.DisableSelectOptimize)
-    addPass(SelectOptimizePass());
 }
 
 /// Turn exception handling constructs into something the code generators can
@@ -750,7 +746,7 @@ template <typename Derived>
 Error CodeGenPassBuilder<Derived>::addCoreISelPasses(
     AddMachinePass &addPass) const {
   // Enable FastISel with -fast-isel, but allow that to be overridden.
-  TM.setO0WantsFastISel(Opt.EnableFastISelOption.value_or(true));
+  TM.setO0WantsFastISel(Opt.EnableFastISelOption.getValueOr(true));
 
   // Determine an instruction selector.
   enum class SelectorType { SelectionDAG, FastISel, GlobalISel };

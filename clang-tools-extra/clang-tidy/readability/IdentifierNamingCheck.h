@@ -89,7 +89,7 @@ public:
 
   struct HungarianNotation {
   public:
-    bool checkOptionValid(int StyleKindIndex) const;
+    bool checkOptionValid(int StyleKindIndex, StringRef StyleString) const;
     bool isOptionEnabled(StringRef OptionKey,
                          const llvm::StringMap<std::string> &StrMap) const;
     void loadDefaultConfig(
@@ -198,7 +198,7 @@ private:
   mutable llvm::StringMap<FileStyle> NamingStylesCache;
   FileStyle *MainFileStyle;
   ClangTidyContext *Context;
-  const StringRef CheckName;
+  const std::string CheckName;
   const bool GetConfigPerFile;
   const bool IgnoreFailedSplit;
   HungarianNotation HungarianNotation;

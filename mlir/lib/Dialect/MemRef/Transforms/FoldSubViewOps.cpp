@@ -93,7 +93,7 @@ resolveSourceIndices(Location loc, PatternRewriter &rewriter,
 /// Helpers to access the memref operand for each op.
 template <typename LoadOrStoreOpTy>
 static Value getMemRefOperand(LoadOrStoreOpTy op) {
-  return op.getMemref();
+  return op.memref();
 }
 
 static Value getMemRefOperand(vector::TransferReadOp op) {
@@ -162,7 +162,7 @@ template <typename LoadOpTy>
 void LoadOpOfSubViewFolder<LoadOpTy>::replaceOp(
     LoadOpTy loadOp, memref::SubViewOp subViewOp, ArrayRef<Value> sourceIndices,
     PatternRewriter &rewriter) const {
-  rewriter.replaceOpWithNewOp<LoadOpTy>(loadOp, subViewOp.getSource(),
+  rewriter.replaceOpWithNewOp<LoadOpTy>(loadOp, subViewOp.source(),
                                         sourceIndices);
 }
 
@@ -174,7 +174,7 @@ void LoadOpOfSubViewFolder<vector::TransferReadOp>::replaceOp(
   if (transferReadOp.getTransferRank() == 0)
     return;
   rewriter.replaceOpWithNewOp<vector::TransferReadOp>(
-      transferReadOp, transferReadOp.getVectorType(), subViewOp.getSource(),
+      transferReadOp, transferReadOp.getVectorType(), subViewOp.source(),
       sourceIndices,
       getPermutationMapAttr(rewriter.getContext(), subViewOp,
                             transferReadOp.getPermutationMap()),
@@ -186,8 +186,8 @@ template <typename StoreOpTy>
 void StoreOpOfSubViewFolder<StoreOpTy>::replaceOp(
     StoreOpTy storeOp, memref::SubViewOp subViewOp,
     ArrayRef<Value> sourceIndices, PatternRewriter &rewriter) const {
-  rewriter.replaceOpWithNewOp<StoreOpTy>(storeOp, storeOp.getValue(),
-                                         subViewOp.getSource(), sourceIndices);
+  rewriter.replaceOpWithNewOp<StoreOpTy>(storeOp, storeOp.value(),
+                                         subViewOp.source(), sourceIndices);
 }
 
 template <>
@@ -198,7 +198,7 @@ void StoreOpOfSubViewFolder<vector::TransferWriteOp>::replaceOp(
   if (transferWriteOp.getTransferRank() == 0)
     return;
   rewriter.replaceOpWithNewOp<vector::TransferWriteOp>(
-      transferWriteOp, transferWriteOp.getVector(), subViewOp.getSource(),
+      transferWriteOp, transferWriteOp.getVector(), subViewOp.source(),
       sourceIndices,
       getPermutationMapAttr(rewriter.getContext(), subViewOp,
                             transferWriteOp.getPermutationMap()),

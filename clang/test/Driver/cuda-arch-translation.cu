@@ -1,6 +1,7 @@
 // Tests that "sm_XX" gets correctly converted to "compute_YY" when we invoke
 // fatbinary.
 //
+// REQUIRES: clang-driver
 // REQUIRES: x86-registered-target
 // REQUIRES: nvptx-registered-target
 

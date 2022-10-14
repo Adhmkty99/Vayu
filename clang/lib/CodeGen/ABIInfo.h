@@ -35,6 +35,10 @@ namespace CodeGen {
   class CodeGenTypes;
   class SwiftABIInfo;
 
+namespace swiftcall {
+  class SwiftAggLowering;
+}
+
   // FIXME: All of this stuff should be part of the target interface
   // somehow. It is currently here because it is not clear how to factor
   // the targets to support this, since the Targets currently live in a
@@ -96,7 +100,6 @@ namespace CodeGen {
 
     virtual bool isHomogeneousAggregateSmallEnough(const Type *Base,
                                                    uint64_t Members) const;
-    virtual bool isZeroLengthBitfieldPermittedInHomogeneousAggregate() const;
 
     bool isHomogeneousAggregate(QualType Ty, const Type *&Base,
                                 uint64_t &Members) const;
@@ -127,7 +130,7 @@ namespace CodeGen {
   public:
     SwiftABIInfo(CodeGen::CodeGenTypes &cgt) : ABIInfo(cgt) {}
 
-    bool supportsSwift() const final { return true; }
+    bool supportsSwift() const final override { return true; }
 
     virtual bool shouldPassIndirectlyForSwift(ArrayRef<llvm::Type*> types,
                                               bool asReturnValue) const = 0;

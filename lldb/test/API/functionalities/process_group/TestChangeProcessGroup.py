@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 
 class ChangeProcessGroupTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def setUp(self):
@@ -87,4 +89,4 @@ class ChangeProcessGroupTestCase(TestBase):
 
         # run to completion
         process.Continue()
-        self.assertState(process.GetState(), lldb.eStateExited)
+        self.assertEqual(process.GetState(), lldb.eStateExited)

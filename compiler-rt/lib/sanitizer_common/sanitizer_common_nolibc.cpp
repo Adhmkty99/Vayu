@@ -28,7 +28,7 @@ void Abort() { internal__exit(1); }
 bool CreateDir(const char *pathname) { return false; }
 #endif // !SANITIZER_WINDOWS
 
-#if !SANITIZER_WINDOWS && !SANITIZER_APPLE
+#if !SANITIZER_WINDOWS && !SANITIZER_MAC
 void ListOfModules::init() {}
 void InitializePlatformCommonFlags(CommonFlags *cf) {}
 #endif

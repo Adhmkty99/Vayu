@@ -30,8 +30,8 @@
 // CHECK-NEXT: address 'x_2' (0x[[X2_VAL]])
 // CHECK-NEXT: address 'y' (0x[[Y_VAL]])
 // CHECK: misordered result:
-// CHECK-NEXT: (0x[[Y_VAL]]): step 4
-// CHECK-NEXT: (0x[[X2_VAL]]): step 5
+// CHECK-NEXT: step 4 (0x[[Y_VAL]])
+// CHECK-NEXT: step 5 (0x[[X2_VAL]])
 
 int main() {
     int *x = new int(5);

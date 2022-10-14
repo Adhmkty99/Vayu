@@ -9,6 +9,8 @@ from lldbsuite.test import lldbutil
 
 class TemplateSpecializationTypeTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_template_specialization_cast_children(self):
         self.build()
         lldbutil.run_to_source_breakpoint(self, '// break here',

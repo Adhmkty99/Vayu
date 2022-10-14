@@ -10,8 +10,8 @@
 
 // Test std::partial_sort stability randomization
 
-// UNSUPPORTED: c++03
-// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DEBUG_RANDOMIZE_UNSPECIFIED_STABILITY
+// UNSUPPORTED: libcxx-no-debug-mode, c++03, windows
+// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DEBUG=1
 
 #include <algorithm>
 #include <array>
@@ -34,8 +34,7 @@ std::vector<MyType> deterministic() {
   for (int i = 0; i < kSize; ++i) {
     v[i].value = (i % 2 ? 1 : kSize / 2 + i);
   }
-  auto comp = std::less<MyType>();
-  std::__partial_sort_impl<std::_ClassicAlgPolicy>(v.begin(), v.begin() + kSize / 2, v.end(), comp);
+  std::__partial_sort(v.begin(), v.begin() + kSize / 2, v.end(), std::less<MyType>());
   return v;
 }
 

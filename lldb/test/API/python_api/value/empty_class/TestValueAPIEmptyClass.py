@@ -6,6 +6,8 @@ from lldbsuite.test import lldbutil
 
 class ValueAPIEmptyClassTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test(self):
         self.build()
         exe = self.getBuildArtifact("a.out")
@@ -25,7 +27,7 @@ class ValueAPIEmptyClassTestCase(TestBase):
         self.assertTrue(process, PROCESS_IS_VALID)
 
         # Get Frame #0.
-        self.assertState(process.GetState(), lldb.eStateStopped)
+        self.assertEquals(process.GetState(), lldb.eStateStopped)
         thread = lldbutil.get_stopped_thread(
             process, lldb.eStopReasonBreakpoint)
         self.assertTrue(

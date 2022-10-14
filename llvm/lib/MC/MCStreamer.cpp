@@ -108,7 +108,7 @@ void MCStreamer::reset() {
   SectionStack.push_back(std::pair<MCSectionSubPair, MCSectionSubPair>());
 }
 
-raw_ostream &MCStreamer::getCommentOS() {
+raw_ostream &MCStreamer::GetCommentOS() {
   // By default, discard comments.
   return nulls();
 }
@@ -187,7 +187,7 @@ void MCStreamer::emitSymbolValue(const MCSymbol *Sym, unsigned Size,
   if (!IsSectionRelative)
     emitValueImpl(MCSymbolRefExpr::create(Sym, getContext()), Size);
   else
-    emitCOFFSecRel32(Sym, /*Offset=*/0);
+    EmitCOFFSecRel32(Sym, /*Offset=*/0);
 }
 
 void MCStreamer::emitDTPRel64Value(const MCExpr *Value) {
@@ -252,13 +252,6 @@ void MCStreamer::emitCFIBKeyFrame() {
   CurFrame->IsBKeyFrame = true;
 }
 
-void MCStreamer::emitCFIMTETaggedFrame() {
-  MCDwarfFrameInfo *CurFrame = getCurrentDwarfFrameInfo();
-  if (!CurFrame)
-    return;
-  CurFrame->IsMTETaggedFrame = true;
-}
-
 void MCStreamer::emitDwarfLocDirective(unsigned FileNo, unsigned Line,
                                        unsigned Column, unsigned Flags,
                                        unsigned Isa, unsigned Discriminator,
@@ -291,18 +284,18 @@ MCDwarfFrameInfo *MCStreamer::getCurrentDwarfFrameInfo() {
   return &DwarfFrameInfos.back();
 }
 
-bool MCStreamer::emitCVFileDirective(unsigned FileNo, StringRef Filename,
+bool MCStreamer::EmitCVFileDirective(unsigned FileNo, StringRef Filename,
                                      ArrayRef<uint8_t> Checksum,
                                      unsigned ChecksumKind) {
   return getContext().getCVContext().addFile(*this, FileNo, Filename, Checksum,
                                              ChecksumKind);
 }
 
-bool MCStreamer::emitCVFuncIdDirective(unsigned FunctionId) {
+bool MCStreamer::EmitCVFuncIdDirective(unsigned FunctionId) {
   return getContext().getCVContext().recordFunctionId(FunctionId);
 }
 
-bool MCStreamer::emitCVInlineSiteIdDirective(unsigned FunctionId,
+bool MCStreamer::EmitCVInlineSiteIdDirective(unsigned FunctionId,
                                              unsigned IAFunc, unsigned IAFile,
                                              unsigned IALine, unsigned IACol,
                                              SMLoc Loc) {
@@ -408,10 +401,10 @@ void MCStreamer::emitEHSymAttributes(const MCSymbol *Symbol,
 }
 
 void MCStreamer::initSections(bool NoExecStack, const MCSubtargetInfo &STI) {
-  switchSection(getContext().getObjectFileInfo()->getTextSection());
+  SwitchSection(getContext().getObjectFileInfo()->getTextSection());
 }
 
-void MCStreamer::assignFragment(MCSymbol *Symbol, MCFragment *Fragment) {
+void MCStreamer::AssignFragment(MCSymbol *Symbol, MCFragment *Fragment) {
   assert(Fragment);
   Symbol->setFragment(Fragment);
 
@@ -706,7 +699,7 @@ WinEH::FrameInfo *MCStreamer::EnsureValidWinFrameInfo(SMLoc Loc) {
   return CurrentWinFrameInfo;
 }
 
-void MCStreamer::emitWinCFIStartProc(const MCSymbol *Symbol, SMLoc Loc) {
+void MCStreamer::EmitWinCFIStartProc(const MCSymbol *Symbol, SMLoc Loc) {
   const MCAsmInfo *MAI = Context.getAsmInfo();
   if (!MAI->usesWindowsCFI())
     return getContext().reportError(
@@ -724,7 +717,7 @@ void MCStreamer::emitWinCFIStartProc(const MCSymbol *Symbol, SMLoc Loc) {
   CurrentWinFrameInfo->TextSection = getCurrentSectionOnly();
 }
 
-void MCStreamer::emitWinCFIEndProc(SMLoc Loc) {
+void MCStreamer::EmitWinCFIEndProc(SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
     return;
@@ -738,11 +731,11 @@ void MCStreamer::emitWinCFIEndProc(SMLoc Loc) {
 
   for (size_t I = CurrentProcWinFrameInfoStartIndex, E = WinFrameInfos.size();
        I != E; ++I)
-    emitWindowsUnwindTables(WinFrameInfos[I].get());
-  switchSection(CurFrame->TextSection);
+    EmitWindowsUnwindTables(WinFrameInfos[I].get());
+  SwitchSection(CurFrame->TextSection);
 }
 
-void MCStreamer::emitWinCFIFuncletOrFuncEnd(SMLoc Loc) {
+void MCStreamer::EmitWinCFIFuncletOrFuncEnd(SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
     return;
@@ -753,7 +746,7 @@ void MCStreamer::emitWinCFIFuncletOrFuncEnd(SMLoc Loc) {
   CurFrame->FuncletOrFuncEnd = Label;
 }
 
-void MCStreamer::emitWinCFIStartChained(SMLoc Loc) {
+void MCStreamer::EmitWinCFIStartChained(SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
     return;
@@ -766,7 +759,7 @@ void MCStreamer::emitWinCFIStartChained(SMLoc Loc) {
   CurrentWinFrameInfo->TextSection = getCurrentSectionOnly();
 }
 
-void MCStreamer::emitWinCFIEndChained(SMLoc Loc) {
+void MCStreamer::EmitWinCFIEndChained(SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
     return;
@@ -780,7 +773,7 @@ void MCStreamer::emitWinCFIEndChained(SMLoc Loc) {
   CurrentWinFrameInfo = const_cast<WinEH::FrameInfo *>(CurFrame->ChainedParent);
 }
 
-void MCStreamer::emitWinEHHandler(const MCSymbol *Sym, bool Unwind, bool Except,
+void MCStreamer::EmitWinEHHandler(const MCSymbol *Sym, bool Unwind, bool Except,
                                   SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
@@ -797,7 +790,7 @@ void MCStreamer::emitWinEHHandler(const MCSymbol *Sym, bool Unwind, bool Except,
     CurFrame->HandlesExceptions = true;
 }
 
-void MCStreamer::emitWinEHHandlerData(SMLoc Loc) {
+void MCStreamer::EmitWinEHHandlerData(SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
     return;
@@ -861,7 +854,7 @@ static unsigned encodeSEHRegNum(MCContext &Ctx, MCRegister Reg) {
   return Ctx.getRegisterInfo()->getSEHRegNum(Reg);
 }
 
-void MCStreamer::emitWinCFIPushReg(MCRegister Register, SMLoc Loc) {
+void MCStreamer::EmitWinCFIPushReg(MCRegister Register, SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
     return;
@@ -873,7 +866,7 @@ void MCStreamer::emitWinCFIPushReg(MCRegister Register, SMLoc Loc) {
   CurFrame->Instructions.push_back(Inst);
 }
 
-void MCStreamer::emitWinCFISetFrame(MCRegister Register, unsigned Offset,
+void MCStreamer::EmitWinCFISetFrame(MCRegister Register, unsigned Offset,
                                     SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
@@ -895,7 +888,7 @@ void MCStreamer::emitWinCFISetFrame(MCRegister Register, unsigned Offset,
   CurFrame->Instructions.push_back(Inst);
 }
 
-void MCStreamer::emitWinCFIAllocStack(unsigned Size, SMLoc Loc) {
+void MCStreamer::EmitWinCFIAllocStack(unsigned Size, SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
     return;
@@ -912,7 +905,7 @@ void MCStreamer::emitWinCFIAllocStack(unsigned Size, SMLoc Loc) {
   CurFrame->Instructions.push_back(Inst);
 }
 
-void MCStreamer::emitWinCFISaveReg(MCRegister Register, unsigned Offset,
+void MCStreamer::EmitWinCFISaveReg(MCRegister Register, unsigned Offset,
                                    SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
@@ -929,7 +922,7 @@ void MCStreamer::emitWinCFISaveReg(MCRegister Register, unsigned Offset,
   CurFrame->Instructions.push_back(Inst);
 }
 
-void MCStreamer::emitWinCFISaveXMM(MCRegister Register, unsigned Offset,
+void MCStreamer::EmitWinCFISaveXMM(MCRegister Register, unsigned Offset,
                                    SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
@@ -944,7 +937,7 @@ void MCStreamer::emitWinCFISaveXMM(MCRegister Register, unsigned Offset,
   CurFrame->Instructions.push_back(Inst);
 }
 
-void MCStreamer::emitWinCFIPushFrame(bool Code, SMLoc Loc) {
+void MCStreamer::EmitWinCFIPushFrame(bool Code, SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
     return;
@@ -958,7 +951,7 @@ void MCStreamer::emitWinCFIPushFrame(bool Code, SMLoc Loc) {
   CurFrame->Instructions.push_back(Inst);
 }
 
-void MCStreamer::emitWinCFIEndProlog(SMLoc Loc) {
+void MCStreamer::EmitWinCFIEndProlog(SMLoc Loc) {
   WinEH::FrameInfo *CurFrame = EnsureValidWinFrameInfo(Loc);
   if (!CurFrame)
     return;
@@ -968,15 +961,15 @@ void MCStreamer::emitWinCFIEndProlog(SMLoc Loc) {
   CurFrame->PrologEnd = Label;
 }
 
-void MCStreamer::emitCOFFSafeSEH(MCSymbol const *Symbol) {}
+void MCStreamer::EmitCOFFSafeSEH(MCSymbol const *Symbol) {}
 
-void MCStreamer::emitCOFFSymbolIndex(MCSymbol const *Symbol) {}
+void MCStreamer::EmitCOFFSymbolIndex(MCSymbol const *Symbol) {}
 
-void MCStreamer::emitCOFFSectionIndex(MCSymbol const *Symbol) {}
+void MCStreamer::EmitCOFFSectionIndex(MCSymbol const *Symbol) {}
 
-void MCStreamer::emitCOFFSecRel32(MCSymbol const *Symbol, uint64_t Offset) {}
+void MCStreamer::EmitCOFFSecRel32(MCSymbol const *Symbol, uint64_t Offset) {}
 
-void MCStreamer::emitCOFFImgRel32(MCSymbol const *Symbol, int64_t Offset) {}
+void MCStreamer::EmitCOFFImgRel32(MCSymbol const *Symbol, int64_t Offset) {}
 
 /// EmitRawText - If this file is backed by an assembly streamer, this dumps
 /// the specified string in the output .s file.  This capability is
@@ -995,11 +988,13 @@ void MCStreamer::emitRawText(const Twine &T) {
   emitRawTextImpl(T.toStringRef(Str));
 }
 
-void MCStreamer::emitWindowsUnwindTables() {}
+void MCStreamer::EmitWindowsUnwindTables() {
+}
 
-void MCStreamer::emitWindowsUnwindTables(WinEH::FrameInfo *Frame) {}
+void MCStreamer::EmitWindowsUnwindTables(WinEH::FrameInfo *Frame) {
+}
 
-void MCStreamer::finish(SMLoc EndLoc) {
+void MCStreamer::Finish(SMLoc EndLoc) {
   if ((!DwarfFrameInfos.empty() && !DwarfFrameInfos.back().End) ||
       (!WinFrameInfos.empty() && !WinFrameInfos.back()->End)) {
     getContext().reportError(EndLoc, "Unfinished frame!");
@@ -1151,20 +1146,20 @@ void MCStreamer::emitAbsoluteSymbolDiffAsULEB128(const MCSymbol *Hi,
 void MCStreamer::emitAssemblerFlag(MCAssemblerFlag Flag) {}
 void MCStreamer::emitThumbFunc(MCSymbol *Func) {}
 void MCStreamer::emitSymbolDesc(MCSymbol *Symbol, unsigned DescValue) {}
-void MCStreamer::beginCOFFSymbolDef(const MCSymbol *Symbol) {
+void MCStreamer::BeginCOFFSymbolDef(const MCSymbol *Symbol) {
   llvm_unreachable("this directive only supported on COFF targets");
 }
-void MCStreamer::endCOFFSymbolDef() {
+void MCStreamer::EndCOFFSymbolDef() {
   llvm_unreachable("this directive only supported on COFF targets");
 }
 void MCStreamer::emitFileDirective(StringRef Filename) {}
 void MCStreamer::emitFileDirective(StringRef Filename, StringRef CompilerVerion,
                                    StringRef TimeStamp, StringRef Description) {
 }
-void MCStreamer::emitCOFFSymbolStorageClass(int StorageClass) {
+void MCStreamer::EmitCOFFSymbolStorageClass(int StorageClass) {
   llvm_unreachable("this directive only supported on COFF targets");
 }
-void MCStreamer::emitCOFFSymbolType(int Type) {
+void MCStreamer::EmitCOFFSymbolType(int Type) {
   llvm_unreachable("this directive only supported on COFF targets");
 }
 void MCStreamer::emitXCOFFLocalCommonSymbol(MCSymbol *LabelSym, uint64_t Size,
@@ -1222,7 +1217,7 @@ void MCStreamer::emitBundleLock(bool AlignToEnd) {}
 void MCStreamer::finishImpl() {}
 void MCStreamer::emitBundleUnlock() {}
 
-void MCStreamer::switchSection(MCSection *Section, const MCExpr *Subsection) {
+void MCStreamer::SwitchSection(MCSection *Section, const MCExpr *Subsection) {
   assert(Section && "Cannot switch to a null section!");
   MCSectionSubPair curSection = SectionStack.back().first;
   SectionStack.back().second = curSection;
@@ -1243,7 +1238,7 @@ MCSymbol *MCStreamer::endSection(MCSection *Section) {
   if (Sym->isInSection())
     return Sym;
 
-  switchSection(Section);
+  SwitchSection(Section);
   emitLabel(Sym);
   return Sym;
 }
@@ -1371,14 +1366,15 @@ void MCStreamer::emitVersionForTarget(
       emitDarwinTargetVariantBuildVersion(
           getMachoBuildVersionPlatformType(Target),
           LinkedTargetVersion.getMajor(),
-          LinkedTargetVersion.getMinor().value_or(0),
-          LinkedTargetVersion.getSubminor().value_or(0), SDKVersion);
+          LinkedTargetVersion.getMinor().getValueOr(0),
+          LinkedTargetVersion.getSubminor().getValueOr(0), SDKVersion);
       return;
     }
     emitBuildVersion(getMachoBuildVersionPlatformType(Target),
                      LinkedTargetVersion.getMajor(),
-                     LinkedTargetVersion.getMinor().value_or(0),
-                     LinkedTargetVersion.getSubminor().value_or(0), SDKVersion);
+                     LinkedTargetVersion.getMinor().getValueOr(0),
+                     LinkedTargetVersion.getSubminor().getValueOr(0),
+                     SDKVersion);
     ShouldEmitBuildVersion = true;
   }
 
@@ -1389,8 +1385,8 @@ void MCStreamer::emitVersionForTarget(
       emitDarwinTargetVariantBuildVersion(
           getMachoBuildVersionPlatformType(*TVT),
           TVLinkedTargetVersion.getMajor(),
-          TVLinkedTargetVersion.getMinor().value_or(0),
-          TVLinkedTargetVersion.getSubminor().value_or(0),
+          TVLinkedTargetVersion.getMinor().getValueOr(0),
+          TVLinkedTargetVersion.getSubminor().getValueOr(0),
           DarwinTargetVariantSDKVersion);
     }
   }
@@ -1400,6 +1396,6 @@ void MCStreamer::emitVersionForTarget(
 
   emitVersionMin(getMachoVersionMinLoadCommandType(Target),
                  LinkedTargetVersion.getMajor(),
-                 LinkedTargetVersion.getMinor().value_or(0),
-                 LinkedTargetVersion.getSubminor().value_or(0), SDKVersion);
+                 LinkedTargetVersion.getMinor().getValueOr(0),
+                 LinkedTargetVersion.getSubminor().getValueOr(0), SDKVersion);
 }

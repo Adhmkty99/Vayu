@@ -146,7 +146,8 @@ DynoStats getDynoStats(const BinaryFunction &BF);
 
 /// Return program-wide dynostats.
 template <typename FuncsType>
-inline DynoStats getDynoStats(const FuncsType &Funcs, bool IsAArch64) {
+inline DynoStats getDynoStats(const FuncsType &Funcs) {
+  bool IsAArch64 = Funcs.begin()->second.getBinaryContext().isAArch64();
   DynoStats dynoStats(IsAArch64);
   for (auto &BFI : Funcs) {
     auto &BF = BFI.second;
@@ -159,16 +160,16 @@ inline DynoStats getDynoStats(const FuncsType &Funcs, bool IsAArch64) {
 /// Call a function with optional before and after dynostats printing.
 template <typename FnType, typename FuncsType>
 inline void callWithDynoStats(FnType &&Func, const FuncsType &Funcs,
-                              StringRef Phase, const bool Flag,
-                              bool IsAArch64) {
+                              StringRef Phase, const bool Flag) {
+  bool IsAArch64 = Funcs.begin()->second.getBinaryContext().isAArch64();
   DynoStats DynoStatsBefore(IsAArch64);
   if (Flag)
-    DynoStatsBefore = getDynoStats(Funcs, IsAArch64);
+    DynoStatsBefore = getDynoStats(Funcs);
 
   Func();
 
   if (Flag) {
-    const DynoStats DynoStatsAfter = getDynoStats(Funcs, IsAArch64);
+    const DynoStats DynoStatsAfter = getDynoStats(Funcs);
     const bool Changed = (DynoStatsAfter != DynoStatsBefore);
     outs() << "BOLT-INFO: program-wide dynostats after running " << Phase
            << (Changed ? "" : " (no change)") << ":\n\n"

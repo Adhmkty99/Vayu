@@ -195,11 +195,11 @@ public:
   ArrayRef<CounterExpression> getExpressions() const { return Expressions; }
 
   /// Return a counter that represents the expression that adds LHS and RHS.
-  Counter add(Counter LHS, Counter RHS, bool Simplify = true);
+  Counter add(Counter LHS, Counter RHS);
 
   /// Return a counter that represents the expression that subtracts RHS from
   /// LHS.
-  Counter subtract(Counter LHS, Counter RHS, bool Simplify = true);
+  Counter subtract(Counter LHS, Counter RHS);
 };
 
 using LineColPair = std::pair<unsigned, unsigned>;

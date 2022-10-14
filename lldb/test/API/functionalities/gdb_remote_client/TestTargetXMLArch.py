@@ -102,6 +102,8 @@ class MyResponder(MockGDBServerResponder):
 
 class TestTargetXMLArch(GDBRemoteTestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfXmlSupportMissing
     @expectedFailureAll(archs=["i386"])
     @skipIfRemote

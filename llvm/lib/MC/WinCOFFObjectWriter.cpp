@@ -154,7 +154,9 @@ public:
   bool UseBigObj;
   bool UseOffsetLabels = false;
 
+  bool EmitAddrsigSection = false;
   MCSectionCOFF *AddrsigSection;
+  std::vector<const MCSymbol *> AddrsigSyms;
 
   MCSectionCOFF *CGProfileSection = nullptr;
 
@@ -169,7 +171,6 @@ public:
     Strings.clear();
     SectionMap.clear();
     SymbolMap.clear();
-    WeakDefaults.clear();
     MCObjectWriter::reset();
   }
 
@@ -218,6 +219,11 @@ public:
   void setWeakDefaultNames();
   void assignSectionNumbers();
   void assignFileOffsets(MCAssembler &Asm, const MCAsmLayout &Layout);
+
+  void emitAddrsigSection() override { EmitAddrsigSection = true; }
+  void addAddrsigSymbol(const MCSymbol *Sym) override {
+    AddrsigSyms.push_back(Sym);
+  }
 
   uint64_t writeObject(MCAssembler &Asm, const MCAsmLayout &Layout) override;
 };
@@ -959,7 +965,7 @@ void WinCOFFObjectWriter::assignFileOffsets(MCAssembler &Asm,
   for (const auto &Section : Asm) {
     COFFSection *Sec = SectionMap[&Section];
 
-    if (!Sec || Sec->Number == -1)
+    if (Sec->Number == -1)
       continue;
 
     Sec->Header.SizeOfRawData = Layout.getSectionAddressSize(&Section);

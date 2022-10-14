@@ -12,9 +12,6 @@
 #include "mlir/Pass/Pass.h"
 
 namespace mlir {
-namespace func {
-class FuncOp;
-} // namespace func
 
 #define GEN_PASS_CLASSES
 #include "mlir/Dialect/LLVMIR/Transforms/Passes.h.inc"

@@ -9,6 +9,8 @@ from lldbsuite.test import lldbutil
 
 class GlobalVariablesCppTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         TestBase.setUp(self)
         self.source = lldb.SBFileSpec('main.cpp')

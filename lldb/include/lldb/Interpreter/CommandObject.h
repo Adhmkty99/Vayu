@@ -77,18 +77,17 @@ public:
     explicit operator bool() const { return (help_callback != nullptr); }
   };
 
-  /// Entries in the main argument information table.
-  struct ArgumentTableEntry {
+  struct ArgumentTableEntry // Entries in the main argument information table
+  {
     lldb::CommandArgumentType arg_type;
     const char *arg_name;
     CommandCompletions::CommonCompletionTypes completion_type;
-    OptionEnumValues enum_values;
     ArgumentHelpCallback help_function;
     const char *help_text;
   };
 
-  /// Used to build individual command argument lists.
-  struct CommandArgumentData {
+  struct CommandArgumentData // Used to build individual command argument lists
+  {
     lldb::CommandArgumentType arg_type;
     ArgumentRepetitionType arg_repetition;
     /// This arg might be associated only with some particular option set(s). By
@@ -104,6 +103,9 @@ public:
 
   typedef std::vector<CommandArgumentData>
       CommandArgumentEntry; // Used to build individual command argument lists
+
+  static ArgumentTableEntry g_arguments_data
+      [lldb::eArgTypeLastArg]; // Main argument information table
 
   typedef std::map<std::string, lldb::CommandObjectSP> CommandMap;
 
@@ -199,6 +201,8 @@ public:
   virtual bool WantsCompletion() { return !WantsRawCommandString(); }
 
   virtual Options *GetOptions();
+
+  static const ArgumentTableEntry *GetArgumentTable();
 
   static lldb::CommandArgumentType LookupArgumentName(llvm::StringRef arg_name);
 

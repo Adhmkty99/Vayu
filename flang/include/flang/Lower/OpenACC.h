@@ -16,7 +16,6 @@
 namespace Fortran {
 namespace parser {
 struct OpenACCConstruct;
-struct OpenACCDeclarativeConstruct;
 } // namespace parser
 
 namespace lower {
@@ -29,9 +28,6 @@ struct Evaluation;
 
 void genOpenACCConstruct(AbstractConverter &, pft::Evaluation &,
                          const parser::OpenACCConstruct &);
-void genOpenACCDeclarativeConstruct(
-    AbstractConverter &, pft::Evaluation &,
-    const parser::OpenACCDeclarativeConstruct &);
 
 } // namespace lower
 } // namespace Fortran

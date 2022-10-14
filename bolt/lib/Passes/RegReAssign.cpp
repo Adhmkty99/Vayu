@@ -26,11 +26,14 @@ namespace opts {
 extern cl::OptionCategory BoltOptCategory;
 extern cl::opt<bool> UpdateDebugSections;
 
-static cl::opt<bool> AggressiveReAssign(
-    "use-aggr-reg-reassign",
-    cl::desc("use register liveness analysis to try to find more opportunities "
-             "for -reg-reassign optimization"),
-    cl::cat(BoltOptCategory));
+static cl::opt<bool>
+AggressiveReAssign("use-aggr-reg-reassign",
+  cl::desc("use register liveness analysis to try to find more opportunities "
+           "for -reg-reassign optimization"),
+  cl::init(false),
+  cl::ZeroOrMore,
+  cl::cat(BoltOptCategory));
+
 }
 
 namespace llvm {
@@ -44,7 +47,8 @@ void RegReAssign::swap(BinaryFunction &Function, MCPhysReg A, MCPhysReg B) {
   // Regular instructions
   for (BinaryBasicBlock &BB : Function) {
     for (MCInst &Inst : BB) {
-      for (MCOperand &Operand : MCPlus::primeOperands(Inst)) {
+      for (int I = 0, E = MCPlus::getNumPrimeOperands(Inst); I != E; ++I) {
+        MCOperand &Operand = Inst.getOperand(I);
         if (!Operand.isReg())
           continue;
 
@@ -197,8 +201,8 @@ void RegReAssign::rankRegisters(BinaryFunction &Function) {
     }
   }
   std::iota(RankedRegs.begin(), RankedRegs.end(), 0); // 0, 1, 2, 3...
-  llvm::sort(RankedRegs,
-             [&](size_t A, size_t B) { return RegScore[A] > RegScore[B]; });
+  std::sort(RankedRegs.begin(), RankedRegs.end(),
+            [&](size_t A, size_t B) { return RegScore[A] > RegScore[B]; });
 
   LLVM_DEBUG({
     for (size_t Reg : RankedRegs) {
@@ -221,7 +225,8 @@ void RegReAssign::aggressivePassOverFunction(BinaryFunction &Function) {
   // analysis passes
   bool Bail = true;
   int64_t LowScoreClassic = std::numeric_limits<int64_t>::max();
-  for (int J : ClassicRegs.set_bits()) {
+  for (int J = ClassicRegs.find_first(); J != -1;
+       J = ClassicRegs.find_next(J)) {
     if (RegScore[J] <= 0)
       continue;
     Bail = false;
@@ -235,7 +240,7 @@ void RegReAssign::aggressivePassOverFunction(BinaryFunction &Function) {
   Extended &= GPRegs;
   Bail = true;
   int64_t HighScoreExtended = 0;
-  for (int J : Extended.set_bits()) {
+  for (int J = Extended.find_first(); J != -1; J = Extended.find_next(J)) {
     if (RegScore[J] <= 0)
       continue;
     Bail = false;
@@ -322,7 +327,8 @@ bool RegReAssign::conservativePassOverFunction(BinaryFunction &Function) {
   // Try swapping R12, R13, R14 or R15 with RBX (we work with all callee-saved
   // regs except RBP)
   MCPhysReg Candidate = 0;
-  for (int J : ExtendedCSR.set_bits())
+  for (int J = ExtendedCSR.find_first(); J != -1;
+       J = ExtendedCSR.find_next(J))
     if (RegScore[J] > RegScore[Candidate])
       Candidate = J;
 
@@ -332,7 +338,7 @@ bool RegReAssign::conservativePassOverFunction(BinaryFunction &Function) {
   // Check if our classic callee-saved reg (RBX is the only one) has lower
   // score / utilization rate
   MCPhysReg RBX = 0;
-  for (int I : ClassicCSR.set_bits()) {
+  for (int I = ClassicCSR.find_first(); I != -1; I = ClassicCSR.find_next(I)) {
     int64_t ScoreRBX = RegScore[I];
     if (ScoreRBX <= 0)
       continue;
@@ -346,7 +352,6 @@ bool RegReAssign::conservativePassOverFunction(BinaryFunction &Function) {
 
   LLVM_DEBUG(dbgs() << "\n ** Swapping " << BC.MRI->getName(RBX) << " with "
                     << BC.MRI->getName(Candidate) << "\n\n");
-  (void)BC;
   swap(Function, RBX, Candidate);
   FuncsChanged.insert(&Function);
   return true;

@@ -8,7 +8,7 @@
 
 // <string>
 
-// void pop_back(); // constexpr since C++20
+// void pop_back();
 
 #include <string>
 #include <cassert>
@@ -26,7 +26,7 @@ test(S s, S expected)
     assert(s == expected);
 }
 
-TEST_CONSTEXPR_CXX20 bool test() {
+bool test() {
   {
     typedef std::string S;
     test(S("abcde"), S("abcd"));
@@ -49,7 +49,7 @@ int main(int, char**)
 {
   test();
 #if TEST_STD_VER > 17
-  static_assert(test());
+  // static_assert(test());
 #endif
 
   return 0;

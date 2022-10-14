@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class ExitDuringStepTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipIfWindows # This is flakey on Windows: llvm.org/pr38373
     def test(self):
         """Test thread exit during step handling."""
@@ -142,4 +144,4 @@ class ExitDuringStepTestCase(TestBase):
         self.runCmd("continue")
 
         # At this point, the inferior process should have exited.
-        self.assertState(process.GetState(), lldb.eStateExited, PROCESS_EXITED)
+        self.assertEqual(process.GetState(), lldb.eStateExited, PROCESS_EXITED)

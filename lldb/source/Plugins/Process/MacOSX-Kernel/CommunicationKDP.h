@@ -79,7 +79,7 @@ public:
   // Constructors and Destructors
   CommunicationKDP(const char *comm_name);
 
-  ~CommunicationKDP() override;
+  virtual ~CommunicationKDP();
 
   bool SendRequestPacket(const PacketStreamType &request_packet);
 

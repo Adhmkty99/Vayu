@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: c++03 && !stdlib=libc++
+// UNSUPPORTED: c++03
 
 // <vector>
 
@@ -21,5 +21,5 @@
 
 void test() {
   std::vector<operator_hijacker> v;
-  v.insert(v.end(), operator_hijacker());
+  v.insert(v.end(), operator_hijacker{});
 }

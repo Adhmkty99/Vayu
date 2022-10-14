@@ -26,9 +26,8 @@ using namespace llvm;
 ReplayInlineAdvisor::ReplayInlineAdvisor(
     Module &M, FunctionAnalysisManager &FAM, LLVMContext &Context,
     std::unique_ptr<InlineAdvisor> OriginalAdvisor,
-    const ReplayInlinerSettings &ReplaySettings, bool EmitRemarks,
-    InlineContext IC)
-    : InlineAdvisor(M, FAM, IC), OriginalAdvisor(std::move(OriginalAdvisor)),
+    const ReplayInlinerSettings &ReplaySettings, bool EmitRemarks)
+    : InlineAdvisor(M, FAM), OriginalAdvisor(std::move(OriginalAdvisor)),
       ReplaySettings(ReplaySettings), EmitRemarks(EmitRemarks) {
 
   auto BufferOrErr = MemoryBuffer::getFileOrSTDIN(ReplaySettings.ReplayFile);
@@ -76,15 +75,12 @@ ReplayInlineAdvisor::ReplayInlineAdvisor(
   HasReplayRemarks = true;
 }
 
-std::unique_ptr<InlineAdvisor>
-llvm::getReplayInlineAdvisor(Module &M, FunctionAnalysisManager &FAM,
-                             LLVMContext &Context,
-                             std::unique_ptr<InlineAdvisor> OriginalAdvisor,
-                             const ReplayInlinerSettings &ReplaySettings,
-                             bool EmitRemarks, InlineContext IC) {
+std::unique_ptr<InlineAdvisor> llvm::getReplayInlineAdvisor(
+    Module &M, FunctionAnalysisManager &FAM, LLVMContext &Context,
+    std::unique_ptr<InlineAdvisor> OriginalAdvisor,
+    const ReplayInlinerSettings &ReplaySettings, bool EmitRemarks) {
   auto Advisor = std::make_unique<ReplayInlineAdvisor>(
-      M, FAM, Context, std::move(OriginalAdvisor), ReplaySettings, EmitRemarks,
-      IC);
+      M, FAM, Context, std::move(OriginalAdvisor), ReplaySettings, EmitRemarks);
   if (!Advisor->areReplayRemarksLoaded())
     Advisor.reset();
   return Advisor;

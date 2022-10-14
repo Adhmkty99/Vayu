@@ -711,7 +711,7 @@ lldb::TypeSP PDBASTParser::CreateLLDBTypeFromPDBType(const PDBSymbol &type) {
       bytes = size;
     Encoding encoding = TranslateBuiltinEncoding(builtin_kind);
     CompilerType builtin_ast_type = GetBuiltinTypeForPDBEncodingAndBitSize(
-        m_ast, *builtin_type, encoding, bytes.value_or(0) * 8);
+        m_ast, *builtin_type, encoding, bytes.getValueOr(0) * 8);
 
     if (builtin_type->isConstType())
       builtin_ast_type = builtin_ast_type.AddConstModifier();
@@ -801,8 +801,7 @@ bool PDBASTParser::CompleteTypeFromPDB(
   if (uid_it == m_forward_decl_to_uid.end())
     return true;
 
-  auto symbol_file = static_cast<SymbolFilePDB *>(
-      m_ast.GetSymbolFile()->GetBackingSymbolFile());
+  auto symbol_file = static_cast<SymbolFilePDB *>(m_ast.GetSymbolFile());
   if (!symbol_file)
     return false;
 
@@ -836,8 +835,7 @@ PDBASTParser::GetDeclForSymbol(const llvm::pdb::PDBSymbol &symbol) {
   if (it != m_uid_to_decl.end())
     return it->second;
 
-  auto symbol_file = static_cast<SymbolFilePDB *>(
-      m_ast.GetSymbolFile()->GetBackingSymbolFile());
+  auto symbol_file = static_cast<SymbolFilePDB *>(m_ast.GetSymbolFile());
   if (!symbol_file)
     return nullptr;
 
@@ -1003,8 +1001,7 @@ PDBASTParser::GetDeclContextForSymbol(const llvm::pdb::PDBSymbol &symbol) {
     return result;
   }
 
-  auto symbol_file = static_cast<SymbolFilePDB *>(
-      m_ast.GetSymbolFile()->GetBackingSymbolFile());
+  auto symbol_file = static_cast<SymbolFilePDB *>(m_ast.GetSymbolFile());
   if (!symbol_file)
     return nullptr;
 
@@ -1044,8 +1041,7 @@ clang::DeclContext *PDBASTParser::GetDeclContextContainingSymbol(
   if (specs.empty())
     return m_ast.GetTranslationUnitDecl();
 
-  auto symbol_file = static_cast<SymbolFilePDB *>(
-      m_ast.GetSymbolFile()->GetBackingSymbolFile());
+  auto symbol_file = static_cast<SymbolFilePDB *>(m_ast.GetSymbolFile());
   if (!symbol_file)
     return m_ast.GetTranslationUnitDecl();
 
@@ -1098,8 +1094,7 @@ clang::DeclContext *PDBASTParser::GetDeclContextContainingSymbol(
 
 void PDBASTParser::ParseDeclsForDeclContext(
     const clang::DeclContext *decl_context) {
-  auto symbol_file = static_cast<SymbolFilePDB *>(
-      m_ast.GetSymbolFile()->GetBackingSymbolFile());
+  auto symbol_file = static_cast<SymbolFilePDB *>(m_ast.GetSymbolFile());
   if (!symbol_file)
     return;
 

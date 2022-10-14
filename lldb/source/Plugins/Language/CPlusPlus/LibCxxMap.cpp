@@ -165,8 +165,8 @@ private:
   }
 
   MapEntry m_entry;
-  size_t m_max_depth = 0;
-  bool m_error = false;
+  size_t m_max_depth;
+  bool m_error;
 };
 
 namespace lldb_private {

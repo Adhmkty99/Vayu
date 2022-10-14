@@ -29,6 +29,9 @@ public:
   TestModuleCombinerPass() = default;
   TestModuleCombinerPass(const TestModuleCombinerPass &) {}
   void runOnOperation() override;
+
+private:
+  OwningOpRef<spirv::ModuleOp> combinedModule;
 };
 } // namespace
 
@@ -43,12 +46,10 @@ void TestModuleCombinerPass::runOnOperation() {
                  << " -> " << newSymbol << "\n";
   };
 
-  OwningOpRef<spirv::ModuleOp> combinedModule =
-      spirv::combine(modules, combinedModuleBuilder, listener);
+  combinedModule = spirv::combine(modules, combinedModuleBuilder, listener);
 
   for (spirv::ModuleOp module : modules)
     module.erase();
-  combinedModule.release();
 }
 
 namespace mlir {

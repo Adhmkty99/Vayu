@@ -18,23 +18,23 @@ include "llvm/TableGen/SearchableTable.td"
 //===----------------------------------------------------------------------===//
 
 def HasCCPP    : Predicate<"Subtarget->hasCCPP()">,
-                 AssemblerPredicateWithAll<(all_of FeatureCCPP), "ccpp">;
+                 AssemblerPredicate<(all_of FeatureCCPP), "ccpp">;
 
 def HasPAN     : Predicate<"Subtarget->hasPAN()">,
-                 AssemblerPredicateWithAll<(all_of FeaturePAN),
+                 AssemblerPredicate<(all_of FeaturePAN),
                  "ARM v8.1  Privileged Access-Never extension">;
 
 def HasPsUAO   : Predicate<"Subtarget->hasPsUAO()">,
-                 AssemblerPredicateWithAll<(all_of FeaturePsUAO),
+                 AssemblerPredicate<(all_of FeaturePsUAO),
                  "ARM v8.2 UAO PState extension (psuao)">;
 
 def HasPAN_RWV : Predicate<"Subtarget->hasPAN_RWV()">,
-                 AssemblerPredicateWithAll<(all_of FeaturePAN_RWV),
+                 AssemblerPredicate<(all_of FeaturePAN_RWV),
                  "ARM v8.2 PAN AT S1E1R and AT S1E1W Variation">;
 
 def HasCONTEXTIDREL2
                : Predicate<"Subtarget->hasCONTEXTIDREL2()">,
-                 AssemblerPredicateWithAll<(all_of FeatureCONTEXTIDREL2),
+                 AssemblerPredicate<(all_of FeatureCONTEXTIDREL2),
                  "Target contains CONTEXTIDR_EL2 RW operand">;
 
 //===----------------------------------------------------------------------===//

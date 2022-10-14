@@ -405,10 +405,7 @@ bool llvm::isSafeToLoadUnconditionally(Value *V, Type *Ty, Align Alignment,
                                        Instruction *ScanFrom,
                                        const DominatorTree *DT,
                                        const TargetLibraryInfo *TLI) {
-  TypeSize TySize = DL.getTypeStoreSize(Ty);
-  if (TySize.isScalable())
-    return false;
-  APInt Size(DL.getIndexTypeSizeInBits(V->getType()), TySize.getFixedValue());
+  APInt Size(DL.getIndexTypeSizeInBits(V->getType()), DL.getTypeStoreSize(Ty));
   return isSafeToLoadUnconditionally(V, Alignment, Size, DL, ScanFrom, DT, TLI);
 }
 

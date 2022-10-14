@@ -19,6 +19,7 @@ def apple_silicon():
 
 class TestLaunchProcessPosixSpawn(TestBase):
     NO_DEBUG_INFO_TESTCASE = True
+    mydir = TestBase.compute_mydir(__file__)
 
     def no_haswell(self):
         if not haswell():
@@ -35,7 +36,7 @@ class TestLaunchProcessPosixSpawn(TestBase):
         self.runCmd('run')
 
         process = self.dbg.GetSelectedTarget().process
-        self.assertState(process.GetState(), lldb.eStateExited)
+        self.assertEqual(process.GetState(), lldb.eStateExited)
         self.assertIn('slice: {}'.format(arch), process.GetSTDOUT(1000))
 
     @skipUnlessDarwin

@@ -1,5 +1,4 @@
-; RUN: llc < %s -mtriple=nvptx64-nvidia-cuda %if ptxas %{ | %ptxas-verify %}
-
+; RUN: llc < %s -mtriple=nvptx64-nvidia-cuda
 ; Don't crash for a function w/o debug info that contains an instruction w/
 ; debug info.
 ; Reported as #51079

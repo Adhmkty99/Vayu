@@ -297,7 +297,7 @@ Status ProcessMinidump::DoLoadCore() {
                             GetTarget().GetDebugger().GetID());
     pid = 1;
   }
-  SetID(*pid);
+  SetID(pid.getValue());
 
   return error;
 }

@@ -25,7 +25,6 @@
 namespace clang {
 
 class ASTContext;
-class Decl;
 class DependentTemplateName;
 class IdentifierInfo;
 class NamedDecl;
@@ -40,7 +39,6 @@ class SubstTemplateTemplateParmStorage;
 class TemplateArgument;
 class TemplateDecl;
 class TemplateTemplateParmDecl;
-class UsingShadowDecl;
 
 /// Implementation class used to describe either a set of overloaded
 /// template names or an already-substituted template template parameter pack.
@@ -190,12 +188,8 @@ public:
 /// specifier in the typedef. "apply" is a nested template, and can
 /// only be understood in the context of
 class TemplateName {
-  // NameDecl is either a TemplateDecl or a UsingShadowDecl depending on the
-  // NameKind.
-  // !! There is no free low bits in 32-bit builds to discriminate more than 4
-  // pointer types in PointerUnion.
   using StorageType =
-      llvm::PointerUnion<Decl *, UncommonTemplateNameStorage *,
+      llvm::PointerUnion<TemplateDecl *, UncommonTemplateNameStorage *,
                          QualifiedTemplateName *, DependentTemplateName *>;
 
   StorageType Storage;
@@ -230,11 +224,7 @@ public:
     /// A template template parameter pack that has been substituted for
     /// a template template argument pack, but has not yet been expanded into
     /// individual arguments.
-    SubstTemplateTemplateParmPack,
-
-    /// A template name that refers to a template declaration found through a
-    /// specific using shadow declaration.
-    UsingTemplate,
+    SubstTemplateTemplateParmPack
   };
 
   TemplateName() = default;
@@ -245,7 +235,6 @@ public:
   explicit TemplateName(SubstTemplateTemplateParmPackStorage *Storage);
   explicit TemplateName(QualifiedTemplateName *Qual);
   explicit TemplateName(DependentTemplateName *Dep);
-  explicit TemplateName(UsingShadowDecl *Using);
 
   /// Determine whether this template name is NULL.
   bool isNull() const;
@@ -297,10 +286,6 @@ public:
   /// Retrieve the underlying dependent template name
   /// structure, if any.
   DependentTemplateName *getAsDependentTemplateName() const;
-
-  /// Retrieve the using shadow declaration through which the underlying
-  /// template declaration is introduced, if any.
-  UsingShadowDecl *getAsUsingShadowDecl() const;
 
   TemplateName getUnderlying() const;
 
@@ -414,19 +399,13 @@ class QualifiedTemplateName : public llvm::FoldingSetNode {
   /// this name with DependentTemplateName).
   llvm::PointerIntPair<NestedNameSpecifier *, 1> Qualifier;
 
-  /// The underlying template name, it is either
-  ///  1) a Template -- a template declaration that this qualified name refers
-  ///     to.
-  ///  2) or a UsingTemplate -- a template declaration introduced by a
-  ///     using-shadow declaration.
-  TemplateName UnderlyingTemplate;
+  /// The template declaration or set of overloaded function templates
+  /// that this qualified name refers to.
+  TemplateDecl *Template;
 
   QualifiedTemplateName(NestedNameSpecifier *NNS, bool TemplateKeyword,
-                        TemplateName Template)
-      : Qualifier(NNS, TemplateKeyword ? 1 : 0), UnderlyingTemplate(Template) {
-    assert(UnderlyingTemplate.getKind() == TemplateName::Template ||
-           UnderlyingTemplate.getKind() == TemplateName::UsingTemplate);
-  }
+                        TemplateDecl *Template)
+      : Qualifier(NNS, TemplateKeyword? 1 : 0), Template(Template) {}
 
 public:
   /// Return the nested name specifier that qualifies this name.
@@ -436,18 +415,23 @@ public:
   /// keyword.
   bool hasTemplateKeyword() const { return Qualifier.getInt(); }
 
-  /// Return the underlying template name.
-  TemplateName getUnderlyingTemplate() const { return UnderlyingTemplate; }
+  /// The template declaration that this qualified name refers
+  /// to.
+  TemplateDecl *getDecl() const { return Template; }
+
+  /// The template declaration to which this qualified name
+  /// refers.
+  TemplateDecl *getTemplateDecl() const { return Template; }
 
   void Profile(llvm::FoldingSetNodeID &ID) {
-    Profile(ID, getQualifier(), hasTemplateKeyword(), UnderlyingTemplate);
+    Profile(ID, getQualifier(), hasTemplateKeyword(), getTemplateDecl());
   }
 
   static void Profile(llvm::FoldingSetNodeID &ID, NestedNameSpecifier *NNS,
-                      bool TemplateKeyword, TemplateName TN) {
+                      bool TemplateKeyword, TemplateDecl *Template) {
     ID.AddPointer(NNS);
     ID.AddBoolean(TemplateKeyword);
-    ID.AddPointer(TN.getAsVoidPointer());
+    ID.AddPointer(Template);
   }
 };
 

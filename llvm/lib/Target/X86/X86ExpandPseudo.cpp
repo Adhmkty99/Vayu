@@ -730,7 +730,7 @@ bool X86ExpandPseudo::ExpandPseudosWhichAffectControlFlow(MachineFunction &MF) {
 }
 
 bool X86ExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
-  STI = &MF.getSubtarget<X86Subtarget>();
+  STI = &static_cast<const X86Subtarget &>(MF.getSubtarget());
   TII = STI->getInstrInfo();
   TRI = STI->getRegisterInfo();
   X86FI = MF.getInfo<X86MachineFunctionInfo>();

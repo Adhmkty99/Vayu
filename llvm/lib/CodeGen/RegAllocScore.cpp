@@ -74,7 +74,8 @@ double RegAllocScore::getScore() const {
 
 RegAllocScore
 llvm::calculateRegAllocScore(const MachineFunction &MF,
-                             const MachineBlockFrequencyInfo &MBFI) {
+                             const MachineBlockFrequencyInfo &MBFI,
+                             AAResults &AAResults) {
   return calculateRegAllocScore(
       MF,
       [&](const MachineBasicBlock &MBB) {
@@ -82,7 +83,7 @@ llvm::calculateRegAllocScore(const MachineFunction &MF,
       },
       [&](const MachineInstr &MI) {
         return MF.getSubtarget().getInstrInfo()->isTriviallyReMaterializable(
-            MI);
+            MI, &AAResults);
       });
 }
 

@@ -10,7 +10,7 @@
 // Test case to check the working of Tensor cores on Nvidia GPUs. The kernel has already
 // been outlined to prevent crashing due to introduction of an empty basic block by --gpu-
 // kernel-outling.
-func.func @main() {
+func @main() {
   %0 = memref.alloc() : memref<16x16xf16>
   %22 = memref.alloc() : memref<16x16xf16>
   %1 = memref.alloc() : memref<16x16xf32>
@@ -63,7 +63,7 @@ func.func @main() {
   }
 
   // Print the memref after computation.
-  call @printMemrefF32(%3) : (memref<*xf32>) -> ()
+  call @print_memref_f32(%3) : (memref<*xf32>) -> ()
   // CHECK: [16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16],
   // CHECK-NEXT: [16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16],
   // CHECK-NEXT: [16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16,   16],
@@ -83,4 +83,4 @@ func.func @main() {
   return
 }
 
-func.func private @printMemrefF32(memref<*xf32>)
+func private @print_memref_f32(memref<*xf32>)

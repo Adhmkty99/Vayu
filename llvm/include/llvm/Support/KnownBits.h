@@ -415,12 +415,6 @@ public:
     return KnownBits(Zero.reverseBits(), One.reverseBits());
   }
 
-  bool operator==(const KnownBits &Other) const {
-    return Zero == Other.Zero && One == Other.One;
-  }
-
-  bool operator!=(const KnownBits &Other) const { return !(*this == Other); }
-
   void print(raw_ostream &OS) const;
   void dump() const;
 };

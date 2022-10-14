@@ -74,25 +74,6 @@ def ConvertAffineToStandard : Pass<"lower-affine"> {
 }
 
 //===----------------------------------------------------------------------===//
-// AMDGPUToROCDL
-//===----------------------------------------------------------------------===//
-
-def ConvertAMDGPUToROCDL : Pass<"convert-amdgpu-to-rocdl"> {
-  let summary = "Convert AMDGPU dialect to ROCDL dialect";
-  let description = [{
-    This pass converts supported AMDGPU ops to ROCDL dialect intrinsics.
-  }];
-  let constructor = "mlir::createConvertAMDGPUToROCDLPass()";
-  let dependentDialects = [
-    "LLVM::LLVMDialect",
-    "ROCDL::ROCDLDialect",
-  ];
-  let options = [Option<"chipset", "chipset", "std::string",
-                        /*default=*/"\"gfx000\"",
-                        "Chipset that these operations will run on">];
-}
-
-//===----------------------------------------------------------------------===//
 // ArithmeticToLLVM
 //===----------------------------------------------------------------------===//
 
@@ -200,21 +181,6 @@ def ConvertComplexToLLVM : Pass<"convert-complex-to-llvm"> {
 }
 
 //===----------------------------------------------------------------------===//
-// ComplexToLibm
-//===----------------------------------------------------------------------===//
-
-def ConvertComplexToLibm : Pass<"convert-complex-to-libm", "ModuleOp"> {
-  let summary = "Convert Complex dialect to libm calls";
-  let description = [{
-    This pass converts supported Complex ops to libm calls.
-  }];
-  let constructor = "mlir::createConvertComplexToLibmPass()";
-  let dependentDialects = [
-    "func::FuncDialect",
-  ];
-}
-
-//===----------------------------------------------------------------------===//
 // ComplexToStandard
 //===----------------------------------------------------------------------===//
 
@@ -297,6 +263,9 @@ def ConvertFuncToLLVM : Pass<"convert-func-to-llvm", "ModuleOp"> {
            /*default=*/"false",
            "Replace FuncOp's MemRef arguments with bare pointers to the MemRef "
            "element types">,
+    Option<"emitCWrappers", "emit-c-wrappers", "bool", /*default=*/"false",
+           "Emit wrappers for C-compatible pointer-to-struct memref "
+           "descriptors">,
     Option<"indexBitwidth", "index-bitwidth", "unsigned",
            /*default=kDeriveIndexBitwidthFromDataLayout*/"0",
            "Bitwidth of the index type, 0 to use size of machine word">,
@@ -367,9 +336,6 @@ def ConvertGpuOpsToROCDLOps : Pass<"convert-gpu-to-rocdl", "gpu::GPUModuleOp"> {
   let constructor = "mlir::createLowerGpuOpsToROCDLOpsPass()";
   let dependentDialects = ["ROCDL::ROCDLDialect"];
   let options = [
-    Option<"chipset", "chipset", "std::string",
-           /*default=*/"\"gfx000\"",
-           "Chipset that these operations will run on">,
     Option<"indexBitwidth", "index-bitwidth", "unsigned",
            /*default=kDeriveIndexBitwidthFromDataLayout*/"0",
            "Bitwidth of the index type, 0 to use size of machine word">,
@@ -522,11 +488,6 @@ def ConvertMemRefToLLVM : Pass<"convert-memref-to-llvm", "ModuleOp"> {
     Option<"indexBitwidth", "index-bitwidth", "unsigned",
            /*default=kDeriveIndexBitwidthFromDataLayout*/"0",
            "Bitwidth of the index type, 0 to use size of machine word">,
-    Option<"useGenericFunctions", "use-generic-functions",
-           "bool",
-           /*default=*/"false",
-           "Use generic allocation and deallocation functions instead of the "
-           "classic 'malloc', 'aligned_alloc' and 'free' functions">
   ];
 }
 
@@ -544,22 +505,6 @@ def ConvertMemRefToSPIRV : Pass<"convert-memref-to-spirv", "ModuleOp"> {
            "The number of bits to store a boolean value">
   ];
 }
-
-//===----------------------------------------------------------------------===//
-// NVGPUToNVVM
-//===----------------------------------------------------------------------===//
-
-def ConvertNVGPUToNVVM : Pass<"convert-nvgpu-to-nvvm"> {
-  let summary = "Convert NVGPU dialect to NVVM dialect";
-  let description = [{
-    This pass converts supported NVGPU ops to NVVM dialect intrinsics.
-  }];
-  let constructor = "mlir::createConvertNVGPUToNVVMPass()";
-  let dependentDialects = [
-    "NVVM::NVVMDialect",
-  ];
-}
-
 
 //===----------------------------------------------------------------------===//
 // OpenACCToSCF
@@ -732,20 +677,6 @@ def ConvertSPIRVToLLVM : Pass<"convert-spirv-to-llvm", "ModuleOp"> {
 }
 
 //===----------------------------------------------------------------------===//
-// TensorToLinalg
-//===----------------------------------------------------------------------===//
-
-def ConvertTensorToLinalg : Pass<"convert-tensor-to-linalg", "ModuleOp"> {
-  let summary = "Convert some Tensor dialect ops to Linalg dialect";
-  let constructor = "mlir::createConvertTensorToLinalgPass()";
-  let dependentDialects = [
-    "arith::ArithmeticDialect",
-    "linalg::LinalgDialect",
-  ];
-}
-
-
-//===----------------------------------------------------------------------===//
 // TensorToSPIRV
 //===----------------------------------------------------------------------===//
 
@@ -779,10 +710,7 @@ def TosaToArith : Pass<"tosa-to-arith"> {
   let options = [
     Option<"includeApplyRescale", "include-apply-rescale",
            "bool", /*default=*/"false",
-           "Whether to include the lowering for tosa.apply_rescale to arith">,
-    Option<"use32Bit", "use-32-bit",
-           "bool", /*default=*/"false",
-           "Whether to prioritze lowering to 32-bit operations">
+           "Whether to include the lowering for tosa.apply_rescale to arith">
   ];
 
   let constructor = "tosa::createTosaToArith()";
@@ -859,13 +787,8 @@ def ConvertVectorToGPU : Pass<"convert-vector-to-gpu"> {
                 "dialect";
   let constructor = "mlir::createConvertVectorToGPUPass()";
   let dependentDialects = [
-    "memref::MemRefDialect", "gpu::GPUDialect", "AffineDialect",
-    "vector::VectorDialect", "nvgpu::NVGPUDialect"
-  ];
-
-  let options = [
-    Option<"useNvGpu", "use-nvgpu", "bool", /*default=*/"false",
-      "convert to NvGPU ops instead of GPU dialect ops">
+    "memref::MemRefDialect",
+    "gpu::GPUDialect"
   ];
 }
 
@@ -940,6 +863,17 @@ def ConvertVectorToLLVM : Pass<"convert-vector-to-llvm", "ModuleOp"> {
            "Enables the use of X86Vector dialect while lowering the vector "
 	   "dialect.">
   ];
+}
+
+//===----------------------------------------------------------------------===//
+// VectorToROCDL
+//===----------------------------------------------------------------------===//
+
+def ConvertVectorToROCDL : Pass<"convert-vector-to-rocdl", "ModuleOp"> {
+  let summary = "Lower the operations from the vector dialect into the ROCDL "
+                "dialect";
+  let constructor = "mlir::createConvertVectorToROCDLPass()";
+  let dependentDialects = ["ROCDL::ROCDLDialect"];
 }
 
 //===----------------------------------------------------------------------===//

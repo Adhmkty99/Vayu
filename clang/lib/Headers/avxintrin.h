@@ -1504,10 +1504,7 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c)
 ///    00: Bits [31:0] and [159:128] are copied from the selected operand. \n
 ///    01: Bits [63:32] and [191:160] are copied from the selected operand. \n
 ///    10: Bits [95:64] and [223:192] are copied from the selected operand. \n
-///    11: Bits [127:96] and [255:224] are copied from the selected operand. \n
-///    Note: To generate a mask, you can use the \c _MM_SHUFFLE macro.
-///    <c>_MM_SHUFFLE(b6, b4, b2, b0)</c> can create an 8-bit mask of the form
-///    <c>[b6, b4, b2, b0]</c>.
+///    11: Bits [127:96] and [255:224] are copied from the selected operand.
 /// \returns A 256-bit vector of [8 x float] containing the shuffled values.
 #define _mm256_shuffle_ps(a, b, mask) \
   ((__m256)__builtin_ia32_shufps256((__v8sf)(__m256)(a), \
@@ -1956,16 +1953,12 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c)
 ///
 /// \headerfile <x86intrin.h>
 ///
-/// \code
-/// int _mm256_extract_epi32(__m256i X, const int N);
-/// \endcode
-///
 /// This intrinsic corresponds to the <c> VEXTRACTF128+COMPOSITE </c>
 ///   instruction.
 ///
-/// \param X
+/// \param __a
 ///    A 256-bit vector of [8 x i32].
-/// \param N
+/// \param __imm
 ///    An immediate integer operand with bits [2:0] determining which vector
 ///    element is extracted and returned.
 /// \returns A 32-bit integer containing the extracted 32 bits of extended
@@ -1978,16 +1971,12 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c)
 ///
 /// \headerfile <x86intrin.h>
 ///
-/// \code
-/// int _mm256_extract_epi16(__m256i X, const int N);
-/// \endcode
-///
 /// This intrinsic corresponds to the <c> VEXTRACTF128+COMPOSITE </c>
 ///   instruction.
 ///
-/// \param X
+/// \param __a
 ///    A 256-bit integer vector of [16 x i16].
-/// \param N
+/// \param __imm
 ///    An immediate integer operand with bits [3:0] determining which vector
 ///    element is extracted and returned.
 /// \returns A 32-bit integer containing the extracted 16 bits of zero extended
@@ -2001,16 +1990,12 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c)
 ///
 /// \headerfile <x86intrin.h>
 ///
-/// \code
-/// int _mm256_extract_epi8(__m256i X, const int N);
-/// \endcode
-///
 /// This intrinsic corresponds to the <c> VEXTRACTF128+COMPOSITE </c>
 ///   instruction.
 ///
-/// \param X
+/// \param __a
 ///    A 256-bit integer vector of [32 x i8].
-/// \param N
+/// \param __imm
 ///    An immediate integer operand with bits [4:0] determining which vector
 ///    element is extracted and returned.
 /// \returns A 32-bit integer containing the extracted 8 bits of zero extended
@@ -2025,16 +2010,12 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c)
 ///
 /// \headerfile <x86intrin.h>
 ///
-/// \code
-/// long long _mm256_extract_epi64(__m256i X, const int N);
-/// \endcode
-///
 /// This intrinsic corresponds to the <c> VEXTRACTF128+COMPOSITE </c>
 ///   instruction.
 ///
-/// \param X
+/// \param __a
 ///    A 256-bit integer vector of [4 x i64].
-/// \param N
+/// \param __imm
 ///    An immediate integer operand with bits [1:0] determining which vector
 ///    element is extracted and returned.
 /// \returns A 64-bit integer containing the extracted 64 bits of extended
@@ -2049,22 +2030,18 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c)
 ///
 /// \headerfile <x86intrin.h>
 ///
-/// \code
-/// __m256i _mm256_insert_epi32(__m256i X, int I, const int N);
-/// \endcode
-///
 /// This intrinsic corresponds to the <c> VINSERTF128+COMPOSITE </c>
 ///   instruction.
 ///
-/// \param X
+/// \param __a
 ///    A vector of [8 x i32] to be used by the insert operation.
-/// \param I
+/// \param __b
 ///    An integer value. The replacement value for the insert operation.
-/// \param N
+/// \param __imm
 ///    An immediate integer specifying the index of the vector element to be
 ///    replaced.
-/// \returns A copy of vector \a X, after replacing its element indexed by
-///    \a N with \a I.
+/// \returns A copy of vector \a __a, after replacing its element indexed by
+///    \a __imm with \a __b.
 #define _mm256_insert_epi32(X, I, N) \
   ((__m256i)__builtin_ia32_vec_set_v8si((__v8si)(__m256i)(X), \
                                         (int)(I), (int)(N)))
@@ -2076,22 +2053,18 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c)
 ///
 /// \headerfile <x86intrin.h>
 ///
-/// \code
-/// __m256i _mm256_insert_epi16(__m256i X, int I, const int N);
-/// \endcode
-///
 /// This intrinsic corresponds to the <c> VINSERTF128+COMPOSITE </c>
 ///   instruction.
 ///
-/// \param X
+/// \param __a
 ///    A vector of [16 x i16] to be used by the insert operation.
-/// \param I
+/// \param __b
 ///    An i16 integer value. The replacement value for the insert operation.
-/// \param N
+/// \param __imm
 ///    An immediate integer specifying the index of the vector element to be
 ///    replaced.
-/// \returns A copy of vector \a X, after replacing its element indexed by
-///    \a N with \a I.
+/// \returns A copy of vector \a __a, after replacing its element indexed by
+///    \a __imm with \a __b.
 #define _mm256_insert_epi16(X, I, N) \
   ((__m256i)__builtin_ia32_vec_set_v16hi((__v16hi)(__m256i)(X), \
                                          (int)(I), (int)(N)))
@@ -2102,22 +2075,18 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c)
 ///
 /// \headerfile <x86intrin.h>
 ///
-/// \code
-/// __m256i _mm256_insert_epi8(__m256i X, int I, const int N);
-/// \endcode
-///
 /// This intrinsic corresponds to the <c> VINSERTF128+COMPOSITE </c>
 ///   instruction.
 ///
-/// \param X
+/// \param __a
 ///    A vector of [32 x i8] to be used by the insert operation.
-/// \param I
+/// \param __b
 ///    An i8 integer value. The replacement value for the insert operation.
-/// \param N
+/// \param __imm
 ///    An immediate integer specifying the index of the vector element to be
 ///    replaced.
-/// \returns A copy of vector \a X, after replacing its element indexed by
-///    \a N with \a I.
+/// \returns A copy of vector \a __a, after replacing its element indexed by
+///    \a __imm with \a __b.
 #define _mm256_insert_epi8(X, I, N) \
   ((__m256i)__builtin_ia32_vec_set_v32qi((__v32qi)(__m256i)(X), \
                                          (int)(I), (int)(N)))
@@ -2129,22 +2098,18 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c)
 ///
 /// \headerfile <x86intrin.h>
 ///
-/// \code
-/// __m256i _mm256_insert_epi64(__m256i X, int I, const int N);
-/// \endcode
-///
 /// This intrinsic corresponds to the <c> VINSERTF128+COMPOSITE </c>
 ///   instruction.
 ///
-/// \param X
+/// \param __a
 ///    A vector of [4 x i64] to be used by the insert operation.
-/// \param I
+/// \param __b
 ///    A 64-bit integer value. The replacement value for the insert operation.
-/// \param N
+/// \param __imm
 ///    An immediate integer specifying the index of the vector element to be
 ///    replaced.
-/// \returns A copy of vector \a X, after replacing its element indexed by
-///     \a N with \a I.
+/// \returns A copy of vector \a __a, after replacing its element indexed by
+///     \a __imm with \a __b.
 #define _mm256_insert_epi64(X, I, N) \
   ((__m256i)__builtin_ia32_vec_set_v4di((__v4di)(__m256i)(X), \
                                         (long long)(I), (int)(N)))

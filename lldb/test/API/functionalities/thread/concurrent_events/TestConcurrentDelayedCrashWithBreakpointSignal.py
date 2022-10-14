@@ -9,6 +9,8 @@ from lldbsuite.test.lldbtest import TestBase
 @skipIfWindows
 class ConcurrentDelayedCrashWithBreakpointSignal(ConcurrentEventsBase):
 
+    mydir = ConcurrentEventsBase.compute_mydir(__file__)
+
     # Atomic sequences are not supported yet for MIPS in LLDB.
     @skipIf(triple='^mips')
     def test(self):

@@ -17,10 +17,6 @@ using namespace llvm;
 
 namespace {
 
-static_assert(sizeof(StringMap<uint32_t>) <
-                  sizeof(StringMap<uint32_t, MallocAllocator &>),
-              "Ensure empty base optimization happens with default allocator");
-
 // Test fixture
 class StringMapTest : public testing::Test {
 protected:

@@ -11,6 +11,8 @@ from lldbsuite.test.lldbtest import *
 
 class UniqueTypesTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test(self):
         """Test for unique types of std::vector<long> and std::vector<short>."""
         self.build()

@@ -39,9 +39,7 @@ body: |
     liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
 
     ; GFX7-LABEL: name: and_v2i16
-    ; GFX7: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3
-    ; GFX7-NEXT: {{  $}}
-    ; GFX7-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
+    ; GFX7: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
     ; GFX7-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr1
     ; GFX7-NEXT: [[BUILD_VECTOR:%[0-9]+]]:_(<2 x s32>) = G_BUILD_VECTOR [[COPY]](s32), [[COPY1]](s32)
     ; GFX7-NEXT: [[TRUNC:%[0-9]+]]:_(<2 x s16>) = G_TRUNC [[BUILD_VECTOR]](<2 x s32>)
@@ -81,9 +79,7 @@ body: |
     liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3, $vgpr4, $vgpr5
 
     ; GFX7-LABEL: name: add_v3i16
-    ; GFX7: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3, $vgpr4, $vgpr5
-    ; GFX7-NEXT: {{  $}}
-    ; GFX7-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
+    ; GFX7: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
     ; GFX7-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr1
     ; GFX7-NEXT: [[COPY2:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; GFX7-NEXT: [[COPY3:%[0-9]+]]:_(s32) = COPY $vgpr3
@@ -125,9 +121,7 @@ body: |
     liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3, $vgpr4, $vgpr5
 
     ; GFX7-LABEL: name: shl_v3i16
-    ; GFX7: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3, $vgpr4, $vgpr5
-    ; GFX7-NEXT: {{  $}}
-    ; GFX7-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
+    ; GFX7: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
     ; GFX7-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr1
     ; GFX7-NEXT: [[COPY2:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; GFX7-NEXT: [[COPY3:%[0-9]+]]:_(s32) = COPY $vgpr3
@@ -173,9 +167,7 @@ body: |
     liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3, $vgpr4, $vgpr5, $vgpr6, $vgpr7, $vgpr8, $vgpr9, $vgpr10, $vgpr11
 
     ; GFX7-LABEL: name: fma_v4f16
-    ; GFX7: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3, $vgpr4, $vgpr5, $vgpr6, $vgpr7, $vgpr8, $vgpr9, $vgpr10, $vgpr11
-    ; GFX7-NEXT: {{  $}}
-    ; GFX7-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
+    ; GFX7: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
     ; GFX7-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr1
     ; GFX7-NEXT: [[COPY2:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; GFX7-NEXT: [[COPY3:%[0-9]+]]:_(s32) = COPY $vgpr3
@@ -266,9 +258,7 @@ body: |
     liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3, $vgpr4, $vgpr5, $vgpr6, $vgpr7, $vgpr8, $vgpr9
 
     ; GFX7-LABEL: name: maxnum_v5i16
-    ; GFX7: liveins: $vgpr0, $vgpr1, $vgpr2, $vgpr3, $vgpr4, $vgpr5, $vgpr6, $vgpr7, $vgpr8, $vgpr9
-    ; GFX7-NEXT: {{  $}}
-    ; GFX7-NEXT: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
+    ; GFX7: [[COPY:%[0-9]+]]:_(s32) = COPY $vgpr0
     ; GFX7-NEXT: [[COPY1:%[0-9]+]]:_(s32) = COPY $vgpr1
     ; GFX7-NEXT: [[COPY2:%[0-9]+]]:_(s32) = COPY $vgpr2
     ; GFX7-NEXT: [[COPY3:%[0-9]+]]:_(s32) = COPY $vgpr3

@@ -1951,10 +1951,7 @@ public:
   /// in; this is either the interface where the ivar was declared, or the
   /// interface the ivar is conceptually a part of in the case of synthesized
   /// ivars.
-  ObjCInterfaceDecl *getContainingInterface();
-  const ObjCInterfaceDecl *getContainingInterface() const {
-    return const_cast<ObjCIvarDecl *>(this)->getContainingInterface();
-  }
+  const ObjCInterfaceDecl *getContainingInterface() const;
 
   ObjCIvarDecl *getNextIvar() { return NextIvar; }
   const ObjCIvarDecl *getNextIvar() const { return NextIvar; }
@@ -2888,16 +2885,15 @@ ObjCInterfaceDecl::filtered_category_iterator<Filter>::operator++() {
 }
 
 inline bool ObjCInterfaceDecl::isVisibleCategory(ObjCCategoryDecl *Cat) {
-  return !Cat->isInvalidDecl() && Cat->isUnconditionallyVisible();
+  return Cat->isUnconditionallyVisible();
 }
 
 inline bool ObjCInterfaceDecl::isVisibleExtension(ObjCCategoryDecl *Cat) {
-  return !Cat->isInvalidDecl() && Cat->IsClassExtension() &&
-         Cat->isUnconditionallyVisible();
+  return Cat->IsClassExtension() && Cat->isUnconditionallyVisible();
 }
 
 inline bool ObjCInterfaceDecl::isKnownExtension(ObjCCategoryDecl *Cat) {
-  return !Cat->isInvalidDecl() && Cat->IsClassExtension();
+  return Cat->IsClassExtension();
 }
 
 } // namespace clang

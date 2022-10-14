@@ -216,7 +216,7 @@ using AccFuncVector = std::vector<std::unique_ptr<MemoryAccess>>;
 /// Objects are accessible via the ScoP, MemoryAccess or the id associated with
 /// the MemoryAccess access function.
 ///
-class ScopArrayInfo final {
+class ScopArrayInfo {
 public:
   /// Construct a ScopArrayInfo object.
   ///
@@ -428,7 +428,7 @@ private:
 };
 
 /// Represent memory accesses in statements.
-class MemoryAccess final {
+class MemoryAccess {
   friend class Scop;
   friend class ScopStmt;
   friend class ScopBuilder;
@@ -1135,7 +1135,7 @@ using InvariantEquivClassesTy = SmallVector<InvariantEquivClassTy, 8>;
 /// It is further described by its iteration domain, its schedule and its data
 /// accesses.
 /// At the moment every statement represents a single basic block of LLVM-IR.
-class ScopStmt final {
+class ScopStmt {
   friend class ScopBuilder;
 
 public:
@@ -1359,7 +1359,8 @@ public:
     if (!Inst)
       return false;
     if (isBlockStmt())
-      return llvm::is_contained(Instructions, Inst);
+      return std::find(Instructions.begin(), Instructions.end(), Inst) !=
+             Instructions.end();
     return represents(Inst->getParent());
   }
 
@@ -1625,7 +1626,7 @@ raw_ostream &operator<<(raw_ostream &OS, const ScopStmt &S);
 ///   * A context
 ///   This context contains information about the values the parameters
 ///   can take and relations between different parameters.
-class Scop final {
+class Scop {
 public:
   /// Type to represent a pair of minimal/maximal access to an array.
   using MinMaxAccessTy = std::pair<isl::pw_multi_aff, isl::pw_multi_aff>;
@@ -2683,7 +2684,7 @@ raw_ostream &operator<<(raw_ostream &OS, const Scop &scop);
 
 /// The legacy pass manager's analysis pass to compute scop information
 ///        for a region.
-class ScopInfoRegionPass final : public RegionPass {
+class ScopInfoRegionPass : public RegionPass {
   /// The Scop pointer which is used to construct a Scop.
   std::unique_ptr<Scop> S;
 
@@ -2773,7 +2774,7 @@ public:
   bool empty() const { return RegionToScopMap.empty(); }
 };
 
-struct ScopInfoAnalysis : AnalysisInfoMixin<ScopInfoAnalysis> {
+struct ScopInfoAnalysis : public AnalysisInfoMixin<ScopInfoAnalysis> {
   static AnalysisKey Key;
 
   using Result = ScopInfo;
@@ -2781,7 +2782,7 @@ struct ScopInfoAnalysis : AnalysisInfoMixin<ScopInfoAnalysis> {
   Result run(Function &, FunctionAnalysisManager &);
 };
 
-struct ScopInfoPrinterPass final : PassInfoMixin<ScopInfoPrinterPass> {
+struct ScopInfoPrinterPass : public PassInfoMixin<ScopInfoPrinterPass> {
   ScopInfoPrinterPass(raw_ostream &OS) : Stream(OS) {}
 
   PreservedAnalyses run(Function &, FunctionAnalysisManager &);
@@ -2797,7 +2798,7 @@ struct ScopInfoPrinterPass final : PassInfoMixin<ScopInfoPrinterPass> {
 /// scop object for all the feasible scops present in a function.
 /// This pass is an alternative to the ScopInfoRegionPass in order to avoid a
 /// region pass manager.
-class ScopInfoWrapperPass final : public FunctionPass {
+class ScopInfoWrapperPass : public FunctionPass {
   std::unique_ptr<ScopInfo> Result;
 
 public:

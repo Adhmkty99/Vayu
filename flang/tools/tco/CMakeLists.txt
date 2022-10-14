@@ -9,7 +9,7 @@ target_link_libraries(tco PRIVATE
   FIRBuilder
   ${dialect_libs}
   MLIRIR
-  MLIRLLVMDialect
+  MLIRLLVMIR
   MLIRLLVMToLLVMIRTranslation
   MLIRTargetLLVMIRExport
   MLIRPass
@@ -21,5 +21,4 @@ target_link_libraries(tco PRIVATE
   MLIRParser
   MLIRSupport
   MLIRVectorToLLVM
-  LLVMPasses
 )

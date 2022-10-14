@@ -198,11 +198,6 @@ NVPTX
 * `CUDA Documentation <http://docs.nvidia.com/cuda/index.html>`_ includes the PTX
   ISA and Driver API documentation
 
-SPIR-V
-======
-
-* `SPIR-V documentation <https://www.khronos.org/registry/SPIR-V/>`_
-
 Miscellaneous Resources
 =======================
 

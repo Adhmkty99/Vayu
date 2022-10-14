@@ -6,6 +6,9 @@
  *
  *===----------------------------------------------------------------------===*)
 
+external add_argument_promotion
+  : [ `Module ] Llvm.PassManager.t -> unit
+  = "llvm_add_argument_promotion"
 external add_constant_merge
   : [ `Module ] Llvm.PassManager.t -> unit
   = "llvm_add_constant_merge"

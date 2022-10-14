@@ -31,7 +31,6 @@ void* test8(void) {return 1 ? test6 : test7;}
 
 
 void _efree(void *ptr);
-void free(void *ptr);
 
 void _php_stream_free3(void) {
   (1 ? free(0) : _efree(0));

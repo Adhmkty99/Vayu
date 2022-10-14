@@ -207,7 +207,7 @@ getTypeNumBytes(const SPIRVTypeConverter::Options &options, Type type) {
     auto elementSize = getTypeNumBytes(options, vecType.getElementType());
     if (!elementSize)
       return llvm::None;
-    return vecType.getNumElements() * *elementSize;
+    return vecType.getNumElements() * elementSize.getValue();
   }
 
   if (auto memRefType = type.dyn_cast<MemRefType>()) {
@@ -239,7 +239,7 @@ getTypeNumBytes(const SPIRVTypeConverter::Options &options, Type type) {
     for (const auto &shape : enumerate(dims))
       memrefSize = std::max(memrefSize, shape.value() * strides[shape.index()]);
 
-    return (offset + memrefSize) * *elementSize;
+    return (offset + memrefSize) * elementSize.getValue();
   }
 
   if (auto tensorType = type.dyn_cast<TensorType>()) {
@@ -250,7 +250,7 @@ getTypeNumBytes(const SPIRVTypeConverter::Options &options, Type type) {
     if (!elementSize)
       return llvm::None;
 
-    int64_t size = *elementSize;
+    int64_t size = elementSize.getValue();
     for (auto shape : tensorType.getShape())
       size *= shape;
 
@@ -370,7 +370,7 @@ static Type convertTensorType(const spirv::TargetEnv &targetEnv,
     return nullptr;
   }
 
-  return spirv::ArrayType::get(arrayElemType, arrayElemCount);
+  return spirv::ArrayType::get(arrayElemType, arrayElemCount, *arrayElemSize);
 }
 
 static Type convertBoolMemrefType(const spirv::TargetEnv &targetEnv,
@@ -407,15 +407,15 @@ static Type convertBoolMemrefType(const spirv::TargetEnv &targetEnv,
   }
 
   if (!type.hasStaticShape()) {
-    int64_t stride = needsExplicitLayout(*storageClass) ? *arrayElemSize : 0;
-    auto arrayType = spirv::RuntimeArrayType::get(arrayElemType, stride);
+    auto arrayType =
+        spirv::RuntimeArrayType::get(arrayElemType, *arrayElemSize);
     return wrapInStructAndGetPointer(arrayType, *storageClass);
   }
 
   int64_t memrefSize = (type.getNumElements() * numBoolBits + 7) / 8;
-  auto arrayElemCount = llvm::divideCeil(memrefSize, *arrayElemSize);
-  int64_t stride = needsExplicitLayout(*storageClass) ? *arrayElemSize : 0;
-  auto arrayType = spirv::ArrayType::get(arrayElemType, arrayElemCount, stride);
+  auto arrayElemCount = (memrefSize + *arrayElemSize - 1) / *arrayElemSize;
+  auto arrayType =
+      spirv::ArrayType::get(arrayElemType, arrayElemCount, *arrayElemSize);
 
   return wrapInStructAndGetPointer(arrayType, *storageClass);
 }
@@ -455,6 +455,13 @@ static Type convertMemrefType(const spirv::TargetEnv &targetEnv,
   if (!arrayElemType)
     return nullptr;
 
+  Optional<int64_t> elementSize = getTypeNumBytes(options, elementType);
+  if (!elementSize) {
+    LLVM_DEBUG(llvm::dbgs()
+               << type << " illegal: cannot deduce element size\n");
+    return nullptr;
+  }
+
   Optional<int64_t> arrayElemSize = getTypeNumBytes(options, arrayElemType);
   if (!arrayElemSize) {
     LLVM_DEBUG(llvm::dbgs()
@@ -463,8 +470,8 @@ static Type convertMemrefType(const spirv::TargetEnv &targetEnv,
   }
 
   if (!type.hasStaticShape()) {
-    int64_t stride = needsExplicitLayout(*storageClass) ? *arrayElemSize : 0;
-    auto arrayType = spirv::RuntimeArrayType::get(arrayElemType, stride);
+    auto arrayType =
+        spirv::RuntimeArrayType::get(arrayElemType, *arrayElemSize);
     return wrapInStructAndGetPointer(arrayType, *storageClass);
   }
 
@@ -475,9 +482,11 @@ static Type convertMemrefType(const spirv::TargetEnv &targetEnv,
     return nullptr;
   }
 
-  auto arrayElemCount = llvm::divideCeil(*memrefSize, *arrayElemSize);
-  int64_t stride = needsExplicitLayout(*storageClass) ? *arrayElemSize : 0;
-  auto arrayType = spirv::ArrayType::get(arrayElemType, arrayElemCount, stride);
+  auto arrayElemCount = *memrefSize / *elementSize;
+
+
+  auto arrayType =
+      spirv::ArrayType::get(arrayElemType, arrayElemCount, *arrayElemSize);
 
   return wrapInStructAndGetPointer(arrayType, *storageClass);
 }
@@ -525,24 +534,24 @@ SPIRVTypeConverter::SPIRVTypeConverter(spirv::TargetEnvAttr targetAttr,
 }
 
 //===----------------------------------------------------------------------===//
-// func::FuncOp Conversion Patterns
+// FuncOp Conversion Patterns
 //===----------------------------------------------------------------------===//
 
 namespace {
 /// A pattern for rewriting function signature to convert arguments of functions
 /// to be of valid SPIR-V types.
-class FuncOpConversion final : public OpConversionPattern<func::FuncOp> {
+class FuncOpConversion final : public OpConversionPattern<FuncOp> {
 public:
-  using OpConversionPattern<func::FuncOp>::OpConversionPattern;
+  using OpConversionPattern<FuncOp>::OpConversionPattern;
 
   LogicalResult
-  matchAndRewrite(func::FuncOp funcOp, OpAdaptor adaptor,
+  matchAndRewrite(FuncOp funcOp, OpAdaptor adaptor,
                   ConversionPatternRewriter &rewriter) const override;
 };
 } // namespace
 
 LogicalResult
-FuncOpConversion::matchAndRewrite(func::FuncOp funcOp, OpAdaptor adaptor,
+FuncOpConversion::matchAndRewrite(FuncOp funcOp, OpAdaptor adaptor,
                                   ConversionPatternRewriter &rewriter) const {
   auto fnType = funcOp.getFunctionType();
   if (fnType.getNumResults() > 1)
@@ -604,7 +613,7 @@ static spirv::GlobalVariableOp getBuiltinVariable(Block &body,
             spirv::SPIRVDialect::getAttributeName(
                 spirv::Decoration::BuiltIn))) {
       auto varBuiltIn = spirv::symbolizeBuiltIn(builtinAttr.getValue());
-      if (varBuiltIn && *varBuiltIn == builtin) {
+      if (varBuiltIn && varBuiltIn.getValue() == builtin) {
         return varOp;
       }
     }

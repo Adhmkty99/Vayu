@@ -8,7 +8,6 @@
 // RUN:   | llvm-dwarfdump --verify -
 
 #include <cstdint>
-#include <cstddef>
 template<typename ...Ts>
 struct t1 {
 };

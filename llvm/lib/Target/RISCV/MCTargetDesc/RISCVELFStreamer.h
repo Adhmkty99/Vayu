@@ -92,8 +92,6 @@ private:
   void finishAttributeSection() override;
   size_t calculateContentSize() const;
 
-  void reset() override;
-
 public:
   MCELFStreamer &getStreamer();
   RISCVTargetELFStreamer(MCStreamer &S, const MCSubtargetInfo &STI);

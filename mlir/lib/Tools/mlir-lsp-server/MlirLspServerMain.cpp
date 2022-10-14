@@ -70,5 +70,6 @@ LogicalResult mlir::MlirLspServerMain(int argc, char **argv,
 
   // Configure the servers and start the main language server.
   MLIRServer server(registry);
-  return runMlirLSPServer(server, transport);
+  LSPServer lspServer(server, transport);
+  return lspServer.run();
 }

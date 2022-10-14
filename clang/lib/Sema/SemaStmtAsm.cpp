@@ -254,7 +254,7 @@ StmtResult Sema::ActOnGCCAsmStmt(SourceLocation AsmLoc, bool IsSimple,
   SmallVector<TargetInfo::ConstraintInfo, 4> OutputConstraintInfos;
 
   // The parser verifies that there is a string literal here.
-  assert(AsmString->isOrdinary());
+  assert(AsmString->isAscii());
 
   FunctionDecl *FD = dyn_cast<FunctionDecl>(getCurLexicalContext());
   llvm::StringMap<bool> FeatureMap;
@@ -262,7 +262,7 @@ StmtResult Sema::ActOnGCCAsmStmt(SourceLocation AsmLoc, bool IsSimple,
 
   for (unsigned i = 0; i != NumOutputs; i++) {
     StringLiteral *Literal = Constraints[i];
-    assert(Literal->isOrdinary());
+    assert(Literal->isAscii());
 
     StringRef OutputName;
     if (Names[i])
@@ -353,7 +353,7 @@ StmtResult Sema::ActOnGCCAsmStmt(SourceLocation AsmLoc, bool IsSimple,
 
   for (unsigned i = NumOutputs, e = NumOutputs + NumInputs; i != e; i++) {
     StringLiteral *Literal = Constraints[i];
-    assert(Literal->isOrdinary());
+    assert(Literal->isAscii());
 
     StringRef InputName;
     if (Names[i])
@@ -459,7 +459,7 @@ StmtResult Sema::ActOnGCCAsmStmt(SourceLocation AsmLoc, bool IsSimple,
   // Check that the clobbers are valid.
   for (unsigned i = 0; i != NumClobbers; i++) {
     StringLiteral *Literal = Clobbers[i];
-    assert(Literal->isOrdinary());
+    assert(Literal->isAscii());
 
     StringRef Clobber = Literal->getString();
 
@@ -716,7 +716,10 @@ StmtResult Sema::ActOnGCCAsmStmt(SourceLocation AsmLoc, bool IsSimple,
       NamedOperandList.emplace_back(
           std::make_pair(Names[i]->getName(), Exprs[i]));
   // Sort NamedOperandList.
-  llvm::stable_sort(NamedOperandList, llvm::less_first());
+  std::stable_sort(NamedOperandList.begin(), NamedOperandList.end(),
+              [](const NamedOperand &LHS, const NamedOperand &RHS) {
+                return LHS.first < RHS.first;
+              });
   // Find adjacent duplicate operand.
   SmallVector<NamedOperand, 4>::iterator Found =
       std::adjacent_find(begin(NamedOperandList), end(NamedOperandList),
@@ -733,9 +736,6 @@ StmtResult Sema::ActOnGCCAsmStmt(SourceLocation AsmLoc, bool IsSimple,
   }
   if (NS->isAsmGoto())
     setFunctionHasBranchIntoScope();
-
-  CleanupVarDeclMarking();
-  DiscardCleanupsInEvaluationContext();
   return NS;
 }
 

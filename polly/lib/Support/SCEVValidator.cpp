@@ -35,7 +35,7 @@ enum TYPE {
 } // namespace SCEVType
 
 /// The result the validator returns for a SCEV expression.
-class ValidatorResult final {
+class ValidatorResult {
   /// The type of the expression
   SCEVType::TYPE Type;
 
@@ -112,13 +112,14 @@ public:
   }
 };
 
-raw_ostream &operator<<(raw_ostream &OS, ValidatorResult &VR) {
+raw_ostream &operator<<(raw_ostream &OS, class ValidatorResult &VR) {
   VR.print(OS);
   return OS;
 }
 
 /// Check if a SCEV is valid in a SCoP.
-class SCEVValidator : public SCEVVisitor<SCEVValidator, ValidatorResult> {
+struct SCEVValidator
+    : public SCEVVisitor<SCEVValidator, class ValidatorResult> {
 private:
   const Region *R;
   Loop *Scope;
@@ -130,12 +131,12 @@ public:
                 InvariantLoadsSetTy *ILS)
       : R(R), Scope(Scope), SE(SE), ILS(ILS) {}
 
-  ValidatorResult visitConstant(const SCEVConstant *Constant) {
+  class ValidatorResult visitConstant(const SCEVConstant *Constant) {
     return ValidatorResult(SCEVType::INT);
   }
 
-  ValidatorResult visitZeroExtendOrTruncateExpr(const SCEV *Expr,
-                                                const SCEV *Operand) {
+  class ValidatorResult visitZeroExtendOrTruncateExpr(const SCEV *Expr,
+                                                      const SCEV *Operand) {
     ValidatorResult Op = visit(Operand);
     auto Type = Op.getType();
 
@@ -149,23 +150,23 @@ public:
     return ValidatorResult(SCEVType::PARAM, Expr);
   }
 
-  ValidatorResult visitPtrToIntExpr(const SCEVPtrToIntExpr *Expr) {
+  class ValidatorResult visitPtrToIntExpr(const SCEVPtrToIntExpr *Expr) {
     return visit(Expr->getOperand());
   }
 
-  ValidatorResult visitTruncateExpr(const SCEVTruncateExpr *Expr) {
+  class ValidatorResult visitTruncateExpr(const SCEVTruncateExpr *Expr) {
     return visitZeroExtendOrTruncateExpr(Expr, Expr->getOperand());
   }
 
-  ValidatorResult visitZeroExtendExpr(const SCEVZeroExtendExpr *Expr) {
+  class ValidatorResult visitZeroExtendExpr(const SCEVZeroExtendExpr *Expr) {
     return visitZeroExtendOrTruncateExpr(Expr, Expr->getOperand());
   }
 
-  ValidatorResult visitSignExtendExpr(const SCEVSignExtendExpr *Expr) {
+  class ValidatorResult visitSignExtendExpr(const SCEVSignExtendExpr *Expr) {
     return visit(Expr->getOperand());
   }
 
-  ValidatorResult visitAddExpr(const SCEVAddExpr *Expr) {
+  class ValidatorResult visitAddExpr(const SCEVAddExpr *Expr) {
     ValidatorResult Return(SCEVType::INT);
 
     for (int i = 0, e = Expr->getNumOperands(); i < e; ++i) {
@@ -180,7 +181,7 @@ public:
     return Return;
   }
 
-  ValidatorResult visitMulExpr(const SCEVMulExpr *Expr) {
+  class ValidatorResult visitMulExpr(const SCEVMulExpr *Expr) {
     ValidatorResult Return(SCEVType::INT);
 
     bool HasMultipleParams = false;
@@ -216,7 +217,7 @@ public:
     return Return;
   }
 
-  ValidatorResult visitAddRecExpr(const SCEVAddRecExpr *Expr) {
+  class ValidatorResult visitAddRecExpr(const SCEVAddRecExpr *Expr) {
     if (!Expr->isAffine()) {
       LLVM_DEBUG(dbgs() << "INVALID: AddRec is not affine");
       return ValidatorResult(SCEVType::INVALID);
@@ -271,7 +272,7 @@ public:
     return ZeroStartResult;
   }
 
-  ValidatorResult visitSMaxExpr(const SCEVSMaxExpr *Expr) {
+  class ValidatorResult visitSMaxExpr(const SCEVSMaxExpr *Expr) {
     ValidatorResult Return(SCEVType::INT);
 
     for (int i = 0, e = Expr->getNumOperands(); i < e; ++i) {
@@ -286,7 +287,7 @@ public:
     return Return;
   }
 
-  ValidatorResult visitSMinExpr(const SCEVSMinExpr *Expr) {
+  class ValidatorResult visitSMinExpr(const SCEVSMinExpr *Expr) {
     ValidatorResult Return(SCEVType::INT);
 
     for (int i = 0, e = Expr->getNumOperands(); i < e; ++i) {
@@ -301,7 +302,7 @@ public:
     return Return;
   }
 
-  ValidatorResult visitUMaxExpr(const SCEVUMaxExpr *Expr) {
+  class ValidatorResult visitUMaxExpr(const SCEVUMaxExpr *Expr) {
     // We do not support unsigned max operations. If 'Expr' is constant during
     // Scop execution we treat this as a parameter, otherwise we bail out.
     for (int i = 0, e = Expr->getNumOperands(); i < e; ++i) {
@@ -316,7 +317,7 @@ public:
     return ValidatorResult(SCEVType::PARAM, Expr);
   }
 
-  ValidatorResult visitUMinExpr(const SCEVUMinExpr *Expr) {
+  class ValidatorResult visitUMinExpr(const SCEVUMinExpr *Expr) {
     // We do not support unsigned min operations. If 'Expr' is constant during
     // Scop execution we treat this as a parameter, otherwise we bail out.
     for (int i = 0, e = Expr->getNumOperands(); i < e; ++i) {
@@ -331,7 +332,8 @@ public:
     return ValidatorResult(SCEVType::PARAM, Expr);
   }
 
-  ValidatorResult visitSequentialUMinExpr(const SCEVSequentialUMinExpr *Expr) {
+  class ValidatorResult
+  visitSequentialUMinExpr(const SCEVSequentialUMinExpr *Expr) {
     // We do not support unsigned min operations. If 'Expr' is constant during
     // Scop execution we treat this as a parameter, otherwise we bail out.
     for (int i = 0, e = Expr->getNumOperands(); i < e; ++i) {
@@ -462,7 +464,7 @@ public:
 };
 
 /// Check whether a SCEV refers to an SSA name defined inside a region.
-class SCEVInRegionDependences final {
+class SCEVInRegionDependences {
   const Region *R;
   Loop *Scope;
   const InvariantLoadsSetTy &ILS;
@@ -518,7 +520,7 @@ public:
 };
 
 /// Find all loops referenced in SCEVAddRecExprs.
-class SCEVFindLoops final {
+class SCEVFindLoops {
   SetVector<const Loop *> &Loops;
 
 public:
@@ -539,7 +541,7 @@ void polly::findLoops(const SCEV *Expr, SetVector<const Loop *> &Loops) {
 }
 
 /// Find all values referenced in SCEVUnknowns.
-class SCEVFindValues final {
+class SCEVFindValues {
   ScalarEvolution &SE;
   SetVector<Value *> &Values;
 

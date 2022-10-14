@@ -7,6 +7,8 @@ from lldbsuite.test import lldbutil
 
 class TestTargetSymbolsSepDebugSymlink(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @no_debug_info_test  # Prevent the genaration of the dwarf version of this test
     @skipUnlessPlatform(['linux'])
     @skipIf(hostoslist=["windows"])

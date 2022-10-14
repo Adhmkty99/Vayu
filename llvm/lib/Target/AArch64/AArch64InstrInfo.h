@@ -103,15 +103,6 @@ public:
   /// Returns whether the instruction is a pre-indexed load/store.
   static bool isPreLdSt(const MachineInstr &MI);
 
-  /// Returns whether the instruction is a paired load/store.
-  static bool isPairedLdSt(const MachineInstr &MI);
-
-  /// Returns the base register operator of a load/store.
-  static const MachineOperand &getLdStBaseOp(const MachineInstr &MI);
-
-  /// Returns the the immediate offset operator of a load/store.
-  static const MachineOperand &getLdStOffsetOp(const MachineInstr &MI);
-
   /// Returns whether the instruction is FP or NEON.
   static bool isFpOrNEON(const MachineInstr &MI);
 
@@ -405,8 +396,7 @@ bool isNZCVTouchedInInstructionRange(const MachineInstr &DefMI,
                                      const TargetRegisterInfo *TRI);
 
 MCCFIInstruction createDefCFA(const TargetRegisterInfo &TRI, unsigned FrameReg,
-                              unsigned Reg, const StackOffset &Offset,
-                              bool LastAdjustmentWasScalable = true);
+                              unsigned Reg, const StackOffset &Offset);
 MCCFIInstruction createCFAOffset(const TargetRegisterInfo &MRI, unsigned Reg,
                                  const StackOffset &OffsetFromDefCFA);
 

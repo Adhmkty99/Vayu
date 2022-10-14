@@ -18,8 +18,9 @@ define <vscale x 1 x i8> @sextload_nxv1i1_nxv1i8(<vscale x 1 x i1>* %x) {
 define <vscale x 1 x i16> @sextload_nxv1i8_nxv1i16(<vscale x 1 x i8>* %x) {
 ; CHECK-LABEL: sextload_nxv1i8_nxv1i16:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e16, mf4, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf8, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e16, mf4, ta, mu
 ; CHECK-NEXT:    vsext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i8>, <vscale x 1 x i8>* %x
@@ -30,8 +31,9 @@ define <vscale x 1 x i16> @sextload_nxv1i8_nxv1i16(<vscale x 1 x i8>* %x) {
 define <vscale x 1 x i16> @zextload_nxv1i8_nxv1i16(<vscale x 1 x i8>* %x) {
 ; CHECK-LABEL: zextload_nxv1i8_nxv1i16:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e16, mf4, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf8, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e16, mf4, ta, mu
 ; CHECK-NEXT:    vzext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i8>, <vscale x 1 x i8>* %x
@@ -42,8 +44,9 @@ define <vscale x 1 x i16> @zextload_nxv1i8_nxv1i16(<vscale x 1 x i8>* %x) {
 define <vscale x 1 x i32> @sextload_nxv1i8_nxv1i32(<vscale x 1 x i8>* %x) {
 ; CHECK-LABEL: sextload_nxv1i8_nxv1i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, mf2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf8, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, mf2, ta, mu
 ; CHECK-NEXT:    vsext.vf4 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i8>, <vscale x 1 x i8>* %x
@@ -54,8 +57,9 @@ define <vscale x 1 x i32> @sextload_nxv1i8_nxv1i32(<vscale x 1 x i8>* %x) {
 define <vscale x 1 x i32> @zextload_nxv1i8_nxv1i32(<vscale x 1 x i8>* %x) {
 ; CHECK-LABEL: zextload_nxv1i8_nxv1i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, mf2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf8, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, mf2, ta, mu
 ; CHECK-NEXT:    vzext.vf4 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i8>, <vscale x 1 x i8>* %x
@@ -66,8 +70,9 @@ define <vscale x 1 x i32> @zextload_nxv1i8_nxv1i32(<vscale x 1 x i8>* %x) {
 define <vscale x 1 x i64> @sextload_nxv1i8_nxv1i64(<vscale x 1 x i8>* %x) {
 ; CHECK-LABEL: sextload_nxv1i8_nxv1i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf8, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m1, ta, mu
 ; CHECK-NEXT:    vsext.vf8 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i8>, <vscale x 1 x i8>* %x
@@ -78,8 +83,9 @@ define <vscale x 1 x i64> @sextload_nxv1i8_nxv1i64(<vscale x 1 x i8>* %x) {
 define <vscale x 1 x i64> @zextload_nxv1i8_nxv1i64(<vscale x 1 x i8>* %x) {
 ; CHECK-LABEL: zextload_nxv1i8_nxv1i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf8, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m1, ta, mu
 ; CHECK-NEXT:    vzext.vf8 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i8>, <vscale x 1 x i8>* %x
@@ -90,8 +96,9 @@ define <vscale x 1 x i64> @zextload_nxv1i8_nxv1i64(<vscale x 1 x i8>* %x) {
 define <vscale x 2 x i16> @sextload_nxv2i8_nxv2i16(<vscale x 2 x i8>* %x) {
 ; CHECK-LABEL: sextload_nxv2i8_nxv2i16:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e16, mf2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf4, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e16, mf2, ta, mu
 ; CHECK-NEXT:    vsext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i8>, <vscale x 2 x i8>* %x
@@ -102,8 +109,9 @@ define <vscale x 2 x i16> @sextload_nxv2i8_nxv2i16(<vscale x 2 x i8>* %x) {
 define <vscale x 2 x i16> @zextload_nxv2i8_nxv2i16(<vscale x 2 x i8>* %x) {
 ; CHECK-LABEL: zextload_nxv2i8_nxv2i16:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e16, mf2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf4, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e16, mf2, ta, mu
 ; CHECK-NEXT:    vzext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i8>, <vscale x 2 x i8>* %x
@@ -114,8 +122,9 @@ define <vscale x 2 x i16> @zextload_nxv2i8_nxv2i16(<vscale x 2 x i8>* %x) {
 define <vscale x 2 x i32> @sextload_nxv2i8_nxv2i32(<vscale x 2 x i8>* %x) {
 ; CHECK-LABEL: sextload_nxv2i8_nxv2i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf4, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, m1, ta, mu
 ; CHECK-NEXT:    vsext.vf4 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i8>, <vscale x 2 x i8>* %x
@@ -126,8 +135,9 @@ define <vscale x 2 x i32> @sextload_nxv2i8_nxv2i32(<vscale x 2 x i8>* %x) {
 define <vscale x 2 x i32> @zextload_nxv2i8_nxv2i32(<vscale x 2 x i8>* %x) {
 ; CHECK-LABEL: zextload_nxv2i8_nxv2i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf4, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, m1, ta, mu
 ; CHECK-NEXT:    vzext.vf4 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i8>, <vscale x 2 x i8>* %x
@@ -138,8 +148,9 @@ define <vscale x 2 x i32> @zextload_nxv2i8_nxv2i32(<vscale x 2 x i8>* %x) {
 define <vscale x 2 x i64> @sextload_nxv2i8_nxv2i64(<vscale x 2 x i8>* %x) {
 ; CHECK-LABEL: sextload_nxv2i8_nxv2i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf4, ta, mu
 ; CHECK-NEXT:    vle8.v v10, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m2, ta, mu
 ; CHECK-NEXT:    vsext.vf8 v8, v10
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i8>, <vscale x 2 x i8>* %x
@@ -150,8 +161,9 @@ define <vscale x 2 x i64> @sextload_nxv2i8_nxv2i64(<vscale x 2 x i8>* %x) {
 define <vscale x 2 x i64> @zextload_nxv2i8_nxv2i64(<vscale x 2 x i8>* %x) {
 ; CHECK-LABEL: zextload_nxv2i8_nxv2i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf4, ta, mu
 ; CHECK-NEXT:    vle8.v v10, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m2, ta, mu
 ; CHECK-NEXT:    vzext.vf8 v8, v10
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i8>, <vscale x 2 x i8>* %x
@@ -162,8 +174,9 @@ define <vscale x 2 x i64> @zextload_nxv2i8_nxv2i64(<vscale x 2 x i8>* %x) {
 define <vscale x 4 x i16> @sextload_nxv4i8_nxv4i16(<vscale x 4 x i8>* %x) {
 ; CHECK-LABEL: sextload_nxv4i8_nxv4i16:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e16, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf2, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e16, m1, ta, mu
 ; CHECK-NEXT:    vsext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 4 x i8>, <vscale x 4 x i8>* %x
@@ -174,8 +187,9 @@ define <vscale x 4 x i16> @sextload_nxv4i8_nxv4i16(<vscale x 4 x i8>* %x) {
 define <vscale x 4 x i16> @zextload_nxv4i8_nxv4i16(<vscale x 4 x i8>* %x) {
 ; CHECK-LABEL: zextload_nxv4i8_nxv4i16:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e16, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf2, ta, mu
 ; CHECK-NEXT:    vle8.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e16, m1, ta, mu
 ; CHECK-NEXT:    vzext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 4 x i8>, <vscale x 4 x i8>* %x
@@ -186,8 +200,9 @@ define <vscale x 4 x i16> @zextload_nxv4i8_nxv4i16(<vscale x 4 x i8>* %x) {
 define <vscale x 4 x i32> @sextload_nxv4i8_nxv4i32(<vscale x 4 x i8>* %x) {
 ; CHECK-LABEL: sextload_nxv4i8_nxv4i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, m2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf2, ta, mu
 ; CHECK-NEXT:    vle8.v v10, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, m2, ta, mu
 ; CHECK-NEXT:    vsext.vf4 v8, v10
 ; CHECK-NEXT:    ret
   %y = load <vscale x 4 x i8>, <vscale x 4 x i8>* %x
@@ -198,8 +213,9 @@ define <vscale x 4 x i32> @sextload_nxv4i8_nxv4i32(<vscale x 4 x i8>* %x) {
 define <vscale x 4 x i32> @zextload_nxv4i8_nxv4i32(<vscale x 4 x i8>* %x) {
 ; CHECK-LABEL: zextload_nxv4i8_nxv4i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, m2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf2, ta, mu
 ; CHECK-NEXT:    vle8.v v10, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, m2, ta, mu
 ; CHECK-NEXT:    vzext.vf4 v8, v10
 ; CHECK-NEXT:    ret
   %y = load <vscale x 4 x i8>, <vscale x 4 x i8>* %x
@@ -210,8 +226,9 @@ define <vscale x 4 x i32> @zextload_nxv4i8_nxv4i32(<vscale x 4 x i8>* %x) {
 define <vscale x 4 x i64> @sextload_nxv4i8_nxv4i64(<vscale x 4 x i8>* %x) {
 ; CHECK-LABEL: sextload_nxv4i8_nxv4i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m4, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf2, ta, mu
 ; CHECK-NEXT:    vle8.v v12, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m4, ta, mu
 ; CHECK-NEXT:    vsext.vf8 v8, v12
 ; CHECK-NEXT:    ret
   %y = load <vscale x 4 x i8>, <vscale x 4 x i8>* %x
@@ -222,8 +239,9 @@ define <vscale x 4 x i64> @sextload_nxv4i8_nxv4i64(<vscale x 4 x i8>* %x) {
 define <vscale x 4 x i64> @zextload_nxv4i8_nxv4i64(<vscale x 4 x i8>* %x) {
 ; CHECK-LABEL: zextload_nxv4i8_nxv4i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m4, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e8, mf2, ta, mu
 ; CHECK-NEXT:    vle8.v v12, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m4, ta, mu
 ; CHECK-NEXT:    vzext.vf8 v8, v12
 ; CHECK-NEXT:    ret
   %y = load <vscale x 4 x i8>, <vscale x 4 x i8>* %x
@@ -403,8 +421,9 @@ define void @truncstore_nxv1i16_nxv1i8(<vscale x 1 x i16> %x, <vscale x 1 x i8>*
 define <vscale x 1 x i32> @sextload_nxv1i16_nxv1i32(<vscale x 1 x i16>* %x) {
 ; CHECK-LABEL: sextload_nxv1i16_nxv1i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, mf2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e16, mf4, ta, mu
 ; CHECK-NEXT:    vle16.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, mf2, ta, mu
 ; CHECK-NEXT:    vsext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i16>, <vscale x 1 x i16>* %x
@@ -415,8 +434,9 @@ define <vscale x 1 x i32> @sextload_nxv1i16_nxv1i32(<vscale x 1 x i16>* %x) {
 define <vscale x 1 x i32> @zextload_nxv1i16_nxv1i32(<vscale x 1 x i16>* %x) {
 ; CHECK-LABEL: zextload_nxv1i16_nxv1i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, mf2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e16, mf4, ta, mu
 ; CHECK-NEXT:    vle16.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, mf2, ta, mu
 ; CHECK-NEXT:    vzext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i16>, <vscale x 1 x i16>* %x
@@ -427,8 +447,9 @@ define <vscale x 1 x i32> @zextload_nxv1i16_nxv1i32(<vscale x 1 x i16>* %x) {
 define <vscale x 1 x i64> @sextload_nxv1i16_nxv1i64(<vscale x 1 x i16>* %x) {
 ; CHECK-LABEL: sextload_nxv1i16_nxv1i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e16, mf4, ta, mu
 ; CHECK-NEXT:    vle16.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m1, ta, mu
 ; CHECK-NEXT:    vsext.vf4 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i16>, <vscale x 1 x i16>* %x
@@ -439,8 +460,9 @@ define <vscale x 1 x i64> @sextload_nxv1i16_nxv1i64(<vscale x 1 x i16>* %x) {
 define <vscale x 1 x i64> @zextload_nxv1i16_nxv1i64(<vscale x 1 x i16>* %x) {
 ; CHECK-LABEL: zextload_nxv1i16_nxv1i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e16, mf4, ta, mu
 ; CHECK-NEXT:    vle16.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m1, ta, mu
 ; CHECK-NEXT:    vzext.vf4 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i16>, <vscale x 1 x i16>* %x
@@ -463,8 +485,9 @@ define void @truncstore_nxv2i16_nxv2i8(<vscale x 2 x i16> %x, <vscale x 2 x i8>*
 define <vscale x 2 x i32> @sextload_nxv2i16_nxv2i32(<vscale x 2 x i16>* %x) {
 ; CHECK-LABEL: sextload_nxv2i16_nxv2i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e16, mf2, ta, mu
 ; CHECK-NEXT:    vle16.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, m1, ta, mu
 ; CHECK-NEXT:    vsext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i16>, <vscale x 2 x i16>* %x
@@ -475,8 +498,9 @@ define <vscale x 2 x i32> @sextload_nxv2i16_nxv2i32(<vscale x 2 x i16>* %x) {
 define <vscale x 2 x i32> @zextload_nxv2i16_nxv2i32(<vscale x 2 x i16>* %x) {
 ; CHECK-LABEL: zextload_nxv2i16_nxv2i32:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e32, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e16, mf2, ta, mu
 ; CHECK-NEXT:    vle16.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e32, m1, ta, mu
 ; CHECK-NEXT:    vzext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i16>, <vscale x 2 x i16>* %x
@@ -487,8 +511,9 @@ define <vscale x 2 x i32> @zextload_nxv2i16_nxv2i32(<vscale x 2 x i16>* %x) {
 define <vscale x 2 x i64> @sextload_nxv2i16_nxv2i64(<vscale x 2 x i16>* %x) {
 ; CHECK-LABEL: sextload_nxv2i16_nxv2i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e16, mf2, ta, mu
 ; CHECK-NEXT:    vle16.v v10, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m2, ta, mu
 ; CHECK-NEXT:    vsext.vf4 v8, v10
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i16>, <vscale x 2 x i16>* %x
@@ -499,8 +524,9 @@ define <vscale x 2 x i64> @sextload_nxv2i16_nxv2i64(<vscale x 2 x i16>* %x) {
 define <vscale x 2 x i64> @zextload_nxv2i16_nxv2i64(<vscale x 2 x i16>* %x) {
 ; CHECK-LABEL: zextload_nxv2i16_nxv2i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m2, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e16, mf2, ta, mu
 ; CHECK-NEXT:    vle16.v v10, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m2, ta, mu
 ; CHECK-NEXT:    vzext.vf4 v8, v10
 ; CHECK-NEXT:    ret
   %y = load <vscale x 2 x i16>, <vscale x 2 x i16>* %x
@@ -705,8 +731,9 @@ define void @truncstore_nxv1i32_nxv1i16(<vscale x 1 x i32> %x, <vscale x 1 x i16
 define <vscale x 1 x i64> @sextload_nxv1i32_nxv1i64(<vscale x 1 x i32>* %x) {
 ; CHECK-LABEL: sextload_nxv1i32_nxv1i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e32, mf2, ta, mu
 ; CHECK-NEXT:    vle32.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m1, ta, mu
 ; CHECK-NEXT:    vsext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i32>, <vscale x 1 x i32>* %x
@@ -717,8 +744,9 @@ define <vscale x 1 x i64> @sextload_nxv1i32_nxv1i64(<vscale x 1 x i32>* %x) {
 define <vscale x 1 x i64> @zextload_nxv1i32_nxv1i64(<vscale x 1 x i32>* %x) {
 ; CHECK-LABEL: zextload_nxv1i32_nxv1i64:
 ; CHECK:       # %bb.0:
-; CHECK-NEXT:    vsetvli a1, zero, e64, m1, ta, mu
+; CHECK-NEXT:    vsetvli a1, zero, e32, mf2, ta, mu
 ; CHECK-NEXT:    vle32.v v9, (a0)
+; CHECK-NEXT:    vsetvli zero, zero, e64, m1, ta, mu
 ; CHECK-NEXT:    vzext.vf2 v8, v9
 ; CHECK-NEXT:    ret
   %y = load <vscale x 1 x i32>, <vscale x 1 x i32>* %x

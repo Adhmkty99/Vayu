@@ -92,7 +92,6 @@ BackgroundIndex::BackgroundIndex(
     const ThreadsafeFS &TFS, const GlobalCompilationDatabase &CDB,
     BackgroundIndexStorage::Factory IndexStorageFactory, Options Opts)
     : SwapIndex(std::make_unique<MemIndex>()), TFS(TFS), CDB(CDB),
-      IndexingPriority(Opts.IndexingPriority),
       ContextProvider(std::move(Opts.ContextProvider)),
       IndexedSymbols(IndexContents::All),
       Rebuilder(this, &IndexedSymbols, Opts.ThreadPoolSize),
@@ -166,7 +165,6 @@ BackgroundQueue::Task BackgroundIndex::indexFileTask(std::string Path) {
       elog("Indexing {0} failed: {1}", Path, std::move(Error));
   });
   T.QueuePri = IndexFile;
-  T.ThreadPri = IndexingPriority;
   T.Tag = std::move(Tag);
   T.Key = Key;
   return T;

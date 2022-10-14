@@ -199,7 +199,8 @@ CompoundStmt *CompoundStmt::create(Context &ctx, SMRange loc,
 // LetStmt
 //===----------------------------------------------------------------------===//
 
-LetStmt *LetStmt::create(Context &ctx, SMRange loc, VariableDecl *varDecl) {
+LetStmt *LetStmt::create(Context &ctx, SMRange loc,
+                         VariableDecl *varDecl) {
   return new (ctx.getAllocator().Allocate<LetStmt>()) LetStmt(loc, varDecl);
 }
 
@@ -297,18 +298,17 @@ MemberAccessExpr *MemberAccessExpr::create(Context &ctx, SMRange loc,
 // OperationExpr
 //===----------------------------------------------------------------------===//
 
-OperationExpr *
-OperationExpr::create(Context &ctx, SMRange loc, const ods::Operation *odsOp,
-                      const OpNameDecl *name, ArrayRef<Expr *> operands,
-                      ArrayRef<Expr *> resultTypes,
-                      ArrayRef<NamedAttributeDecl *> attributes) {
+OperationExpr *OperationExpr::create(
+    Context &ctx, SMRange loc, const OpNameDecl *name,
+    ArrayRef<Expr *> operands, ArrayRef<Expr *> resultTypes,
+    ArrayRef<NamedAttributeDecl *> attributes) {
   unsigned allocSize =
       OperationExpr::totalSizeToAlloc<Expr *, NamedAttributeDecl *>(
           operands.size() + resultTypes.size(), attributes.size());
   void *rawData =
       ctx.getAllocator().Allocate(allocSize, alignof(OperationExpr));
 
-  Type resultType = OperationType::get(ctx, name->getName(), odsOp);
+  Type resultType = OperationType::get(ctx, name->getName());
   OperationExpr *opExpr = new (rawData)
       OperationExpr(loc, resultType, name, operands.size(), resultTypes.size(),
                     attributes.size(), name->getLoc());
@@ -355,14 +355,6 @@ TypeExpr *TypeExpr::create(Context &ctx, SMRange loc, StringRef value) {
 }
 
 //===----------------------------------------------------------------------===//
-// Decl
-//===----------------------------------------------------------------------===//
-
-void Decl::setDocComment(Context &ctx, StringRef comment) {
-  docComment = comment.copy(ctx.getAllocator());
-}
-
-//===----------------------------------------------------------------------===//
 // AttrConstraintDecl
 //===----------------------------------------------------------------------===//
 
@@ -393,7 +385,8 @@ Optional<StringRef> OpConstraintDecl::getName() const {
 // TypeConstraintDecl
 //===----------------------------------------------------------------------===//
 
-TypeConstraintDecl *TypeConstraintDecl::create(Context &ctx, SMRange loc) {
+TypeConstraintDecl *TypeConstraintDecl::create(Context &ctx,
+                                               SMRange loc) {
   return new (ctx.getAllocator().Allocate<TypeConstraintDecl>())
       TypeConstraintDecl(loc);
 }
@@ -412,8 +405,8 @@ TypeRangeConstraintDecl *TypeRangeConstraintDecl::create(Context &ctx,
 // ValueConstraintDecl
 //===----------------------------------------------------------------------===//
 
-ValueConstraintDecl *ValueConstraintDecl::create(Context &ctx, SMRange loc,
-                                                 Expr *typeExpr) {
+ValueConstraintDecl *
+ValueConstraintDecl::create(Context &ctx, SMRange loc, Expr *typeExpr) {
   return new (ctx.getAllocator().Allocate<ValueConstraintDecl>())
       ValueConstraintDecl(loc, typeExpr);
 }
@@ -422,8 +415,9 @@ ValueConstraintDecl *ValueConstraintDecl::create(Context &ctx, SMRange loc,
 // ValueRangeConstraintDecl
 //===----------------------------------------------------------------------===//
 
-ValueRangeConstraintDecl *
-ValueRangeConstraintDecl::create(Context &ctx, SMRange loc, Expr *typeExpr) {
+ValueRangeConstraintDecl *ValueRangeConstraintDecl::create(Context &ctx,
+                                                           SMRange loc,
+                                                           Expr *typeExpr) {
   return new (ctx.getAllocator().Allocate<ValueRangeConstraintDecl>())
       ValueRangeConstraintDecl(loc, typeExpr);
 }
@@ -432,41 +426,23 @@ ValueRangeConstraintDecl::create(Context &ctx, SMRange loc, Expr *typeExpr) {
 // UserConstraintDecl
 //===----------------------------------------------------------------------===//
 
-Optional<StringRef>
-UserConstraintDecl::getNativeInputType(unsigned index) const {
-  return hasNativeInputTypes ? getTrailingObjects<StringRef>()[index]
-                             : Optional<StringRef>();
-}
-
 UserConstraintDecl *UserConstraintDecl::createImpl(
     Context &ctx, const Name &name, ArrayRef<VariableDecl *> inputs,
-    ArrayRef<StringRef> nativeInputTypes, ArrayRef<VariableDecl *> results,
-    Optional<StringRef> codeBlock, const CompoundStmt *body, Type resultType) {
-  bool hasNativeInputTypes = !nativeInputTypes.empty();
-  assert(!hasNativeInputTypes || nativeInputTypes.size() == inputs.size());
-
-  unsigned allocSize =
-      UserConstraintDecl::totalSizeToAlloc<VariableDecl *, StringRef>(
-          inputs.size() + results.size(),
-          hasNativeInputTypes ? inputs.size() : 0);
+    ArrayRef<VariableDecl *> results, Optional<StringRef> codeBlock,
+    const CompoundStmt *body, Type resultType) {
+  unsigned allocSize = UserConstraintDecl::totalSizeToAlloc<VariableDecl *>(
+      inputs.size() + results.size());
   void *rawData =
       ctx.getAllocator().Allocate(allocSize, alignof(UserConstraintDecl));
   if (codeBlock)
     codeBlock = codeBlock->copy(ctx.getAllocator());
 
-  UserConstraintDecl *decl = new (rawData)
-      UserConstraintDecl(name, inputs.size(), hasNativeInputTypes,
-                         results.size(), codeBlock, body, resultType);
+  UserConstraintDecl *decl = new (rawData) UserConstraintDecl(
+      name, inputs.size(), results.size(), codeBlock, body, resultType);
   std::uninitialized_copy(inputs.begin(), inputs.end(),
                           decl->getInputs().begin());
   std::uninitialized_copy(results.begin(), results.end(),
                           decl->getResults().begin());
-  if (hasNativeInputTypes) {
-    StringRef *nativeInputTypesPtr = decl->getTrailingObjects<StringRef>();
-    for (unsigned i = 0, e = inputs.size(); i < e; ++i)
-      nativeInputTypesPtr[i] = nativeInputTypes[i].copy(ctx.getAllocator());
-  }
-
   return decl;
 }
 
@@ -495,8 +471,8 @@ OpNameDecl *OpNameDecl::create(Context &ctx, SMRange loc) {
 // PatternDecl
 //===----------------------------------------------------------------------===//
 
-PatternDecl *PatternDecl::create(Context &ctx, SMRange loc, const Name *name,
-                                 Optional<uint16_t> benefit,
+PatternDecl *PatternDecl::create(Context &ctx, SMRange loc,
+                                 const Name *name, Optional<uint16_t> benefit,
                                  bool hasBoundedRecursion,
                                  const CompoundStmt *body) {
   return new (ctx.getAllocator().Allocate<PatternDecl>())
@@ -551,7 +527,8 @@ VariableDecl *VariableDecl::create(Context &ctx, const Name &name, Type type,
 // Module
 //===----------------------------------------------------------------------===//
 
-Module *Module::create(Context &ctx, SMLoc loc, ArrayRef<Decl *> children) {
+Module *Module::create(Context &ctx, SMLoc loc,
+                       ArrayRef<Decl *> children) {
   unsigned allocSize = Module::totalSizeToAlloc<Decl *>(children.size());
   void *rawData = ctx.getAllocator().Allocate(allocSize, alignof(Module));
 

@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class TypeSummaryListScriptTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_typesummarylist_script(self):
         """Test data formatter commands."""
         self.build()

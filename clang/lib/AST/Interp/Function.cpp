@@ -34,7 +34,8 @@ Function::ParamDescriptor Function::getParamDescriptor(unsigned Offset) const {
 SourceInfo Function::getSource(CodePtr PC) const {
   unsigned Offset = PC - getCodeBegin();
   using Elem = std::pair<unsigned, SourceInfo>;
-  auto It = llvm::lower_bound(SrcMap, Elem{Offset, {}}, llvm::less_first());
+  auto It = std::lower_bound(SrcMap.begin(), SrcMap.end(), Elem{Offset, {}},
+                             [](Elem A, Elem B) { return A.first < B.first; });
   if (It == SrcMap.end() || It->first != Offset)
     llvm::report_fatal_error("missing source location");
   return It->second;

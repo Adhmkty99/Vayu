@@ -8,8 +8,6 @@
 
 // <locale>
 
-// ADDITIONAL_COMPILE_FLAGS: -D_LIBCPP_DISABLE_DEPRECATION_WARNINGS
-
 // wbuffer_convert<Codecvt, Elem, Tr>
 
 // wbuffer_convert(streambuf* bytebuf = 0, Codecvt* pcvt = new Codecvt,
@@ -20,7 +18,7 @@
 // explicit wbuffer_convert(streambuf* bytebuf, Codecvt* pcvt = new Codecvt,
 //                          state_type state = state_type()); // C++20
 
-// XFAIL: no-wide-characters
+// XFAIL: libcpp-has-no-wide-characters
 
 #include <locale>
 #include <codecvt>

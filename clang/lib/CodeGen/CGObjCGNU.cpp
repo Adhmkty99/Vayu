@@ -2837,13 +2837,11 @@ CGObjCGNU::GenerateMessageSend(CodeGenFunction &CGF,
     // Enter the continuation block and emit a phi if required.
     CGF.EmitBlock(continueBB);
     if (msgRet.isScalar()) {
-      // If the return type is void, do nothing
-      if (llvm::Value *v = msgRet.getScalarVal()) {
-        llvm::PHINode *phi = Builder.CreatePHI(v->getType(), 2);
-        phi->addIncoming(v, nonNilPathBB);
-        phi->addIncoming(CGM.EmitNullConstant(ResultType), nilPathBB);
-        msgRet = RValue::get(phi);
-      }
+      llvm::Value *v = msgRet.getScalarVal();
+      llvm::PHINode *phi = Builder.CreatePHI(v->getType(), 2);
+      phi->addIncoming(v, nonNilPathBB);
+      phi->addIncoming(CGM.EmitNullConstant(ResultType), nilPathBB);
+      msgRet = RValue::get(phi);
     } else if (msgRet.isAggregate()) {
       // Aggregate zeroing is handled in nilCleanupBB when it's required.
     } else /* isComplex() */ {
@@ -3864,10 +3862,9 @@ llvm::Function *CGObjCGNU::ModuleInitFunction() {
 
     // The path to the source file where this module was declared
     SourceManager &SM = CGM.getContext().getSourceManager();
-    Optional<FileEntryRef> mainFile =
-        SM.getFileEntryRefForID(SM.getMainFileID());
+    const FileEntry *mainFile = SM.getFileEntryForID(SM.getMainFileID());
     std::string path =
-        (mainFile->getDir().getName() + "/" + mainFile->getName()).str();
+      (Twine(mainFile->getDir()->getName()) + "/" + mainFile->getName()).str();
     module.add(MakeConstantString(path, ".objc_source_file_name"));
     module.add(symtab);
 

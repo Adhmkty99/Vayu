@@ -341,9 +341,10 @@ static LogicalResult convertDataOp(acc::DataOp &op,
                              mapperAllocas)))
     return failure();
 
-  if (failed(processOperands(
-          builder, moduleTranslation, op, op.createOperands(), totalNbOperand,
-          kCreateFlag | kHoldFlag, flags, names, index, mapperAllocas)))
+  if (failed(processOperands(builder, moduleTranslation, op,
+                             op.createOperands(), totalNbOperand,
+                             kCreateFlag | kHoldFlag, flags, names, index,
+                             mapperAllocas)))
     return failure();
 
   // TODO create zero currenlty handled as create. Update when extension
@@ -354,9 +355,10 @@ static LogicalResult convertDataOp(acc::DataOp &op,
                              mapperAllocas)))
     return failure();
 
-  if (failed(processOperands(
-          builder, moduleTranslation, op, op.presentOperands(), totalNbOperand,
-          kPresentFlag | kHoldFlag, flags, names, index, mapperAllocas)))
+  if (failed(processOperands(builder, moduleTranslation, op,
+                             op.presentOperands(), totalNbOperand,
+                             kPresentFlag | kHoldFlag, flags, names, index,
+                             mapperAllocas)))
     return failure();
 
   llvm::GlobalVariable *maptypes =

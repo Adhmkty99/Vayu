@@ -331,9 +331,6 @@ static Error isTrivialOperatorNode(const TreePatternNode *N) {
     if (Predicate.isImmediatePattern())
       continue;
 
-    if (Predicate.hasNoUse())
-      continue;
-
     if (Predicate.isNonExtLoad() || Predicate.isAnyExtLoad() ||
         Predicate.isSignExtLoad() || Predicate.isZeroExtLoad())
       continue;
@@ -469,9 +466,9 @@ public:
   MatchTableRecord(Optional<unsigned> LabelID_, StringRef EmitStr,
                    unsigned NumElements, unsigned Flags,
                    int64_t RawValue = std::numeric_limits<int64_t>::min())
-      : LabelID(LabelID_.value_or(~0u)), EmitStr(EmitStr),
+      : LabelID(LabelID_.getValueOr(~0u)), EmitStr(EmitStr),
         NumElements(NumElements), Flags(Flags), RawValue(RawValue) {
-    assert((!LabelID_ || LabelID != ~0u) &&
+    assert((!LabelID_.hasValue() || LabelID != ~0u) &&
            "This value is reserved for non-labels");
   }
   MatchTableRecord(const MatchTableRecord &Other) = default;
@@ -1122,7 +1119,6 @@ public:
     IPM_MemoryAddressSpace,
     IPM_MemoryAlignment,
     IPM_VectorSplatImm,
-    IPM_NoUse,
     IPM_GenericPredicate,
     OPM_SameOperand,
     OPM_ComplexPattern,
@@ -2242,29 +2238,6 @@ public:
   }
 };
 
-/// Generates code to check for the absence of use of the result.
-// TODO? Generalize this to support checking for one use.
-class NoUsePredicateMatcher : public InstructionPredicateMatcher {
-public:
-  NoUsePredicateMatcher(unsigned InsnVarID)
-      : InstructionPredicateMatcher(IPM_NoUse, InsnVarID) {}
-
-  static bool classof(const PredicateMatcher *P) {
-    return P->getKind() == IPM_NoUse;
-  }
-
-  bool isIdentical(const PredicateMatcher &B) const override {
-    return InstructionPredicateMatcher::isIdentical(B);
-  }
-
-  void emitPredicateOpcodes(MatchTable &Table,
-                            RuleMatcher &Rule) const override {
-    Table << MatchTable::Opcode("GIM_CheckHasNoUse")
-          << MatchTable::Comment("MI") << MatchTable::IntValue(InsnVarID)
-          << MatchTable::LineBreak;
-  }
-};
-
 /// Generates code to check that a set of predicates and operands match for a
 /// particular instruction.
 ///
@@ -2963,14 +2936,14 @@ public:
   }
 
   void emitRenderOpcodes(MatchTable &Table, RuleMatcher &Rule) const override {
-    Table << MatchTable::Opcode(SubOperand ? "GIR_ComplexSubOperandRenderer"
-                                           : "GIR_ComplexRenderer")
+    Table << MatchTable::Opcode(SubOperand.hasValue() ? "GIR_ComplexSubOperandRenderer"
+                                                      : "GIR_ComplexRenderer")
           << MatchTable::Comment("InsnID") << MatchTable::IntValue(InsnID)
           << MatchTable::Comment("RendererID")
           << MatchTable::IntValue(RendererID);
-    if (SubOperand)
+    if (SubOperand.hasValue())
       Table << MatchTable::Comment("SubOperand")
-            << MatchTable::IntValue(SubOperand.value());
+            << MatchTable::IntValue(SubOperand.getValue());
     Table << MatchTable::Comment(SymbolicName) << MatchTable::LineBreak;
   }
 };
@@ -3785,12 +3758,10 @@ GlobalISelEmitter::getEquivNode(Record &Equiv, const TreePatternNode *N) const {
 
   for (const TreePredicateCall &Call : N->getPredicateCalls()) {
     const TreePredicateFn &Predicate = Call.Fn;
-    if (!Equiv.isValueUnset("IfSignExtend") &&
-        (Predicate.isLoad() || Predicate.isAtomic()) &&
+    if (!Equiv.isValueUnset("IfSignExtend") && Predicate.isLoad() &&
         Predicate.isSignExtLoad())
       return &Target.getInstruction(Equiv.getValueAsDef("IfSignExtend"));
-    if (!Equiv.isValueUnset("IfZeroExtend") &&
-        (Predicate.isLoad() || Predicate.isAtomic()) &&
+    if (!Equiv.isValueUnset("IfZeroExtend") && Predicate.isLoad() &&
         Predicate.isZeroExtLoad())
       return &Target.getInstruction(Equiv.getValueAsDef("IfZeroExtend"));
   }
@@ -3845,15 +3816,12 @@ Expected<InstructionMatcher &> GlobalISelEmitter::addBuiltinPredicates(
       if (!ParsedAddrSpaces.empty()) {
         InsnMatcher.addPredicate<MemoryAddressSpacePredicateMatcher>(
             0, ParsedAddrSpaces);
-        return InsnMatcher;
       }
     }
 
     int64_t MinAlign = Predicate.getMinAlignment();
-    if (MinAlign > 0) {
+    if (MinAlign > 0)
       InsnMatcher.addPredicate<MemoryAlignmentPredicateMatcher>(0, MinAlign);
-      return InsnMatcher;
-    }
   }
 
   // G_LOAD is used for both non-extending and any-extending loads.
@@ -4028,17 +3996,6 @@ Expected<InstructionMatcher &> GlobalISelEmitter::createAndImportSelDAGMatcher(
         SrcGIEquivOrNull, Predicate, InsnMatcher, HasAddedBuiltinMatcher);
     if (auto Error = InsnMatcherOrError.takeError())
       return std::move(Error);
-
-    // FIXME: This should be part of addBuiltinPredicates(). If we add this at
-    // the start of addBuiltinPredicates() without returning, then there might
-    // be cases where we hit the last return before which the
-    // HasAddedBuiltinMatcher will be set to false. The predicate could be
-    // missed if we add it in the middle or at the end due to return statements
-    // after the addPredicate<>() calls.
-    if (Predicate.hasNoUse()) {
-      InsnMatcher.addPredicate<NoUsePredicateMatcher>();
-      HasAddedBuiltinMatcher = true;
-    }
 
     if (Predicate.hasGISelPredicateCode()) {
       if (Predicate.usesOperands()) {
@@ -4313,7 +4270,7 @@ Error GlobalISelEmitter::importChildMatcher(
 
     auto MaybeInsnOperand = OM.addPredicate<InstructionOperandMatcher>(
         InsnMatcher.getRuleMatcher(), SrcChild->getName());
-    if (!MaybeInsnOperand) {
+    if (!MaybeInsnOperand.hasValue()) {
       // This isn't strictly true. If the user were to provide exactly the same
       // matchers as the original operand then we could allow it. However, it's
       // simpler to not permit the redundant specification.
@@ -4444,7 +4401,7 @@ Expected<action_iterator> GlobalISelEmitter::importExplicitUseRenderer(
     TreePatternNode *DstChild) {
 
   const auto &SubOperand = Rule.getComplexSubOperand(DstChild->getName());
-  if (SubOperand) {
+  if (SubOperand.hasValue()) {
     DstMIBuilder.addRenderer<RenderComplexPatternOperand>(
         *std::get<0>(*SubOperand), DstChild->getName(),
         std::get<1>(*SubOperand), std::get<2>(*SubOperand));
@@ -4846,7 +4803,7 @@ Expected<action_iterator> GlobalISelEmitter::importExplicitUseRenderers(
 
     const auto SrcRCDstRCPair =
       RC->getMatchingSubClassWithSubRegs(CGRegs, SubIdx);
-    if (SrcRCDstRCPair) {
+    if (SrcRCDstRCPair.hasValue()) {
       assert(SrcRCDstRCPair->second && "Couldn't find a matching subclass");
       if (SrcRCDstRCPair->first != RC)
         return failedImport("EXTRACT_SUBREG requires an additional COPY");
@@ -4986,8 +4943,8 @@ Error GlobalISelEmitter::importDefaultOperandRenderers(
       auto Def = DefaultDefOp->getDef();
       if (Def->getName() == "undef_tied_input") {
         unsigned TempRegID = M.allocateTempRegID();
-        M.insertAction<MakeTempRegisterAction>(InsertPt, OpTyOrNone.value(),
-                                               TempRegID);
+        M.insertAction<MakeTempRegisterAction>(
+          InsertPt, OpTyOrNone.getValue(), TempRegID);
         InsertPt = M.insertAction<BuildMIAction>(
           InsertPt, M.allocateOutputInsnID(),
           &Target.getInstruction(RK.getDef("IMPLICIT_DEF")));
@@ -5246,31 +5203,16 @@ Expected<RuleMatcher> GlobalISelEmitter::runOnPattern(const PatternToMatch &P) {
   auto &DstI = Target.getInstruction(DstOp);
   StringRef DstIName = DstI.TheDef->getName();
 
-  unsigned DstNumDefs = DstI.Operands.NumDefs,
-           SrcNumDefs = Src->getExtTypes().size();
-  if (DstNumDefs < SrcNumDefs) {
-    if (DstNumDefs != 0)
-      return failedImport("Src pattern result has more defs than dst MI (" +
-                          to_string(SrcNumDefs) + " def(s) vs " +
-                          to_string(DstNumDefs) + " def(s))");
-
-    bool FoundNoUsePred = false;
-    for (const auto &Pred : InsnMatcher.predicates()) {
-      if ((FoundNoUsePred = isa<NoUsePredicateMatcher>(Pred.get())))
-        break;
-    }
-    if (!FoundNoUsePred)
-      return failedImport("Src pattern result has " + to_string(SrcNumDefs) +
-                          " def(s) without the HasNoUse predicate set to true "
-                          "but Dst MI has no def");
-  }
+  if (DstI.Operands.NumDefs < Src->getExtTypes().size())
+    return failedImport("Src pattern result has more defs than dst MI (" +
+                        to_string(Src->getExtTypes().size()) + " def(s) vs " +
+                        to_string(DstI.Operands.NumDefs) + " def(s))");
 
   // The root of the match also has constraints on the register bank so that it
   // matches the result instruction.
   unsigned OpIdx = 0;
-  unsigned N = std::min(DstNumDefs, SrcNumDefs);
-  for (unsigned I = 0; I < N; ++I) {
-    const TypeSetByHwMode &VTy = Src->getExtType(I);
+  for (const TypeSetByHwMode &VTy : Src->getExtTypes()) {
+    (void)VTy;
 
     const auto &DstIOperand = DstI.Operands[OpIdx];
     Record *DstIOpRec = DstIOperand.Rec;

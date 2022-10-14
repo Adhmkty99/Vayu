@@ -3,7 +3,7 @@ function(add_fp_unittest name)
     "MATH_UNITTEST"
     "NEED_MPFR" # Optional arguments
     "" # Single value arguments
-    "LINK_LIBRARIES" # Multi-value arguments
+    "" # Multi-value arguments
     ${ARGN}
   )
 
@@ -14,16 +14,15 @@ function(add_fp_unittest name)
     endif()
   endif()
 
-  if(MATH_UNITTEST_NEED_MPFR)
-    list(APPEND MATH_UNITTEST_LINK_LIBRARIES libcMPFRWrapper -lmpfr -lgmp)
+  add_libc_unittest(${name} ${MATH_UNITTEST_UNPARSED_ARGUMENTS})
+  get_fq_target_name(${name} fq_target_name)
+  if (NOT TARGET ${fq_target_name})
+    return()
   endif()
-  list(APPEND MATH_UNITTEST_LINK_LIBRARIES LibcFPTestHelpers)
-
-  add_libc_unittest(
-    ${name}
-    LINK_LIBRARIES "${MATH_UNITTEST_LINK_LIBRARIES}"
-    "${MATH_UNITTEST_UNPARSED_ARGUMENTS}"
-  )
+  if(MATH_UNITTEST_NEED_MPFR)
+    target_link_libraries(${fq_target_name} PRIVATE libcMPFRWrapper -lmpfr -lgmp)
+  endif()
+  target_link_libraries(${fq_target_name} PRIVATE LibcFPTestHelpers)
 endfunction(add_fp_unittest)
 
 add_subdirectory(__support)
@@ -50,6 +49,7 @@ endif()
 # add_subdirectory(assert)
 # add_subdirectory(signal)
 add_subdirectory(stdio)
+add_subdirectory(threads)
 add_subdirectory(time)
 
 if(${LIBC_TARGET_OS} STREQUAL "linux")
@@ -95,8 +95,6 @@ set_target_properties(
   PROPERTIES
   INCLUDE_DIRECTORIES ""
 )
-target_link_libraries(libc-api-test llvmlibc)
-
 # Only include we need is the include for cpp::IsSame and our generated
 # public headers.
 target_include_directories(

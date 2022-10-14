@@ -18,7 +18,6 @@ struct _mtx
   } mtxi;
 };
 
-int bar(int, int);
 
 int foobar(struct _mtx *mutex) {
   int r = 1;

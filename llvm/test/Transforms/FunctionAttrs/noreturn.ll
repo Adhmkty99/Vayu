@@ -79,7 +79,7 @@ define void @unreachable() {
 
 ; CHECK-NOT: Function Attrs: {{.*}}noreturn
 ; CHECK: @coro
-define void @coro() presplitcoroutine {
+define void @coro() "coroutine.presplit"="1" {
   call token @llvm.coro.id.retcon.once(i32 0, i32 0, i8* null, i8* bitcast(void() *@coro to i8*), i8* null, i8* null)
   call i1 @llvm.coro.end(i8* null, i1 false)
   unreachable

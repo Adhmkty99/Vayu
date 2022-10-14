@@ -16,9 +16,9 @@ add_mlir_conversion_library(MLIRGPUToNVVMTransforms
   MLIRGPUOps
   MLIRGPUToGPURuntimeTransforms
   MLIRLLVMCommonConversion
-  MLIRLLVMDialect
+  MLIRLLVMIR
   MLIRMemRefToLLVM
-  MLIRNVVMDialect
+  MLIRNVVMIR
   MLIRPass
   MLIRTransformUtils
   )

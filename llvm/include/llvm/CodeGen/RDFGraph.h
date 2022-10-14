@@ -749,6 +749,7 @@ namespace rdf {
 
     RegisterRef makeRegRef(unsigned Reg, unsigned Sub) const;
     RegisterRef makeRegRef(const MachineOperand &Op) const;
+    RegisterRef restrictRef(RegisterRef AR, RegisterRef BR) const;
 
     NodeAddr<RefNode*> getNextRelated(NodeAddr<InstrNode*> IA,
         NodeAddr<RefNode*> RA) const;

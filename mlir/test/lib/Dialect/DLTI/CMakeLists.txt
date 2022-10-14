@@ -5,7 +5,7 @@ add_mlir_library(MLIRDLTITestPasses
   EXCLUDE_FROM_LIBMLIR
 
   LINK_LIBS PUBLIC
-  MLIRDLTIDialect
+  MLIRDLTI
   MLIRPass
   MLIRTestDialect
   )

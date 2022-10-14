@@ -144,8 +144,7 @@ function(libomp_get_libflags libflags)
   endif()
   set(libflags_local ${libflags_local} ${LIBOMP_LIBFLAGS})
   libomp_setup_flags(libflags_local)
-  libomp_string_to_list("${libflags_local}" libflags_local_list)
-  set(${libflags} ${libflags_local_list} PARENT_SCOPE)
+  set(${libflags} ${libflags_local} PARENT_SCOPE)
 endfunction()
 
 # Fortran flags

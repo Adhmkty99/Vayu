@@ -105,20 +105,14 @@ Parser::ParseStatementOrDeclaration(StmtVector &Stmts,
   // statement are different from [[]] attributes that follow an __attribute__
   // at the start of the statement. Thus, we're not using MaybeParseAttributes
   // here because we don't want to allow arbitrary orderings.
-  ParsedAttributes CXX11Attrs(AttrFactory);
-  MaybeParseCXX11Attributes(CXX11Attrs, /*MightBeObjCMessageSend*/ true);
-  ParsedAttributes GNUAttrs(AttrFactory);
+  ParsedAttributes Attrs(AttrFactory);
+  MaybeParseCXX11Attributes(Attrs, /*MightBeObjCMessageSend*/ true);
   if (getLangOpts().OpenCL)
-    MaybeParseGNUAttributes(GNUAttrs);
+    MaybeParseGNUAttributes(Attrs);
 
   StmtResult Res = ParseStatementOrDeclarationAfterAttributes(
-      Stmts, StmtCtx, TrailingElseLoc, CXX11Attrs, GNUAttrs);
+      Stmts, StmtCtx, TrailingElseLoc, Attrs);
   MaybeDestroyTemplateIds();
-
-  // Attributes that are left should all go on the statement, so concatenate the
-  // two lists.
-  ParsedAttributes Attrs(AttrFactory);
-  takeAndConcatenateAttrs(CXX11Attrs, GNUAttrs, Attrs);
 
   assert((Attrs.empty() || Res.isInvalid() || Res.isUsable()) &&
          "attributes on empty statement");
@@ -164,8 +158,7 @@ private:
 
 StmtResult Parser::ParseStatementOrDeclarationAfterAttributes(
     StmtVector &Stmts, ParsedStmtContext StmtCtx,
-    SourceLocation *TrailingElseLoc, ParsedAttributes &CXX11Attrs,
-    ParsedAttributes &GNUAttrs) {
+    SourceLocation *TrailingElseLoc, ParsedAttributes &Attrs) {
   const char *SemiError = nullptr;
   StmtResult Res;
   SourceLocation GNUAttributeLoc;
@@ -191,12 +184,6 @@ Retry:
   case tok::identifier: {
     Token Next = NextToken();
     if (Next.is(tok::colon)) { // C99 6.8.1: labeled-statement
-      // Both C++11 and GNU attributes preceding the label appertain to the
-      // label, so put them in a single list to pass on to
-      // ParseLabeledStatement().
-      ParsedAttributes Attrs(AttrFactory);
-      takeAndConcatenateAttrs(CXX11Attrs, GNUAttrs, Attrs);
-
       // identifier ':' statement
       return ParseLabeledStatement(Attrs, StmtCtx);
     }
@@ -226,33 +213,25 @@ Retry:
   }
 
   default: {
-    bool HaveAttrs = !CXX11Attrs.empty() || !GNUAttrs.empty();
-    auto IsStmtAttr = [](ParsedAttr &Attr) { return Attr.isStmtAttr(); };
-    bool AllAttrsAreStmtAttrs = llvm::all_of(CXX11Attrs, IsStmtAttr) &&
-                                llvm::all_of(GNUAttrs, IsStmtAttr);
     if ((getLangOpts().CPlusPlus || getLangOpts().MicrosoftExt ||
          (StmtCtx & ParsedStmtContext::AllowDeclarationsInC) !=
              ParsedStmtContext()) &&
-        ((GNUAttributeLoc.isValid() && !(HaveAttrs && AllAttrsAreStmtAttrs)) ||
+        ((GNUAttributeLoc.isValid() &&
+          !(!Attrs.empty() &&
+            llvm::all_of(
+                Attrs, [](ParsedAttr &Attr) { return Attr.isStmtAttr(); }))) ||
          isDeclarationStatement())) {
       SourceLocation DeclStart = Tok.getLocation(), DeclEnd;
       DeclGroupPtrTy Decl;
       if (GNUAttributeLoc.isValid()) {
         DeclStart = GNUAttributeLoc;
-        Decl = ParseDeclaration(DeclaratorContext::Block, DeclEnd, CXX11Attrs,
-                                GNUAttrs, &GNUAttributeLoc);
+        Decl = ParseDeclaration(DeclaratorContext::Block, DeclEnd, Attrs,
+                                &GNUAttributeLoc);
       } else {
-        Decl = ParseDeclaration(DeclaratorContext::Block, DeclEnd, CXX11Attrs,
-                                GNUAttrs);
+        Decl = ParseDeclaration(DeclaratorContext::Block, DeclEnd, Attrs);
       }
-      if (CXX11Attrs.Range.getBegin().isValid()) {
-        // The caller must guarantee that the CXX11Attrs appear before the
-        // GNUAttrs, and we rely on that here.
-        assert(GNUAttrs.Range.getBegin().isInvalid() ||
-               GNUAttrs.Range.getBegin() > CXX11Attrs.Range.getBegin());
-        DeclStart = CXX11Attrs.Range.getBegin();
-      } else if (GNUAttrs.Range.getBegin().isValid())
-        DeclStart = GNUAttrs.Range.getBegin();
+      if (Attrs.Range.getBegin().isValid())
+        DeclStart = Attrs.Range.getBegin();
       return Actions.ActOnDeclStmt(Decl, DeclStart, DeclEnd);
     }
 
@@ -266,7 +245,7 @@ Retry:
 
   case tok::kw___attribute: {
     GNUAttributeLoc = Tok.getLocation();
-    ParseGNUAttributes(GNUAttrs);
+    ParseGNUAttributes(Attrs);
     goto Retry;
   }
 
@@ -318,13 +297,10 @@ Retry:
     break;
 
   case tok::kw_asm: {
-    for (const ParsedAttr &AL : CXX11Attrs)
-      Diag(AL.getRange().getBegin(), diag::warn_attribute_ignored) << AL;
-    // Prevent these from being interpreted as statement attributes later on.
-    CXX11Attrs.clear();
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     bool msAsm = false;
     Res = ParseAsmStatement(msAsm);
+    Res = Actions.ActOnFinishFullStmt(Res.get());
     if (msAsm) return Res;
     SemiError = "asm";
     break;
@@ -332,8 +308,7 @@ Retry:
 
   case tok::kw___if_exists:
   case tok::kw___if_not_exists:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     ParseMicrosoftIfExistsStatement(Stmts);
     // An __if_exists block is like a compound statement, but it doesn't create
     // a new scope.
@@ -343,8 +318,7 @@ Retry:
     return ParseCXXTryBlock();
 
   case tok::kw___try:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs); // TODO: is it correct?
     return ParseSEHTryBlock();
 
   case tok::kw___leave:
@@ -353,65 +327,55 @@ Retry:
     break;
 
   case tok::annot_pragma_vis:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaVisibility();
     return StmtEmpty();
 
   case tok::annot_pragma_pack:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaPack();
     return StmtEmpty();
 
   case tok::annot_pragma_msstruct:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaMSStruct();
     return StmtEmpty();
 
   case tok::annot_pragma_align:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaAlign();
     return StmtEmpty();
 
   case tok::annot_pragma_weak:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaWeak();
     return StmtEmpty();
 
   case tok::annot_pragma_weakalias:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaWeakAlias();
     return StmtEmpty();
 
   case tok::annot_pragma_redefine_extname:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaRedefineExtname();
     return StmtEmpty();
 
   case tok::annot_pragma_fp_contract:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     Diag(Tok, diag::err_pragma_file_or_compound_scope) << "fp_contract";
     ConsumeAnnotationToken();
     return StmtError();
 
   case tok::annot_pragma_fp:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     Diag(Tok, diag::err_pragma_file_or_compound_scope) << "clang fp";
     ConsumeAnnotationToken();
     return StmtError();
 
   case tok::annot_pragma_fenv_access:
   case tok::annot_pragma_fenv_access_ms:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     Diag(Tok, diag::err_pragma_file_or_compound_scope)
         << (Kind == tok::annot_pragma_fenv_access ? "STDC FENV_ACCESS"
                                                     : "fenv_access");
@@ -419,62 +383,53 @@ Retry:
     return StmtEmpty();
 
   case tok::annot_pragma_fenv_round:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     Diag(Tok, diag::err_pragma_file_or_compound_scope) << "STDC FENV_ROUND";
     ConsumeAnnotationToken();
     return StmtError();
 
   case tok::annot_pragma_float_control:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     Diag(Tok, diag::err_pragma_file_or_compound_scope) << "float_control";
     ConsumeAnnotationToken();
     return StmtError();
 
   case tok::annot_pragma_opencl_extension:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaOpenCLExtension();
     return StmtEmpty();
 
   case tok::annot_pragma_captured:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     return HandlePragmaCaptured();
 
   case tok::annot_pragma_openmp:
     // Prohibit attributes that are not OpenMP attributes, but only before
     // processing a #pragma omp clause.
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     LLVM_FALLTHROUGH;
   case tok::annot_attr_openmp:
     // Do not prohibit attributes if they were OpenMP attributes.
     return ParseOpenMPDeclarativeOrExecutableDirective(StmtCtx);
 
   case tok::annot_pragma_ms_pointers_to_members:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaMSPointersToMembers();
     return StmtEmpty();
 
   case tok::annot_pragma_ms_pragma:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaMSPragma();
     return StmtEmpty();
 
   case tok::annot_pragma_ms_vtordisp:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
+    ProhibitAttributes(Attrs);
     HandlePragmaMSVtorDisp();
     return StmtEmpty();
 
   case tok::annot_pragma_loop_hint:
-    ProhibitAttributes(CXX11Attrs);
-    ProhibitAttributes(GNUAttrs);
-    return ParsePragmaLoopHint(Stmts, StmtCtx, TrailingElseLoc, CXX11Attrs);
+    ProhibitAttributes(Attrs);
+    return ParsePragmaLoopHint(Stmts, StmtCtx, TrailingElseLoc, Attrs);
 
   case tok::annot_pragma_dump:
     HandlePragmaDump();
@@ -703,9 +658,8 @@ StmtResult Parser::ParseLabeledStatement(ParsedAttributes &Attrs,
       Attrs.takeAllFrom(TempAttrs);
     else {
       StmtVector Stmts;
-      ParsedAttributes EmptyCXX11Attrs(AttrFactory);
-      SubStmt = ParseStatementOrDeclarationAfterAttributes(
-          Stmts, StmtCtx, nullptr, EmptyCXX11Attrs, TempAttrs);
+      SubStmt = ParseStatementOrDeclarationAfterAttributes(Stmts, StmtCtx,
+                                                           nullptr, TempAttrs);
       if (!TempAttrs.empty() && !SubStmt.isInvalid())
         SubStmt = Actions.ActOnAttributedStmt(TempAttrs, SubStmt.get());
     }
@@ -1174,9 +1128,8 @@ StmtResult Parser::ParseCompoundStatementBody(bool isStmtExpr) {
         ExtensionRAIIObject O(Diags);
 
         SourceLocation DeclStart = Tok.getLocation(), DeclEnd;
-        ParsedAttributes DeclSpecAttrs(AttrFactory);
-        DeclGroupPtrTy Res = ParseDeclaration(DeclaratorContext::Block, DeclEnd,
-                                              attrs, DeclSpecAttrs);
+        DeclGroupPtrTy Res =
+            ParseDeclaration(DeclaratorContext::Block, DeclEnd, attrs);
         R = Actions.ActOnDeclStmt(Res, DeclStart, DeclEnd);
       } else {
         // Otherwise this was a unary __extension__ marker.
@@ -2022,9 +1975,8 @@ StmtResult Parser::ParseForStatement(SourceLocation *TrailingElseLoc) {
       ColonProtectionRAIIObject ColonProtection(*this, MightBeForRangeStmt);
 
       SourceLocation DeclStart = Tok.getLocation(), DeclEnd;
-      ParsedAttributes DeclSpecAttrs(AttrFactory);
       DG = ParseSimpleDeclaration(
-          DeclaratorContext::ForInit, DeclEnd, attrs, DeclSpecAttrs, false,
+          DeclaratorContext::ForInit, DeclEnd, attrs, false,
           MightBeForRangeStmt ? &ForRangeInfo : nullptr);
       FirstPart = Actions.ActOnDeclStmt(DG, DeclStart, Tok.getLocation());
       if (ForRangeInfo.ParsedForRangeDecl()) {
@@ -2153,7 +2105,7 @@ StmtResult Parser::ParseForStatement(SourceLocation *TrailingElseLoc) {
 
   // Enter a break / continue scope, if we didn't already enter one while
   // parsing the second part.
-  if (!getCurScope()->isContinueScope())
+  if (!(getCurScope()->getFlags() & Scope::ContinueScope))
     getCurScope()->AddFlags(Scope::BreakScope | Scope::ContinueScope);
 
   // Parse the third part of the for statement.
@@ -2395,9 +2347,8 @@ StmtResult Parser::ParsePragmaLoopHint(StmtVector &Stmts,
   // Get the next statement.
   MaybeParseCXX11Attributes(Attrs);
 
-  ParsedAttributes EmptyDeclSpecAttrs(AttrFactory);
   StmtResult S = ParseStatementOrDeclarationAfterAttributes(
-      Stmts, StmtCtx, TrailingElseLoc, Attrs, EmptyDeclSpecAttrs);
+      Stmts, StmtCtx, TrailingElseLoc, Attrs);
 
   Attrs.takeAllFrom(TempAttrs);
 
@@ -2633,11 +2584,12 @@ StmtResult Parser::ParseCXXCatchBlock(bool FnCatch) {
     MaybeParseCXX11Attributes(Attributes);
 
     DeclSpec DS(AttrFactory);
+    DS.takeAttributesFrom(Attributes);
 
     if (ParseCXXTypeSpecifierSeq(DS))
       return StmtError();
 
-    Declarator ExDecl(DS, Attributes, DeclaratorContext::CXXCatch);
+    Declarator ExDecl(DS, DeclaratorContext::CXXCatch);
     ParseDeclarator(ExDecl);
     ExceptionDecl = Actions.ActOnExceptionDeclarator(getCurScope(), ExDecl);
   } else

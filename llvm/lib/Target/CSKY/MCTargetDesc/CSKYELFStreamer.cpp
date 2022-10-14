@@ -83,12 +83,12 @@ void CSKYTargetELFStreamer::finishAttributeSection() {
     return;
 
   if (AttributeSection) {
-    Streamer.switchSection(AttributeSection);
+    Streamer.SwitchSection(AttributeSection);
   } else {
     MCAssembler &MCA = getStreamer().getAssembler();
     AttributeSection = MCA.getContext().getELFSection(
         ".csky.attributes", ELF::SHT_CSKY_ATTRIBUTES, 0);
-    Streamer.switchSection(AttributeSection);
+    Streamer.SwitchSection(AttributeSection);
     Streamer.emitInt8(ELFAttrs::Format_Version);
   }
 

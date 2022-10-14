@@ -892,7 +892,7 @@ bool MipsExpandPseudo::expandMBB(MachineBasicBlock &MBB) {
 }
 
 bool MipsExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
-  STI = &MF.getSubtarget<MipsSubtarget>();
+  STI = &static_cast<const MipsSubtarget &>(MF.getSubtarget());
   TII = STI->getInstrInfo();
 
   bool Modified = false;

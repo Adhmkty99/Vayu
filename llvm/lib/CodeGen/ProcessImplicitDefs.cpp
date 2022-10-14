@@ -46,11 +46,6 @@ public:
   void getAnalysisUsage(AnalysisUsage &au) const override;
 
   bool runOnMachineFunction(MachineFunction &MF) override;
-
-  MachineFunctionProperties getRequiredProperties() const override {
-    return MachineFunctionProperties().set(
-        MachineFunctionProperties::Property::IsSSA);
-  }
 };
 } // end anonymous namespace
 
@@ -146,6 +141,7 @@ bool ProcessImplicitDefs::runOnMachineFunction(MachineFunction &MF) {
   TII = MF.getSubtarget().getInstrInfo();
   TRI = MF.getSubtarget().getRegisterInfo();
   MRI = &MF.getRegInfo();
+  assert(MRI->isSSA() && "ProcessImplicitDefs only works on SSA form.");
   assert(WorkList.empty() && "Inconsistent worklist state");
 
   for (MachineBasicBlock &MBB : MF) {

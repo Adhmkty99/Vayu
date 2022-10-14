@@ -11,6 +11,8 @@ from lldbsuite.test import lldbutil
 
 
 class LaunchWithShellExpandTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     @expectedFailureAll(
@@ -39,8 +41,8 @@ class LaunchWithShellExpandTestCase(TestBase):
 
         process = self.process()
 
-        self.assertState(process.GetState(), lldb.eStateStopped,
-                         STOPPED_DUE_TO_BREAKPOINT)
+        self.assertEquals(process.GetState(), lldb.eStateStopped,
+                        STOPPED_DUE_TO_BREAKPOINT)
 
         thread = process.GetThreadAtIndex(0)
 
@@ -70,8 +72,8 @@ class LaunchWithShellExpandTestCase(TestBase):
 
         process = self.process()
 
-        self.assertState(process.GetState(), lldb.eStateStopped,
-                         STOPPED_DUE_TO_BREAKPOINT)
+        self.assertEquals(process.GetState(), lldb.eStateStopped,
+                        STOPPED_DUE_TO_BREAKPOINT)
 
         thread = process.GetThreadAtIndex(0)
 
@@ -93,8 +95,8 @@ class LaunchWithShellExpandTestCase(TestBase):
 
         process = self.process()
 
-        self.assertState(process.GetState(), lldb.eStateStopped,
-                         STOPPED_DUE_TO_BREAKPOINT)
+        self.assertEquals(process.GetState(), lldb.eStateStopped,
+                        STOPPED_DUE_TO_BREAKPOINT)
 
         thread = process.GetThreadAtIndex(0)
 

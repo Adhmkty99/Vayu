@@ -12,6 +12,8 @@ import json
 
 class UbsanBasicTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     @skipUnlessUndefinedBehaviorSanitizer
     @no_debug_info_test
     def test(self):

@@ -18,6 +18,8 @@ namespace lldb_private {
 /// Thread implementation used for representing threads gotten from trace
 /// session files, which are similar to threads from core files.
 ///
+/// See \a TraceSessionFileParser for more information regarding trace session
+/// files.
 class ThreadPostMortemTrace : public Thread {
 public:
   /// \param[in] process
@@ -30,7 +32,7 @@ public:
   ///     The file that contains the list of instructions that were traced when
   ///     this thread was being executed.
   ThreadPostMortemTrace(Process &process, lldb::tid_t tid,
-                        const llvm::Optional<FileSpec> &trace_file)
+                        const FileSpec &trace_file)
       : Thread(process, tid), m_trace_file(trace_file) {}
 
   void RefreshStateAfterStop() override;
@@ -42,7 +44,7 @@ public:
 
   /// \return
   ///   The trace file of this thread.
-  const llvm::Optional<FileSpec> &GetTraceFile() const;
+  const FileSpec &GetTraceFile() const;
 
 protected:
   bool CalculateStopInfo() override;
@@ -50,7 +52,7 @@ protected:
   lldb::RegisterContextSP m_thread_reg_ctx_sp;
 
 private:
-  llvm::Optional<FileSpec> m_trace_file;
+  FileSpec m_trace_file;
 };
 
 } // namespace lldb_private

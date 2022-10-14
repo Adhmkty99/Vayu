@@ -41,7 +41,7 @@ void ObjCAtSyncChecker::checkPreStmt(const ObjCAtSynchronizedStmt *S,
   SVal V = C.getSVal(Ex);
 
   // Uninitialized value used for the mutex?
-  if (isa<UndefinedVal>(V)) {
+  if (V.getAs<UndefinedVal>()) {
     if (ExplodedNode *N = C.generateErrorNode()) {
       if (!BT_undef)
         BT_undef.reset(new BuiltinBug(this, "Uninitialized value used as mutex "

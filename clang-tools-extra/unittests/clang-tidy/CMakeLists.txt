@@ -25,7 +25,6 @@ add_extra_unittest(ClangTidyTests
   GlobListTest.cpp
   GoogleModuleTest.cpp
   LLVMModuleTest.cpp
-  ModernizeModuleTest.cpp
   NamespaceAliaserTest.cpp
   ObjCModuleTest.cpp
   OptionsProviderTest.cpp
@@ -43,6 +42,7 @@ clang_target_link_libraries(ClangTidyTests
   clangFrontend
   clangLex
   clangSerialization
+  clangTesting
   clangTooling
   clangToolingCore
   clangTransformer
@@ -53,7 +53,6 @@ target_link_libraries(ClangTidyTests
   clangTidyAndroidModule
   clangTidyGoogleModule
   clangTidyLLVMModule
-  clangTidyModernizeModule
   clangTidyObjCModule
   clangTidyReadabilityModule
   clangTidyUtils

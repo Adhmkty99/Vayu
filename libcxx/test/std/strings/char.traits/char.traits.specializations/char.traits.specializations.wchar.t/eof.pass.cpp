@@ -12,7 +12,7 @@
 
 // static constexpr int_type eof();
 
-// UNSUPPORTED: no-wide-characters
+// UNSUPPORTED: libcpp-has-no-wide-characters
 
 #include <string>
 #include <cassert>

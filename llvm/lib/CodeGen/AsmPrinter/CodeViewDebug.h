@@ -50,8 +50,18 @@ class MachineFunction;
 
 /// Collects and handles line tables information in a CodeView format.
 class LLVM_LIBRARY_VISIBILITY CodeViewDebug : public DebugHandlerBase {
-public:
-  struct LocalVarDef {
+  MCStreamer &OS;
+  BumpPtrAllocator Allocator;
+  codeview::GlobalTypeTableBuilder TypeTable;
+
+  /// Whether to emit type record hashes into .debug$H.
+  bool EmitDebugGlobalHashes = false;
+
+  /// The codeview CPU type used by the translation unit.
+  codeview::CPUType TheCPU;
+
+  /// Represents the most general definition range.
+  struct LocalVarDefRange {
     /// Indicates that variable data is stored in memory relative to the
     /// specified register.
     int InMemory : 1;
@@ -69,40 +79,23 @@ public:
     /// location containing the data.
     uint16_t CVRegister;
 
-    uint64_t static toOpaqueValue(const LocalVarDef DR) {
-      uint64_t Val = 0;
-      std::memcpy(&Val, &DR, sizeof(Val));
-      return Val;
+    /// Compares all location fields. This includes all fields except the label
+    /// ranges.
+    bool isDifferentLocation(LocalVarDefRange &O) {
+      return InMemory != O.InMemory || DataOffset != O.DataOffset ||
+             IsSubfield != O.IsSubfield || StructOffset != O.StructOffset ||
+             CVRegister != O.CVRegister;
     }
 
-    LocalVarDef static createFromOpaqueValue(uint64_t Val) {
-      LocalVarDef DR;
-      std::memcpy(&DR, &Val, sizeof(Val));
-      return DR;
-    }
+    SmallVector<std::pair<const MCSymbol *, const MCSymbol *>, 1> Ranges;
   };
 
-  static_assert(sizeof(uint64_t) == sizeof(LocalVarDef), "");
-
-private:
-  MCStreamer &OS;
-  BumpPtrAllocator Allocator;
-  codeview::GlobalTypeTableBuilder TypeTable;
-
-  /// Whether to emit type record hashes into .debug$H.
-  bool EmitDebugGlobalHashes = false;
-
-  /// The codeview CPU type used by the translation unit.
-  codeview::CPUType TheCPU;
-
-  static LocalVarDef createDefRangeMem(uint16_t CVRegister, int Offset);
+  static LocalVarDefRange createDefRangeMem(uint16_t CVRegister, int Offset);
 
   /// Similar to DbgVariable in DwarfDebug, but not dwarf-specific.
   struct LocalVariable {
     const DILocalVariable *DIVar = nullptr;
-    MapVector<LocalVarDef,
-              SmallVector<std::pair<const MCSymbol *, const MCSymbol *>, 1>>
-        DefRanges;
+    SmallVector<LocalVarDefRange, 1> DefRanges;
     bool UseReferenceType = false;
   };
 
@@ -498,27 +491,6 @@ public:
 
   /// Process beginning of an instruction.
   void beginInstruction(const MachineInstr *MI) override;
-};
-
-template <> struct DenseMapInfo<CodeViewDebug::LocalVarDef> {
-
-  static inline CodeViewDebug::LocalVarDef getEmptyKey() {
-    return CodeViewDebug::LocalVarDef::createFromOpaqueValue(~0ULL);
-  }
-
-  static inline CodeViewDebug::LocalVarDef getTombstoneKey() {
-    return CodeViewDebug::LocalVarDef::createFromOpaqueValue(~0ULL - 1ULL);
-  }
-
-  static unsigned getHashValue(const CodeViewDebug::LocalVarDef &DR) {
-    return CodeViewDebug::LocalVarDef::toOpaqueValue(DR) * 37ULL;
-  }
-
-  static bool isEqual(const CodeViewDebug::LocalVarDef &LHS,
-                      const CodeViewDebug::LocalVarDef &RHS) {
-    return CodeViewDebug::LocalVarDef::toOpaqueValue(LHS) ==
-           CodeViewDebug::LocalVarDef::toOpaqueValue(RHS);
-  }
 };
 
 } // end namespace llvm

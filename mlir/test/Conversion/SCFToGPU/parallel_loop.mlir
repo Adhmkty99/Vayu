@@ -2,7 +2,7 @@
 
 // 2-d parallel loop mapped to block.y and block.x
 
-func.func @parallel_loop_bidy_bidx(%arg0 : index, %arg1 : index, %arg2 : index,
+func @parallel_loop_bidy_bidx(%arg0 : index, %arg1 : index, %arg2 : index,
                               %arg3 : index, %arg4 : index,
                               %buf : memref<?x?xf32>,
                               %res : memref<?x?xf32>) {
@@ -11,7 +11,7 @@ func.func @parallel_loop_bidy_bidx(%arg0 : index, %arg1 : index, %arg2 : index,
                                           step (%arg4, %step)  {
     %val = memref.load %buf[%i0, %i1] : memref<?x?xf32>
     memref.store %val, %res[%i1, %i0] : memref<?x?xf32>
-  } { mapping = [#gpu.loop_dim_map<processor = block_y, map = (d0) -> (d0), bound = (d0) -> (d0)>, #gpu.loop_dim_map<processor = block_x, map = (d0) -> (d0), bound = (d0) -> (d0)>] }
+  } { mapping = [{processor = 1, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}, {processor = 0, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}] }
   return
 }
 
@@ -40,7 +40,7 @@ func.func @parallel_loop_bidy_bidx(%arg0 : index, %arg1 : index, %arg2 : index,
 
 // tiled 2-d parallel loop mapped to block.y and block.x and thread.y and thread.x.
 
-func.func @parallel_loop_tiled(%arg0 : index, %arg1 : index, %arg2 : index,
+func @parallel_loop_tiled(%arg0 : index, %arg1 : index, %arg2 : index,
                         %arg3 : index,
                         %buf : memref<?x?xf32>,
                         %res : memref<?x?xf32>) {
@@ -56,12 +56,12 @@ func.func @parallel_loop_tiled(%arg0 : index, %arg1 : index, %arg2 : index,
       %val = memref.load %buf[%idx0, %idx1] : memref<?x?xf32>
       memref.store %val, %res[%idx1, %idx0] : memref<?x?xf32>
     } { mapping = [
-        #gpu.loop_dim_map<processor = thread_y, map = (d0) -> (d0), bound = (d0) -> (d0)>,
-        #gpu.loop_dim_map<processor = thread_x, map = (d0) -> (d0), bound = (d0) -> (d0)>
+        {processor = 4, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>},
+        {processor = 3, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}
      ] }
   } { mapping = [
-      #gpu.loop_dim_map<processor = block_y, map = (d0) -> (d0), bound = (d0) -> (d0)>,
-      #gpu.loop_dim_map<processor = block_x, map = (d0) -> (d0), bound = (d0) -> (d0)>
+      {processor = 1, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>},
+      {processor = 0, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}
     ] }
   return
 }
@@ -99,7 +99,7 @@ func.func @parallel_loop_tiled(%arg0 : index, %arg1 : index, %arg2 : index,
 
 // 2-d parallel loop mapped to block.y and sequential
 
-func.func @parallel_loop_bidy_seq(%arg0 : index, %arg1 : index, %arg2 : index,
+func @parallel_loop_bidy_seq(%arg0 : index, %arg1 : index, %arg2 : index,
                              %arg3 : index, %arg4 : index,
                              %buf : memref<?x?xf32>,
                              %res : memref<?x?xf32>) {
@@ -109,8 +109,8 @@ func.func @parallel_loop_bidy_seq(%arg0 : index, %arg1 : index, %arg2 : index,
     %val = memref.load %buf[%i0, %i1] : memref<?x?xf32>
     memref.store %val, %res[%i1, %i0] : memref<?x?xf32>
   } { mapping = [
-      #gpu.loop_dim_map<processor = block_y, map = (d0) -> (d0), bound = (d0) -> (d0)>,
-      #gpu.loop_dim_map<processor = sequential, map = (d0) -> (d0), bound = (d0) -> (d0)>
+      {processor = 1, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>},
+      {processor = 6, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}
     ] }
   return
 }
@@ -140,7 +140,7 @@ func.func @parallel_loop_bidy_seq(%arg0 : index, %arg1 : index, %arg2 : index,
 
 // tiled 2-d parallel loop mapped to block.y and seq. and thread.y and seq.
 
-func.func @parallel_loop_tiled_seq(%arg0 : index, %arg1 : index, %arg2 : index,
+func @parallel_loop_tiled_seq(%arg0 : index, %arg1 : index, %arg2 : index,
                               %arg3 : index,
                               %buf : memref<?x?xf32>,
                               %res : memref<?x?xf32>) {
@@ -156,12 +156,12 @@ func.func @parallel_loop_tiled_seq(%arg0 : index, %arg1 : index, %arg2 : index,
       %val = memref.load %buf[%idx0, %idx1] : memref<?x?xf32>
       memref.store %val, %res[%idx1, %idx0] : memref<?x?xf32>
     } { mapping = [
-        #gpu.loop_dim_map<processor = thread_y, map = (d0) -> (d0), bound = (d0) -> (d0)>,
-        #gpu.loop_dim_map<processor = sequential, map = (d0) -> (d0), bound = (d0) -> (d0)>
+        {processor = 4, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>},
+        {processor = 6, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}
       ] }
   } { mapping = [
-      #gpu.loop_dim_map<processor = block_y, map = (d0) -> (d0), bound = (d0) -> (d0)>,
-      #gpu.loop_dim_map<processor = sequential, map = (d0) -> (d0), bound = (d0) -> (d0)>
+      {processor = 1, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>},
+      {processor = 6, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}
     ] }
   return
 }
@@ -203,7 +203,7 @@ func.func @parallel_loop_tiled_seq(%arg0 : index, %arg1 : index, %arg2 : index,
 #map3 = affine_map<(d0, d1)[s0, s1, s2] -> (d0 * s1 + s0 + d1 * s2)>
 
 module {
-  func.func @sum(%arg0: memref<?x?xf32, #map0>, %arg1: memref<?x?xf32, #map0>, %arg2: memref<?x?xf32, #map0>) {
+  func @sum(%arg0: memref<?x?xf32, #map0>, %arg1: memref<?x?xf32, #map0>, %arg2: memref<?x?xf32, #map0>) {
     %c1 = arith.constant 1 : index
     %c0 = arith.constant 0 : index
     %c3 = arith.constant 3 : index
@@ -234,9 +234,9 @@ module {
         %20 = arith.addf %17, %18 : f32
         memref.store %20, %16[%arg5, %arg6] : memref<?x?xf32, #map3>
         scf.yield
-      } {mapping = [#gpu.loop_dim_map<bound = (d0) -> (d0), map = (d0) -> (d0), processor = thread_x>, #gpu.loop_dim_map<bound = (d0) -> (d0), map = (d0) -> (d0), processor = thread_y>]}
+      } {mapping = [{bound = affine_map<(d0) -> (d0)>, map = affine_map<(d0) -> (d0)>, processor = 3 : i64}, {bound = affine_map<(d0) -> (d0)>, map = affine_map<(d0) -> (d0)>, processor = 4 : i64}]}
       scf.yield
-    } {mapping = [#gpu.loop_dim_map<bound = (d0) -> (d0), map = (d0) -> (d0), processor = block_x>, #gpu.loop_dim_map<bound = (d0) -> (d0), map = (d0) -> (d0), processor = block_y>]}
+    } {mapping = [{bound = affine_map<(d0) -> (d0)>, map = affine_map<(d0) -> (d0)>, processor = 0 : i64}, {bound = affine_map<(d0) -> (d0)>, map = affine_map<(d0) -> (d0)>, processor = 1 : i64}]}
     return
   }
 }
@@ -306,11 +306,11 @@ module {
 
 // Optional attribute lowering test
 
-func.func @parallel_loop_optional_attr() {
+func @parallel_loop_optional_attr() {
   %c0 = arith.constant 0 : index
   %c1 = arith.constant 1 : index
   scf.parallel (%i0) = (%c0) to (%c1) step (%c1) {
-  } { mapping = [#gpu.loop_dim_map<processor = block_x, map = (d0) -> (d0), bound = (d0) -> (d0)>], optional_attr = 1 }
+  } { mapping = [{processor = 0, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}], optional_attr = 1 }
   // CHECK: optional_attr = 1
   return
 }
@@ -319,7 +319,7 @@ func.func @parallel_loop_optional_attr() {
 
 // Mapping to the same processor twice. Cannot be mapped.
 
-func.func @parallel_double_map(%arg0 : index, %arg1 : index, %arg2 : index,
+func @parallel_double_map(%arg0 : index, %arg1 : index, %arg2 : index,
                           %arg3 : index,
                           %buf : memref<?x?xf32>,
                           %res : memref<?x?xf32>) {
@@ -327,8 +327,8 @@ func.func @parallel_double_map(%arg0 : index, %arg1 : index, %arg2 : index,
   scf.parallel (%i0, %i1) = (%arg0, %arg1) to (%arg2, %arg3)
                                           step (%four, %four)  {
   } { mapping = [
-      #gpu.loop_dim_map<processor = block_y, map = (d0) -> (d0), bound = (d0) -> (d0)>,
-      #gpu.loop_dim_map<processor = block_y, map = (d0) -> (d0), bound = (d0) -> (d0)>
+      {processor = 1, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>},
+      {processor = 1, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}
     ] }
   return
 }
@@ -340,7 +340,7 @@ func.func @parallel_double_map(%arg0 : index, %arg1 : index, %arg2 : index,
 
 // Loop with loop-variant upper bound. Cannot be mapped.
 
-func.func @parallel_loop_loop_variant_bound(%arg0 : index, %arg1 : index, %arg2 : index,
+func @parallel_loop_loop_variant_bound(%arg0 : index, %arg1 : index, %arg2 : index,
                                        %arg3 : index,
                                        %buf : memref<?x?xf32>,
                                        %res : memref<?x?xf32>) {
@@ -356,12 +356,12 @@ func.func @parallel_loop_loop_variant_bound(%arg0 : index, %arg1 : index, %arg2 
       %val = memref.load %buf[%idx0, %idx1] : memref<?x?xf32>
       memref.store %val, %res[%idx1, %idx0] : memref<?x?xf32>
     } { mapping = [
-        #gpu.loop_dim_map<processor = thread_y, map = (d0) -> (d0), bound = (d0) -> (d0)>,
-        #gpu.loop_dim_map<processor = sequential, map = (d0) -> (d0), bound = (d0) -> (d0)>
+        {processor = 4, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>},
+        {processor = 6, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}
       ] }
   } { mapping = [
-      #gpu.loop_dim_map<processor = block_y, map = (d0) -> (d0), bound = (d0) -> (d0)>,
-      #gpu.loop_dim_map<processor = sequential, map = (d0) -> (d0), bound = (d0) -> (d0)>
+      {processor = 1, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>},
+      {processor = 6, map = affine_map<(d0) -> (d0)>, bound = affine_map<(d0) -> (d0)>}
     ] }
   return
 }
@@ -374,7 +374,7 @@ func.func @parallel_loop_loop_variant_bound(%arg0 : index, %arg1 : index, %arg2 
 
 // Loop without annotations. Cannot be mapped.
 
-func.func @parallel_no_annotations(%arg0 : index, %arg1 : index, %arg2 : index,
+func @parallel_no_annotations(%arg0 : index, %arg1 : index, %arg2 : index,
                               %arg3 : index,
                               %buf : memref<?x?xf32>,
                               %res : memref<?x?xf32>) {

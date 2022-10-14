@@ -30,8 +30,6 @@ configure_file(config.h.cmake config.h)
 # with different names
 include_directories(AFTER ${CMAKE_CURRENT_BINARY_DIR})
 
-add_subdirectory(FortranMain)
-
 add_flang_library(FortranRuntime
   ISO_Fortran_binding.cpp
   allocatable.cpp

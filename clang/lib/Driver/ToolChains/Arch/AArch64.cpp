@@ -265,13 +265,13 @@ void aarch64::getAArch64TargetFeatures(const Driver &D,
         D, getAArch64TargetCPU(Args, Triple, A), Args, Features);
 
   if (!success) {
-    auto Diag = D.Diag(diag::err_drv_unsupported_option_argument);
+    auto Diag = D.Diag(diag::err_drv_clang_unsupported);
     // If "-Wa,-march=" is used, 'WaMArch' will contain the argument's value,
     // while 'A' is uninitialized. Only dereference 'A' in the other case.
     if (!WaMArch.empty())
-      Diag << "march=" << WaMArch;
+      Diag << "-march=" + WaMArch.str();
     else
-      Diag << A->getOption().getName() << A->getValue();
+      Diag << A->getAsString(Args);
   }
 
   if (Args.getLastArg(options::OPT_mgeneral_regs_only)) {
@@ -324,8 +324,8 @@ void aarch64::getAArch64TargetFeatures(const Driver &D,
           DisableComdat = true;
           continue;
         }
-        D.Diag(diag::err_drv_unsupported_option_argument)
-            << A->getOption().getName() << Scope;
+        D.Diag(diag::err_invalid_sls_hardening)
+            << Scope << A->getAsString(Args);
         break;
       }
     }

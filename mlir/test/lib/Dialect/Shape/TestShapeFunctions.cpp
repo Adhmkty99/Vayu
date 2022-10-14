@@ -8,7 +8,6 @@
 
 #include <queue>
 
-#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/Dialect/Shape/IR/Shape.h"
 #include "mlir/IR/BuiltinDialect.h"
 #include "mlir/Interfaces/InferTypeOpInterface.h"
@@ -47,8 +46,7 @@ void ReportShapeFnPass::runOnOperation() {
       return true;
     }
     if (auto symbol = op->getAttrOfType<SymbolRefAttr>(shapeFnId)) {
-      auto fn =
-          cast<shape::FuncOp>(SymbolTable::lookupSymbolIn(module, symbol));
+      auto fn = cast<FuncOp>(SymbolTable::lookupSymbolIn(module, symbol));
       op->emitRemark() << "associated shape function: " << fn.getName();
       return true;
     }
@@ -73,7 +71,7 @@ void ReportShapeFnPass::runOnOperation() {
     }
   }
 
-  module.getBodyRegion().walk([&](func::FuncOp func) {
+  module.getBodyRegion().walk([&](FuncOp func) {
     // Skip ops in the shape function library.
     if (isa<shape::FunctionLibraryOp>(func->getParentOp()))
       return;

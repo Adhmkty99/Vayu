@@ -7,7 +7,7 @@ define <vscale x 1 x i32> @extract_nxv1i32_nxv4i32(<vscale x 4 x i32> %vec) noun
 ; CHECK-LABEL: extract_nxv1i32_nxv4i32:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    ret
-  %retval = call <vscale x 1 x i32> @llvm.vector.extract.nxv1i32.nxv4i32(<vscale x 4 x i32> %vec, i64 0)
+  %retval = call <vscale x 1 x i32> @llvm.experimental.vector.extract.nxv1i32.nxv4i32(<vscale x 4 x i32> %vec, i64 0)
   ret <vscale x 1 x i32> %retval
 }
 
@@ -15,12 +15,12 @@ define <vscale x 1 x i16> @extract_nxv1i16_nxv6i16(<vscale x 6 x i16> %vec) noun
 ; CHECK-LABEL: extract_nxv1i16_nxv6i16:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    ret
-  %retval = call <vscale x 1 x i16> @llvm.vector.extract.nxv1i16.nxv6i16(<vscale x 6 x i16> %vec, i64 0)
+  %retval = call <vscale x 1 x i16> @llvm.experimental.vector.extract.nxv1i16.nxv6i16(<vscale x 6 x i16> %vec, i64 0)
   ret <vscale x 1 x i16> %retval
 }
 
-declare <vscale x 1 x i32> @llvm.vector.extract.nxv1i32.nxv4i32(<vscale x 4 x i32>, i64)
-declare <vscale x 1 x i16> @llvm.vector.extract.nxv1i16.nxv6i16(<vscale x 6 x i16>, i64)
+declare <vscale x 1 x i32> @llvm.experimental.vector.extract.nxv1i32.nxv4i32(<vscale x 4 x i32>, i64)
+declare <vscale x 1 x i16> @llvm.experimental.vector.extract.nxv1i16.nxv6i16(<vscale x 6 x i16>, i64)
 
 ;
 ; Extract half i1 vector that needs promotion from legal type.
@@ -30,7 +30,7 @@ define <vscale x 8 x i1> @extract_nxv8i1_nxv16i1_0(<vscale x 16 x i1> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i1> @llvm.vector.extract.nxv8i1.nxv16i1(<vscale x 16 x i1> %in, i64 0)
+  %res = call <vscale x 8 x i1> @llvm.experimental.vector.extract.nxv8i1.nxv16i1(<vscale x 16 x i1> %in, i64 0)
   ret <vscale x 8 x i1> %res
 }
 
@@ -39,11 +39,11 @@ define <vscale x 8 x i1> @extract_nxv8i1_nxv16i1_8(<vscale x 16 x i1> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i1> @llvm.vector.extract.nxv8i1.nxv16i1(<vscale x 16 x i1> %in, i64 8)
+  %res = call <vscale x 8 x i1> @llvm.experimental.vector.extract.nxv8i1.nxv16i1(<vscale x 16 x i1> %in, i64 8)
   ret <vscale x 8 x i1> %res
 }
 
-declare <vscale x 8 x i1> @llvm.vector.extract.nxv8i1.nxv16i1(<vscale x 16 x i1>, i64)
+declare <vscale x 8 x i1> @llvm.experimental.vector.extract.nxv8i1.nxv16i1(<vscale x 16 x i1>, i64)
 
 ;
 ; Extract i1 vector that needs widening from one that needs widening.
@@ -52,11 +52,11 @@ define <vscale x 14 x i1> @extract_nxv14i1_nxv28i1_0(<vscale x 28 x i1> %in) {
 ; CHECK-LABEL: extract_nxv14i1_nxv28i1_0:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 14 x i1> @llvm.vector.extract.nxv14i1.nxv28i1(<vscale x 28 x i1> %in, i64 0)
+  %res = call <vscale x 14 x i1> @llvm.experimental.vector.extract.nxv14i1.nxv28i1(<vscale x 28 x i1> %in, i64 0)
   ret <vscale x 14 x i1> %res
 }
 
-define <vscale x 14 x i1> @extract_nxv14i1_nxv28i1_14(<vscale x 28 x i1> %in) uwtable {
+define <vscale x 14 x i1> @extract_nxv14i1_nxv28i1_14(<vscale x 28 x i1> %in) {
 ; CHECK-LABEL: extract_nxv14i1_nxv28i1_14:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    str x29, [sp, #-16]! // 8-byte Folded Spill
@@ -90,16 +90,13 @@ define <vscale x 14 x i1> @extract_nxv14i1_nxv28i1_14(<vscale x 28 x i1> %in) uw
 ; CHECK-NEXT:    uzp1 p0.h, p0.h, p3.h
 ; CHECK-NEXT:    uzp1 p0.b, p0.b, p1.b
 ; CHECK-NEXT:    addvl sp, sp, #1
-; CHECK-NEXT:    .cfi_def_cfa wsp, 16
 ; CHECK-NEXT:    ldr x29, [sp], #16 // 8-byte Folded Reload
-; CHECK-NEXT:    .cfi_def_cfa_offset 0
-; CHECK-NEXT:    .cfi_restore w29
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 14 x i1> @llvm.vector.extract.nxv14i1.nxv28i1(<vscale x 28 x i1> %in, i64 14)
+  %res = call <vscale x 14 x i1> @llvm.experimental.vector.extract.nxv14i1.nxv28i1(<vscale x 28 x i1> %in, i64 14)
   ret <vscale x 14 x i1> %res
 }
 
-declare <vscale x 14 x i1> @llvm.vector.extract.nxv14i1.nxv28i1(<vscale x 28 x i1>, i64)
+declare <vscale x 14 x i1> @llvm.experimental.vector.extract.nxv14i1.nxv28i1(<vscale x 28 x i1>, i64)
 
 ;
 ; Extract half i1 vector that needs promotion from one that needs splitting.
@@ -109,7 +106,7 @@ define <vscale x 8 x i1> @extract_nxv8i1_nxv32i1_0(<vscale x 32 x i1> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i1> @llvm.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1> %in, i64 0)
+  %res = call <vscale x 8 x i1> @llvm.experimental.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1> %in, i64 0)
   ret <vscale x 8 x i1> %res
 }
 
@@ -118,7 +115,7 @@ define <vscale x 8 x i1> @extract_nxv8i1_nxv32i1_8(<vscale x 32 x i1> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i1> @llvm.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1> %in, i64 8)
+  %res = call <vscale x 8 x i1> @llvm.experimental.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1> %in, i64 8)
   ret <vscale x 8 x i1> %res
 }
 
@@ -127,7 +124,7 @@ define <vscale x 8 x i1> @extract_nxv8i1_nxv32i1_16(<vscale x 32 x i1> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    punpklo p0.h, p1.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i1> @llvm.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1> %in, i64 16)
+  %res = call <vscale x 8 x i1> @llvm.experimental.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1> %in, i64 16)
   ret <vscale x 8 x i1> %res
 }
 
@@ -136,11 +133,11 @@ define <vscale x 8 x i1> @extract_nxv8i1_nxv32i1_24(<vscale x 32 x i1> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    punpkhi p0.h, p1.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i1> @llvm.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1> %in, i64 24)
+  %res = call <vscale x 8 x i1> @llvm.experimental.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1> %in, i64 24)
   ret <vscale x 8 x i1> %res
 }
 
-declare <vscale x 8 x i1> @llvm.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1>, i64)
+declare <vscale x 8 x i1> @llvm.experimental.vector.extract.nxv8i1.nxv32i1(<vscale x 32 x i1>, i64)
 
 ;
 ; Extract 1/4th i1 vector that needs promotion from legal type.
@@ -151,7 +148,7 @@ define <vscale x 4 x i1> @extract_nxv4i1_nxv16i1_0(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i1> @llvm.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1> %in, i64 0)
+  %res = call <vscale x 4 x i1> @llvm.experimental.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1> %in, i64 0)
   ret <vscale x 4 x i1> %res
 }
 
@@ -161,7 +158,7 @@ define <vscale x 4 x i1> @extract_nxv4i1_nxv16i1_4(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i1> @llvm.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1> %in, i64 4)
+  %res = call <vscale x 4 x i1> @llvm.experimental.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1> %in, i64 4)
   ret <vscale x 4 x i1> %res
 }
 
@@ -171,7 +168,7 @@ define <vscale x 4 x i1> @extract_nxv4i1_nxv16i1_8(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i1> @llvm.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1> %in, i64 8)
+  %res = call <vscale x 4 x i1> @llvm.experimental.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1> %in, i64 8)
   ret <vscale x 4 x i1> %res
 }
 
@@ -181,11 +178,11 @@ define <vscale x 4 x i1> @extract_nxv4i1_nxv16i1_12(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i1> @llvm.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1> %in, i64 12)
+  %res = call <vscale x 4 x i1> @llvm.experimental.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1> %in, i64 12)
   ret <vscale x 4 x i1> %res
 }
 
-declare <vscale x 4 x i1> @llvm.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1>, i64)
+declare <vscale x 4 x i1> @llvm.experimental.vector.extract.nxv4i1.nxv16i1(<vscale x 16 x i1>, i64)
 
 ;
 ; Extract 1/8th i1 vector that needs promotion from legal type.
@@ -197,7 +194,7 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_0(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 0)
+  %res = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 0)
   ret <vscale x 2 x i1> %res
 }
 
@@ -208,7 +205,7 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_2(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 2)
+  %res = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 2)
   ret <vscale x 2 x i1> %res
 }
 
@@ -219,7 +216,7 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_4(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 4)
+  %res = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 4)
   ret <vscale x 2 x i1> %res
 }
 
@@ -230,7 +227,7 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_6(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 6)
+  %res = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 6)
   ret <vscale x 2 x i1> %res
 }
 
@@ -241,7 +238,7 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_8(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 8)
+  %res = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 8)
   ret <vscale x 2 x i1> %res
 }
 
@@ -252,7 +249,7 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_10(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 10)
+  %res = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 10)
   ret <vscale x 2 x i1> %res
 }
 
@@ -263,7 +260,7 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_12(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 12)
+  %res = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 12)
   ret <vscale x 2 x i1> %res
 }
 
@@ -274,11 +271,11 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_14(<vscale x 16 x i1> %in) {
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 14)
+  %res = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %in, i64 14)
   ret <vscale x 2 x i1> %res
 }
 
-declare <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1>, i64)
+declare <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1>, i64)
 
 ;
 ; Extract i1 vector that needs promotion from one that needs widening.
@@ -289,7 +286,7 @@ define <vscale x 4 x i1> @extract_nxv4i1_nxv12i1_0(<vscale x 12 x i1> %in) {
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i1> @llvm.vector.extract.nxv4i1.nxv12i1(<vscale x 12 x i1> %in, i64 0)
+  %res = call <vscale x 4 x i1> @llvm.experimental.vector.extract.nxv4i1.nxv12i1(<vscale x 12 x i1> %in, i64 0)
   ret <vscale x 4 x i1> %res
 }
 
@@ -299,7 +296,7 @@ define <vscale x 4 x i1> @extract_nxv4i1_nxv12i1_4(<vscale x 12 x i1> %in) {
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i1> @llvm.vector.extract.nxv4i1.nxv12i1(<vscale x 12 x i1> %in, i64 4)
+  %res = call <vscale x 4 x i1> @llvm.experimental.vector.extract.nxv4i1.nxv12i1(<vscale x 12 x i1> %in, i64 4)
   ret <vscale x 4 x i1> %res
 }
 
@@ -309,11 +306,11 @@ define <vscale x 4 x i1> @extract_nxv4i1_nxv12i1_8(<vscale x 12 x i1> %in) {
 ; CHECK-NEXT:    punpkhi p0.h, p0.b
 ; CHECK-NEXT:    punpklo p0.h, p0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i1> @llvm.vector.extract.nxv4i1.nxv12i1(<vscale x 12 x i1> %in, i64 8)
+  %res = call <vscale x 4 x i1> @llvm.experimental.vector.extract.nxv4i1.nxv12i1(<vscale x 12 x i1> %in, i64 8)
   ret <vscale x 4 x i1> %res
 }
 
-declare <vscale x 4 x i1> @llvm.vector.extract.nxv4i1.nxv12i1(<vscale x 12 x i1>, i64)
+declare <vscale x 4 x i1> @llvm.experimental.vector.extract.nxv4i1.nxv12i1(<vscale x 12 x i1>, i64)
 
 ;
 ; Extract 1/8th i8 vector that needs promotion from legal type.
@@ -325,7 +322,7 @@ define <vscale x 2 x i8> @extract_nxv2i8_nxv16i8_0(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i8> @llvm.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 0)
+  %res = call <vscale x 2 x i8> @llvm.experimental.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 0)
   ret <vscale x 2 x i8> %res
 }
 
@@ -336,7 +333,7 @@ define <vscale x 2 x i8> @extract_nxv2i8_nxv16i8_2(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i8> @llvm.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 2)
+  %res = call <vscale x 2 x i8> @llvm.experimental.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 2)
   ret <vscale x 2 x i8> %res
 }
 
@@ -347,7 +344,7 @@ define <vscale x 2 x i8> @extract_nxv2i8_nxv16i8_4(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i8> @llvm.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 4)
+  %res = call <vscale x 2 x i8> @llvm.experimental.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 4)
   ret <vscale x 2 x i8> %res
 }
 
@@ -358,7 +355,7 @@ define <vscale x 2 x i8> @extract_nxv2i8_nxv16i8_6(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i8> @llvm.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 6)
+  %res = call <vscale x 2 x i8> @llvm.experimental.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 6)
   ret <vscale x 2 x i8> %res
 }
 
@@ -369,7 +366,7 @@ define <vscale x 2 x i8> @extract_nxv2i8_nxv16i8_8(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i8> @llvm.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 8)
+  %res = call <vscale x 2 x i8> @llvm.experimental.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 8)
   ret <vscale x 2 x i8> %res
 }
 
@@ -380,7 +377,7 @@ define <vscale x 2 x i8> @extract_nxv2i8_nxv16i8_10(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i8> @llvm.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 10)
+  %res = call <vscale x 2 x i8> @llvm.experimental.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 10)
   ret <vscale x 2 x i8> %res
 }
 
@@ -391,7 +388,7 @@ define <vscale x 2 x i8> @extract_nxv2i8_nxv16i8_12(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i8> @llvm.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 12)
+  %res = call <vscale x 2 x i8> @llvm.experimental.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 12)
   ret <vscale x 2 x i8> %res
 }
 
@@ -402,11 +399,11 @@ define <vscale x 2 x i8> @extract_nxv2i8_nxv16i8_14(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x i8> @llvm.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 14)
+  %res = call <vscale x 2 x i8> @llvm.experimental.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8> %in, i64 14)
   ret <vscale x 2 x i8> %res
 }
 
-declare <vscale x 2 x i8> @llvm.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8>, i64)
+declare <vscale x 2 x i8> @llvm.experimental.vector.extract.nxv2i8.nxv16i8(<vscale x 16 x i8>, i64)
 
 ;
 ; Extract i8 vector that needs promotion from one that needs widening.
@@ -417,7 +414,7 @@ define <vscale x 4 x i8> @extract_nxv4i8_nxv12i8_0(<vscale x 12 x i8> %in) {
 ; CHECK-NEXT:    uunpklo z0.h, z0.b
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i8> @llvm.vector.extract.nxv4i8.nxv12i8(<vscale x 12 x i8> %in, i64 0)
+  %res = call <vscale x 4 x i8> @llvm.experimental.vector.extract.nxv4i8.nxv12i8(<vscale x 12 x i8> %in, i64 0)
   ret <vscale x 4 x i8> %res
 }
 
@@ -427,7 +424,7 @@ define <vscale x 4 x i8> @extract_nxv4i8_nxv12i8_4(<vscale x 12 x i8> %in) {
 ; CHECK-NEXT:    uunpklo z0.h, z0.b
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i8> @llvm.vector.extract.nxv4i8.nxv12i8(<vscale x 12 x i8> %in, i64 4)
+  %res = call <vscale x 4 x i8> @llvm.experimental.vector.extract.nxv4i8.nxv12i8(<vscale x 12 x i8> %in, i64 4)
   ret <vscale x 4 x i8> %res
 }
 
@@ -437,11 +434,11 @@ define <vscale x 4 x i8> @extract_nxv4i8_nxv12i8_8(<vscale x 12 x i8> %in) {
 ; CHECK-NEXT:    uunpkhi z0.h, z0.b
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i8> @llvm.vector.extract.nxv4i8.nxv12i8(<vscale x 12 x i8> %in, i64 8)
+  %res = call <vscale x 4 x i8> @llvm.experimental.vector.extract.nxv4i8.nxv12i8(<vscale x 12 x i8> %in, i64 8)
   ret <vscale x 4 x i8> %res
 }
 
-declare <vscale x 4 x i8> @llvm.vector.extract.nxv4i8.nxv12i8(<vscale x 12 x i8>, i64)
+declare <vscale x 4 x i8> @llvm.experimental.vector.extract.nxv4i8.nxv12i8(<vscale x 12 x i8>, i64)
 
 ;
 ; Extract i8 vector that needs both widening + promotion from one that needs widening.
@@ -452,7 +449,7 @@ define <vscale x 6 x i8> @extract_nxv6i8_nxv12i8_0(<vscale x 12 x i8> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.h, z0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 6 x i8> @llvm.vector.extract.nxv6i8.nxv12i8(<vscale x 12 x i8> %in, i64 0)
+  %res = call <vscale x 6 x i8> @llvm.experimental.vector.extract.nxv6i8.nxv12i8(<vscale x 12 x i8> %in, i64 0)
   ret <vscale x 6 x i8> %res
 }
 
@@ -470,11 +467,11 @@ define <vscale x 6 x i8> @extract_nxv6i8_nxv12i8_6(<vscale x 12 x i8> %in) {
 ; CHECK-NEXT:    uzp1 z0.s, z0.s, z1.s
 ; CHECK-NEXT:    uzp1 z0.h, z0.h, z2.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 6 x i8> @llvm.vector.extract.nxv6i8.nxv12i8(<vscale x 12 x i8> %in, i64 6)
+  %res = call <vscale x 6 x i8> @llvm.experimental.vector.extract.nxv6i8.nxv12i8(<vscale x 12 x i8> %in, i64 6)
   ret <vscale x 6 x i8> %res
 }
 
-declare <vscale x 6 x i8> @llvm.vector.extract.nxv6i8.nxv12i8(<vscale x 12 x i8>, i64)
+declare <vscale x 6 x i8> @llvm.experimental.vector.extract.nxv6i8.nxv12i8(<vscale x 12 x i8>, i64)
 
 ;
 ; Extract half i8 vector that needs promotion from one that needs splitting.
@@ -484,7 +481,7 @@ define <vscale x 8 x i8> @extract_nxv8i8_nxv32i8_0(<vscale x 32 x i8> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.h, z0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i8> @llvm.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8> %in, i64 0)
+  %res = call <vscale x 8 x i8> @llvm.experimental.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8> %in, i64 0)
   ret <vscale x 8 x i8> %res
 }
 
@@ -493,7 +490,7 @@ define <vscale x 8 x i8> @extract_nxv8i8_nxv32i8_8(<vscale x 32 x i8> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpkhi z0.h, z0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i8> @llvm.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8> %in, i64 8)
+  %res = call <vscale x 8 x i8> @llvm.experimental.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8> %in, i64 8)
   ret <vscale x 8 x i8> %res
 }
 
@@ -502,7 +499,7 @@ define <vscale x 8 x i8> @extract_nxv8i8_nxv32i8_16(<vscale x 32 x i8> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.h, z1.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i8> @llvm.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8> %in, i64 16)
+  %res = call <vscale x 8 x i8> @llvm.experimental.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8> %in, i64 16)
   ret <vscale x 8 x i8> %res
 }
 
@@ -511,11 +508,11 @@ define <vscale x 8 x i8> @extract_nxv8i8_nxv32i8_24(<vscale x 32 x i8> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpkhi z0.h, z1.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i8> @llvm.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8> %in, i64 24)
+  %res = call <vscale x 8 x i8> @llvm.experimental.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8> %in, i64 24)
   ret <vscale x 8 x i8> %res
 }
 
-declare <vscale x 8 x i8> @llvm.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8>, i64)
+declare <vscale x 8 x i8> @llvm.experimental.vector.extract.nxv8i8.nxv32i8(<vscale x 32 x i8>, i64)
 
 ;
 ; Extract half i8 vector that needs promotion from legal type.
@@ -525,7 +522,7 @@ define <vscale x 8 x i8> @extract_nxv8i8_nxv16i8_0(<vscale x 16 x i8> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.h, z0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i8> @llvm.vector.extract.nxv8i8.nxv16i8(<vscale x 16 x i8> %in, i64 0)
+  %res = call <vscale x 8 x i8> @llvm.experimental.vector.extract.nxv8i8.nxv16i8(<vscale x 16 x i8> %in, i64 0)
   ret <vscale x 8 x i8> %res
 }
 
@@ -534,11 +531,11 @@ define <vscale x 8 x i8> @extract_nxv8i8_nxv16i8_8(<vscale x 16 x i8> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpkhi z0.h, z0.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 8 x i8> @llvm.vector.extract.nxv8i8.nxv16i8(<vscale x 16 x i8> %in, i64 8)
+  %res = call <vscale x 8 x i8> @llvm.experimental.vector.extract.nxv8i8.nxv16i8(<vscale x 16 x i8> %in, i64 8)
   ret <vscale x 8 x i8> %res
 }
 
-declare <vscale x 8 x i8> @llvm.vector.extract.nxv8i8.nxv16i8(<vscale x 16 x i8>, i64)
+declare <vscale x 8 x i8> @llvm.experimental.vector.extract.nxv8i8.nxv16i8(<vscale x 16 x i8>, i64)
 
 ;
 ; Extract i8 vector that needs widening from one that needs widening.
@@ -547,7 +544,7 @@ define <vscale x 14 x i8> @extract_nxv14i8_nxv28i8_0(<vscale x 28 x i8> %in) {
 ; CHECK-LABEL: extract_nxv14i8_nxv28i8_0:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 14 x i8> @llvm.vector.extract.nxv14i8.nxv28i8(<vscale x 28 x i8> %in, i64 0)
+  %res = call <vscale x 14 x i8> @llvm.experimental.vector.extract.nxv14i8.nxv28i8(<vscale x 28 x i8> %in, i64 0)
   ret <vscale x 14 x i8> %res
 }
 
@@ -621,11 +618,11 @@ define <vscale x 14 x i8> @extract_nxv14i8_nxv28i8_14(<vscale x 28 x i8> %in) {
 ; CHECK-NEXT:    uzp1 z1.h, z1.h, z2.h
 ; CHECK-NEXT:    uzp1 z0.b, z0.b, z1.b
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 14 x i8> @llvm.vector.extract.nxv14i8.nxv28i8(<vscale x 28 x i8> %in, i64 14)
+  %res = call <vscale x 14 x i8> @llvm.experimental.vector.extract.nxv14i8.nxv28i8(<vscale x 28 x i8> %in, i64 14)
   ret <vscale x 14 x i8> %res
 }
 
-declare <vscale x 14 x i8> @llvm.vector.extract.nxv14i8.nxv28i8(<vscale x 28 x i8>, i64)
+declare <vscale x 14 x i8> @llvm.experimental.vector.extract.nxv14i8.nxv28i8(<vscale x 28 x i8>, i64)
 
 ;
 ; Extract 1/4th i8 vector that needs promotion from legal type.
@@ -636,7 +633,7 @@ define <vscale x 4 x i8> @extract_nxv4i8_nxv16i8_0(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpklo z0.h, z0.b
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i8> @llvm.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8> %in, i64 0)
+  %res = call <vscale x 4 x i8> @llvm.experimental.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8> %in, i64 0)
   ret <vscale x 4 x i8> %res
 }
 
@@ -646,7 +643,7 @@ define <vscale x 4 x i8> @extract_nxv4i8_nxv16i8_4(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpklo z0.h, z0.b
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i8> @llvm.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8> %in, i64 4)
+  %res = call <vscale x 4 x i8> @llvm.experimental.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8> %in, i64 4)
   ret <vscale x 4 x i8> %res
 }
 
@@ -656,7 +653,7 @@ define <vscale x 4 x i8> @extract_nxv4i8_nxv16i8_8(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpkhi z0.h, z0.b
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i8> @llvm.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8> %in, i64 8)
+  %res = call <vscale x 4 x i8> @llvm.experimental.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8> %in, i64 8)
   ret <vscale x 4 x i8> %res
 }
 
@@ -666,11 +663,11 @@ define <vscale x 4 x i8> @extract_nxv4i8_nxv16i8_12(<vscale x 16 x i8> %in) {
 ; CHECK-NEXT:    uunpkhi z0.h, z0.b
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x i8> @llvm.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8> %in, i64 12)
+  %res = call <vscale x 4 x i8> @llvm.experimental.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8> %in, i64 12)
   ret <vscale x 4 x i8> %res
 }
 
-declare <vscale x 4 x i8> @llvm.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8>, i64)
+declare <vscale x 4 x i8> @llvm.experimental.vector.extract.nxv4i8.nxv16i8(<vscale x 16 x i8>, i64)
 
 ;
 ; Extract f16 vector that needs promotion from one that needs widening.
@@ -681,7 +678,7 @@ define <vscale x 2 x half> @extract_nxv2f16_nxv6f16_0(<vscale x 6 x half> %in) {
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x half> @llvm.vector.extract.nxv2f16.nxv6f16(<vscale x 6 x half> %in, i64 0)
+  %res = call <vscale x 2 x half> @llvm.experimental.vector.extract.nxv2f16.nxv6f16(<vscale x 6 x half> %in, i64 0)
   ret <vscale x 2 x half> %res
 }
 
@@ -691,7 +688,7 @@ define <vscale x 2 x half> @extract_nxv2f16_nxv6f16_2(<vscale x 6 x half> %in) {
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x half> @llvm.vector.extract.nxv2f16.nxv6f16(<vscale x 6 x half> %in, i64 2)
+  %res = call <vscale x 2 x half> @llvm.experimental.vector.extract.nxv2f16.nxv6f16(<vscale x 6 x half> %in, i64 2)
   ret <vscale x 2 x half> %res
 }
 
@@ -701,11 +698,11 @@ define <vscale x 2 x half> @extract_nxv2f16_nxv6f16_4(<vscale x 6 x half> %in) {
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x half> @llvm.vector.extract.nxv2f16.nxv6f16(<vscale x 6 x half> %in, i64 4)
+  %res = call <vscale x 2 x half> @llvm.experimental.vector.extract.nxv2f16.nxv6f16(<vscale x 6 x half> %in, i64 4)
   ret <vscale x 2 x half> %res
 }
 
-declare <vscale x 2 x half> @llvm.vector.extract.nxv2f16.nxv6f16(<vscale x 6 x half>, i64)
+declare <vscale x 2 x half> @llvm.experimental.vector.extract.nxv2f16.nxv6f16(<vscale x 6 x half>, i64)
 
 ;
 ; Extract half f16 vector that needs promotion from legal type.
@@ -715,7 +712,7 @@ define <vscale x 4 x half> @extract_nxv4f16_nxv8f16_0(<vscale x 8 x half> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x half> @llvm.vector.extract.nxv4f16.nxv8f16(<vscale x 8 x half> %in, i64 0)
+  %res = call <vscale x 4 x half> @llvm.experimental.vector.extract.nxv4f16.nxv8f16(<vscale x 8 x half> %in, i64 0)
   ret <vscale x 4 x half> %res
 }
 
@@ -724,11 +721,11 @@ define <vscale x 4 x half> @extract_nxv4f16_nxv8f16_4(<vscale x 8 x half> %in) {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x half> @llvm.vector.extract.nxv4f16.nxv8f16(<vscale x 8 x half> %in, i64 4)
+  %res = call <vscale x 4 x half> @llvm.experimental.vector.extract.nxv4f16.nxv8f16(<vscale x 8 x half> %in, i64 4)
   ret <vscale x 4 x half> %res
 }
 
-declare <vscale x 4 x half> @llvm.vector.extract.nxv4f16.nxv8f16(<vscale x 8 x half>, i64)
+declare <vscale x 4 x half> @llvm.experimental.vector.extract.nxv4f16.nxv8f16(<vscale x 8 x half>, i64)
 
 ;
 ; Extract f16 vector that needs widening from one that needs widening.
@@ -737,7 +734,7 @@ define <vscale x 6 x half> @extract_nxv6f16_nxv12f16_0(<vscale x 12 x half> %in)
 ; CHECK-LABEL: extract_nxv6f16_nxv12f16_0:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 6 x half> @llvm.vector.extract.nxv6f16.nxv12f16(<vscale x 12 x half> %in, i64 0)
+  %res = call <vscale x 6 x half> @llvm.experimental.vector.extract.nxv6f16.nxv12f16(<vscale x 12 x half> %in, i64 0)
   ret <vscale x 6 x half> %res
 }
 
@@ -753,11 +750,11 @@ define <vscale x 6 x half> @extract_nxv6f16_nxv12f16_6(<vscale x 12 x half> %in)
 ; CHECK-NEXT:    uzp1 z0.s, z0.s, z1.s
 ; CHECK-NEXT:    uzp1 z0.h, z0.h, z2.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 6 x half> @llvm.vector.extract.nxv6f16.nxv12f16(<vscale x 12 x half> %in, i64 6)
+  %res = call <vscale x 6 x half> @llvm.experimental.vector.extract.nxv6f16.nxv12f16(<vscale x 12 x half> %in, i64 6)
   ret <vscale x 6 x half> %res
 }
 
-declare <vscale x 6 x half> @llvm.vector.extract.nxv6f16.nxv12f16(<vscale x 12 x half>, i64)
+declare <vscale x 6 x half> @llvm.experimental.vector.extract.nxv6f16.nxv12f16(<vscale x 12 x half>, i64)
 
 ;
 ; Extract half f16 vector that needs promotion from one that needs splitting.
@@ -767,7 +764,7 @@ define <vscale x 4 x half> @extract_nxv4f16_nxv16f16_0(<vscale x 16 x half> %in)
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x half> @llvm.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half> %in, i64 0)
+  %res = call <vscale x 4 x half> @llvm.experimental.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half> %in, i64 0)
   ret <vscale x 4 x half> %res
 }
 
@@ -776,7 +773,7 @@ define <vscale x 4 x half> @extract_nxv4f16_nxv16f16_4(<vscale x 16 x half> %in)
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x half> @llvm.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half> %in, i64 4)
+  %res = call <vscale x 4 x half> @llvm.experimental.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half> %in, i64 4)
   ret <vscale x 4 x half> %res
 }
 
@@ -785,7 +782,7 @@ define <vscale x 4 x half> @extract_nxv4f16_nxv16f16_8(<vscale x 16 x half> %in)
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.s, z1.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x half> @llvm.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half> %in, i64 8)
+  %res = call <vscale x 4 x half> @llvm.experimental.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half> %in, i64 8)
   ret <vscale x 4 x half> %res
 }
 
@@ -794,11 +791,11 @@ define <vscale x 4 x half> @extract_nxv4f16_nxv16f16_12(<vscale x 16 x half> %in
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpkhi z0.s, z1.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x half> @llvm.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half> %in, i64 12)
+  %res = call <vscale x 4 x half> @llvm.experimental.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half> %in, i64 12)
   ret <vscale x 4 x half> %res
 }
 
-declare <vscale x 4 x half> @llvm.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half>, i64)
+declare <vscale x 4 x half> @llvm.experimental.vector.extract.nxv4f16.nxv16f16(<vscale x 16 x half>, i64)
 
 ;
 ; Extract 1/4th f16 vector that needs promotion from legal type.
@@ -809,7 +806,7 @@ define <vscale x 2 x half> @extract_nxv2f16_nxv8f16_0(<vscale x 8 x half> %in) {
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x half> @llvm.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half> %in, i64 0)
+  %res = call <vscale x 2 x half> @llvm.experimental.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half> %in, i64 0)
   ret <vscale x 2 x half> %res
 }
 
@@ -819,7 +816,7 @@ define <vscale x 2 x half> @extract_nxv2f16_nxv8f16_2(<vscale x 8 x half> %in) {
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x half> @llvm.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half> %in, i64 2)
+  %res = call <vscale x 2 x half> @llvm.experimental.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half> %in, i64 2)
   ret <vscale x 2 x half> %res
 }
 
@@ -829,7 +826,7 @@ define <vscale x 2 x half> @extract_nxv2f16_nxv8f16_4(<vscale x 8 x half> %in) {
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x half> @llvm.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half> %in, i64 4)
+  %res = call <vscale x 2 x half> @llvm.experimental.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half> %in, i64 4)
   ret <vscale x 2 x half> %res
 }
 
@@ -839,11 +836,11 @@ define <vscale x 2 x half> @extract_nxv2f16_nxv8f16_6(<vscale x 8 x half> %in) {
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x half> @llvm.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half> %in, i64 6)
+  %res = call <vscale x 2 x half> @llvm.experimental.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half> %in, i64 6)
   ret <vscale x 2 x half> %res
 }
 
-declare <vscale x 2 x half> @llvm.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half>, i64)
+declare <vscale x 2 x half> @llvm.experimental.vector.extract.nxv2f16.nxv8f16(<vscale x 8 x half>, i64)
 
 ;
 ; Extract half bf16 vector that needs promotion from legal type.
@@ -853,7 +850,7 @@ define <vscale x 4 x bfloat> @extract_nxv4bf16_nxv8bf16_0(<vscale x 8 x bfloat> 
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x bfloat> @llvm.vector.extract.nxv4bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 0)
+  %res = call <vscale x 4 x bfloat> @llvm.experimental.vector.extract.nxv4bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 0)
   ret <vscale x 4 x bfloat> %res
 }
 
@@ -862,11 +859,11 @@ define <vscale x 4 x bfloat> @extract_nxv4bf16_nxv8bf16_4(<vscale x 8 x bfloat> 
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x bfloat> @llvm.vector.extract.nxv4bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 4)
+  %res = call <vscale x 4 x bfloat> @llvm.experimental.vector.extract.nxv4bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 4)
   ret <vscale x 4 x bfloat> %res
 }
 
-declare <vscale x 4 x bfloat> @llvm.vector.extract.nxv4bf16.nxv8bf16(<vscale x 8 x bfloat>, i64)
+declare <vscale x 4 x bfloat> @llvm.experimental.vector.extract.nxv4bf16.nxv8bf16(<vscale x 8 x bfloat>, i64)
 
 ;
 ; Extract bf16 vector that needs widening from one that needs widening.
@@ -875,7 +872,7 @@ define <vscale x 6 x bfloat> @extract_nxv6bf16_nxv12bf16_0(<vscale x 12 x bfloat
 ; CHECK-LABEL: extract_nxv6bf16_nxv12bf16_0:
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 6 x bfloat> @llvm.vector.extract.nxv6bf16.nxv12bf16(<vscale x 12 x bfloat> %in, i64 0)
+  %res = call <vscale x 6 x bfloat> @llvm.experimental.vector.extract.nxv6bf16.nxv12bf16(<vscale x 12 x bfloat> %in, i64 0)
   ret <vscale x 6 x bfloat> %res
 }
 
@@ -891,11 +888,11 @@ define <vscale x 6 x bfloat> @extract_nxv6bf16_nxv12bf16_6(<vscale x 12 x bfloat
 ; CHECK-NEXT:    uzp1 z0.s, z0.s, z1.s
 ; CHECK-NEXT:    uzp1 z0.h, z0.h, z2.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 6 x bfloat> @llvm.vector.extract.nxv6bf16.nxv12bf16(<vscale x 12 x bfloat> %in, i64 6)
+  %res = call <vscale x 6 x bfloat> @llvm.experimental.vector.extract.nxv6bf16.nxv12bf16(<vscale x 12 x bfloat> %in, i64 6)
   ret <vscale x 6 x bfloat> %res
 }
 
-declare <vscale x 6 x bfloat> @llvm.vector.extract.nxv6bf16.nxv12bf16(<vscale x 12 x bfloat>, i64)
+declare <vscale x 6 x bfloat> @llvm.experimental.vector.extract.nxv6bf16.nxv12bf16(<vscale x 12 x bfloat>, i64)
 
 ;
 ; Extract bf16 vector that needs promotion from one that needs widening.
@@ -906,7 +903,7 @@ define <vscale x 2 x bfloat> @extract_nxv2bf16_nxv6bf16_0(<vscale x 6 x bfloat> 
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x bfloat> @llvm.vector.extract.nxv2bf16.nxv6bf16(<vscale x 6 x bfloat> %in, i64 0)
+  %res = call <vscale x 2 x bfloat> @llvm.experimental.vector.extract.nxv2bf16.nxv6bf16(<vscale x 6 x bfloat> %in, i64 0)
   ret <vscale x 2 x bfloat> %res
 }
 
@@ -916,7 +913,7 @@ define <vscale x 2 x bfloat> @extract_nxv2bf16_nxv6bf16_2(<vscale x 6 x bfloat> 
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x bfloat> @llvm.vector.extract.nxv2bf16.nxv6bf16(<vscale x 6 x bfloat> %in, i64 2)
+  %res = call <vscale x 2 x bfloat> @llvm.experimental.vector.extract.nxv2bf16.nxv6bf16(<vscale x 6 x bfloat> %in, i64 2)
   ret <vscale x 2 x bfloat> %res
 }
 
@@ -926,11 +923,11 @@ define <vscale x 2 x bfloat> @extract_nxv2bf16_nxv6bf16_4(<vscale x 6 x bfloat> 
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x bfloat> @llvm.vector.extract.nxv2bf16.nxv6bf16(<vscale x 6 x bfloat> %in, i64 4)
+  %res = call <vscale x 2 x bfloat> @llvm.experimental.vector.extract.nxv2bf16.nxv6bf16(<vscale x 6 x bfloat> %in, i64 4)
   ret <vscale x 2 x bfloat> %res
 }
 
-declare <vscale x 2 x bfloat> @llvm.vector.extract.nxv2bf16.nxv6bf16(<vscale x 6 x bfloat>, i64)
+declare <vscale x 2 x bfloat> @llvm.experimental.vector.extract.nxv2bf16.nxv6bf16(<vscale x 6 x bfloat>, i64)
 
 ;
 ; Extract 1/4th bf16 vector that needs promotion from legal type.
@@ -941,7 +938,7 @@ define <vscale x 2 x bfloat> @extract_nxv2bf16_nxv8bf16_0(<vscale x 8 x bfloat> 
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x bfloat> @llvm.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 0)
+  %res = call <vscale x 2 x bfloat> @llvm.experimental.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 0)
   ret <vscale x 2 x bfloat> %res
 }
 
@@ -951,7 +948,7 @@ define <vscale x 2 x bfloat> @extract_nxv2bf16_nxv8bf16_2(<vscale x 8 x bfloat> 
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x bfloat> @llvm.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 2)
+  %res = call <vscale x 2 x bfloat> @llvm.experimental.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 2)
   ret <vscale x 2 x bfloat> %res
 }
 
@@ -961,7 +958,7 @@ define <vscale x 2 x bfloat> @extract_nxv2bf16_nxv8bf16_4(<vscale x 8 x bfloat> 
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpklo z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x bfloat> @llvm.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 4)
+  %res = call <vscale x 2 x bfloat> @llvm.experimental.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 4)
   ret <vscale x 2 x bfloat> %res
 }
 
@@ -971,11 +968,11 @@ define <vscale x 2 x bfloat> @extract_nxv2bf16_nxv8bf16_6(<vscale x 8 x bfloat> 
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    uunpkhi z0.d, z0.s
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 2 x bfloat> @llvm.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 6)
+  %res = call <vscale x 2 x bfloat> @llvm.experimental.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat> %in, i64 6)
   ret <vscale x 2 x bfloat> %res
 }
 
-declare <vscale x 2 x bfloat> @llvm.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat>, i64)
+declare <vscale x 2 x bfloat> @llvm.experimental.vector.extract.nxv2bf16.nxv8bf16(<vscale x 8 x bfloat>, i64)
 
 ;
 ; Extract half bf16 vector that needs promotion from one that needs splitting.
@@ -985,7 +982,7 @@ define <vscale x 4 x bfloat> @extract_nxv4bf16_nxv16bf16_0(<vscale x 16 x bfloat
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x bfloat> @llvm.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat> %in, i64 0)
+  %res = call <vscale x 4 x bfloat> @llvm.experimental.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat> %in, i64 0)
   ret <vscale x 4 x bfloat> %res
 }
 
@@ -994,7 +991,7 @@ define <vscale x 4 x bfloat> @extract_nxv4bf16_nxv16bf16_4(<vscale x 16 x bfloat
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpkhi z0.s, z0.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x bfloat> @llvm.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat> %in, i64 4)
+  %res = call <vscale x 4 x bfloat> @llvm.experimental.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat> %in, i64 4)
   ret <vscale x 4 x bfloat> %res
 }
 
@@ -1003,7 +1000,7 @@ define <vscale x 4 x bfloat> @extract_nxv4bf16_nxv16bf16_8(<vscale x 16 x bfloat
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpklo z0.s, z1.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x bfloat> @llvm.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat> %in, i64 8)
+  %res = call <vscale x 4 x bfloat> @llvm.experimental.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat> %in, i64 8)
   ret <vscale x 4 x bfloat> %res
 }
 
@@ -1012,11 +1009,11 @@ define <vscale x 4 x bfloat> @extract_nxv4bf16_nxv16bf16_12(<vscale x 16 x bfloa
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    uunpkhi z0.s, z1.h
 ; CHECK-NEXT:    ret
-  %res = call <vscale x 4 x bfloat> @llvm.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat> %in, i64 12)
+  %res = call <vscale x 4 x bfloat> @llvm.experimental.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat> %in, i64 12)
   ret <vscale x 4 x bfloat> %res
 }
 
-declare <vscale x 4 x bfloat> @llvm.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat>, i64)
+declare <vscale x 4 x bfloat> @llvm.experimental.vector.extract.nxv4bf16.nxv16bf16(<vscale x 16 x bfloat>, i64)
 
 
 ;
@@ -1030,7 +1027,7 @@ define <vscale x 2 x float> @extract_nxv2f32_nxv4f32_splat(float %f) {
 ; CHECK-NEXT:    ret
   %ins = insertelement <vscale x 4 x float> poison, float %f, i32 0
   %splat = shufflevector <vscale x 4 x float> %ins, <vscale x 4 x float> poison, <vscale x 4 x i32> zeroinitializer
-  %ext = call <vscale x 2 x float> @llvm.vector.extract.nxv2f32.nxv4f32(<vscale x 4 x float> %splat, i64 0)
+  %ext = call <vscale x 2 x float> @llvm.experimental.vector.extract.nxv2f32.nxv4f32(<vscale x 4 x float> %splat, i64 0)
   ret <vscale x 2 x float> %ext
 }
 
@@ -1041,7 +1038,7 @@ define <vscale x 2 x float> @extract_nxv2f32_nxv4f32_splat_const() {
 ; CHECK-NEXT:    ret
   %ins = insertelement <vscale x 4 x float> poison, float 1.0, i32 0
   %splat = shufflevector <vscale x 4 x float> %ins, <vscale x 4 x float> poison, <vscale x 4 x i32> zeroinitializer
-  %ext = call <vscale x 2 x float> @llvm.vector.extract.nxv2f32.nxv4f32(<vscale x 4 x float> %splat, i64 0)
+  %ext = call <vscale x 2 x float> @llvm.experimental.vector.extract.nxv2f32.nxv4f32(<vscale x 4 x float> %splat, i64 0)
   ret <vscale x 2 x float> %ext
 }
 
@@ -1052,7 +1049,7 @@ define <vscale x 4 x i32> @extract_nxv4i32_nxv8i32_splat_const() {
 ; CHECK-NEXT:    ret
   %ins = insertelement <vscale x 8 x i32> poison, i32 1, i32 0
   %splat = shufflevector <vscale x 8 x i32> %ins, <vscale x 8 x i32> poison, <vscale x 8 x i32> zeroinitializer
-  %ext = call <vscale x 4 x i32> @llvm.vector.extract.nxv4i32.nxv8i32(<vscale x 8 x i32> %splat, i64 0)
+  %ext = call <vscale x 4 x i32> @llvm.experimental.vector.extract.nxv4i32.nxv8i32(<vscale x 8 x i32> %splat, i64 0)
   ret <vscale x 4 x i32> %ext
 }
 
@@ -1063,7 +1060,7 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_all_ones() {
 ; CHECK-NEXT:    ret
   %ins = insertelement <vscale x 16 x i1> poison, i1 1, i32 0
   %splat = shufflevector <vscale x 16 x i1> %ins, <vscale x 16 x i1> poison, <vscale x 16 x i32> zeroinitializer
-  %ext = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %splat, i64 0)
+  %ext = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> %splat, i64 0)
   ret <vscale x 2 x i1> %ext
 }
 
@@ -1072,369 +1069,9 @@ define <vscale x 2 x i1> @extract_nxv2i1_nxv16i1_all_zero() {
 ; CHECK:       // %bb.0:
 ; CHECK-NEXT:    pfalse p0.b
 ; CHECK-NEXT:    ret
-  %ext = call <vscale x 2 x i1> @llvm.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> zeroinitializer, i64 0)
+  %ext = call <vscale x 2 x i1> @llvm.experimental.vector.extract.nxv2i1.nxv16i1(<vscale x 16 x i1> zeroinitializer, i64 0)
   ret <vscale x 2 x i1> %ext
 }
 
-declare <vscale x 2 x float> @llvm.vector.extract.nxv2f32.nxv4f32(<vscale x 4 x float>, i64)
-declare <vscale x 4 x i32> @llvm.vector.extract.nxv4i32.nxv8i32(<vscale x 8 x i32>, i64)
-
-;
-; Extract nxv1i1 type from: nxv2i1
-;
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv2i1_0(<vscale x 2 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv2i1_0:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv2i1(<vscale x 2 x i1> %in, i64 0)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv2i1_1(<vscale x 2 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv2i1_1:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv2i1(<vscale x 2 x i1> %in, i64 1)
-  ret <vscale x 1 x i1> %res
-}
-
-;
-; Extract nxv1i1 type from: nxv4i1
-;
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv4i1_0(<vscale x 4 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv4i1_0:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv4i1(<vscale x 4 x i1> %in, i64 0)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv4i1_1(<vscale x 4 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv4i1_1:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv4i1(<vscale x 4 x i1> %in, i64 1)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv4i1_2(<vscale x 4 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv4i1_2:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv4i1(<vscale x 4 x i1> %in, i64 2)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv4i1_3(<vscale x 4 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv4i1_3:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv4i1(<vscale x 4 x i1> %in, i64 3)
-  ret <vscale x 1 x i1> %res
-}
-
-;
-; Extract nxv1i1 type from: nxv8i1
-;
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv8i1_0(<vscale x 8 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv8i1_0:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv8i1(<vscale x 8 x i1> %in, i64 0)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv8i1_1(<vscale x 8 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv8i1_1:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv8i1(<vscale x 8 x i1> %in, i64 1)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv8i1_2(<vscale x 8 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv8i1_2:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv8i1(<vscale x 8 x i1> %in, i64 2)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv8i1_3(<vscale x 8 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv8i1_3:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv8i1(<vscale x 8 x i1> %in, i64 3)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv8i1_4(<vscale x 8 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv8i1_4:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv8i1(<vscale x 8 x i1> %in, i64 4)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv8i1_5(<vscale x 8 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv8i1_5:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv8i1(<vscale x 8 x i1> %in, i64 5)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv8i1_6(<vscale x 8 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv8i1_6:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv8i1(<vscale x 8 x i1> %in, i64 6)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv8i1_7(<vscale x 8 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv8i1_7:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv8i1(<vscale x 8 x i1> %in, i64 7)
-  ret <vscale x 1 x i1> %res
-}
-
-
-;
-; Extract nxv1i1 type from: nxv16i1
-;
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_0(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_0:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 0)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_1(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_1:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 1)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_2(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_2:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 2)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_3(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_3:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 3)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_4(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_4:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 4)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_5(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_5:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 5)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_6(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_6:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 6)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_7(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_7:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 7)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_8(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_8:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 8)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_9(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_9:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 9)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_10(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_10:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 10)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_11(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_11:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 11)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_12(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_12:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 12)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_13(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_13:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 13)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_14(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_14:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpklo p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 14)
-  ret <vscale x 1 x i1> %res
-}
-
-define <vscale x 1 x i1> @extract_nxv1i1_nxv16i1_15(<vscale x 16 x i1> %in) {
-; CHECK-LABEL: extract_nxv1i1_nxv16i1_15:
-; CHECK:       // %bb.0:
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    punpkhi p0.h, p0.b
-; CHECK-NEXT:    ret
-  %res = call <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1> %in, i64 15)
-  ret <vscale x 1 x i1> %res
-}
-
-declare <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv2i1(<vscale x 2 x i1>, i64)
-declare <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv4i1(<vscale x 4 x i1>, i64)
-declare <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv8i1(<vscale x 8 x i1>, i64)
-declare <vscale x 1 x i1> @llvm.vector.extract.nxv1i1.nxv16i1(<vscale x 16 x i1>, i64)
+declare <vscale x 2 x float> @llvm.experimental.vector.extract.nxv2f32.nxv4f32(<vscale x 4 x float>, i64)
+declare <vscale x 4 x i32> @llvm.experimental.vector.extract.nxv4i32.nxv8i32(<vscale x 8 x i32>, i64)

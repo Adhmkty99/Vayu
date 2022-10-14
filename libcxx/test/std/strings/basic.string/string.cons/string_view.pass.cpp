@@ -8,7 +8,7 @@
 
 // <string>
 
-// explicit basic_string(basic_string_view<CharT, traits> sv, const Allocator& a = Allocator()); // constexpr since C++20
+// explicit basic_string(basic_string_view<CharT, traits> sv, const Allocator& a = Allocator());
 
 #include <algorithm>
 #include <cassert>
@@ -75,7 +75,7 @@ test(std::basic_string_view<charT> sv, const A& a)
   }
 }
 
-TEST_CONSTEXPR_CXX20 bool test() {
+bool test() {
   {
     typedef test_allocator<char> A;
     typedef std::basic_string_view<char, std::char_traits<char> > SV;
@@ -118,7 +118,7 @@ int main(int, char**)
 {
   test();
 #if TEST_STD_VER > 17
-  static_assert(test());
+  // static_assert(test());
 #endif
 
   return 0;

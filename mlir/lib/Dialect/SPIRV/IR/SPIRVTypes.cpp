@@ -259,42 +259,33 @@ void CooperativeMatrixNVType::getCapabilities(
 // ImageType
 //===----------------------------------------------------------------------===//
 
-template <typename T>
-static constexpr unsigned getNumBits() {
-  return 0;
-}
-template <>
-constexpr unsigned getNumBits<Dim>() {
+template <typename T> static constexpr unsigned getNumBits() { return 0; }
+template <> constexpr unsigned getNumBits<Dim>() {
   static_assert((1 << 3) > getMaxEnumValForDim(),
                 "Not enough bits to encode Dim value");
   return 3;
 }
-template <>
-constexpr unsigned getNumBits<ImageDepthInfo>() {
+template <> constexpr unsigned getNumBits<ImageDepthInfo>() {
   static_assert((1 << 2) > getMaxEnumValForImageDepthInfo(),
                 "Not enough bits to encode ImageDepthInfo value");
   return 2;
 }
-template <>
-constexpr unsigned getNumBits<ImageArrayedInfo>() {
+template <> constexpr unsigned getNumBits<ImageArrayedInfo>() {
   static_assert((1 << 1) > getMaxEnumValForImageArrayedInfo(),
                 "Not enough bits to encode ImageArrayedInfo value");
   return 1;
 }
-template <>
-constexpr unsigned getNumBits<ImageSamplingInfo>() {
+template <> constexpr unsigned getNumBits<ImageSamplingInfo>() {
   static_assert((1 << 1) > getMaxEnumValForImageSamplingInfo(),
                 "Not enough bits to encode ImageSamplingInfo value");
   return 1;
 }
-template <>
-constexpr unsigned getNumBits<ImageSamplerUseInfo>() {
+template <> constexpr unsigned getNumBits<ImageSamplerUseInfo>() {
   static_assert((1 << 2) > getMaxEnumValForImageSamplerUseInfo(),
                 "Not enough bits to encode ImageSamplerUseInfo value");
   return 2;
 }
-template <>
-constexpr unsigned getNumBits<ImageFormat>() {
+template <> constexpr unsigned getNumBits<ImageFormat>() {
   static_assert((1 << 6) > getMaxEnumValForImageFormat(),
                 "Not enough bits to encode ImageFormat value");
   return 6;
@@ -558,17 +549,14 @@ void ScalarType::getCapabilities(
       static const Capability caps[] = {Capability::cap8};                     \
       ArrayRef<Capability> ref(caps, llvm::array_lengthof(caps));              \
       capabilities.push_back(ref);                                             \
-      return;                                                                  \
-    }                                                                          \
-    if (bitwidth == 16) {                                                      \
+    } else if (bitwidth == 16) {                                               \
       static const Capability caps[] = {Capability::cap16};                    \
       ArrayRef<Capability> ref(caps, llvm::array_lengthof(caps));              \
       capabilities.push_back(ref);                                             \
-      return;                                                                  \
     }                                                                          \
-    /* For 64-bit integers/floats, Int64/Float64 enables support for all */    \
-    /* storage classes. Fall through to the next section. */                   \
-  } break
+    /* No requirements for other bitwidths */                                  \
+    return;                                                                    \
+  }
 
   // This part only handles the cases where special bitwidths appearing in
   // interface storage classes.
@@ -585,9 +573,8 @@ void ScalarType::getCapabilities(
         static const Capability caps[] = {Capability::StorageInputOutput16};
         ArrayRef<Capability> ref(caps, llvm::array_lengthof(caps));
         capabilities.push_back(ref);
-        return;
       }
-      break;
+      return;
     }
     default:
       break;
@@ -607,22 +594,22 @@ void ScalarType::getCapabilities(
 
   if (auto intType = dyn_cast<IntegerType>()) {
     switch (bitwidth) {
+    case 32:
+    case 1:
+      break;
       WIDTH_CASE(Int, 8);
       WIDTH_CASE(Int, 16);
       WIDTH_CASE(Int, 64);
-    case 1:
-    case 32:
-      break;
     default:
       llvm_unreachable("invalid bitwidth to getCapabilities");
     }
   } else {
     assert(isa<FloatType>());
     switch (bitwidth) {
-      WIDTH_CASE(Float, 16);
-      WIDTH_CASE(Float, 64);
     case 32:
       break;
+      WIDTH_CASE(Float, 16);
+      WIDTH_CASE(Float, 64);
     default:
       llvm_unreachable("invalid bitwidth to getCapabilities");
     }

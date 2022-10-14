@@ -357,47 +357,40 @@ bool Scope::IsStmtFunction() const {
   return symbol_ && symbol_->test(Symbol::Flag::StmtFunction);
 }
 
-template <common::TypeParamAttr... ParamAttr> struct IsTypeParamHelper {
-  static_assert(sizeof...(ParamAttr) == 0, "must have one or zero template");
-  static bool IsParam(const Symbol &symbol) {
-    return symbol.has<TypeParamDetails>();
-  }
-};
-
-template <common::TypeParamAttr ParamAttr> struct IsTypeParamHelper<ParamAttr> {
-  static bool IsParam(const Symbol &symbol) {
-    if (const auto *typeParam{symbol.detailsIf<TypeParamDetails>()}) {
-      return typeParam->attr() == ParamAttr;
-    }
+bool Scope::IsParameterizedDerivedType() const {
+  if (!IsDerivedType()) {
     return false;
   }
-};
-
-template <common::TypeParamAttr... ParamAttr>
-static bool IsParameterizedDerivedTypeHelper(const Scope &scope) {
-  if (scope.IsDerivedType()) {
-    if (const Scope * parent{scope.GetDerivedTypeParent()}) {
-      if (IsParameterizedDerivedTypeHelper<ParamAttr...>(*parent)) {
-        return true;
-      }
+  if (const Scope * parent{GetDerivedTypeParent()}) {
+    if (parent->IsParameterizedDerivedType()) {
+      return true;
     }
-    for (const auto &nameAndSymbolPair : scope) {
-      if (IsTypeParamHelper<ParamAttr...>::IsParam(*nameAndSymbolPair.second)) {
-        return true;
-      }
+  }
+  for (const auto &pair : symbols_) {
+    if (pair.second->has<TypeParamDetails>()) {
+      return true;
     }
   }
   return false;
 }
 
-bool Scope::IsParameterizedDerivedType() const {
-  return IsParameterizedDerivedTypeHelper<>(*this);
-}
-bool Scope::IsDerivedTypeWithLengthParameter() const {
-  return IsParameterizedDerivedTypeHelper<common::TypeParamAttr::Len>(*this);
-}
 bool Scope::IsDerivedTypeWithKindParameter() const {
-  return IsParameterizedDerivedTypeHelper<common::TypeParamAttr::Kind>(*this);
+  if (!IsDerivedType()) {
+    return false;
+  }
+  if (const Scope * parent{GetDerivedTypeParent()}) {
+    if (parent->IsDerivedTypeWithKindParameter()) {
+      return true;
+    }
+  }
+  for (const auto &pair : symbols_) {
+    if (const auto *typeParam{pair.second->detailsIf<TypeParamDetails>()}) {
+      if (typeParam->attr() == common::TypeParamAttr::Kind) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 const DeclTypeSpec *Scope::FindInstantiatedDerivedType(

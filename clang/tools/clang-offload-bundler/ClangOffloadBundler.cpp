@@ -63,23 +63,23 @@ static cl::opt<bool> Help("h", cl::desc("Alias for -help"), cl::Hidden);
 static cl::OptionCategory
     ClangOffloadBundlerCategory("clang-offload-bundler options");
 static cl::list<std::string>
-    InputFileNames("input",
+    InputFileNames("input", cl::ZeroOrMore,
                    cl::desc("Input file."
                             " Can be specified multiple times "
                             "for multiple input files."),
                    cl::cat(ClangOffloadBundlerCategory));
 static cl::list<std::string>
-    InputFileNamesDeprecatedOpt("inputs", cl::CommaSeparated,
+    InputFileNamesDeprecatedOpt("inputs", cl::CommaSeparated, cl::ZeroOrMore,
                                 cl::desc("[<input file>,...] (deprecated)"),
                                 cl::cat(ClangOffloadBundlerCategory));
 static cl::list<std::string>
-    OutputFileNames("output",
+    OutputFileNames("output", cl::ZeroOrMore,
                     cl::desc("Output file."
                              " Can be specified multiple times "
                              "for multiple output files."),
                     cl::cat(ClangOffloadBundlerCategory));
 static cl::list<std::string>
-    OutputFileNamesDeprecatedOpt("outputs", cl::CommaSeparated,
+    OutputFileNamesDeprecatedOpt("outputs", cl::CommaSeparated, cl::ZeroOrMore,
                                  cl::desc("[<output file>,...] (deprecated)"),
                                  cl::cat(ClangOffloadBundlerCategory));
 static cl::list<std::string>
@@ -1255,7 +1255,7 @@ static Error UnbundleArchive() {
 
     Optional<StringRef> OptionalCurBundleID = *CurBundleIDOrErr;
     // No device code in this child, skip.
-    if (!OptionalCurBundleID)
+    if (!OptionalCurBundleID.hasValue())
       continue;
     StringRef CodeObject = *OptionalCurBundleID;
 
@@ -1318,7 +1318,7 @@ static Error UnbundleArchive() {
       if (!NextTripleOrErr)
         return NextTripleOrErr.takeError();
 
-      CodeObject = NextTripleOrErr->value_or("");
+      CodeObject = ((*NextTripleOrErr).hasValue()) ? **NextTripleOrErr : "";
     } // End of processing of all bundle entries of this child of input archive.
   }   // End of while over children of input archive.
 

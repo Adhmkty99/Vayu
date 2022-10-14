@@ -47,8 +47,7 @@ static struct LLVMInitializer {
 static LogicalResult lowerToLLVMDialect(ModuleOp module) {
   PassManager pm(module.getContext());
   pm.addPass(mlir::createMemRefToLLVMPass());
-  pm.addNestedPass<func::FuncOp>(
-      mlir::arith::createConvertArithmeticToLLVMPass());
+  pm.addNestedPass<FuncOp>(mlir::arith::createConvertArithmeticToLLVMPass());
   pm.addPass(mlir::createConvertFuncToLLVMPass());
   pm.addPass(mlir::createReconcileUnrealizedCastsPass());
   return pm.run(module);
@@ -56,7 +55,7 @@ static LogicalResult lowerToLLVMDialect(ModuleOp module) {
 
 TEST(MLIRExecutionEngine, AddInteger) {
   std::string moduleStr = R"mlir(
-  func.func @foo(%arg0 : i32) -> i32 attributes { llvm.emit_c_interface } {
+  func @foo(%arg0 : i32) -> i32 attributes { llvm.emit_c_interface } {
     %res = arith.addi %arg0, %arg0 : i32
     return %res : i32
   }
@@ -82,7 +81,7 @@ TEST(MLIRExecutionEngine, AddInteger) {
 
 TEST(MLIRExecutionEngine, SubtractFloat) {
   std::string moduleStr = R"mlir(
-  func.func @foo(%arg0 : f32, %arg1 : f32) -> f32 attributes { llvm.emit_c_interface } {
+  func @foo(%arg0 : f32, %arg1 : f32) -> f32 attributes { llvm.emit_c_interface } {
     %res = arith.subf %arg0, %arg1 : f32
     return %res : f32
   }
@@ -112,7 +111,7 @@ TEST(NativeMemRefJit, ZeroRankMemref) {
   ASSERT_EQ(*a->data, 42);
   a[{}] = 0;
   std::string moduleStr = R"mlir(
-  func.func @zero_ranked(%arg0 : memref<f32>) attributes { llvm.emit_c_interface } {
+  func @zero_ranked(%arg0 : memref<f32>) attributes { llvm.emit_c_interface } {
     %cst42 = arith.constant 42.0 : f32
     memref.store %cst42, %arg0[] : memref<f32>
     return
@@ -146,7 +145,7 @@ TEST(NativeMemRefJit, RankOneMemref) {
   }
 
   std::string moduleStr = R"mlir(
-  func.func @one_ranked(%arg0 : memref<?xf32>) attributes { llvm.emit_c_interface } {
+  func @one_ranked(%arg0 : memref<?xf32>) attributes { llvm.emit_c_interface } {
     %cst42 = arith.constant 42.0 : f32
     %cst5 = arith.constant 5 : index
     memref.store %cst42, %arg0[%cst5] : memref<?xf32>
@@ -198,7 +197,7 @@ TEST(NativeMemRefJit, BasicMemref) {
     }
   }
   std::string moduleStr = R"mlir(
-  func.func @rank2_memref(%arg0 : memref<?x?xf32>, %arg1 : memref<?x?xf32>) attributes { llvm.emit_c_interface } {
+  func @rank2_memref(%arg0 : memref<?x?xf32>, %arg1 : memref<?x?xf32>) attributes { llvm.emit_c_interface } {
     %x = arith.constant 2 : index
     %y = arith.constant 1 : index
     %cst42 = arith.constant 42.0 : f32
@@ -232,13 +231,7 @@ static void memrefMultiply(::StridedMemRefType<float, 2> *memref,
     elt *= coefficient;
 }
 
-// MSAN does not work with JIT.
-#if __has_feature(memory_sanitizer)
-#define MAYBE_JITCallback DISABLED_JITCallback
-#else
-#define MAYBE_JITCallback JITCallback
-#endif
-TEST(NativeMemRefJit, MAYBE_JITCallback) {
+TEST(NativeMemRefJit, JITCallback) {
   constexpr int k = 2;
   constexpr int m = 2;
   int64_t shape[] = {k, m};
@@ -249,8 +242,8 @@ TEST(NativeMemRefJit, MAYBE_JITCallback) {
     elt = count++;
 
   std::string moduleStr = R"mlir(
-  func.func private @callback(%arg0: memref<?x?xf32>, %coefficient: i32)  attributes { llvm.emit_c_interface }
-  func.func @caller_for_callback(%arg0: memref<?x?xf32>, %coefficient: i32) attributes { llvm.emit_c_interface } {
+  func private @callback(%arg0: memref<?x?xf32>, %coefficient: i32)  attributes { llvm.emit_c_interface }
+  func @caller_for_callback(%arg0: memref<?x?xf32>, %coefficient: i32) attributes { llvm.emit_c_interface } {
     %unranked = memref.cast %arg0: memref<?x?xf32> to memref<*xf32>
     call @callback(%arg0, %coefficient) : (memref<?x?xf32>, i32) -> ()
     return

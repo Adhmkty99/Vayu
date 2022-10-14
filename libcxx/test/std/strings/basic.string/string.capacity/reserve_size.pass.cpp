@@ -8,7 +8,7 @@
 
 // <string>
 
-// void reserve(size_type res_arg); // constexpr since C++20
+// void reserve(size_type res_arg);
 
 // This test relies on https://llvm.org/PR45368 being fixed, which isn't in
 // older Apple dylibs
@@ -62,7 +62,7 @@ test(typename S::size_type min_cap, typename S::size_type erased_index, typename
 #endif
 }
 
-TEST_CONSTEXPR_CXX20 bool test() {
+bool test() {
   {
     typedef std::string S;
     {
@@ -105,7 +105,7 @@ int main(int, char**)
 {
   test();
 #if TEST_STD_VER > 17
-  static_assert(test());
+  // static_assert(test());
 #endif
 
   return 0;

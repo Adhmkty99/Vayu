@@ -58,7 +58,6 @@
 #include <algorithm> // std::is_permutation
 #include <cassert>
 #include <climits> // INT_MAX
-#include <iterator>
 #include <type_traits>
 #include <unordered_map>
 

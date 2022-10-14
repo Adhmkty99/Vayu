@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 
 class MiniDumpTestCase(TestBase):
+
+    mydir = TestBase.compute_mydir(__file__)
     NO_DEBUG_INFO_TESTCASE = True
 
     def test_process_info_in_mini_dump(self):
@@ -118,7 +120,7 @@ class MiniDumpTestCase(TestBase):
             breakpoint = target.BreakpointCreateByName("bar")
             process = target.LaunchSimple(
                 None, None, self.get_process_working_directory())
-            self.assertState(process.GetState(), lldb.eStateStopped)
+            self.assertEqual(process.GetState(), lldb.eStateStopped)
             self.assertTrue(process.SaveCore(core))
             self.assertTrue(os.path.isfile(core))
             self.assertSuccess(process.Kill())
@@ -154,7 +156,7 @@ class MiniDumpTestCase(TestBase):
             breakpoint = target.BreakpointCreateByName("bar")
             process = target.LaunchSimple(
                 None, None, self.get_process_working_directory())
-            self.assertState(process.GetState(), lldb.eStateStopped)
+            self.assertEqual(process.GetState(), lldb.eStateStopped)
             self.assertTrue(process.SaveCore(core))
             self.assertTrue(os.path.isfile(core))
             self.assertSuccess(process.Kill())

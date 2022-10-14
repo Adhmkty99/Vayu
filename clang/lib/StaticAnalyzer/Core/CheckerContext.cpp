@@ -127,10 +127,10 @@ static bool evalComparison(SVal LHSVal, BinaryOperatorKind ComparisonOp,
   if (LHSVal.isUnknownOrUndef())
     return false;
   ProgramStateManager &Mgr = State->getStateManager();
-  if (!isa<NonLoc>(LHSVal)) {
+  if (!LHSVal.getAs<NonLoc>()) {
     LHSVal = Mgr.getStoreManager().getBinding(State->getStore(),
                                               LHSVal.castAs<Loc>());
-    if (LHSVal.isUnknownOrUndef() || !isa<NonLoc>(LHSVal))
+    if (LHSVal.isUnknownOrUndef() || !LHSVal.getAs<NonLoc>())
       return false;
   }
 

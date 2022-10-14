@@ -1345,8 +1345,7 @@ inline bool HexagonDAGToDAGISel::SelectAnyInt(SDValue &N, SDValue &R) {
   EVT T = N.getValueType();
   if (!T.isInteger() || T.getSizeInBits() != 32 || !isa<ConstantSDNode>(N))
     return false;
-  int32_t V = cast<const ConstantSDNode>(N)->getZExtValue();
-  R = CurDAG->getTargetConstant(V, SDLoc(N), N.getValueType());
+  R = N;
   return true;
 }
 
@@ -1581,7 +1580,7 @@ bool HexagonDAGToDAGISel::keepsLowBits(const SDValue &Val, unsigned NumBits,
 }
 
 bool HexagonDAGToDAGISel::isAlignedMemNode(const MemSDNode *N) const {
-  return N->getAlign().value() >= N->getMemoryVT().getStoreSize();
+  return N->getAlignment() >= N->getMemoryVT().getStoreSize();
 }
 
 bool HexagonDAGToDAGISel::isSmallStackStore(const StoreSDNode *N) const {

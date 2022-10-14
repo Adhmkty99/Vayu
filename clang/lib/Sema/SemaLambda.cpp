@@ -182,7 +182,7 @@ Optional<unsigned> clang::getStackIndexOfNearestEnclosingCaptureCapableLambda(
   if (!OptionalStackIndex)
     return NoLambdaIsCaptureCapable;
 
-  const unsigned IndexOfCaptureReadyLambda = *OptionalStackIndex;
+  const unsigned IndexOfCaptureReadyLambda = OptionalStackIndex.getValue();
   assert(((IndexOfCaptureReadyLambda != (FunctionScopes.size() - 1)) ||
           S.getCurGenericLambda()) &&
          "The capture ready lambda for a potential capture can only be the "
@@ -433,7 +433,7 @@ void Sema::handleLambdaNumbering(
     unsigned ManglingNumber, DeviceManglingNumber;
     Decl *ManglingContextDecl;
     std::tie(HasKnownInternalLinkage, ManglingNumber, DeviceManglingNumber,
-             ManglingContextDecl) = *Mangling;
+             ManglingContextDecl) = Mangling.getValue();
     Class->setLambdaMangling(ManglingNumber, ManglingContextDecl,
                              HasKnownInternalLinkage);
     Class->setDeviceLambdaManglingNumber(DeviceManglingNumber);

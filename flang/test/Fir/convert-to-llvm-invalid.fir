@@ -5,7 +5,7 @@
 // Test `fir.zero` conversion failure with aggregate type.
 // Not implemented yet.
 
-func.func @zero_aggregate() {
+func @zero_aggregate() {
   // expected-error@+1{{failed to legalize operation 'fir.zero_bits'}}
   %a = fir.zero_bits !fir.array<10xf32>
   return
@@ -22,7 +22,7 @@ fir.dt_entry "method", @method_impl
 
 // Test `fir.shape` conversion failure because the op has uses.
 
-func.func @shape_not_dead(%arg0: !fir.ref<!fir.array<?x?xf32>>, %i: index, %j: index) {
+func @shape_not_dead(%arg0: !fir.ref<!fir.array<?x?xf32>>, %i: index, %j: index) {
   %c0 = arith.constant 1 : index
   // expected-error@+1{{failed to legalize operation 'fir.shape'}}
   %0 = fir.shape %c0, %c0 : (index, index) -> !fir.shape<2>
@@ -34,7 +34,7 @@ func.func @shape_not_dead(%arg0: !fir.ref<!fir.array<?x?xf32>>, %i: index, %j: i
 
 // Test `fir.slice` conversion failure because the op has uses.
 
-func.func @slice_not_dead(%arg0: !fir.ref<!fir.array<?x?xf32>>, %i: index, %j: index) {
+func @slice_not_dead(%arg0: !fir.ref<!fir.array<?x?xf32>>, %i: index, %j: index) {
   %c0 = arith.constant 1 : index
   // expected-error@+1{{failed to legalize operation 'fir.slice'}}
   %0 = fir.slice %c0, %c0, %c0, %c0, %c0, %c0 : (index, index, index, index, index, index) -> !fir.slice<2>
@@ -46,7 +46,7 @@ func.func @slice_not_dead(%arg0: !fir.ref<!fir.array<?x?xf32>>, %i: index, %j: i
 
 // Test `fir.shift` conversion failure because the op has uses.
 
-func.func @shift_not_dead(%arg0: !fir.box<!fir.array<?xf32>>, %i: index) {
+func @shift_not_dead(%arg0: !fir.box<!fir.array<?xf32>>, %i: index) {
   %c0 = arith.constant 1 : index
   // expected-error@+1{{failed to legalize operation 'fir.shift'}}
   %0 = fir.shift %c0 : (index) -> !fir.shift<1>
@@ -58,7 +58,7 @@ func.func @shift_not_dead(%arg0: !fir.box<!fir.array<?xf32>>, %i: index) {
 
 // Test `fir.shape_shift` conversion failure because the op has uses.
 
-func.func @shape_shift_not_dead(%arg0: !fir.ref<!fir.array<?x?xf32>>, %i: index, %j: index) {
+func @shape_shift_not_dead(%arg0: !fir.ref<!fir.array<?x?xf32>>, %i: index, %j: index) {
   %c0 = arith.constant 1 : index
   // expected-error@+1{{failed to legalize operation 'fir.shape_shift'}}
   %0 = fir.shape_shift %c0, %c0, %c0, %c0 : (index, index, index, index) -> !fir.shapeshift<2>
@@ -71,7 +71,7 @@ func.func @shape_shift_not_dead(%arg0: !fir.ref<!fir.array<?x?xf32>>, %i: index,
 // Test `fir.select_type` conversion to llvm.
 // Should have been converted.
 
-func.func @bar_select_type(%arg : !fir.box<!fir.ref<f32>>) -> i32 {
+func @bar_select_type(%arg : !fir.box<!fir.ref<f32>>) -> i32 {
   %0 = arith.constant 1 : i32
   %2 = arith.constant 3 : i32
   // expected-error@+2{{fir.select_type should have already been converted}}
@@ -91,15 +91,8 @@ func.func @bar_select_type(%arg : !fir.box<!fir.ref<f32>>) -> i32 {
 
 // -----
 
-// Verify that `fir.dt_entry` requires a parent op
-
-// expected-error@+1{{'fir.dt_entry' op expects parent op 'fir.dispatch_table'}}
-fir.dt_entry "method", @method_impl
-
-// -----
-
 // `fir.coordinate_of` - dynamically sized arrays are not supported
-func.func @coordinate_of_dynamic_array(%arg0: !fir.ref<!fir.array<1x!fir.char<4,?>>>, %arg1: index) {
+func @coordinate_of_dynamic_array(%arg0: !fir.ref<!fir.array<1x!fir.char<4,?>>>, %arg1: index) {
   // expected-error@+2{{fir.coordinate_of with a dynamic element size is unsupported}}
   // expected-error@+1{{failed to legalize operation 'fir.coordinate_of'}}
   %p = fir.coordinate_of %arg0, %arg1 : (!fir.ref<!fir.array<1x!fir.char<4,?>>>, index) -> !fir.ref<f32>

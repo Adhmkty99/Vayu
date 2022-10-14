@@ -1147,14 +1147,6 @@ void llvm::thinLTOInternalizeModule(Module &TheModule,
   // Declare a callback for the internalize pass that will ask for every
   // candidate GlobalValue if it can be internalized or not.
   auto MustPreserveGV = [&](const GlobalValue &GV) -> bool {
-    // It may be the case that GV is on a chain of an ifunc, its alias and
-    // subsequent aliases. In this case, the summary for the value is not
-    // available.
-    if (isa<GlobalIFunc>(&GV) ||
-        (isa<GlobalAlias>(&GV) &&
-         isa<GlobalIFunc>(cast<GlobalAlias>(&GV)->getAliaseeObject())))
-      return true;
-
     // Lookup the linkage recorded in the summaries during global analysis.
     auto GS = DefinedGlobals.find(GV.getGUID());
     if (GS == DefinedGlobals.end()) {
@@ -1285,7 +1277,7 @@ Expected<bool> FunctionImporter::importFunctions(
       }
     }
     for (GlobalAlias &GA : SrcModule->aliases()) {
-      if (!GA.hasName() || isa<GlobalIFunc>(GA.getAliaseeObject()))
+      if (!GA.hasName())
         continue;
       auto GUID = GA.getGUID();
       auto Import = ImportGUIDs.count(GUID);
@@ -1421,6 +1413,29 @@ static bool doImportingForModule(Module &M) {
   return *Result;
 }
 
+namespace {
+
+/// Pass that performs cross-module function import provided a summary file.
+class FunctionImportLegacyPass : public ModulePass {
+public:
+  /// Pass identification, replacement for typeid
+  static char ID;
+
+  explicit FunctionImportLegacyPass() : ModulePass(ID) {}
+
+  /// Specify pass name for debug output
+  StringRef getPassName() const override { return "Function Importing"; }
+
+  bool runOnModule(Module &M) override {
+    if (skipModule(M))
+      return false;
+
+    return doImportingForModule(M);
+  }
+};
+
+} // end anonymous namespace
+
 PreservedAnalyses FunctionImportPass::run(Module &M,
                                           ModuleAnalysisManager &AM) {
   if (!doImportingForModule(M))
@@ -1428,3 +1443,15 @@ PreservedAnalyses FunctionImportPass::run(Module &M,
 
   return PreservedAnalyses::none();
 }
+
+char FunctionImportLegacyPass::ID = 0;
+INITIALIZE_PASS(FunctionImportLegacyPass, "function-import",
+                "Summary Based Function Import", false, false)
+
+namespace llvm {
+
+Pass *createFunctionImportPass() {
+  return new FunctionImportLegacyPass();
+}
+
+} // end namespace llvm

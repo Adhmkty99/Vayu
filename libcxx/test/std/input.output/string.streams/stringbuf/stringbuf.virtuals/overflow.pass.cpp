@@ -38,7 +38,7 @@ struct testbuf
 
 int main(int, char**)
 {
-    // check overflow
+    // sanity check
     {
         testbuf<char> tb("");
         tb.overflow();

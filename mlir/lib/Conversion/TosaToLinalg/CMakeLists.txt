@@ -12,16 +12,16 @@ add_mlir_conversion_library(MLIRTosaToLinalg
   MLIRConversionPassIncGen
 
   LINK_LIBS PUBLIC
-  MLIRArithmeticDialect
+  MLIRArithmetic
   MLIRDialectUtils
   MLIRIR
-  MLIRLinalgDialect
+  MLIRLinalg
   MLIRLinalgUtils
-  MLIRMathDialect
+  MLIRMath
   MLIRPass
-  MLIRTensorDialect
+  MLIRTensor
   MLIRTransforms
-  MLIRTosaDialect
+  MLIRTosa
   MLIRTosaTransforms
   MLIRSupport
   )

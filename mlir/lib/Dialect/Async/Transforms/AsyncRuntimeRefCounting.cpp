@@ -498,7 +498,7 @@ AsyncRuntimePolicyBasedRefCountingPass::addRefCounting(Value value) {
       if (failed(refCount))
         return failure();
 
-      int cnt = *refCount;
+      int cnt = refCount.getValue();
 
       // Create `add_ref` operation before the operand owner.
       if (cnt > 0) {

@@ -470,11 +470,11 @@ public:
   /// Whether input profile is based on pseudo probes.
   bool profileIsProbeBased() const { return ProfileIsProbeBased; }
 
-  /// Whether input profile is fully context-sensitive.
-  bool profileIsCS() const { return ProfileIsCS; }
+  /// Whether input profile is fully context-sensitive and flat.
+  bool profileIsCSFlat() const { return ProfileIsCSFlat; }
 
-  /// Whether input profile contains ShouldBeInlined contexts.
-  bool profileIsPreInlined() const { return ProfileIsPreInlined; }
+  /// Whether input profile is fully context-sensitive and nested.
+  bool profileIsCSNested() const { return ProfileIsCSNested; }
 
   virtual std::unique_ptr<ProfileSymbolList> getProfileSymbolList() {
     return nullptr;
@@ -534,10 +534,10 @@ protected:
   bool ProfileIsProbeBased = false;
 
   /// Whether function profiles are context-sensitive flat profiles.
-  bool ProfileIsCS = false;
+  bool ProfileIsCSFlat = false;
 
-  /// Whether function profile contains ShouldBeInlined contexts.
-  bool ProfileIsPreInlined = false;
+  /// Whether function profiles are context-sensitive nested profiles.
+  bool ProfileIsCSNested = false;
 
   /// Number of context-sensitive profiles.
   uint32_t CSProfileCount = 0;
@@ -585,14 +585,14 @@ public:
       : SampleProfileReader(std::move(B), C, Format) {}
 
   /// Read and validate the file header.
-  std::error_code readHeader() override;
+  virtual std::error_code readHeader() override;
 
   /// Read sample profiles from the associated file.
   std::error_code readImpl() override;
 
   /// It includes all the names that have samples either in outline instance
   /// or inline instance.
-  std::vector<StringRef> *getNameTable() override { return &NameTable; }
+  virtual std::vector<StringRef> *getNameTable() override { return &NameTable; }
 
 protected:
   /// Read a numeric value of type T from the profile.
@@ -656,7 +656,7 @@ private:
 
 class SampleProfileReaderRawBinary : public SampleProfileReaderBinary {
 private:
-  std::error_code verifySPMagic(uint64_t Magic) override;
+  virtual std::error_code verifySPMagic(uint64_t Magic) override;
 
 public:
   SampleProfileReaderRawBinary(std::unique_ptr<MemoryBuffer> B, LLVMContext &C,
@@ -710,14 +710,14 @@ protected:
   std::error_code readCSNameTableSec();
   std::error_code readProfileSymbolList();
 
-  std::error_code readHeader() override;
-  std::error_code verifySPMagic(uint64_t Magic) override = 0;
+  virtual std::error_code readHeader() override;
+  virtual std::error_code verifySPMagic(uint64_t Magic) override = 0;
   virtual std::error_code readOneSection(const uint8_t *Start, uint64_t Size,
                                          const SecHdrTableEntry &Entry);
   // placeholder for subclasses to dispatch their own section readers.
   virtual std::error_code readCustomSection(const SecHdrTableEntry &Entry) = 0;
-  ErrorOr<StringRef> readStringFromTable() override;
-  ErrorOr<SampleContext> readSampleContextFromTable() override;
+  virtual ErrorOr<StringRef> readStringFromTable() override;
+  virtual ErrorOr<SampleContext> readSampleContextFromTable() override;
   ErrorOr<SampleContextFrames> readContextFromTable();
 
   std::unique_ptr<ProfileSymbolList> ProfSymList;
@@ -770,26 +770,27 @@ public:
   uint64_t getSectionSize(SecType Type);
   /// Get the total size of header and all sections.
   uint64_t getFileSize();
-  bool dumpSectionInfo(raw_ostream &OS = dbgs()) override;
+  virtual bool dumpSectionInfo(raw_ostream &OS = dbgs()) override;
 
   /// Collect functions with definitions in Module M. Return true if
   /// the reader has been given a module.
   bool collectFuncsFromModule() override;
 
   /// Return whether names in the profile are all MD5 numbers.
-  bool useMD5() override { return MD5StringBuf.get(); }
+  virtual bool useMD5() override { return MD5StringBuf.get(); }
 
-  std::unique_ptr<ProfileSymbolList> getProfileSymbolList() override {
+  virtual std::unique_ptr<ProfileSymbolList> getProfileSymbolList() override {
     return std::move(ProfSymList);
   };
 
-  void setSkipFlatProf(bool Skip) override { SkipFlatProf = Skip; }
+  virtual void setSkipFlatProf(bool Skip) override { SkipFlatProf = Skip; }
 };
 
 class SampleProfileReaderExtBinary : public SampleProfileReaderExtBinaryBase {
 private:
-  std::error_code verifySPMagic(uint64_t Magic) override;
-  std::error_code readCustomSection(const SecHdrTableEntry &Entry) override {
+  virtual std::error_code verifySPMagic(uint64_t Magic) override;
+  virtual std::error_code
+  readCustomSection(const SecHdrTableEntry &Entry) override {
     // Update the data reader pointer to the end of the section.
     Data = End;
     return sampleprof_error::success;
@@ -813,11 +814,11 @@ private:
   DenseMap<StringRef, uint64_t> FuncOffsetTable;
   /// The set containing the functions to use when compiling a module.
   DenseSet<StringRef> FuncsToUse;
-  std::error_code verifySPMagic(uint64_t Magic) override;
-  std::error_code readNameTable() override;
+  virtual std::error_code verifySPMagic(uint64_t Magic) override;
+  virtual std::error_code readNameTable() override;
   /// Read a string indirectly via the name table.
-  ErrorOr<StringRef> readStringFromTable() override;
-  std::error_code readHeader() override;
+  virtual ErrorOr<StringRef> readStringFromTable() override;
+  virtual std::error_code readHeader() override;
   std::error_code readFuncOffsetTable();
 
 public:
@@ -836,7 +837,7 @@ public:
   bool collectFuncsFromModule() override;
 
   /// Return whether names in the profile are all MD5 numbers.
-  bool useMD5() override { return true; }
+  virtual bool useMD5() override { return true; }
 };
 
 using InlineCallStack = SmallVector<FunctionSamples *, 10>;

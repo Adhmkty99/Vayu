@@ -36,7 +36,7 @@ public:
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
 
 private:
-  const StringRef RawStringHeaderFileExtensions;
+  const std::string RawStringHeaderFileExtensions;
   utils::FileExtensionsSet HeaderFileExtensions;
 };
 

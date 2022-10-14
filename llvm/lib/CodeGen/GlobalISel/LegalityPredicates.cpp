@@ -188,13 +188,6 @@ LegalityPredicate LegalityPredicates::memSizeInBytesNotPow2(unsigned MMOIdx) {
   };
 }
 
-LegalityPredicate LegalityPredicates::memSizeNotByteSizePow2(unsigned MMOIdx) {
-  return [=](const LegalityQuery &Query) {
-    const LLT MemTy = Query.MMODescrs[MMOIdx].MemoryTy;
-    return !MemTy.isByteSized() || !isPowerOf2_32(MemTy.getSizeInBytes());
-  };
-}
-
 LegalityPredicate LegalityPredicates::numElementsNotPow2(unsigned TypeIdx) {
   return [=](const LegalityQuery &Query) {
     const LLT QueryTy = Query.Types[TypeIdx];

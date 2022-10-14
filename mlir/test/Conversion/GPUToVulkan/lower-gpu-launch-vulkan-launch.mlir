@@ -23,7 +23,7 @@ module attributes {gpu.container_module} {
       gpu.return
     }
   }
-  func.func @foo() {
+  func @foo() {
     %0 = memref.alloc() : memref<12xf32>
     %c1 = arith.constant 1 : index
     gpu.launch_func @kernels::@kernel

@@ -25,12 +25,10 @@ static uptr BitsNeeded(u64 v) {
   if (!v)
     return 1;
   uptr r = 0;
-  if (sizeof(uptr) != sizeof(u64)) {
-    uptr uptr_bits = 8 * sizeof(uptr);
-    while (v >> uptr_bits) {
-      r += uptr_bits;
-      v >>= uptr_bits;
-    }
+  uptr uptr_bits = 8 * sizeof(uptr);
+  while (v >> uptr_bits) {
+    r += uptr_bits;
+    v >>= uptr_bits;
   }
   return r + MostSignificantSetBitIndex(v) + 1;
 }

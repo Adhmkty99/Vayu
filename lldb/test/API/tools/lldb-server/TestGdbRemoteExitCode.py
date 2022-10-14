@@ -10,6 +10,8 @@ from gdbremote_testcase import GdbRemoteTestCaseBase
 
 class TestGdbRemoteExitCode(GdbRemoteTestCaseBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def _test_inferior_exit(self, retval):
         self.build()
 

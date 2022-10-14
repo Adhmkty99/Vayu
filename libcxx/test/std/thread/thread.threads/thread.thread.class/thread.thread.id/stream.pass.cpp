@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-// UNSUPPORTED: no-threads
-// UNSUPPORTED: no-localization
+// UNSUPPORTED: libcpp-has-no-threads
+// UNSUPPORTED: libcpp-has-no-localization
 
 // <thread>
 

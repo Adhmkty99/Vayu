@@ -86,9 +86,9 @@ static OpFoldResult foldReshapeOp(ReshapeOpTy reshapeOp,
   // Fold producer-consumer reshape ops that where the operand type of the
   // producer is same as the return type of the consumer.
   auto reshapeSrcOp =
-      reshapeOp.getSrc().template getDefiningOp<InverseReshapeOpTy>();
+      reshapeOp.src().template getDefiningOp<InverseReshapeOpTy>();
   if (reshapeSrcOp && reshapeSrcOp.getSrcType() == reshapeOp.getResultType())
-    return reshapeSrcOp.getSrc();
+    return reshapeSrcOp.src();
   // Reshape of a constant can be replaced with a new constant.
   if (auto elements = operands.front().dyn_cast_or_null<DenseElementsAttr>()) {
     return elements.reshape(
@@ -122,10 +122,10 @@ static LogicalResult verifyReshapeLikeTypes(Op op, T expandedType,
                             "extent dimensions to zero-rank tensor/memref");
     return success();
   }
-  if (collapsedRank != op.getReassociation().size())
+  if (collapsedRank != op.reassociation().size())
     return op.emitOpError("expected rank of the collapsed type(")
            << collapsedRank << ") to be the number of reassociation maps("
-           << op.getReassociation().size() << ")";
+           << op.reassociation().size() << ")";
   auto maps = op.getReassociationMaps();
   for (auto it : llvm::enumerate(maps))
     if (it.value().getNumDims() != expandedRank)
@@ -172,16 +172,15 @@ struct ComposeReassociativeReshapeOps : public OpRewritePattern<ReshapeOpTy> {
   using OpRewritePattern<ReshapeOpTy>::OpRewritePattern;
   LogicalResult matchAndRewrite(ReshapeOpTy reshapeOp,
                                 PatternRewriter &rewriter) const override {
-    auto srcReshapeOp =
-        reshapeOp.getSrc().template getDefiningOp<ReshapeOpTy>();
+    auto srcReshapeOp = reshapeOp.src().template getDefiningOp<ReshapeOpTy>();
     if (!srcReshapeOp)
       return failure();
 
     ShapedType resultType = reshapeOp.getResultType();
 
-    if (hasNonIdentityLayout(srcReshapeOp.getSrc().getType()) ||
-        hasNonIdentityLayout(reshapeOp.getSrc().getType()) ||
-        hasNonIdentityLayout(reshapeOp.getResult().getType()))
+    if (hasNonIdentityLayout(srcReshapeOp.src().getType()) ||
+        hasNonIdentityLayout(reshapeOp.src().getType()) ||
+        hasNonIdentityLayout(reshapeOp.result().getType()))
       return failure();
 
     Optional<SmallVector<ReassociationIndices>> reassociationIndices =
@@ -191,7 +190,7 @@ struct ComposeReassociativeReshapeOps : public OpRewritePattern<ReshapeOpTy> {
     if (!reassociationIndices)
       return failure();
     rewriter.replaceOpWithNewOp<ReshapeOpTy>(
-        reshapeOp, resultType, srcReshapeOp.getSrc(), *reassociationIndices);
+        reshapeOp, resultType, srcReshapeOp.src(), *reassociationIndices);
     return success();
   }
 };
@@ -229,16 +228,16 @@ struct ComposeCollapseOfExpandOp : public OpRewritePattern<CollapseOpTy> {
   using OpRewritePattern<CollapseOpTy>::OpRewritePattern;
   LogicalResult matchAndRewrite(CollapseOpTy collapseOp,
                                 PatternRewriter &rewriter) const override {
-    auto expandOp = collapseOp.getSrc().template getDefiningOp<ExpandOpTy>();
+    auto expandOp = collapseOp.src().template getDefiningOp<ExpandOpTy>();
     if (!expandOp)
       return failure();
 
     ShapedType srcType = expandOp.getSrcType();
     ShapedType resultType = collapseOp.getResultType();
 
-    if (hasNonIdentityLayout(collapseOp.getSrc().getType()) ||
-        hasNonIdentityLayout(expandOp.getSrc().getType()) ||
-        hasNonIdentityLayout(expandOp.getResult().getType()))
+    if (hasNonIdentityLayout(collapseOp.src().getType()) ||
+        hasNonIdentityLayout(expandOp.src().getType()) ||
+        hasNonIdentityLayout(expandOp.result().getType()))
       return failure();
 
     int64_t srcRank = srcType.getRank();
@@ -275,10 +274,10 @@ struct ComposeCollapseOfExpandOp : public OpRewritePattern<CollapseOpTy> {
     }
     if (isResultCollapsed)
       rewriter.replaceOpWithNewOp<CollapseOpTy>(
-          collapseOp, resultType, expandOp.getSrc(), composedReassociation);
+          collapseOp, resultType, expandOp.src(), composedReassociation);
     else
       rewriter.replaceOpWithNewOp<ExpandOpTy>(
-          collapseOp, resultType, expandOp.getSrc(), composedReassociation);
+          collapseOp, resultType, expandOp.src(), composedReassociation);
     return success();
   }
 };
@@ -288,16 +287,16 @@ struct ComposeExpandOfCollapseOp : public OpRewritePattern<ExpandOpTy> {
   using OpRewritePattern<ExpandOpTy>::OpRewritePattern;
   LogicalResult matchAndRewrite(ExpandOpTy expandOp,
                                 PatternRewriter &rewriter) const override {
-    auto collapseOp = expandOp.getSrc().template getDefiningOp<CollapseOpTy>();
+    auto collapseOp = expandOp.src().template getDefiningOp<CollapseOpTy>();
     if (!collapseOp)
       return failure();
 
     ShapedType srcType = collapseOp.getSrcType();
     ShapedType resultType = expandOp.getResultType();
 
-    if (hasNonIdentityLayout(expandOp.getSrc().getType()) ||
-        hasNonIdentityLayout(collapseOp.getSrc().getType()) ||
-        hasNonIdentityLayout(collapseOp.getResult().getType()))
+    if (hasNonIdentityLayout(expandOp.src().getType()) ||
+        hasNonIdentityLayout(collapseOp.src().getType()) ||
+        hasNonIdentityLayout(collapseOp.result().getType()))
       return failure();
 
     int64_t srcRank = srcType.getRank();
@@ -311,21 +310,21 @@ struct ComposeExpandOfCollapseOp : public OpRewritePattern<ExpandOpTy> {
       auto composedReassociation = findCollapsingReassociation(
           srcReassociation, resultReassociation, srcType.getShape(),
           resultType.getShape());
-      if (!composedReassociation)
+      if (!composedReassociation.hasValue())
         return failure();
 
       rewriter.replaceOpWithNewOp<CollapseOpTy>(
-          expandOp, resultType, collapseOp.getSrc(), *composedReassociation);
+          expandOp, resultType, collapseOp.src(), *composedReassociation);
       return success();
     }
     auto composedReassociation =
         findCollapsingReassociation(resultReassociation, srcReassociation,
                                     resultType.getShape(), srcType.getShape());
-    if (!composedReassociation)
+    if (!composedReassociation.hasValue())
       return failure();
 
     rewriter.replaceOpWithNewOp<ExpandOpTy>(
-        expandOp, resultType, collapseOp.getSrc(), *composedReassociation);
+        expandOp, resultType, collapseOp.src(), *composedReassociation);
     return success();
   }
 
@@ -358,7 +357,7 @@ private:
       // Find reassociation to collapse `srcSubShape` into `resultSubShape`.
       auto subShapeReassociation =
           getReassociationIndicesForCollapse(srcSubShape, resultSubShape);
-      if (!subShapeReassociation)
+      if (!subShapeReassociation.hasValue())
         return llvm::None;
 
       // Remap the subshape indices back to the original srcShape.

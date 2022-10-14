@@ -127,6 +127,11 @@ bool shouldSkipTypedef(const TypedefNameDecl *TD) {
 //      template<class X> using pvec = vector<x*>; pvec<int> x;
 //    There's no Decl `pvec<int>`, we must choose `pvec<X>` or `vector<int*>`
 //    and both are lossy. We must know upfront what the caller ultimately wants.
+//
+// FIXME: improve common dependent scope using name lookup in primary templates.
+// We currently handle several dependent constructs, but some others remain to
+// be handled:
+//  - UnresolvedUsingTypenameDecl
 struct TargetFinder {
   using RelSet = DeclRelationSet;
   using Rel = DeclRelation;
@@ -202,10 +207,6 @@ public:
         }
       }
       Flags |= Rel::Alias; // continue with the alias
-    } else if (isa<UnresolvedUsingTypenameDecl>(D)) {
-      // FIXME: improve common dependent scope using name lookup in primary
-      // templates.
-      Flags |= Rel::Alias;
     } else if (const UsingShadowDecl *USD = dyn_cast<UsingShadowDecl>(D)) {
       // Include the Introducing decl, but don't traverse it. This may end up
       // including *all* shadows, which we don't want.
@@ -381,19 +382,13 @@ public:
         // TypeLoc never has a deduced type. https://llvm.org/PR42914
         Outer.add(DT->getDeducedType(), Flags);
       }
-      void VisitUnresolvedUsingType(const UnresolvedUsingType *UUT) {
-        Outer.add(UUT->getDecl(), Flags);
-      }
       void VisitDeducedTemplateSpecializationType(
           const DeducedTemplateSpecializationType *DTST) {
-        if (const auto *USD = DTST->getTemplateName().getAsUsingShadowDecl())
-          Outer.add(USD, Flags);
-
         // FIXME: This is a workaround for https://llvm.org/PR42914,
         // which is causing DTST->getDeducedType() to be empty. We
         // fall back to the template pattern and miss the instantiation
         // even when it's known in principle. Once that bug is fixed,
-        // the following code can be removed (the existing handling in
+        // this method can be removed (the existing handling in
         // VisitDeducedType() is sufficient).
         if (auto *TD = DTST->getTemplateName().getAsTemplateDecl())
           Outer.add(TD->getTemplatedDecl(), Flags | Rel::TemplatePattern);
@@ -423,9 +418,6 @@ public:
       void
       VisitTemplateSpecializationType(const TemplateSpecializationType *TST) {
         // Have to handle these case-by-case.
-
-        if (const auto *UTN = TST->getTemplateName().getAsUsingShadowDecl())
-          Outer.add(UTN, Flags);
 
         // templated type aliases: there's no specialized/instantiated using
         // decl to point to. So try to find a decl for the underlying type
@@ -516,9 +508,6 @@ public:
               Arg.getAsTemplateOrTemplatePattern().getAsTemplateDecl()) {
         report(TD, Flags);
       }
-      if (const auto *USD =
-              Arg.getAsTemplateOrTemplatePattern().getAsUsingShadowDecl())
-        add(USD, Flags);
     }
   }
 };

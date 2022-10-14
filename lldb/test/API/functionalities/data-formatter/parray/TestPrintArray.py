@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class PrintArrayTestCase(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_print_array(self):
         """Test that expr -Z works"""
         self.build()

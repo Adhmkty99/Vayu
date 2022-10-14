@@ -436,26 +436,17 @@ void LinkerDriver::parseDirectives(InputFile *file) {
 // Find file from search paths. You can omit ".obj", this function takes
 // care of that. Note that the returned path is not guaranteed to exist.
 StringRef LinkerDriver::doFindFile(StringRef filename) {
-  auto getFilename = [](StringRef filename) -> StringRef {
-    if (config->vfs)
-      if (auto statOrErr = config->vfs->status(filename))
-        return saver().save(statOrErr->getName());
-    return filename;
-  };
-
   bool hasPathSep = (filename.find_first_of("/\\") != StringRef::npos);
   if (hasPathSep)
-    return getFilename(filename);
+    return filename;
   bool hasExt = filename.contains('.');
   for (StringRef dir : searchPaths) {
     SmallString<128> path = dir;
     sys::path::append(path, filename);
-    path = SmallString<128>{getFilename(path.str())};
     if (sys::fs::exists(path.str()))
       return saver().save(path.str());
     if (!hasExt) {
       path.append(".obj");
-      path = SmallString<128>{getFilename(path.str())};
       if (sys::fs::exists(path.str()))
         return saver().save(path.str());
     }
@@ -482,7 +473,7 @@ Optional<StringRef> LinkerDriver::findFile(StringRef filename) {
   }
 
   if (path.endswith_insensitive(".lib"))
-    visitedLibs.insert(std::string(sys::path::filename(path).lower()));
+    visitedLibs.insert(std::string(sys::path::filename(path)));
   return path;
 }
 
@@ -629,7 +620,7 @@ void LinkerDriver::addWinSysRootLibSearchPaths() {
 // Parses LIB environment which contains a list of search paths.
 void LinkerDriver::addLibSearchPaths() {
   Optional<std::string> envOpt = Process::GetEnv("LIB");
-  if (!envOpt)
+  if (!envOpt.hasValue())
     return;
   StringRef env = saver().save(*envOpt);
   while (!env.empty()) {
@@ -1358,28 +1349,6 @@ Optional<std::string> getReproduceFile(const opt::InputArgList &args) {
   return None;
 }
 
-static std::unique_ptr<llvm::vfs::FileSystem>
-getVFS(const opt::InputArgList &args) {
-  using namespace llvm::vfs;
-
-  const opt::Arg *arg = args.getLastArg(OPT_vfsoverlay);
-  if (!arg)
-    return nullptr;
-
-  auto bufOrErr = llvm::MemoryBuffer::getFile(arg->getValue());
-  if (!bufOrErr) {
-    checkError(errorCodeToError(bufOrErr.getError()));
-    return nullptr;
-  }
-
-  if (auto ret = vfs::getVFSFromYAML(std::move(*bufOrErr), /*DiagHandler*/ nullptr,
-                             arg->getValue()))
-    return ret;
-
-  error("Invalid vfs overlay");
-  return nullptr;
-}
-
 void LinkerDriver::linkerMain(ArrayRef<const char *> argsArr) {
   ScopedTimer rootTimer(ctx.rootTimer);
 
@@ -1420,8 +1389,6 @@ void LinkerDriver::linkerMain(ArrayRef<const char *> argsArr) {
       error(arg->getSpelling() + " number expected, but got " + s);
     errorHandler().errorLimit = n;
   }
-
-  config->vfs = getVFS(args);
 
   // Handle /help
   if (args.hasArg(OPT_help)) {
@@ -1706,8 +1673,6 @@ void LinkerDriver::linkerMain(ArrayRef<const char *> argsArr) {
   if (auto *arg = args.getLastArg(OPT_implib))
     config->implib = arg->getValue();
 
-  config->noimplib = args.hasArg(OPT_noimplib);
-
   // Handle /opt.
   bool doGC = debug == DebugKind::None || args.hasArg(OPT_profile);
   Optional<ICFLevel> icfLevel = None;
@@ -1762,7 +1727,7 @@ void LinkerDriver::linkerMain(ArrayRef<const char *> argsArr) {
   if (!icfLevel)
     icfLevel = doGC ? ICFLevel::All : ICFLevel::None;
   config->doGC = doGC;
-  config->doICF = *icfLevel;
+  config->doICF = icfLevel.getValue();
   config->tailMerge =
       (tailMerge == 1 && config->doICF != ICFLevel::None) || tailMerge == 2;
   config->ltoDebugPassManager = ltoDebugPM;
@@ -2057,8 +2022,7 @@ void LinkerDriver::linkerMain(ArrayRef<const char *> argsArr) {
   // Handle generation of import library from a def file.
   if (!args.hasArg(OPT_INPUT, OPT_wholearchive_file)) {
     fixupExports();
-    if (!config->noimplib)
-      createImportLibrary(/*asLib=*/true);
+    createImportLibrary(/*asLib=*/true);
     return;
   }
 
@@ -2317,7 +2281,7 @@ void LinkerDriver::linkerMain(ArrayRef<const char *> argsArr) {
   // -implib option is given explicitly, for compatibility with GNU ld.
   if (!config->exports.empty() || config->dll) {
     fixupExports();
-    if (!config->noimplib && (!config->mingw || !config->implib.empty()))
+    if (!config->mingw || !config->implib.empty())
       createImportLibrary(/*asLib=*/false);
     assignExportOrdinals();
   }

@@ -129,16 +129,15 @@ static bool mutationIsSane(const LegalizeRule &Rule,
     LLVM_FALLTHROUGH;
   case MoreElements: {
     // MoreElements can go from scalar to vector.
-    const ElementCount OldElts = OldTy.isVector() ?
-      OldTy.getElementCount() : ElementCount::getFixed(1);
+    const unsigned OldElts = OldTy.isVector() ? OldTy.getNumElements() : 1;
     if (NewTy.isVector()) {
       if (Rule.getAction() == FewerElements) {
         // Make sure the element count really decreased.
-        if (ElementCount::isKnownGE(NewTy.getElementCount(), OldElts))
+        if (NewTy.getNumElements() >= OldElts)
           return false;
       } else {
         // Make sure the element count really increased.
-        if (ElementCount::isKnownLE(NewTy.getElementCount(), OldElts))
+        if (NewTy.getNumElements() <= OldElts)
           return false;
       }
     } else if (Rule.getAction() == MoreElements)

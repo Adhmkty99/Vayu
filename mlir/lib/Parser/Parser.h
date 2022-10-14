@@ -28,12 +28,11 @@ public:
 
   Builder builder;
 
-  Parser(ParserState &state)
-      : builder(state.config.getContext()), state(state) {}
+  Parser(ParserState &state) : builder(state.context), state(state) {}
 
   // Helper methods to get stuff from the parser-global state.
   ParserState &getState() const { return state; }
-  MLIRContext *getContext() const { return state.config.getContext(); }
+  MLIRContext *getContext() const { return state.context; }
   const llvm::SourceMgr &getSourceMgr() { return state.lex.getSourceMgr(); }
 
   /// Parse a comma-separated list of elements up until the specified end token.
@@ -57,16 +56,7 @@ public:
     return parseCommaSeparatedList(Delimiter::None, parseElementFn);
   }
 
-  /// Parse the body of a dialect symbol, which starts and ends with <>'s, and
-  /// may be recursive. Return with the 'body' StringRef encompassing the entire
-  /// body. `isCodeCompletion` is set to true if the body contained a code
-  /// completion location, in which case the body is only populated up to the
-  /// completion.
-  ParseResult parseDialectSymbolBody(StringRef &body, bool &isCodeCompletion);
-  ParseResult parseDialectSymbolBody(StringRef &body) {
-    bool isCodeCompletion = false;
-    return parseDialectSymbolBody(body, isCodeCompletion);
-  }
+  ParseResult parsePrettyDialectSymbolName(StringRef &prettyName);
 
   // We have two forms of parsing methods - those that return a non-null
   // pointer on success, and those that return a ParseResult to indicate whether
@@ -78,19 +68,46 @@ public:
   //===--------------------------------------------------------------------===//
 
   /// Emit an error and return failure.
-  InFlightDiagnostic emitError(const Twine &message = {});
+  InFlightDiagnostic emitError(const Twine &message = {}) {
+    // If the error is to be emitted at EOF, move it back one character.
+    if (state.curToken.is(Token::eof)) {
+      return emitError(
+          SMLoc::getFromPointer(state.curToken.getLoc().getPointer() - 1),
+          message);
+    }
+    return emitError(state.curToken.getLoc(), message);
+  }
   InFlightDiagnostic emitError(SMLoc loc, const Twine &message = {});
-
-  /// Emit an error about a "wrong token".  If the current token is at the
-  /// start of a source line, this will apply heuristics to back up and report
-  /// the error at the end of the previous line, which is where the expected
-  /// token is supposed to be.
-  InFlightDiagnostic emitWrongTokenError(const Twine &message = {});
 
   /// Encode the specified source location information into an attribute for
   /// attachment to the IR.
   Location getEncodedSourceLocation(SMLoc loc) {
-    return state.lex.getEncodedSourceLocation(loc);
+    // If there are no active nested parsers, we can get the encoded source
+    // location directly.
+    if (state.parserDepth == 0)
+      return state.lex.getEncodedSourceLocation(loc);
+    // Otherwise, we need to re-encode it to point to the top level buffer.
+    return state.symbols.topLevelLexer->getEncodedSourceLocation(
+        remapLocationToTopLevelBuffer(loc));
+  }
+
+  /// Remaps the given SMLoc to the top level lexer of the parser. This is used
+  /// to adjust locations of potentially nested parsers to ensure that they can
+  /// be emitted properly as diagnostics.
+  SMLoc remapLocationToTopLevelBuffer(SMLoc loc) {
+    // If there are no active nested parsers, we can return location directly.
+    SymbolState &symbols = state.symbols;
+    if (state.parserDepth == 0)
+      return loc;
+    assert(symbols.topLevelLexer && "expected valid top-level lexer");
+
+    // Otherwise, we need to remap the location to the main parser. This is
+    // simply offseting the location onto the location of the last nested
+    // parser.
+    size_t offset = loc.getPointer() - state.lex.getBufferBegin();
+    auto *rawLoc =
+        symbols.nestedParserLocs[state.parserDepth - 1].getPointer() + offset;
+    return SMLoc::getFromPointer(rawLoc);
   }
 
   //===--------------------------------------------------------------------===//
@@ -125,12 +142,6 @@ public:
     consumeToken();
   }
 
-  /// Reset the parser to the given lexer position.
-  void resetToken(const char *tokPos) {
-    state.lex.resetPointer(tokPos);
-    state.curToken = state.lex.lexToken();
-  }
-
   /// Consume the specified token if present and return success.  On failure,
   /// output a diagnostic and return failure.
   ParseResult parseToken(Token::Kind expectedToken, const Twine &message);
@@ -143,23 +154,6 @@ public:
                                            const Token &tok, bool isNegative,
                                            const llvm::fltSemantics &semantics,
                                            size_t typeSizeInBits);
-
-  /// Returns true if the current token corresponds to a keyword.
-  bool isCurrentTokenAKeyword() const {
-    return getToken().isAny(Token::bare_identifier, Token::inttype) ||
-           getToken().isKeyword();
-  }
-
-  /// Parse a keyword, if present, into 'keyword'.
-  ParseResult parseOptionalKeyword(StringRef *keyword);
-
-  //===--------------------------------------------------------------------===//
-  // Resource Parsing
-  //===--------------------------------------------------------------------===//
-
-  /// Parse a handle to a dialect resource within the assembly format.
-  FailureOr<AsmDialectResourceHandle>
-  parseResourceHandle(const OpAsmDialectInterface *dialect, StringRef &name);
 
   //===--------------------------------------------------------------------===//
   // Type Parsing
@@ -211,8 +205,7 @@ public:
   ParseResult parseVectorDimensionList(SmallVectorImpl<int64_t> &dimensions,
                                        unsigned &numScalableDims);
   ParseResult parseDimensionListRanked(SmallVectorImpl<int64_t> &dimensions,
-                                       bool allowDynamic = true,
-                                       bool withTrailingX = true);
+                                       bool allowDynamic = true);
   ParseResult parseIntegerInDimensionList(int64_t &value);
   ParseResult parseXInDimensionList();
 
@@ -272,9 +265,6 @@ public:
   Attribute parseDenseElementsAttr(Type attrType);
   ShapedType parseElementsLiteralType(Type type);
 
-  /// Parse a DenseArrayAttr.
-  Attribute parseDenseArrayAttr();
-
   /// Parse a sparse elements attribute.
   Attribute parseSparseElementsAttr(Type attrType);
 
@@ -314,28 +304,6 @@ public:
   ParseResult
   parseAffineExprOfSSAIds(AffineExpr &expr,
                           function_ref<ParseResult(bool)> parseElement);
-
-  //===--------------------------------------------------------------------===//
-  // Code Completion
-  //===--------------------------------------------------------------------===//
-
-  /// The set of various code completion methods. Every completion method
-  /// returns `failure` to signal that parsing should abort after any desired
-  /// completions have been enqueued. Note that `failure` is does not mean
-  /// completion failed, it's just a signal to the parser to stop.
-
-  ParseResult codeCompleteDialectName();
-  ParseResult codeCompleteOperationName(StringRef dialectName);
-  ParseResult codeCompleteDialectOrElidedOpName(SMLoc loc);
-  ParseResult codeCompleteStringDialectOrOperationName(StringRef name);
-  ParseResult codeCompleteExpectedTokens(ArrayRef<StringRef> tokens);
-  ParseResult codeCompleteOptionalTokens(ArrayRef<StringRef> tokens);
-
-  Attribute codeCompleteAttribute();
-  Type codeCompleteType();
-  Attribute
-  codeCompleteDialectSymbol(const llvm::StringMap<Attribute> &aliases);
-  Type codeCompleteDialectSymbol(const llvm::StringMap<Type> &aliases);
 
 protected:
   /// The Parser is subclassed and reinstantiated.  Do not add additional

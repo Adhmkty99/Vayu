@@ -78,20 +78,19 @@ SampleProfileWriterExtBinaryBase::markSectionStart(SecType Type,
 }
 
 std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
-  if (!llvm::compression::zlib::isAvailable())
+  if (!llvm::zlib::isAvailable())
     return sampleprof_error::zlib_unavailable;
   std::string &UncompressedStrings =
       static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
   if (UncompressedStrings.size() == 0)
     return sampleprof_error::success;
   auto &OS = *OutputStream;
-  SmallVector<uint8_t, 128> CompressedStrings;
-  compression::zlib::compress(arrayRefFromStringRef(UncompressedStrings),
-                              CompressedStrings,
-                              compression::zlib::BestSizeCompression);
+  SmallString<128> CompressedStrings;
+  zlib::compress(UncompressedStrings, CompressedStrings,
+                 zlib::BestSizeCompression);
   encodeULEB128(UncompressedStrings.size(), OS);
   encodeULEB128(CompressedStrings.size(), OS);
-  OS << toStringRef(CompressedStrings);
+  OS << CompressedStrings.str();
   UncompressedStrings.clear();
   return sampleprof_error::success;
 }
@@ -170,7 +169,7 @@ std::error_code SampleProfileWriterExtBinaryBase::writeFuncOffsetTable() {
     return (std::error_code)sampleprof_error::success;
   };
 
-  if (FunctionSamples::ProfileIsCS) {
+  if (FunctionSamples::ProfileIsCSFlat) {
     // Sort the contexts before writing them out. This is to help fast load all
     // context profiles for a function as well as their callee contexts which
     // can help profile-guided importing for ThinLTO.
@@ -200,11 +199,11 @@ std::error_code SampleProfileWriterExtBinaryBase::writeFuncMetadata(
 
   if (FunctionSamples::ProfileIsProbeBased)
     encodeULEB128(FunctionProfile.getFunctionHash(), OS);
-  if (FunctionSamples::ProfileIsCS || FunctionSamples::ProfileIsPreInlined) {
+  if (FunctionSamples::ProfileIsCSFlat || FunctionSamples::ProfileIsCSNested) {
     encodeULEB128(FunctionProfile.getContext().getAllAttributes(), OS);
   }
 
-  if (!FunctionSamples::ProfileIsCS) {
+  if (!FunctionSamples::ProfileIsCSFlat) {
     // Recursively emit attributes for all callee samples.
     uint64_t NumCallsites = 0;
     for (const auto &J : FunctionProfile.getCallsiteSamples())
@@ -226,8 +225,8 @@ std::error_code SampleProfileWriterExtBinaryBase::writeFuncMetadata(
 
 std::error_code SampleProfileWriterExtBinaryBase::writeFuncMetadata(
     const SampleProfileMap &Profiles) {
-  if (!FunctionSamples::ProfileIsProbeBased && !FunctionSamples::ProfileIsCS &&
-      !FunctionSamples::ProfileIsPreInlined)
+  if (!FunctionSamples::ProfileIsProbeBased &&
+      !FunctionSamples::ProfileIsCSFlat && !FunctionSamples::ProfileIsCSNested)
     return sampleprof_error::success;
   for (const auto &Entry : Profiles) {
     if (std::error_code EC = writeFuncMetadata(Entry.second))
@@ -322,12 +321,12 @@ std::error_code SampleProfileWriterExtBinaryBase::writeOneSection(
   if (Type == SecFuncMetadata && FunctionSamples::ProfileIsProbeBased)
     addSectionFlag(SecFuncMetadata, SecFuncMetadataFlags::SecFlagIsProbeBased);
   if (Type == SecFuncMetadata &&
-      (FunctionSamples::ProfileIsCS || FunctionSamples::ProfileIsPreInlined))
+      (FunctionSamples::ProfileIsCSFlat || FunctionSamples::ProfileIsCSNested))
     addSectionFlag(SecFuncMetadata, SecFuncMetadataFlags::SecFlagHasAttribute);
-  if (Type == SecProfSummary && FunctionSamples::ProfileIsCS)
+  if (Type == SecProfSummary && FunctionSamples::ProfileIsCSFlat)
     addSectionFlag(SecProfSummary, SecProfSummaryFlags::SecFlagFullContext);
-  if (Type == SecProfSummary && FunctionSamples::ProfileIsPreInlined)
-    addSectionFlag(SecProfSummary, SecProfSummaryFlags::SecFlagIsPreInlined);
+  if (Type == SecProfSummary && FunctionSamples::ProfileIsCSNested)
+    addSectionFlag(SecProfSummary, SecProfSummaryFlags::SecFlagIsCSNested);
   if (Type == SecProfSummary && FunctionSamples::ProfileIsFS)
     addSectionFlag(SecProfSummary, SecProfSummaryFlags::SecFlagFSDiscriminator);
 
@@ -469,7 +468,7 @@ SampleProfileWriterCompactBinary::write(const SampleProfileMap &ProfileMap) {
 /// it needs to be parsed by the SampleProfileReaderText class.
 std::error_code SampleProfileWriterText::writeSample(const FunctionSamples &S) {
   auto &OS = *OutputStream;
-  if (FunctionSamples::ProfileIsCS)
+  if (FunctionSamples::ProfileIsCSFlat)
     OS << "[" << S.getContext().toString() << "]:" << S.getTotalSamples();
   else
     OS << S.getName() << ":" << S.getTotalSamples();
@@ -869,7 +868,8 @@ SampleProfileWriter::create(std::unique_ptr<raw_ostream> &OS,
   std::unique_ptr<SampleProfileWriter> Writer;
 
   // Currently only Text and Extended Binary format are supported for CSSPGO.
-  if ((FunctionSamples::ProfileIsCS || FunctionSamples::ProfileIsProbeBased) &&
+  if ((FunctionSamples::ProfileIsCSFlat ||
+       FunctionSamples::ProfileIsProbeBased) &&
       (Format == SPF_Binary || Format == SPF_Compact_Binary))
     return sampleprof_error::unsupported_writing_format;
 

@@ -22,7 +22,7 @@ namespace polly {
 
 /// This ParallelLoopGenerator subclass handles the generation of parallelized
 /// code, utilizing the GNU OpenMP library.
-class ParallelLoopGeneratorGOMP final : public ParallelLoopGenerator {
+class ParallelLoopGeneratorGOMP : public ParallelLoopGenerator {
 public:
   /// Create a parallel loop generator for the current function.
   ParallelLoopGeneratorGOMP(PollyIRBuilder &Builder, LoopInfo &LI,

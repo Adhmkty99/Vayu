@@ -10,10 +10,10 @@ add_mlir_conversion_library(MLIRTosaToTensor
   MLIRConversionPassIncGen
 
   LINK_LIBS PUBLIC
-  MLIRTensorDialect
+  MLIRTensor
   MLIRIR
   MLIRPass
-  MLIRTosaDialect
+  MLIRTosa
   MLIRTosaTransforms
   MLIRSupport
   )

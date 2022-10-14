@@ -94,17 +94,15 @@ void ExprEngine::performTrivialCopy(NodeBuilder &Bldr, ExplodedNode *Pred,
   }
 }
 
-SVal ExprEngine::makeElementRegion(ProgramStateRef State, SVal LValue,
-                                   QualType &Ty, bool &IsArray, unsigned Idx) {
+
+SVal ExprEngine::makeZeroElementRegion(ProgramStateRef State, SVal LValue,
+                                       QualType &Ty, bool &IsArray) {
   SValBuilder &SVB = State->getStateManager().getSValBuilder();
   ASTContext &Ctx = SVB.getContext();
 
-  if (const ArrayType *AT = Ctx.getAsArrayType(Ty)) {
-    while (AT) {
-      Ty = AT->getElementType();
-      AT = dyn_cast<ArrayType>(AT->getElementType());
-    }
-    LValue = State->getLValue(Ty, SVB.makeArrayIndex(Idx), LValue);
+  while (const ArrayType *AT = Ctx.getAsArrayType(Ty)) {
+    Ty = AT->getElementType();
+    LValue = State->getLValue(Ty, SVB.makeZeroArrayIndex(), LValue);
     IsArray = true;
   }
 
@@ -113,7 +111,7 @@ SVal ExprEngine::makeElementRegion(ProgramStateRef State, SVal LValue,
 
 SVal ExprEngine::computeObjectUnderConstruction(
     const Expr *E, ProgramStateRef State, const LocationContext *LCtx,
-    const ConstructionContext *CC, EvalCallOptions &CallOpts, unsigned Idx) {
+    const ConstructionContext *CC, EvalCallOptions &CallOpts) {
   SValBuilder &SVB = getSValBuilder();
   MemRegionManager &MRMgr = SVB.getRegionManager();
   ASTContext &ACtx = SVB.getContext();
@@ -127,8 +125,8 @@ SVal ExprEngine::computeObjectUnderConstruction(
       const auto *DS = DSCC->getDeclStmt();
       const auto *Var = cast<VarDecl>(DS->getSingleDecl());
       QualType Ty = Var->getType();
-      return makeElementRegion(State, State->getLValue(Var, LCtx), Ty,
-                               CallOpts.IsArrayCtorOrDtor, Idx);
+      return makeZeroElementRegion(State, State->getLValue(Var, LCtx), Ty,
+                                   CallOpts.IsArrayCtorOrDtor);
     }
     case ConstructionContext::CXX17ElidedCopyConstructorInitializerKind:
     case ConstructionContext::SimpleConstructorInitializerKind: {
@@ -160,8 +158,8 @@ SVal ExprEngine::computeObjectUnderConstruction(
       }
 
       QualType Ty = Field->getType();
-      return makeElementRegion(State, FieldVal, Ty, CallOpts.IsArrayCtorOrDtor,
-                               Idx);
+      return makeZeroElementRegion(State, FieldVal, Ty,
+                                   CallOpts.IsArrayCtorOrDtor);
     }
     case ConstructionContext::NewAllocatedObjectKind: {
       if (AMgr.getAnalyzerOptions().MayInlineCXXAllocator) {
@@ -174,12 +172,8 @@ SVal ExprEngine::computeObjectUnderConstruction(
             // TODO: In fact, we need to call the constructor for every
             // allocated element, not just the first one!
             CallOpts.IsArrayCtorOrDtor = true;
-
-            auto R = MRMgr.getElementRegion(NE->getType()->getPointeeType(),
-                                            svalBuilder.makeArrayIndex(Idx), MR,
-                                            SVB.getContext());
-
-            return loc::MemRegionVal(R);
+            return loc::MemRegionVal(getStoreManager().GetElementZeroRegion(
+                MR, NE->getType()->getPointeeType()));
           }
           return  V;
         }
@@ -490,6 +484,10 @@ void ExprEngine::handleConstructor(const Expr *E,
     }
   }
 
+  // FIXME: Handle arrays, which run the same constructor for every element.
+  // For now, we just run the first constructor (which should still invalidate
+  // the entire array).
+
   EvalCallOptions CallOpts;
   auto C = getCurrentCFGElement().getAs<CFGConstructor>();
   assert(C || getCurrentCFGElement().getAs<CFGStmt>());
@@ -502,15 +500,9 @@ void ExprEngine::handleConstructor(const Expr *E,
     // Inherited constructors are always base class constructors.
     assert(CE && !CIE && "A complete constructor is inherited?!");
 
-    unsigned Idx = 0;
-    if (CE->getType()->isArrayType()) {
-      Idx = getIndexOfElementToConstruct(State, CE, LCtx).value_or(0u);
-      State = setIndexOfElementToConstruct(State, CE, LCtx, Idx + 1);
-    }
-
     // The target region is found from construction context.
     std::tie(State, Target) =
-        handleConstructionContext(CE, State, LCtx, CC, CallOpts, Idx);
+        handleConstructionContext(CE, State, LCtx, CC, CallOpts);
     break;
   }
   case CXXConstructExpr::CK_VirtualBase: {
@@ -902,39 +894,14 @@ void ExprEngine::VisitCXXNewExpr(const CXXNewExpr *CNE, ExplodedNode *Pred,
   SVal Result = symVal;
 
   if (CNE->isArray()) {
-
+    // FIXME: allocating an array requires simulating the constructors.
+    // For now, just return a symbolicated region.
     if (const auto *NewReg = cast_or_null<SubRegion>(symVal.getAsRegion())) {
-      // If each element is initialized by their default constructor, the field
-      // values are properly placed inside the required region, however if an
-      // initializer list is used, this doesn't happen automatically.
-      auto *Init = CNE->getInitializer();
-      bool isInitList = dyn_cast_or_null<InitListExpr>(Init);
-
-      QualType ObjTy =
-          isInitList ? Init->getType() : CNE->getType()->getPointeeType();
+      QualType ObjTy = CNE->getType()->getPointeeType();
       const ElementRegion *EleReg =
-          MRMgr.getElementRegion(ObjTy, svalBuilder.makeArrayIndex(0), NewReg,
-                                 svalBuilder.getContext());
+          getStoreManager().GetElementZeroRegion(NewReg, ObjTy);
       Result = loc::MemRegionVal(EleReg);
-
-      // If the array is list initialized, we bind the initializer list to the
-      // memory region here, otherwise we would lose it.
-      if (isInitList) {
-        Bldr.takeNodes(Pred);
-        Pred = Bldr.generateNode(CNE, Pred, State);
-
-        SVal V = State->getSVal(Init, LCtx);
-        ExplodedNodeSet evaluated;
-        evalBind(evaluated, CNE, Pred, Result, V, true);
-
-        Bldr.takeNodes(Pred);
-        Bldr.addNodes(evaluated);
-
-        Pred = *evaluated.begin();
-        State = Pred->getState();
-      }
     }
-
     State = State->BindExpr(CNE, Pred->getLocationContext(), Result);
     Bldr.generateNode(CNE, Pred, State);
     return;
@@ -978,17 +945,8 @@ void ExprEngine::VisitCXXDeleteExpr(const CXXDeleteExpr *CDE,
 
   ExplodedNodeSet DstPreCall;
   getCheckerManager().runCheckersForPreCall(DstPreCall, Pred, *Call, *this);
-  ExplodedNodeSet DstPostCall;
 
-  if (AMgr.getAnalyzerOptions().MayInlineCXXAllocator) {
-    StmtNodeBuilder Bldr(DstPreCall, DstPostCall, *currBldrCtx);
-    for (ExplodedNode *I : DstPreCall) {
-      defaultEvalCall(Bldr, I, *Call);
-    }
-  } else {
-    DstPostCall = DstPreCall;
-  }
-  getCheckerManager().runCheckersForPostCall(Dst, DstPostCall, *Call, *this);
+  getCheckerManager().runCheckersForPostCall(Dst, DstPreCall, *Call, *this);
 }
 
 void ExprEngine::VisitCXXCatchStmt(const CXXCatchStmt *CS, ExplodedNode *Pred,

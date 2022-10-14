@@ -1,7 +1,10 @@
-;; Test llvm-ar uses the big archive format for XCOFF object files by default. 
+; REQUIRES: system-aix
+;; Test llvm-ar does not support Big AIX archive write operation.
+
 ; RUN: yaml2obj %S/Inputs/xcoff.yaml -o %t.obj
 ; RUN: rm -f %t.ar
-; RUN: llvm-ar cr %t.ar %t.obj
-; RUN: FileCheck %s --input-file=%t.ar
+; RUN: not llvm-ar cr %t.ar %t.obj 2>&1 | FileCheck %s
+; RUN: echo "test big archive" > %t.txt
+; RUN: not llvm-ar cr %t.ar %t.txt 2>&1 | FileCheck %s
 
-; CHECK:  bigaf
+; CHECK: big archive writer operation on AIX not yet supported

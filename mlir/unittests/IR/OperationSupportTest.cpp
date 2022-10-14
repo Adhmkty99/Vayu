@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "mlir/IR/OperationSupport.h"
-#include "../../test/lib/Dialect/Test/TestDialect.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "llvm/ADT/BitVector.h"
@@ -248,7 +247,7 @@ TEST(NamedAttrListTest, TestAppendAssign) {
   attrs.append("foo", b.getStringAttr("zoo"));
   {
     auto dup = attrs.findDuplicate();
-    ASSERT_TRUE(dup.has_value());
+    ASSERT_TRUE(dup.hasValue());
   }
 
   SmallVector<NamedAttribute> newAttrs = {
@@ -258,7 +257,7 @@ TEST(NamedAttrListTest, TestAppendAssign) {
   attrs.assign(newAttrs);
 
   auto dup = attrs.findDuplicate();
-  ASSERT_FALSE(dup.has_value());
+  ASSERT_FALSE(dup.hasValue());
 
   {
     auto *it = attrs.begin();
@@ -271,23 +270,5 @@ TEST(NamedAttrListTest, TestAppendAssign) {
 
   attrs.assign({});
   ASSERT_TRUE(attrs.empty());
-}
-
-TEST(OperandStorageTest, PopulateDefaultAttrs) {
-  MLIRContext context;
-  context.getOrLoadDialect<test::TestDialect>();
-  Builder builder(&context);
-
-  OpBuilder b(&context);
-  auto req1 = b.getI32IntegerAttr(10);
-  auto req2 = b.getI32IntegerAttr(60);
-  Operation *op = b.create<test::OpAttrMatch1>(b.getUnknownLoc(), req1, nullptr,
-                                               nullptr, req2);
-  EXPECT_EQ(op->getAttr("default_valued_attr"), nullptr);
-  op->populateDefaultAttrs();
-  auto opt = op->getAttr("default_valued_attr");
-  EXPECT_NE(opt, nullptr) << *op;
-
-  op->destroy();
 }
 } // namespace

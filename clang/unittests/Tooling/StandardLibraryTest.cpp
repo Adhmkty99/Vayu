@@ -7,10 +7,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang/Tooling/Inclusions/StandardLibrary.h"
-#include "clang/AST/ASTContext.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclarationName.h"
-#include "clang/Testing/TestAST.h"
+#include "clang/Frontend/ASTUnit.h"
+#include "clang/Tooling/Tooling.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/ScopedPrinter.h"
@@ -24,9 +24,10 @@ namespace clang {
 namespace tooling {
 namespace {
 
-const NamedDecl &lookup(TestAST &AST, llvm::StringRef Name) {
-  TranslationUnitDecl *TU = AST.context().getTranslationUnitDecl();
-  auto Result = TU->lookup(DeclarationName(&AST.context().Idents.get(Name)));
+const NamedDecl &lookup(ASTUnit &AST, llvm::StringRef Name) {
+  auto &Ctx = AST.getASTContext();
+  TranslationUnitDecl *TU = Ctx.getTranslationUnitDecl();
+  auto Result = TU->lookup(DeclarationName(&Ctx.Idents.get(Name)));
   assert(!Result.empty() && "Lookup failed");
   assert(Result.isSingleResult() && "Lookup returned multiple results");
   return *Result.front();
@@ -49,7 +50,7 @@ TEST(StdlibTest, All) {
 }
 
 TEST(StdlibTest, Recognizer) {
-  TestAST AST(R"cpp(
+  std::unique_ptr<ASTUnit> AST = buildASTFromCode(R"cpp(
     namespace std {
     inline namespace inl {
 
@@ -82,15 +83,17 @@ TEST(StdlibTest, Recognizer) {
     div_t div;
   )cpp");
 
-  auto &VectorNonstd = lookup(AST, "vector");
-  auto *Vec = cast<VarDecl>(lookup(AST, "vec")).getType()->getAsCXXRecordDecl();
+  auto &VectorNonstd = lookup(*AST, "vector");
+  auto *Vec =
+      cast<VarDecl>(lookup(*AST, "vec")).getType()->getAsCXXRecordDecl();
   auto *Nest =
-      cast<VarDecl>(lookup(AST, "nest")).getType()->getAsCXXRecordDecl();
+      cast<VarDecl>(lookup(*AST, "nest")).getType()->getAsCXXRecordDecl();
   auto *Clock =
-      cast<VarDecl>(lookup(AST, "clock")).getType()->getAsCXXRecordDecl();
-  auto *Sec = cast<VarDecl>(lookup(AST, "sec")).getType()->getAsCXXRecordDecl();
+      cast<VarDecl>(lookup(*AST, "clock")).getType()->getAsCXXRecordDecl();
+  auto *Sec =
+      cast<VarDecl>(lookup(*AST, "sec")).getType()->getAsCXXRecordDecl();
   auto *CDivT =
-      cast<VarDecl>(lookup(AST, "div")).getType()->getAsCXXRecordDecl();
+      cast<VarDecl>(lookup(*AST, "div")).getType()->getAsCXXRecordDecl();
 
   stdlib::Recognizer Recognizer;
 

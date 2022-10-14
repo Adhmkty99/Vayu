@@ -212,13 +212,11 @@ struct DLTestDialect : Dialect {
       return CustomDataLayoutSpec::get(parser.getContext(), {});
 
     SmallVector<DataLayoutEntryInterface> entries;
-    ok = succeeded(parser.parseCommaSeparatedList([&]() {
+    do {
       entries.emplace_back();
       ok = succeeded(parser.parseAttribute(entries.back()));
       assert(ok);
-      return success();
-    }));
-    assert(ok);
+    } while (succeeded(parser.parseOptionalComma()));
     ok = succeeded(parser.parseGreater());
     assert(ok);
     return CustomDataLayoutSpec::get(parser.getContext(), entries);

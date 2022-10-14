@@ -59,8 +59,5 @@ gcc ^
   -DSANITIZER_DEBUG=0 ^
   -O3 ^
   -fomit-frame-pointer ^
-  -msse3 ^
+  -msse4.2 ^
   -std=c++14
-
-rem "-msse3" used above to ensure continued support of older
-rem cpus (for now), see https://github.com/golang/go/issues/53743.

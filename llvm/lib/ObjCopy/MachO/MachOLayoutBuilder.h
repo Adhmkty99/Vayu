@@ -87,7 +87,7 @@ public:
 
   StringTableBuilder &getStringTableBuilder() { return StrTableBuilder; }
 
-  const CodeSignatureInfo &getCodeSignature() const { return CodeSignature; }
+  const CodeSignatureInfo &getCodeSignature() { return CodeSignature; }
 };
 
 } // end namespace macho

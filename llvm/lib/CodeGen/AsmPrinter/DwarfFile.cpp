@@ -45,7 +45,7 @@ void DwarfFile::emitUnit(DwarfUnit *TheU, bool UseOffsets) {
   if (llvm::empty(TheU->getUnitDie().values()))
     return;
 
-  Asm->OutStreamer->switchSection(S);
+  Asm->OutStreamer->SwitchSection(S);
   TheU->emitHeader(UseOffsets);
   Asm->emitDwarfDIE(TheU->getUnitDie());
 

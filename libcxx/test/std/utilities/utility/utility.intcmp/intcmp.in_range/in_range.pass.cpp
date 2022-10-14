@@ -18,7 +18,6 @@
 #include <numeric>
 #include <tuple>
 #include <cassert>
-#include <cstdint>
 
 #include "test_macros.h"
 

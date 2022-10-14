@@ -22,9 +22,6 @@
 #include "llvm/Support/MachineValueType.h"
 
 namespace llvm {
-
-class TargetRegisterClass;
-
 namespace WebAssembly {
 
 /// Used as immediate MachineOperands for block signatures
@@ -83,10 +80,6 @@ inline bool isRefType(const Type *Ty) {
   return isFuncrefType(Ty) || isExternrefType(Ty);
 }
 
-inline bool isRefType(wasm::ValType Type) {
-  return Type == wasm::ValType::EXTERNREF || Type == wasm::ValType::FUNCREF;
-}
-
 // Convert StringRef to ValType / HealType / BlockType
 
 Optional<wasm::ValType> parseType(StringRef Type);
@@ -111,11 +104,8 @@ std::string signatureToString(const wasm::WasmSignature *Sig);
 // Convert a MVT into its corresponding wasm ValType.
 wasm::ValType toValType(MVT Type);
 
-// Convert a register class ID to a wasm ValType.
-wasm::ValType regClassToValType(unsigned RC);
-
 // Convert a register class to a wasm ValType.
-wasm::ValType regClassToValType(const TargetRegisterClass *RC);
+wasm::ValType regClassToValType(unsigned RC);
 
 /// Sets a Wasm Symbol Type.
 void wasmSymbolSetType(MCSymbolWasm *Sym, const Type *GlobalVT,

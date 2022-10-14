@@ -111,13 +111,12 @@ void UnitMap::FlushAll(IoErrorHandler &handler) {
   }
 }
 
-ExternalFileUnit *UnitMap::Find(const char *path, std::size_t pathLen) {
+ExternalFileUnit *UnitMap::Find(const char *path) {
   if (path) {
     // TODO: Faster data structure
     for (int j{0}; j < buckets_; ++j) {
       for (Chain *p{bucket_[j].get()}; p; p = p->next.get()) {
-        if (p->unit.path() && p->unit.pathLength() == pathLen &&
-            std::memcmp(p->unit.path(), path, pathLen) == 0) {
+        if (p->unit.path() && std::strcmp(p->unit.path(), path) == 0) {
           return &p->unit;
         }
       }

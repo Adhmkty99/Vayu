@@ -42,10 +42,6 @@ public:
   }
 
   int elem_compare(size_t i, const uint8_t *other) const {
-    // An element must compare equal to itself so we don't need to consult the
-    // user provided comparator.
-    if (get(i) == other)
-      return 0;
     return compare(get(i), other);
   }
 

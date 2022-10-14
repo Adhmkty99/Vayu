@@ -1,4 +1,4 @@
-add_mlir_dialect_library(MLIRMathDialect
+add_mlir_dialect_library(MLIRMath
   MathOps.cpp
   MathDialect.cpp
 
@@ -9,7 +9,7 @@ add_mlir_dialect_library(MLIRMathDialect
   MLIRMathOpsIncGen
 
   LINK_LIBS PUBLIC
-  MLIRArithmeticDialect
+  MLIRArithmetic
   MLIRDialect
   MLIRIR
   )

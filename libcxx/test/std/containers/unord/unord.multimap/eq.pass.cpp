@@ -21,7 +21,6 @@
 #include <unordered_map>
 #include <string>
 #include <cassert>
-#include <iterator>
 
 #include "test_macros.h"
 #include "min_allocator.h"
@@ -49,7 +48,7 @@ int main(int, char**)
         };
         const C c1(std::begin(a), std::end(a));
         const C c2;
-        assert(testEquality(c1, c2, false));
+        assert(testComparisons2(c1, c2, false));
     }
     {
         typedef std::unordered_multimap<int, std::string> C;
@@ -70,7 +69,7 @@ int main(int, char**)
         };
         const C c1(std::begin(a), std::end(a));
         const C c2 = c1;
-        assert(testEquality(c1, c2, true));
+        assert(testComparisons2(c1, c2, true));
     }
     {
         typedef std::unordered_multimap<int, std::string> C;
@@ -92,11 +91,11 @@ int main(int, char**)
         C c1(std::begin(a), std::end(a));
         C c2 = c1;
         c2.rehash(30);
-        assert(testEquality(c1, c2, true));
+        assert(testComparisons2(c1, c2, true));
         c2.insert(P(90, "ninety"));
-        assert(testEquality(c1, c2, false));
+        assert(testComparisons2(c1, c2, false));
         c1.insert(P(90, "ninety"));
-        assert(testEquality(c1, c2, true));
+        assert(testComparisons2(c1, c2, true));
     }
     {
         typedef std::unordered_multimap<int, std::string> C;
@@ -117,10 +116,10 @@ int main(int, char**)
         };
         C c1(std::begin(a), std::end(a));
         C c2 = c1;
-        assert(testEquality(c1, c2, true));
+        assert(testComparisons2(c1, c2, true));
         c1.insert(P(70, "seventy 2"));
         c2.insert(P(80, "eighty 2"));
-        assert(testEquality(c1, c2, false));
+        assert(testComparisons2(c1, c2, false));
     }
 #if TEST_STD_VER >= 11
     {
@@ -143,7 +142,7 @@ int main(int, char**)
         };
         const C c1(std::begin(a), std::end(a));
         const C c2;
-        assert(testEquality(c1, c2, false));
+        assert(testComparisons2(c1, c2, false));
     }
     {
         typedef std::unordered_multimap<int, std::string, std::hash<int>, std::equal_to<int>,
@@ -165,7 +164,7 @@ int main(int, char**)
         };
         const C c1(std::begin(a), std::end(a));
         const C c2 = c1;
-        assert(testEquality(c1, c2, true));
+        assert(testComparisons2(c1, c2, true));
     }
     {
         typedef std::unordered_multimap<int, std::string, std::hash<int>, std::equal_to<int>,
@@ -188,11 +187,11 @@ int main(int, char**)
         C c1(std::begin(a), std::end(a));
         C c2 = c1;
         c2.rehash(30);
-        assert(testEquality(c1, c2, true));
+        assert(testComparisons2(c1, c2, true));
         c2.insert(P(90, "ninety"));
-        assert(testEquality(c1, c2, false));
+        assert(testComparisons2(c1, c2, false));
         c1.insert(P(90, "ninety"));
-        assert(testEquality(c1, c2, true));
+        assert(testComparisons2(c1, c2, true));
     }
     {
         typedef std::unordered_multimap<int, std::string, std::hash<int>, std::equal_to<int>,
@@ -214,10 +213,10 @@ int main(int, char**)
         };
         C c1(std::begin(a), std::end(a));
         C c2 = c1;
-        assert(testEquality(c1, c2, true));
+        assert(testComparisons2(c1, c2, true));
         c1.insert(P(70, "seventy 2"));
         c2.insert(P(80, "eighty 2"));
-        assert(testEquality(c1, c2, false));
+        assert(testComparisons2(c1, c2, false));
     }
 #endif
 

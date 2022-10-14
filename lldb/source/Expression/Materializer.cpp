@@ -22,19 +22,10 @@
 #include "lldb/Utility/LLDBLog.h"
 #include "lldb/Utility/Log.h"
 #include "lldb/Utility/RegisterValue.h"
-#include "lldb/lldb-forward.h"
 
 #include <memory>
 
 using namespace lldb_private;
-
-// FIXME: these should be retrieved from the target
-//        instead of being hard-coded. Currently we
-//        assume that persistent vars are materialized
-//        as references, and thus pick the size of a
-//        64-bit pointer.
-static constexpr uint32_t g_default_var_alignment = 8;
-static constexpr uint32_t g_default_var_byte_size = 8;
 
 uint32_t Materializer::AddStructMember(Entity &entity) {
   uint32_t size = entity.GetSize();
@@ -63,8 +54,8 @@ public:
         m_delegate(delegate) {
     // Hard-coding to maximum size of a pointer since persistent variables are
     // materialized by reference
-    m_size = g_default_var_byte_size;
-    m_alignment = g_default_var_alignment;
+    m_size = 8;
+    m_alignment = 8;
   }
 
   void MakeAllocation(IRMemoryMap &map, Status &err) {
@@ -77,7 +68,7 @@ public:
     const bool zero_memory = false;
 
     lldb::addr_t mem = map.Malloc(
-        m_persistent_variable_sp->GetByteSize().value_or(0), 8,
+        m_persistent_variable_sp->GetByteSize().getValueOr(0), 8,
         lldb::ePermissionsReadable | lldb::ePermissionsWritable,
         IRMemoryMap::eAllocationPolicyMirror, zero_memory, allocate_error);
 
@@ -116,7 +107,7 @@ public:
     Status write_error;
 
     map.WriteMemory(mem, m_persistent_variable_sp->GetValueBytes(),
-                    m_persistent_variable_sp->GetByteSize().value_or(0),
+                    m_persistent_variable_sp->GetByteSize().getValueOr(0),
                     write_error);
 
     if (!write_error.Success()) {
@@ -245,7 +236,7 @@ public:
             map.GetBestExecutionContextScope(),
             m_persistent_variable_sp.get()->GetCompilerType(),
             m_persistent_variable_sp->GetName(), location, eAddressTypeLoad,
-            m_persistent_variable_sp->GetByteSize().value_or(0));
+            m_persistent_variable_sp->GetByteSize().getValueOr(0));
 
         if (frame_top != LLDB_INVALID_ADDRESS &&
             frame_bottom != LLDB_INVALID_ADDRESS && location >= frame_bottom &&
@@ -291,7 +282,7 @@ public:
                   m_persistent_variable_sp->GetName().GetCString(),
                   (uint64_t)mem,
                   (unsigned long long)m_persistent_variable_sp->GetByteSize()
-                      .value_or(0));
+                      .getValueOr(0));
 
         // Read the contents of the spare memory area
 
@@ -300,8 +291,7 @@ public:
         Status read_error;
 
         map.ReadMemory(m_persistent_variable_sp->GetValueBytes(), mem,
-                       m_persistent_variable_sp->GetByteSize().value_or(0),
-                       read_error);
+                       m_persistent_variable_sp->GetByteSize().getValueOr(0), read_error);
 
         if (!read_error.Success()) {
           err.SetErrorStringWithFormat(
@@ -382,12 +372,11 @@ public:
       if (!err.Success()) {
         dump_stream.Printf("  <could not be read>\n");
       } else {
-        DataBufferHeap data(m_persistent_variable_sp->GetByteSize().value_or(0),
-                            0);
+        DataBufferHeap data(
+            m_persistent_variable_sp->GetByteSize().getValueOr(0), 0);
 
         map.ReadMemory(data.GetBytes(), target_address,
-                       m_persistent_variable_sp->GetByteSize().value_or(0),
-                       err);
+                       m_persistent_variable_sp->GetByteSize().getValueOr(0), err);
 
         if (!err.Success()) {
           dump_stream.Printf("  <could not be read>\n");
@@ -421,19 +410,16 @@ uint32_t Materializer::AddPersistentVariable(
   return ret;
 }
 
-/// Base class for materialization of Variables and ValueObjects.
-///
-/// Subclasses specify how to obtain the Value which is to be
-/// materialized.
-class EntityVariableBase : public Materializer::Entity {
+class EntityVariable : public Materializer::Entity {
 public:
-  virtual ~EntityVariableBase() = default;
-
-  EntityVariableBase() {
+  EntityVariable(lldb::VariableSP &variable_sp)
+      : Entity(), m_variable_sp(variable_sp) {
     // Hard-coding to maximum size of a pointer since all variables are
     // materialized by reference
-    m_size = g_default_var_byte_size;
-    m_alignment = g_default_var_alignment;
+    m_size = 8;
+    m_alignment = 8;
+    m_is_reference =
+        m_variable_sp->GetType()->GetForwardCompilerType().IsReferenceType();
   }
 
   void Materialize(lldb::StackFrameSP &frame_sp, IRMemoryMap &map,
@@ -445,7 +431,7 @@ public:
       LLDB_LOGF(log,
                 "EntityVariable::Materialize [address = 0x%" PRIx64
                 ", m_variable_sp = %s]",
-                (uint64_t)load_addr, GetName().GetCString());
+                (uint64_t)load_addr, m_variable_sp->GetName().AsCString());
     }
 
     ExecutionContextScope *scope = frame_sp.get();
@@ -453,11 +439,13 @@ public:
     if (!scope)
       scope = map.GetBestExecutionContextScope();
 
-    lldb::ValueObjectSP valobj_sp = SetupValueObject(scope);
+    lldb::ValueObjectSP valobj_sp =
+        ValueObjectVariable::Create(scope, m_variable_sp);
 
     if (!valobj_sp) {
       err.SetErrorStringWithFormat(
-          "couldn't get a value object for variable %s", GetName().AsCString());
+          "couldn't get a value object for variable %s",
+          m_variable_sp->GetName().AsCString());
       return;
     }
 
@@ -465,7 +453,7 @@ public:
 
     if (valobj_error.Fail()) {
       err.SetErrorStringWithFormat("couldn't get the value of variable %s: %s",
-                                   GetName().AsCString(),
+                                   m_variable_sp->GetName().AsCString(),
                                    valobj_error.AsCString());
       return;
     }
@@ -478,7 +466,7 @@ public:
       if (!extract_error.Success()) {
         err.SetErrorStringWithFormat(
             "couldn't read contents of reference variable %s: %s",
-            GetName().AsCString(), extract_error.AsCString());
+            m_variable_sp->GetName().AsCString(), extract_error.AsCString());
         return;
       }
 
@@ -491,7 +479,7 @@ public:
       if (!write_error.Success()) {
         err.SetErrorStringWithFormat("couldn't write the contents of reference "
                                      "variable %s to memory: %s",
-                                     GetName().AsCString(),
+                                     m_variable_sp->GetName().AsCString(),
                                      write_error.AsCString());
         return;
       }
@@ -507,7 +495,7 @@ public:
         if (!write_error.Success()) {
           err.SetErrorStringWithFormat(
               "couldn't write the address of variable %s to memory: %s",
-              GetName().AsCString(), write_error.AsCString());
+              m_variable_sp->GetName().AsCString(), write_error.AsCString());
           return;
         }
       } else {
@@ -516,7 +504,7 @@ public:
         valobj_sp->GetData(data, extract_error);
         if (!extract_error.Success()) {
           err.SetErrorStringWithFormat("couldn't get the value of %s: %s",
-                                       GetName().AsCString(),
+                                       m_variable_sp->GetName().AsCString(),
                                        extract_error.AsCString());
           return;
         }
@@ -524,29 +512,32 @@ public:
         if (m_temporary_allocation != LLDB_INVALID_ADDRESS) {
           err.SetErrorStringWithFormat(
               "trying to create a temporary region for %s but one exists",
-              GetName().AsCString());
+              m_variable_sp->GetName().AsCString());
           return;
         }
 
-        if (data.GetByteSize() < GetByteSize(scope)) {
-          if (data.GetByteSize() == 0 && !LocationExpressionIsValid()) {
+        if (data.GetByteSize() < m_variable_sp->GetType()->GetByteSize(scope)) {
+          if (data.GetByteSize() == 0 &&
+              !m_variable_sp->LocationExpression().IsValid()) {
             err.SetErrorStringWithFormat("the variable '%s' has no location, "
                                          "it may have been optimized out",
-                                         GetName().AsCString());
+                                         m_variable_sp->GetName().AsCString());
           } else {
             err.SetErrorStringWithFormat(
                 "size of variable %s (%" PRIu64
                 ") is larger than the ValueObject's size (%" PRIu64 ")",
-                GetName().AsCString(), GetByteSize(scope).value_or(0),
+                m_variable_sp->GetName().AsCString(),
+                m_variable_sp->GetType()->GetByteSize(scope).getValueOr(0),
                 data.GetByteSize());
           }
           return;
         }
 
-        llvm::Optional<size_t> opt_bit_align = GetTypeBitAlign(scope);
+        llvm::Optional<size_t> opt_bit_align =
+            m_variable_sp->GetType()->GetLayoutCompilerType().GetTypeBitAlign(scope);
         if (!opt_bit_align) {
           err.SetErrorStringWithFormat("can't get the type alignment for %s",
-                                       GetName().AsCString());
+                                       m_variable_sp->GetName().AsCString());
           return;
         }
 
@@ -568,7 +559,7 @@ public:
         if (!alloc_error.Success()) {
           err.SetErrorStringWithFormat(
               "couldn't allocate a temporary region for %s: %s",
-              GetName().AsCString(), alloc_error.AsCString());
+              m_variable_sp->GetName().AsCString(), alloc_error.AsCString());
           return;
         }
 
@@ -580,7 +571,7 @@ public:
         if (!write_error.Success()) {
           err.SetErrorStringWithFormat(
               "couldn't write to the temporary region for %s: %s",
-              GetName().AsCString(), write_error.AsCString());
+              m_variable_sp->GetName().AsCString(), write_error.AsCString());
           return;
         }
 
@@ -592,7 +583,8 @@ public:
         if (!pointer_write_error.Success()) {
           err.SetErrorStringWithFormat(
               "couldn't write the address of the temporary region for %s: %s",
-              GetName().AsCString(), pointer_write_error.AsCString());
+              m_variable_sp->GetName().AsCString(),
+              pointer_write_error.AsCString());
         }
       }
     }
@@ -608,7 +600,7 @@ public:
       LLDB_LOGF(log,
                 "EntityVariable::Dematerialize [address = 0x%" PRIx64
                 ", m_variable_sp = %s]",
-                (uint64_t)load_addr, GetName().AsCString());
+                (uint64_t)load_addr, m_variable_sp->GetName().AsCString());
     }
 
     if (m_temporary_allocation != LLDB_INVALID_ADDRESS) {
@@ -617,12 +609,13 @@ public:
       if (!scope)
         scope = map.GetBestExecutionContextScope();
 
-      lldb::ValueObjectSP valobj_sp = SetupValueObject(scope);
+      lldb::ValueObjectSP valobj_sp =
+          ValueObjectVariable::Create(scope, m_variable_sp);
 
       if (!valobj_sp) {
         err.SetErrorStringWithFormat(
             "couldn't get a value object for variable %s",
-            GetName().AsCString());
+            m_variable_sp->GetName().AsCString());
         return;
       }
 
@@ -631,11 +624,11 @@ public:
       Status extract_error;
 
       map.GetMemoryData(data, m_temporary_allocation,
-                        valobj_sp->GetByteSize().value_or(0), extract_error);
+                        valobj_sp->GetByteSize().getValueOr(0), extract_error);
 
       if (!extract_error.Success()) {
         err.SetErrorStringWithFormat("couldn't get the data for variable %s",
-                                     GetName().AsCString());
+                                     m_variable_sp->GetName().AsCString());
         return;
       }
 
@@ -657,7 +650,7 @@ public:
         if (!set_error.Success()) {
           err.SetErrorStringWithFormat(
               "couldn't write the new contents of %s back into the variable",
-              GetName().AsCString());
+              m_variable_sp->GetName().AsCString());
           return;
         }
       }
@@ -669,7 +662,7 @@ public:
       if (!free_error.Success()) {
         err.SetErrorStringWithFormat(
             "couldn't free the temporary region for %s: %s",
-            GetName().AsCString(), free_error.AsCString());
+            m_variable_sp->GetName().AsCString(), free_error.AsCString());
         return;
       }
 
@@ -753,154 +746,16 @@ public:
   }
 
 private:
-  virtual ConstString GetName() const = 0;
-
-  /// Creates and returns ValueObject tied to this variable
-  /// and prepares Entity for materialization.
-  ///
-  /// Called each time the Materializer (de)materializes a
-  /// variable. We re-create the ValueObject based on the
-  /// current ExecutionContextScope since clients such as
-  /// conditional breakpoints may materialize the same
-  /// EntityVariable multiple times with different frames.
-  ///
-  /// Each subsequent use of the EntityVariableBase interface
-  /// will query the newly created ValueObject until this
-  /// function is called again.
-  virtual lldb::ValueObjectSP
-  SetupValueObject(ExecutionContextScope *scope) = 0;
-
-  /// Returns size in bytes of the type associated with this variable
-  ///
-  /// \returns On success, returns byte size of the type associated
-  ///          with this variable. Returns NoneType otherwise.
-  virtual llvm::Optional<uint64_t>
-  GetByteSize(ExecutionContextScope *scope) const = 0;
-
-  /// Returns 'true' if the location expression associated with this variable
-  /// is valid.
-  virtual bool LocationExpressionIsValid() const = 0;
-
-  /// Returns alignment of the type associated with this variable in bits.
-  ///
-  /// \returns On success, returns alignment in bits for the type associated
-  ///          with this variable. Returns NoneType otherwise.
-  virtual llvm::Optional<size_t>
-  GetTypeBitAlign(ExecutionContextScope *scope) const = 0;
-
-protected:
+  lldb::VariableSP m_variable_sp;
   bool m_is_reference = false;
   lldb::addr_t m_temporary_allocation = LLDB_INVALID_ADDRESS;
   size_t m_temporary_allocation_size = 0;
   lldb::DataBufferSP m_original_data;
 };
 
-/// Represents an Entity constructed from a VariableSP.
-///
-/// This class is used for materialization of variables for which
-/// the user has a VariableSP on hand. The ValueObject is then
-/// derived from the associated DWARF location expression when needed
-/// by the Materializer.
-class EntityVariable : public EntityVariableBase {
-public:
-  EntityVariable(lldb::VariableSP &variable_sp) : m_variable_sp(variable_sp) {
-    m_is_reference =
-        m_variable_sp->GetType()->GetForwardCompilerType().IsReferenceType();
-  }
-
-  ConstString GetName() const override { return m_variable_sp->GetName(); }
-
-  lldb::ValueObjectSP SetupValueObject(ExecutionContextScope *scope) override {
-    assert(m_variable_sp != nullptr);
-    return ValueObjectVariable::Create(scope, m_variable_sp);
-  }
-
-  llvm::Optional<uint64_t>
-  GetByteSize(ExecutionContextScope *scope) const override {
-    return m_variable_sp->GetType()->GetByteSize(scope);
-  }
-
-  bool LocationExpressionIsValid() const override {
-    return m_variable_sp->LocationExpressionList().IsValid();
-  }
-
-  llvm::Optional<size_t>
-  GetTypeBitAlign(ExecutionContextScope *scope) const override {
-    return m_variable_sp->GetType()->GetLayoutCompilerType().GetTypeBitAlign(
-        scope);
-  }
-
-private:
-  lldb::VariableSP m_variable_sp; ///< Variable that this entity is based on.
-};
-
-/// Represents an Entity constructed from a VariableSP.
-///
-/// This class is used for materialization of variables for
-/// which the user does not have a VariableSP available (e.g.,
-/// when materializing ivars).
-class EntityValueObject : public EntityVariableBase {
-public:
-  EntityValueObject(ConstString name, ValueObjectProviderTy provider)
-      : m_name(name), m_valobj_provider(std::move(provider)) {
-    assert(m_valobj_provider);
-  }
-
-  ConstString GetName() const override { return m_name; }
-
-  lldb::ValueObjectSP SetupValueObject(ExecutionContextScope *scope) override {
-    m_valobj_sp =
-        m_valobj_provider(GetName(), scope->CalculateStackFrame().get());
-
-    if (m_valobj_sp)
-      m_is_reference = m_valobj_sp->GetCompilerType().IsReferenceType();
-
-    return m_valobj_sp;
-  }
-
-  llvm::Optional<uint64_t>
-  GetByteSize(ExecutionContextScope *scope) const override {
-    if (m_valobj_sp)
-      return m_valobj_sp->GetCompilerType().GetByteSize(scope);
-
-    return {};
-  }
-
-  bool LocationExpressionIsValid() const override {
-    if (m_valobj_sp)
-      return m_valobj_sp->GetError().Success();
-
-    return false;
-  }
-
-  llvm::Optional<size_t>
-  GetTypeBitAlign(ExecutionContextScope *scope) const override {
-    if (m_valobj_sp)
-      return m_valobj_sp->GetCompilerType().GetTypeBitAlign(scope);
-
-    return {};
-  }
-
-private:
-  ConstString m_name;
-  lldb::ValueObjectSP m_valobj_sp;
-  ValueObjectProviderTy m_valobj_provider;
-};
-
 uint32_t Materializer::AddVariable(lldb::VariableSP &variable_sp, Status &err) {
   EntityVector::iterator iter = m_entities.insert(m_entities.end(), EntityUP());
   *iter = std::make_unique<EntityVariable>(variable_sp);
-  uint32_t ret = AddStructMember(**iter);
-  (*iter)->SetOffset(ret);
-  return ret;
-}
-
-uint32_t Materializer::AddValueObject(ConstString name,
-                                      ValueObjectProviderTy valobj_provider,
-                                      Status &err) {
-  assert(valobj_provider);
-  EntityVector::iterator iter = m_entities.insert(m_entities.end(), EntityUP());
-  *iter = std::make_unique<EntityValueObject>(name, std::move(valobj_provider));
   uint32_t ret = AddStructMember(**iter);
   (*iter)->SetOffset(ret);
   return ret;
@@ -915,8 +770,8 @@ public:
         m_keep_in_memory(keep_in_memory), m_delegate(delegate) {
     // Hard-coding to maximum size of a pointer since all results are
     // materialized by reference
-    m_size = g_default_var_byte_size;
-    m_alignment = g_default_var_alignment;
+    m_size = 8;
+    m_alignment = 8;
   }
 
   void Materialize(lldb::StackFrameSP &frame_sp, IRMemoryMap &map,
@@ -1066,7 +921,7 @@ public:
 
     ret->ValueUpdated();
 
-    const size_t pvar_byte_size = ret->GetByteSize().value_or(0);
+    const size_t pvar_byte_size = ret->GetByteSize().getValueOr(0);
     uint8_t *pvar_data = ret->GetValueBytes();
 
     map.ReadMemory(pvar_data, address, pvar_byte_size, read_error);
@@ -1193,8 +1048,8 @@ class EntitySymbol : public Materializer::Entity {
 public:
   EntitySymbol(const Symbol &symbol) : Entity(), m_symbol(symbol) {
     // Hard-coding to maximum size of a symbol
-    m_size = g_default_var_byte_size;
-    m_alignment = g_default_var_alignment;
+    m_size = 8;
+    m_alignment = 8;
   }
 
   void Materialize(lldb::StackFrameSP &frame_sp, IRMemoryMap &map,

@@ -12,6 +12,8 @@ from lldbsuite.test import lldbutil
 
 class FoundationTestCaseString(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def test_NSString_expr_commands(self):
         """Test expression commands for NSString."""
         self.build()

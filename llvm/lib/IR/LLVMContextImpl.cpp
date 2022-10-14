@@ -27,6 +27,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/TypeSize.h"
 #include <cassert>
 #include <utility>
@@ -35,7 +36,7 @@ using namespace llvm;
 
 static cl::opt<bool>
     OpaquePointersCL("opaque-pointers", cl::desc("Use opaque pointers"),
-                     cl::init(true));
+                     cl::init(false));
 
 LLVMContextImpl::LLVMContextImpl(LLVMContext &C)
     : DiagHandler(std::make_unique<DiagnosticHandler>()),
@@ -240,7 +241,7 @@ void LLVMContextImpl::getSyncScopeNames(
 /// singleton OptBisect if not explicitly set.
 OptPassGate &LLVMContextImpl::getOptPassGate() const {
   if (!OPG)
-    OPG = &getOptBisector();
+    OPG = &(*OptBisector);
   return *OPG;
 }
 
@@ -249,17 +250,17 @@ void LLVMContextImpl::setOptPassGate(OptPassGate& OPG) {
 }
 
 bool LLVMContextImpl::hasOpaquePointersValue() {
-  return OpaquePointers.has_value();
+  return OpaquePointers.hasValue();
 }
 
 bool LLVMContextImpl::getOpaquePointers() {
-  if (LLVM_UNLIKELY(!OpaquePointers))
+  if (LLVM_UNLIKELY(!(OpaquePointers.hasValue())))
     OpaquePointers = OpaquePointersCL;
   return *OpaquePointers;
 }
 
 void LLVMContextImpl::setOpaquePointers(bool OP) {
-  assert((!OpaquePointers || OpaquePointers.value() == OP) &&
+  assert((!OpaquePointers.hasValue() || OpaquePointers.getValue() == OP) &&
          "Cannot change opaque pointers mode once set");
   OpaquePointers = OP;
 }

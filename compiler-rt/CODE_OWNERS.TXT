@@ -20,8 +20,8 @@ N: Timur Iskhodzhanov
 E: timurrrr@google.com
 D: AddressSanitizer for Windows
 
-N: Saleem Abdulrasool
-E: compnerd@compnerd.org
+N: Howard Hinnant
+E: howard.hinnant@gmail.com
 D: builtins library
 
 N: Alexander Potapenko

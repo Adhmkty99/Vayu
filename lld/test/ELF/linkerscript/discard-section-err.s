@@ -11,6 +11,14 @@
 # RUN: echo "SECTIONS { /DISCARD/ : { *(.dynamic) } }" > %t.script
 # RUN: ld.lld -pie -o %t --script %t.script %t.o
 
+## We allow discarding .dynsym, check we don't crash.
+# RUN: echo "SECTIONS { /DISCARD/ : { *(.dynsym) } }" > %t.script
+# RUN: ld.lld -pie -o %t --script %t.script %t.o
+
+## We allow discarding .dynstr, check we don't crash.
+# RUN: echo "SECTIONS { /DISCARD/ : { *(.dynstr) } }" > %t.script
+# RUN: ld.lld -pie -o %t --script %t.script %t.o
+
 # RUN: echo "SECTIONS { /DISCARD/ : { *(.rela.dyn) } }" > %t.script
 # RUN: ld.lld -pie -o %t %t.o
 # RUN: llvm-readobj -S %t | FileCheck --check-prefix=RELADYN %s

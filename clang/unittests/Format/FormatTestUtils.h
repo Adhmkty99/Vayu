@@ -19,10 +19,7 @@ namespace clang {
 namespace format {
 namespace test {
 
-// When HandleHash is false, preprocessor directives starting with hash will not
-// be on separate lines.  This is needed because Verilog uses hash for other
-// purposes.
-inline std::string messUp(llvm::StringRef Code, bool HandleHash = true) {
+inline std::string messUp(llvm::StringRef Code) {
   std::string MessedUp(Code.str());
   bool InComment = false;
   bool InPreprocessorDirective = false;
@@ -32,7 +29,7 @@ inline std::string messUp(llvm::StringRef Code, bool HandleHash = true) {
       if (JustReplacedNewline)
         MessedUp[i - 1] = '\n';
       InComment = true;
-    } else if (HandleHash && MessedUp[i] == '#' &&
+    } else if (MessedUp[i] == '#' &&
                (JustReplacedNewline || i == 0 || MessedUp[i - 1] == '\n')) {
       if (i != 0)
         MessedUp[i - 1] = '\n';
@@ -56,9 +53,10 @@ inline std::string messUp(llvm::StringRef Code, bool HandleHash = true) {
   std::string WithoutWhitespace;
   if (MessedUp[0] != ' ')
     WithoutWhitespace.push_back(MessedUp[0]);
-  for (unsigned i = 1, e = MessedUp.size(); i != e; ++i)
+  for (unsigned i = 1, e = MessedUp.size(); i != e; ++i) {
     if (MessedUp[i] != ' ' || MessedUp[i - 1] != ' ')
       WithoutWhitespace.push_back(MessedUp[i]);
+  }
   return WithoutWhitespace;
 }
 

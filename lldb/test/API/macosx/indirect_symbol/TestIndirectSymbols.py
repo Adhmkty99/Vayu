@@ -10,6 +10,8 @@ from lldbsuite.test import lldbutil
 
 class TestIndirectFunctions(TestBase):
 
+    mydir = TestBase.compute_mydir(__file__)
+
     def setUp(self):
         # Call super's setUp().
         TestBase.setUp(self)
@@ -96,7 +98,7 @@ class TestIndirectFunctions(TestBase):
         # make sure we are again in out target function.
         break_reexported = target.BreakpointCreateByName(
             "reexport_to_indirect")
-        self.assertEqual(break_reexported.GetNumLocations(), 1, VALID_BREAKPOINT)
+        self.assertTrue(break_reexported, VALID_BREAKPOINT)
 
         # Now continue should take us to the second call through the indirect
         # symbol:
