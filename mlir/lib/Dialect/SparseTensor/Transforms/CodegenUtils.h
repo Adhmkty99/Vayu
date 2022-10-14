@@ -13,8 +13,11 @@
 #ifndef MLIR_DIALECT_SPARSETENSOR_TRANSFORMS_CODEGENUTILS_H_
 #define MLIR_DIALECT_SPARSETENSOR_TRANSFORMS_CODEGENUTILS_H_
 
-#include "mlir/Dialect/Arithmetic/IR/Arithmetic.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Complex/IR/Complex.h"
 #include "mlir/Dialect/SparseTensor/IR/SparseTensor.h"
+#include "mlir/Dialect/Utils/ReshapeOpsUtils.h"
+#include "mlir/ExecutionEngine/SparseTensor/Enums.h"
 #include "mlir/ExecutionEngine/SparseTensorUtils.h"
 #include "mlir/IR/Builders.h"
 
@@ -102,16 +105,27 @@ Value genIsNonzero(OpBuilder &builder, Location loc, Value v);
 //===----------------------------------------------------------------------===//
 
 /// Generates a 0-valued constant of the given type.  In addition to
-/// the scalar types (`FloatType`, `IndexType`, `IntegerType`), this also
-/// works for `RankedTensorType` and `VectorType` (for which it generates
-/// a constant `DenseElementsAttr` of zeros).
+/// the scalar types (`ComplexType`, ``FloatType`, `IndexType`, `IntegerType`),
+/// this also works for `RankedTensorType` and `VectorType` (for which it
+/// generates a constant `DenseElementsAttr` of zeros).
 inline Value constantZero(OpBuilder &builder, Location loc, Type tp) {
+  if (auto ctp = tp.dyn_cast<ComplexType>()) {
+    auto zeroe = builder.getZeroAttr(ctp.getElementType());
+    auto zeroa = builder.getArrayAttr({zeroe, zeroe});
+    return builder.create<complex::ConstantOp>(loc, tp, zeroa);
+  }
   return builder.create<arith::ConstantOp>(loc, tp, builder.getZeroAttr(tp));
 }
 
 /// Generates a 1-valued constant of the given type.  This supports all
 /// the same types as `constantZero`.
 inline Value constantOne(OpBuilder &builder, Location loc, Type tp) {
+  if (auto ctp = tp.dyn_cast<ComplexType>()) {
+    auto zeroe = builder.getZeroAttr(ctp.getElementType());
+    auto onee = getOneAttr(builder, ctp.getElementType());
+    auto zeroa = builder.getArrayAttr({onee, zeroe});
+    return builder.create<complex::ConstantOp>(loc, tp, zeroa);
+  }
   return builder.create<arith::ConstantOp>(loc, tp, getOneAttr(builder, tp));
 }
 
@@ -181,6 +195,12 @@ constantDimLevelTypeEncoding(OpBuilder &builder, Location loc,
                     static_cast<uint8_t>(dimLevelTypeEncoding(dlt)));
 }
 
+/// Helper method to translate indices during a reshaping operation.
+void translateIndicesArray(OpBuilder &builder, Location loc,
+                           ArrayRef<ReassociationIndices> reassociation,
+                           ValueRange srcIndices, ArrayRef<Value> srcShape,
+                           ArrayRef<Value> dstShape,
+                           SmallVectorImpl<Value> &dstIndices);
 } // namespace sparse_tensor
 } // namespace mlir
 

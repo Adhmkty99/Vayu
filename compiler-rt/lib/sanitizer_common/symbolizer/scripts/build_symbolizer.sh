@@ -69,8 +69,8 @@ CC=$CLANG_DIR/clang
 CXX=$CLANG_DIR/clang++
 TBLGEN=$CLANG_DIR/llvm-tblgen
 OPT=$CLANG_DIR/opt
-export AR=$CLANG_DIR/llvm-ar
-export LINK=$CLANG_DIR/llvm-link
+AR=$CLANG_DIR/llvm-ar
+LINK=$CLANG_DIR/llvm-link
 TARGET_TRIPLE=$($CC -print-target-triple)
 
 for F in $CC $CXX $TBLGEN $LINK $OPT $AR; do
@@ -86,26 +86,22 @@ LLVM_BUILD=${BUILD_DIR}/llvm
 SYMBOLIZER_BUILD=${BUILD_DIR}/symbolizer
 
 FLAGS=${FLAGS:-}
-FLAGS="$FLAGS -fPIC -flto -Os -g0 -DNDEBUG"
+FLAGS="$FLAGS -fPIC -flto -Oz -g0 -DNDEBUG"
 
 # Build zlib.
 mkdir -p ${ZLIB_BUILD}
 cd ${ZLIB_BUILD}
 cp -r ${ZLIB_SRC}/* .
-CC=$CC CFLAGS="$FLAGS" RANLIB=/bin/true ./configure --static
+AR="${AR}" CC="${CC}" CFLAGS="$FLAGS -Wno-deprecated-non-prototype" RANLIB=/bin/true ./configure --static
 make -j${J} libz.a
 
 # Build and install libcxxabi and libcxx.
 if [[ ! -d ${LIBCXX_BUILD} ]]; then
   mkdir -p ${LIBCXX_BUILD}
   cd ${LIBCXX_BUILD}
-  LIBCXX_FLAGS="${FLAGS} -Wno-macro-redefined"
-  PROJECTS=
-  if [[ ! -d $LLVM_SRC/projects/libcxxabi ]] ; then
-    PROJECTS="-DLLVM_ENABLE_PROJECTS='libcxx;libcxxabi'"
-  fi
+  LIBCXX_FLAGS="${FLAGS} -Wno-macro-redefined -Wno-unused-command-line-argument"
   cmake -GNinja \
-    ${PROJECTS} \
+    -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER=$CC \
     -DCMAKE_CXX_COMPILER=$CXX \
@@ -113,18 +109,19 @@ if [[ ! -d ${LIBCXX_BUILD} ]]; then
     -DCMAKE_CXX_FLAGS_RELEASE="${LIBCXX_FLAGS}" \
     -DLIBCXXABI_ENABLE_ASSERTIONS=OFF \
     -DLIBCXXABI_ENABLE_EXCEPTIONS=OFF \
-    -DLIBCXXABI_ENABLE_SHARED=OFF \
     -DLIBCXX_ENABLE_ASSERTIONS=OFF \
     -DLIBCXX_ENABLE_EXCEPTIONS=OFF \
     -DLIBCXX_ENABLE_RTTI=OFF \
-    -DLIBCXX_ENABLE_SHARED=OFF \
-  $LLVM_SRC
+    -DCMAKE_SHARED_LINKER_FLAGS="-fuse-ld=lld" \
+    -DLLVM_DEFAULT_TARGET_TRIPLE="${TARGET_TRIPLE}" \
+  $LLVM_SRC/../runtimes
 fi
 cd ${LIBCXX_BUILD}
 ninja cxx cxxabi
 
 FLAGS="${FLAGS} -fno-rtti -fno-exceptions"
-LLVM_FLAGS="${FLAGS} -nostdinc++ -I${ZLIB_BUILD} -isystem ${LIBCXX_BUILD}/include/${TARGET_TRIPLE}/c++/v1 -isystem ${LIBCXX_BUILD}/include/c++/v1 -Wno-error=global-constructors"
+LLVM_CFLAGS="${FLAGS} -Wno-global-constructors"
+LLVM_CXXFLAGS="${LLVM_CFLAGS} -nostdinc++ -I${ZLIB_BUILD} -isystem ${LIBCXX_BUILD}/include -isystem ${LIBCXX_BUILD}/include/c++/v1"
 
 # Build LLVM.
 if [[ ! -d ${LLVM_BUILD} ]]; then
@@ -134,13 +131,14 @@ if [[ ! -d ${LLVM_BUILD} ]]; then
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_C_COMPILER=$CC \
     -DCMAKE_CXX_COMPILER=$CXX \
-    -DCMAKE_C_FLAGS_RELEASE="${LLVM_FLAGS}" \
-    -DCMAKE_CXX_FLAGS_RELEASE="${LLVM_FLAGS}" \
+    -DCMAKE_C_FLAGS_RELEASE="${LLVM_CFLAGS}" \
+    -DCMAKE_CXX_FLAGS_RELEASE="${LLVM_CXXFLAGS}" \
+    -DCMAKE_EXE_LINKER_FLAGS="-stdlib=libc++ -fuse-ld=lld -L${LIBCXX_BUILD}/lib" \
     -DLLVM_TABLEGEN=$TBLGEN \
+    -DLLVM_DEFAULT_TARGET_TRIPLE="${TARGET_TRIPLE}" \
     -DLLVM_ENABLE_ZLIB=ON \
     -DLLVM_ENABLE_TERMINFO=OFF \
     -DLLVM_ENABLE_THREADS=OFF \
-    -DLLVM_DISABLE_ASSEMBLY_FILES=ON \
   $LLVM_SRC
 fi
 cd ${LLVM_BUILD}
@@ -152,7 +150,7 @@ mkdir ${SYMBOLIZER_BUILD}
 cd ${SYMBOLIZER_BUILD}
 
 echo "Compiling..."
-SYMBOLIZER_FLAGS="$LLVM_FLAGS -I${LLVM_SRC}/include -I${LLVM_BUILD}/include -std=c++14"
+SYMBOLIZER_FLAGS="$LLVM_CXXFLAGS -I${LLVM_SRC}/include -I${LLVM_BUILD}/include -std=c++17"
 $CXX $SYMBOLIZER_FLAGS ${SRC_DIR}/sanitizer_symbolize.cpp ${SRC_DIR}/sanitizer_wrappers.cpp -c
 $AR rc symbolizer.a sanitizer_symbolize.o sanitizer_wrappers.o
 
@@ -166,23 +164,23 @@ SYMBOLIZER_API_LIST+=,__sanitizer_symbolize_set_inline_frames
 LIBCXX_ARCHIVE_DIR=$(dirname $(find $LIBCXX_BUILD -name libc++.a | head -n1))
 
 # Merge all the object files together and copy the resulting library back.
-$SCRIPT_DIR/ar_to_bc.sh $LIBCXX_ARCHIVE_DIR/libc++.a \
-                        $LIBCXX_ARCHIVE_DIR/libc++abi.a \
-                        $LLVM_BUILD/lib/libLLVMSymbolize.a \
-                        $LLVM_BUILD/lib/libLLVMObject.a \
-                        $LLVM_BUILD/lib/libLLVMBinaryFormat.a \
-                        $LLVM_BUILD/lib/libLLVMDebugInfoDWARF.a \
-                        $LLVM_BUILD/lib/libLLVMSupport.a \
-                        $LLVM_BUILD/lib/libLLVMDebugInfoPDB.a \
-                        $LLVM_BUILD/lib/libLLVMDebugInfoMSF.a \
-                        $LLVM_BUILD/lib/libLLVMDebugInfoCodeView.a \
-                        $LLVM_BUILD/lib/libLLVMDebuginfod.a \
-                        $LLVM_BUILD/lib/libLLVMDemangle.a \
-                        $LLVM_BUILD/lib/libLLVMMC.a \
-                        $LLVM_BUILD/lib/libLLVMTextAPI.a \
-                        $ZLIB_BUILD/libz.a \
-                        symbolizer.a \
-                        all.bc
+$LINK $LIBCXX_ARCHIVE_DIR/libc++.a \
+      $LIBCXX_ARCHIVE_DIR/libc++abi.a \
+      $LLVM_BUILD/lib/libLLVMSymbolize.a \
+      $LLVM_BUILD/lib/libLLVMObject.a \
+      $LLVM_BUILD/lib/libLLVMBinaryFormat.a \
+      $LLVM_BUILD/lib/libLLVMDebugInfoDWARF.a \
+      $LLVM_BUILD/lib/libLLVMSupport.a \
+      $LLVM_BUILD/lib/libLLVMDebugInfoPDB.a \
+      $LLVM_BUILD/lib/libLLVMDebugInfoMSF.a \
+      $LLVM_BUILD/lib/libLLVMDebugInfoCodeView.a \
+      $LLVM_BUILD/lib/libLLVMDebuginfod.a \
+      $LLVM_BUILD/lib/libLLVMDemangle.a \
+      $LLVM_BUILD/lib/libLLVMMC.a \
+      $LLVM_BUILD/lib/libLLVMTextAPI.a \
+      $ZLIB_BUILD/libz.a \
+      symbolizer.a \
+      -ignore-non-bitcode -o all.bc
 
 echo "Optimizing..."
 $OPT -internalize -internalize-public-api-list=${SYMBOLIZER_API_LIST} all.bc -o opt.bc

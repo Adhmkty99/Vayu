@@ -1167,7 +1167,7 @@ public:
       return QualType(T, 0);
 
     return Ctx.getSubstTemplateTypeParmType(T->getReplacedParameter(),
-                                            replacementType);
+                                            replacementType, T->getPackIndex());
   }
 
   // FIXME: Non-trivial to implement, but important for C++
@@ -2505,6 +2505,25 @@ bool QualType::isTriviallyCopyableType(const ASTContext &Context) const {
   return false;
 }
 
+bool QualType::isTriviallyRelocatableType(const ASTContext &Context) const {
+  QualType BaseElementType = Context.getBaseElementType(*this);
+
+  if (BaseElementType->isIncompleteType()) {
+    return false;
+  } else if (const auto *RD = BaseElementType->getAsRecordDecl()) {
+    return RD->canPassInRegisters();
+  } else {
+    switch (isNonTrivialToPrimitiveDestructiveMove()) {
+    case PCK_Trivial:
+      return !isDestructedType();
+    case PCK_ARCStrong:
+      return true;
+    default:
+      return false;
+    }
+  }
+}
+
 bool QualType::isNonWeakInMRRWithObjCWeak(const ASTContext &Context) const {
   return !Context.getLangOpts().ObjCAutoRefCount &&
          Context.getLangOpts().ObjCWeak &&
@@ -3166,6 +3185,8 @@ StringRef FunctionType::getNameForCallConv(CallingConv CC) {
   case CC_AAPCS: return "aapcs";
   case CC_AAPCS_VFP: return "aapcs-vfp";
   case CC_AArch64VectorCall: return "aarch64_vector_pcs";
+  case CC_AArch64SVEPCS: return "aarch64_sve_pcs";
+  case CC_AMDGPUKernelCall: return "amdgpu_kernel";
   case CC_IntelOclBicc: return "intel_ocl_bicc";
   case CC_SpirFunction: return "spir_function";
   case CC_OpenCLKernel: return "opencl_kernel";
@@ -3192,11 +3213,14 @@ FunctionProtoType::FunctionProtoType(QualType result, ArrayRef<QualType> params,
   FunctionTypeBits.Variadic = epi.Variadic;
   FunctionTypeBits.HasTrailingReturn = epi.HasTrailingReturn;
 
-  // Fill in the extra trailing bitfields if present.
-  if (hasExtraBitfields(epi.ExceptionSpec.Type)) {
+  if (epi.requiresFunctionProtoTypeExtraBitfields()) {
+    FunctionTypeBits.HasExtraBitfields = true;
     auto &ExtraBits = *getTrailingObjects<FunctionTypeExtraBitfields>();
-    ExtraBits.NumExceptionType = epi.ExceptionSpec.Exceptions.size();
+    ExtraBits = FunctionTypeExtraBitfields();
+  } else {
+    FunctionTypeBits.HasExtraBitfields = false;
   }
+
 
   // Fill in the trailing argument array.
   auto *argSlot = getTrailingObjects<QualType>();
@@ -3208,6 +3232,9 @@ FunctionProtoType::FunctionProtoType(QualType result, ArrayRef<QualType> params,
 
   // Fill in the exception type array if present.
   if (getExceptionSpecType() == EST_Dynamic) {
+    auto &ExtraBits = *getTrailingObjects<FunctionTypeExtraBitfields>();
+    ExtraBits.NumExceptionType = epi.ExceptionSpec.Exceptions.size();
+
     assert(hasExtraBitfields() && "missing trailing extra bitfields!");
     auto *exnSlot =
         reinterpret_cast<QualType *>(getTrailingObjects<ExceptionType>());
@@ -3442,27 +3469,37 @@ QualType MacroQualifiedType::getModifiedType() const {
   return Inner;
 }
 
-TypeOfExprType::TypeOfExprType(Expr *E, QualType can)
-    : Type(TypeOfExpr, can,
+TypeOfExprType::TypeOfExprType(Expr *E, TypeOfKind Kind, QualType Can)
+    : Type(TypeOfExpr,
+           // We have to protect against 'Can' being invalid through its
+           // default argument.
+           Kind == TypeOfKind::Unqualified && !Can.isNull()
+               ? Can.getAtomicUnqualifiedType()
+               : Can,
            toTypeDependence(E->getDependence()) |
                (E->getType()->getDependence() &
                 TypeDependence::VariablyModified)),
-      TOExpr(E) {}
+      TOExpr(E) {
+  TypeOfBits.IsUnqual = Kind == TypeOfKind::Unqualified;
+}
 
 bool TypeOfExprType::isSugared() const {
   return !TOExpr->isTypeDependent();
 }
 
 QualType TypeOfExprType::desugar() const {
-  if (isSugared())
-    return getUnderlyingExpr()->getType();
-
+  if (isSugared()) {
+    QualType QT = getUnderlyingExpr()->getType();
+    return isUnqual() ? QT.getAtomicUnqualifiedType() : QT;
+  }
   return QualType(this, 0);
 }
 
 void DependentTypeOfExprType::Profile(llvm::FoldingSetNodeID &ID,
-                                      const ASTContext &Context, Expr *E) {
+                                      const ASTContext &Context, Expr *E,
+                                      bool IsUnqual) {
   E->Profile(ID, Context, true);
+  ID.AddBoolean(IsUnqual);
 }
 
 DecltypeType::DecltypeType(Expr *E, QualType underlyingType, QualType can)
@@ -3512,7 +3549,7 @@ TagType::TagType(TypeClass TC, const TagDecl *D, QualType can)
       decl(const_cast<TagDecl *>(D)) {}
 
 static TagDecl *getInterestingTagDecl(TagDecl *decl) {
-  for (auto I : decl->redecls()) {
+  for (auto *I : decl->redecls()) {
     if (I->isCompleteDefinition() || I->isBeingDefined())
       return I;
   }
@@ -3601,6 +3638,8 @@ bool AttributedType::isCallingConv() const {
   case attr::SwiftAsyncCall:
   case attr::VectorCall:
   case attr::AArch64VectorPcs:
+  case attr::AArch64SVEPcs:
+  case attr::AMDGPUKernelCall:
   case attr::Pascal:
   case attr::MSABI:
   case attr::SysVABI:
@@ -3618,6 +3657,20 @@ CXXRecordDecl *InjectedClassNameType::getDecl() const {
 
 IdentifierInfo *TemplateTypeParmType::getIdentifier() const {
   return isCanonicalUnqualified() ? nullptr : getDecl()->getIdentifier();
+}
+
+SubstTemplateTypeParmType::SubstTemplateTypeParmType(
+    const TemplateTypeParmType *Param, QualType Replacement,
+    Optional<unsigned> PackIndex)
+    : Type(SubstTemplateTypeParm, Replacement.getCanonicalType(),
+           Replacement->getDependence()),
+      Replaced(Param) {
+  SubstTemplateTypeParmTypeBits.HasNonCanonicalUnderlyingType =
+      Replacement != getCanonicalTypeInternal();
+  if (SubstTemplateTypeParmTypeBits.HasNonCanonicalUnderlyingType)
+    *getTrailingObjects<QualType>() = Replacement;
+
+  SubstTemplateTypeParmTypeBits.PackIndex = PackIndex ? *PackIndex + 1 : 0;
 }
 
 SubstTemplateTypeParmPackType::SubstTemplateTypeParmPackType(
@@ -3686,7 +3739,8 @@ TemplateSpecializationType::TemplateSpecializationType(
          "Use DependentTemplateSpecializationType for dependent template-name");
   assert((T.getKind() == TemplateName::Template ||
           T.getKind() == TemplateName::SubstTemplateTemplateParm ||
-          T.getKind() == TemplateName::SubstTemplateTemplateParmPack) &&
+          T.getKind() == TemplateName::SubstTemplateTemplateParmPack ||
+          T.getKind() == TemplateName::UsingTemplate) &&
          "Unexpected template name for TemplateSpecializationType");
 
   auto *TemplateArgs = reinterpret_cast<TemplateArgument *>(this + 1);
@@ -3750,7 +3804,7 @@ void ObjCObjectTypeImpl::Profile(llvm::FoldingSetNodeID &ID,
   for (auto typeArg : typeArgs)
     ID.AddPointer(typeArg.getAsOpaquePtr());
   ID.AddInteger(protocols.size());
-  for (auto proto : protocols)
+  for (auto *proto : protocols)
     ID.AddPointer(proto);
   ID.AddBoolean(isKindOf);
 }
@@ -3768,7 +3822,7 @@ void ObjCTypeParamType::Profile(llvm::FoldingSetNodeID &ID,
   ID.AddPointer(OTPDecl);
   ID.AddPointer(CanonicalType.getAsOpaquePtr());
   ID.AddInteger(protocols.size());
-  for (auto proto : protocols)
+  for (auto *proto : protocols)
     ID.AddPointer(proto);
 }
 
@@ -4290,20 +4344,13 @@ bool Type::isObjCARCImplicitlyUnretainedType() const {
 }
 
 bool Type::isObjCNSObjectType() const {
-  const Type *cur = this;
-  while (true) {
-    if (const auto *typedefType = dyn_cast<TypedefType>(cur))
-      return typedefType->getDecl()->hasAttr<ObjCNSObjectAttr>();
-
-    // Single-step desugar until we run out of sugar.
-    QualType next = cur->getLocallyUnqualifiedSingleStepDesugaredType();
-    if (next.getTypePtr() == cur) return false;
-    cur = next.getTypePtr();
-  }
+  if (const auto *typedefType = getAs<TypedefType>())
+    return typedefType->getDecl()->hasAttr<ObjCNSObjectAttr>();
+  return false;
 }
 
 bool Type::isObjCIndependentClassType() const {
-  if (const auto *typedefType = dyn_cast<TypedefType>(this))
+  if (const auto *typedefType = getAs<TypedefType>())
     return typedefType->getDecl()->hasAttr<ObjCIndependentClassAttr>();
   return false;
 }

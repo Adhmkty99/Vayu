@@ -227,7 +227,7 @@ static bool isArmBigEndian(const llvm::Triple &Triple,
   case llvm::Triple::armeb:
   case llvm::Triple::thumbeb:
     IsBigEndian = true;
-    LLVM_FALLTHROUGH;
+    [[fallthrough]];
   case llvm::Triple::arm:
   case llvm::Triple::thumb:
     if (Arg *A = Args.getLastArg(options::OPT_mlittle_endian,
@@ -278,6 +278,10 @@ static const char *getLDMOption(const llvm::Triple &T, const ArgList &Args) {
     return "elf32_sparc";
   case llvm::Triple::sparcv9:
     return "elf64_sparc";
+  case llvm::Triple::loongarch32:
+    return "elf32loongarch";
+  case llvm::Triple::loongarch64:
+    return "elf64loongarch";
   case llvm::Triple::mips:
     return "elf32btsmip";
   case llvm::Triple::mipsel:
@@ -465,6 +469,8 @@ void tools::gnutools::Linker::ConstructJob(Compilation &C, const JobAction &JA,
     D.Diag(diag::err_target_unknown_triple) << Triple.str();
     return;
   }
+  if (Triple.isRISCV())
+    CmdArgs.push_back("-X");
 
   if (Args.hasArg(options::OPT_shared))
     CmdArgs.push_back("-shared");
@@ -475,7 +481,8 @@ void tools::gnutools::Linker::ConstructJob(Compilation &C, const JobAction &JA,
     if (Args.hasArg(options::OPT_rdynamic))
       CmdArgs.push_back("-export-dynamic");
 
-    if (!Args.hasArg(options::OPT_shared) && !IsStaticPIE) {
+    if (!Args.hasArg(options::OPT_shared) && !IsStaticPIE &&
+        !Args.hasArg(options::OPT_r)) {
       CmdArgs.push_back("-dynamic-linker");
       CmdArgs.push_back(Args.MakeArgString(Twine(D.DyldPrefix) +
                                            ToolChain.getDynamicLinker(Args)));
@@ -558,6 +565,9 @@ void tools::gnutools::Linker::ConstructJob(Compilation &C, const JobAction &JA,
   bool NeedsXRayDeps = addXRayRuntime(ToolChain, Args, CmdArgs);
   addLinkerCompressDebugSectionsOption(ToolChain, Args, CmdArgs);
   AddLinkerInputs(ToolChain, Inputs, Args, CmdArgs, JA);
+
+  addHIPRuntimeLibArgs(ToolChain, Args, CmdArgs);
+
   // The profile runtime also needs access to system libraries.
   getToolChain().addProfileRTLibs(Args, CmdArgs);
 
@@ -585,6 +595,16 @@ void tools::gnutools::Linker::ConstructJob(Compilation &C, const JobAction &JA,
 
   // Silence warnings when linking C code with a C++ '-stdlib' argument.
   Args.ClaimAllArgs(options::OPT_stdlib_EQ);
+
+  // Additional linker set-up and flags for Fortran. This is required in order
+  // to generate executables. As Fortran runtime depends on the C runtime,
+  // these dependencies need to be listed before the C runtime below (i.e.
+  // AddRuntTimeLibs).
+  if (D.IsFlangMode()) {
+    addFortranRuntimeLibraryPath(ToolChain, Args, CmdArgs);
+    addFortranRuntimeLibs(ToolChain, CmdArgs);
+    CmdArgs.push_back("-lm");
+  }
 
   if (!Args.hasArg(options::OPT_nostdlib, options::OPT_r)) {
     if (!Args.hasArg(options::OPT_nodefaultlibs)) {
@@ -614,6 +634,16 @@ void tools::gnutools::Linker::ConstructJob(Compilation &C, const JobAction &JA,
         WantPthread = true;
 
       AddRunTimeLibs(ToolChain, D, CmdArgs, Args);
+
+      // LLVM support for atomics on 32-bit SPARC V8+ is incomplete, so
+      // forcibly link with libatomic as a workaround.
+      // TODO: Issue #41880 and D118021.
+      if (getToolChain().getTriple().getArch() == llvm::Triple::sparc) {
+        CmdArgs.push_back("--push-state");
+        CmdArgs.push_back("--as-needed");
+        CmdArgs.push_back("-latomic");
+        CmdArgs.push_back("--pop-state");
+      }
 
       if (WantPthread && !isAndroid)
         CmdArgs.push_back("-lpthread");
@@ -700,7 +730,7 @@ void tools::gnutools::Assembler::ConstructJob(Compilation &C,
       CmdArgs.push_back("--compress-debug-sections");
     } else {
       StringRef Value = A->getValue();
-      if (Value == "none" || Value == "zlib") {
+      if (Value == "none" || Value == "zlib" || Value == "zstd") {
         CmdArgs.push_back(
             Args.MakeArgString("--compress-debug-sections=" + Twine(Value)));
       } else {
@@ -764,6 +794,8 @@ void tools::gnutools::Assembler::ConstructJob(Compilation &C,
     StringRef MArchName = riscv::getRISCVArch(Args, getToolChain().getTriple());
     CmdArgs.push_back("-march");
     CmdArgs.push_back(MArchName.data());
+    if (!Args.hasFlag(options::OPT_mrelax, options::OPT_mno_relax, true))
+      Args.addOptOutFlag(CmdArgs, options::OPT_mrelax, options::OPT_mno_relax);
     break;
   }
   case llvm::Triple::sparc:
@@ -1337,7 +1369,7 @@ static bool findMipsMtiMultilibs(const Multilib::flags_list &Flags,
                   {"/../../../../mips-mti-linux-gnu/lib" + M.gccSuffix()});
             });
   }
-  for (auto Candidate : {&MtiMipsMultilibsV1, &MtiMipsMultilibsV2}) {
+  for (auto *Candidate : {&MtiMipsMultilibsV1, &MtiMipsMultilibsV2}) {
     if (Candidate->select(Flags, Result.SelectedMultilib)) {
       Result.Multilibs = *Candidate;
       return true;
@@ -1430,7 +1462,7 @@ static bool findMipsImgMultilibs(const Multilib::flags_list &Flags,
                   {"/../../../../mips-img-linux-gnu/lib" + M.gccSuffix()});
             });
   }
-  for (auto Candidate : {&ImgMultilibsV1, &ImgMultilibsV2}) {
+  for (auto *Candidate : {&ImgMultilibsV1, &ImgMultilibsV2}) {
     if (Candidate->select(Flags, Result.SelectedMultilib)) {
       Result.Multilibs = *Candidate;
       return true;
@@ -1965,6 +1997,28 @@ void Generic_GCC::GCCInstallationDetector::init(
                            CandidateTripleAliases, CandidateBiarchLibDirs,
                            CandidateBiarchTripleAliases);
 
+  // If --gcc-install-dir= is specified, skip filesystem detection.
+  if (const Arg *A =
+          Args.getLastArg(clang::driver::options::OPT_gcc_install_dir_EQ);
+      A && A->getValue()[0]) {
+    StringRef InstallDir = A->getValue();
+    if (!ScanGCCForMultilibs(TargetTriple, Args, InstallDir, false)) {
+      D.Diag(diag::err_drv_invalid_gcc_install_dir) << InstallDir;
+    } else {
+      (void)InstallDir.consume_back("/");
+      StringRef VersionText = llvm::sys::path::filename(InstallDir);
+      StringRef TripleText =
+          llvm::sys::path::filename(llvm::sys::path::parent_path(InstallDir));
+
+      Version = GCCVersion::Parse(VersionText);
+      GCCTriple.setTriple(TripleText);
+      GCCInstallPath = std::string(InstallDir);
+      GCCParentLibPath = GCCInstallPath + "/../../..";
+      IsValid = true;
+    }
+    return;
+  }
+
   // Compute the set of prefixes for our search.
   SmallVector<std::string, 8> Prefixes;
   StringRef GCCToolchainDir = getGCCToolchainDir(Args, D.SysRoot);
@@ -2019,7 +2073,7 @@ void Generic_GCC::GCCInstallationDetector::init(
     if (!VFS.exists(Prefix))
       continue;
     for (StringRef Suffix : CandidateLibDirs) {
-      const std::string LibDir = Prefix + Suffix.str();
+      const std::string LibDir = concat(Prefix, Suffix);
       if (!VFS.exists(LibDir))
         continue;
       // Maybe filter out <libdir>/gcc and <libdir>/gcc-cross.
@@ -2068,8 +2122,8 @@ void Generic_GCC::GCCInstallationDetector::print(raw_ostream &OS) const {
 }
 
 bool Generic_GCC::GCCInstallationDetector::getBiarchSibling(Multilib &M) const {
-  if (BiarchSibling.hasValue()) {
-    M = BiarchSibling.getValue();
+  if (BiarchSibling) {
+    M = BiarchSibling.value();
     return true;
   }
   return false;
@@ -2085,7 +2139,7 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
     // so we need to find those /usr/gcc/*/lib/gcc libdirs and go with
     // /usr/gcc/<version> as a prefix.
 
-    std::string PrefixDir = SysRoot.str() + "/usr/gcc";
+    std::string PrefixDir = concat(SysRoot, "/usr/gcc");
     std::error_code EC;
     for (llvm::vfs::directory_iterator LI = D.getVFS().dir_begin(PrefixDir, EC),
                                        LE;
@@ -2107,20 +2161,39 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
     return;
   }
 
-  // Non-Solaris is much simpler - most systems just go with "/usr".
-  if (SysRoot.empty() && TargetTriple.getOS() == llvm::Triple::Linux) {
-    // Yet, still look for RHEL/CentOS devtoolsets and gcc-toolsets.
-    Prefixes.push_back("/opt/rh/gcc-toolset-10/root/usr");
-    Prefixes.push_back("/opt/rh/devtoolset-10/root/usr");
-    Prefixes.push_back("/opt/rh/devtoolset-9/root/usr");
-    Prefixes.push_back("/opt/rh/devtoolset-8/root/usr");
-    Prefixes.push_back("/opt/rh/devtoolset-7/root/usr");
-    Prefixes.push_back("/opt/rh/devtoolset-6/root/usr");
-    Prefixes.push_back("/opt/rh/devtoolset-4/root/usr");
-    Prefixes.push_back("/opt/rh/devtoolset-3/root/usr");
-    Prefixes.push_back("/opt/rh/devtoolset-2/root/usr");
+  // For Linux, if --sysroot is not specified, look for RHEL/CentOS devtoolsets
+  // and gcc-toolsets.
+  if (SysRoot.empty() && TargetTriple.getOS() == llvm::Triple::Linux &&
+      D.getVFS().exists("/opt/rh")) {
+    // Find the directory in /opt/rh/ starting with gcc-toolset-* or
+    // devtoolset-* with the highest version number and add that
+    // one to our prefixes.
+    std::string ChosenToolsetDir;
+    unsigned ChosenToolsetVersion = 0;
+    std::error_code EC;
+    for (llvm::vfs::directory_iterator LI = D.getVFS().dir_begin("/opt/rh", EC),
+                                       LE;
+         !EC && LI != LE; LI = LI.increment(EC)) {
+      StringRef ToolsetDir = llvm::sys::path::filename(LI->path());
+      unsigned ToolsetVersion;
+      if ((!ToolsetDir.startswith("gcc-toolset-") &&
+           !ToolsetDir.startswith("devtoolset-")) ||
+          ToolsetDir.substr(ToolsetDir.rfind('-') + 1)
+              .getAsInteger(10, ToolsetVersion))
+        continue;
+
+      if (ToolsetVersion > ChosenToolsetVersion) {
+        ChosenToolsetVersion = ToolsetVersion;
+        ChosenToolsetDir = "/opt/rh/" + ToolsetDir.str();
+      }
+    }
+
+    if (ChosenToolsetVersion > 0)
+      Prefixes.push_back(ChosenToolsetDir + "/root/usr");
   }
-  Prefixes.push_back(SysRoot.str() + "/usr");
+
+  // Fall back to /usr which is used by most non-Solaris systems.
+  Prefixes.push_back(concat(SysRoot, "/usr"));
 }
 
 /*static*/ void Generic_GCC::GCCInstallationDetector::CollectLibDirsAndTriples(
@@ -2181,6 +2254,10 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
       "i386-redhat-linux6E", "i686-redhat-linux",     "i386-redhat-linux",
       "i586-suse-linux",     "i686-montavista-linux", "i686-gnu",
   };
+
+  static const char *const LoongArch64LibDirs[] = {"/lib64", "/lib"};
+  static const char *const LoongArch64Triples[] = {
+      "loongarch64-linux-gnu", "loongarch64-unknown-linux-gnu"};
 
   static const char *const M68kLibDirs[] = {"/lib"};
   static const char *const M68kTriples[] = {
@@ -2429,6 +2506,11 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
       BiarchTripleAliases.append(begin(X32Triples), end(X32Triples));
     }
     break;
+  // TODO: Handle loongarch32.
+  case llvm::Triple::loongarch64:
+    LibDirs.append(begin(LoongArch64LibDirs), end(LoongArch64LibDirs));
+    TripleAliases.append(begin(LoongArch64Triples), end(LoongArch64Triples));
+    break;
   case llvm::Triple::m68k:
     LibDirs.append(begin(M68kLibDirs), end(M68kLibDirs));
     TripleAliases.append(begin(M68kTriples), end(M68kTriples));
@@ -2643,7 +2725,7 @@ bool Generic_GCC::GCCInstallationDetector::ScanGentooConfigs(
     const llvm::Triple &TargetTriple, const ArgList &Args,
     const SmallVectorImpl<StringRef> &CandidateTriples,
     const SmallVectorImpl<StringRef> &CandidateBiarchTriples) {
-  if (!D.getVFS().exists(D.SysRoot + GentooConfigDir))
+  if (!D.getVFS().exists(concat(D.SysRoot, GentooConfigDir)))
     return false;
 
   for (StringRef CandidateTriple : CandidateTriples) {
@@ -2662,8 +2744,8 @@ bool Generic_GCC::GCCInstallationDetector::ScanGentooGccConfig(
     const llvm::Triple &TargetTriple, const ArgList &Args,
     StringRef CandidateTriple, bool NeedsBiarchSuffix) {
   llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> File =
-      D.getVFS().getBufferForFile(D.SysRoot + GentooConfigDir + "/config-" +
-                                  CandidateTriple.str());
+      D.getVFS().getBufferForFile(concat(D.SysRoot, GentooConfigDir,
+                                         "/config-" + CandidateTriple.str()));
   if (File) {
     SmallVector<StringRef, 2> Lines;
     File.get()->getBuffer().split(Lines, "\n");
@@ -2674,8 +2756,8 @@ bool Generic_GCC::GCCInstallationDetector::ScanGentooGccConfig(
         continue;
       // Process the config file pointed to by CURRENT.
       llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> ConfigFile =
-          D.getVFS().getBufferForFile(D.SysRoot + GentooConfigDir + "/" +
-                                      Line.str());
+          D.getVFS().getBufferForFile(
+              concat(D.SysRoot, GentooConfigDir, "/" + Line));
       std::pair<StringRef, StringRef> ActiveVersion = Line.rsplit('-');
       // List of paths to scan for libraries.
       SmallVector<StringRef, 4> GentooScanPaths;
@@ -2708,7 +2790,7 @@ bool Generic_GCC::GCCInstallationDetector::ScanGentooGccConfig(
 
       // Scan all paths for GCC libraries.
       for (const auto &GentooScanPath : GentooScanPaths) {
-        std::string GentooPath = D.SysRoot + std::string(GentooScanPath);
+        std::string GentooPath = concat(D.SysRoot, GentooScanPath);
         if (D.getVFS().exists(GentooPath + "/crtbegin.o")) {
           if (!ScanGCCForMultilibs(TargetTriple, Args, GentooPath,
                                    NeedsBiarchSuffix))
@@ -2767,7 +2849,8 @@ void Generic_GCC::printVerboseInfo(raw_ostream &OS) const {
   RocmInstallation.print(OS);
 }
 
-bool Generic_GCC::IsUnwindTablesDefault(const ArgList &Args) const {
+ToolChain::UnwindTableLevel
+Generic_GCC::getDefaultUnwindTableLevel(const ArgList &Args) const {
   switch (getArch()) {
   case llvm::Triple::aarch64:
   case llvm::Triple::ppc:
@@ -2776,9 +2859,9 @@ bool Generic_GCC::IsUnwindTablesDefault(const ArgList &Args) const {
   case llvm::Triple::ppc64le:
   case llvm::Triple::x86:
   case llvm::Triple::x86_64:
-    return true;
+    return UnwindTableLevel::Asynchronous;
   default:
-    return false;
+    return UnwindTableLevel::None;
   }
 }
 
@@ -2804,8 +2887,6 @@ bool Generic_GCC::isPICDefaultForced() const {
 
 bool Generic_GCC::IsIntegratedAssemblerDefault() const {
   switch (getTriple().getArch()) {
-  case llvm::Triple::x86:
-  case llvm::Triple::x86_64:
   case llvm::Triple::aarch64:
   case llvm::Triple::aarch64_be:
   case llvm::Triple::arm:
@@ -2814,8 +2895,16 @@ bool Generic_GCC::IsIntegratedAssemblerDefault() const {
   case llvm::Triple::bpfel:
   case llvm::Triple::bpfeb:
   case llvm::Triple::csky:
-  case llvm::Triple::thumb:
-  case llvm::Triple::thumbeb:
+  case llvm::Triple::hexagon:
+  case llvm::Triple::lanai:
+  case llvm::Triple::loongarch32:
+  case llvm::Triple::loongarch64:
+  case llvm::Triple::m68k:
+  case llvm::Triple::mips:
+  case llvm::Triple::mipsel:
+  case llvm::Triple::mips64:
+  case llvm::Triple::mips64el:
+  case llvm::Triple::msp430:
   case llvm::Triple::ppc:
   case llvm::Triple::ppcle:
   case llvm::Triple::ppc64:
@@ -2826,12 +2915,11 @@ bool Generic_GCC::IsIntegratedAssemblerDefault() const {
   case llvm::Triple::sparcel:
   case llvm::Triple::sparcv9:
   case llvm::Triple::systemz:
-  case llvm::Triple::mips:
-  case llvm::Triple::mipsel:
-  case llvm::Triple::mips64:
-  case llvm::Triple::mips64el:
-  case llvm::Triple::msp430:
-  case llvm::Triple::m68k:
+  case llvm::Triple::thumb:
+  case llvm::Triple::thumbeb:
+  case llvm::Triple::ve:
+  case llvm::Triple::x86:
+  case llvm::Triple::x86_64:
     return true;
   default:
     return false;
@@ -2998,9 +3086,9 @@ Generic_GCC::addLibCxxIncludePaths(const llvm::opt::ArgList &DriverArgs,
   // If this is a development, non-installed, clang, libcxx will
   // not be found at ../include/c++ but it likely to be found at
   // one of the following two locations:
-  if (AddIncludePath(SysRoot + "/usr/local/include"))
+  if (AddIncludePath(concat(SysRoot, "/usr/local/include")))
     return;
-  if (AddIncludePath(SysRoot + "/usr/include"))
+  if (AddIncludePath(concat(SysRoot, "/usr/include")))
     return;
 }
 

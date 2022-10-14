@@ -122,7 +122,8 @@ private:
   ///
   /// \returns \c None if this \p Record should be skipped, or a JSON object
   /// containing common symbol information of \p Record.
-  Optional<Object> serializeAPIRecord(const APIRecord &Record) const;
+  template <typename RecordTy>
+  Optional<Object> serializeAPIRecord(const RecordTy &Record) const;
 
   /// Helper method to serialize second-level member records of \p Record and
   /// the member-of relationships.
@@ -137,8 +138,11 @@ private:
   void serializeRelationship(RelationshipKind Kind, SymbolReference Source,
                              SymbolReference Target);
 
-  /// Serialize a global record.
-  void serializeGlobalRecord(const GlobalRecord &Record);
+  /// Serialize a global function record.
+  void serializeGlobalFunctionRecord(const GlobalFunctionRecord &Record);
+
+  /// Serialize a global variable record.
+  void serializeGlobalVariableRecord(const GlobalVariableRecord &Record);
 
   /// Serialize an enum record.
   void serializeEnumRecord(const EnumRecord &Record);
@@ -149,7 +153,7 @@ private:
   /// Serialize an Objective-C container record.
   void serializeObjCContainerRecord(const ObjCContainerRecord &Record);
 
-  /// Serialize a macro defintion record.
+  /// Serialize a macro definition record.
   void serializeMacroDefinitionRecord(const MacroDefinitionRecord &Record);
 
   /// Serialize a typedef record.
@@ -160,7 +164,7 @@ private:
   /// \param Component The component to push onto the path components stack.
   /// \return A PathComponentGuard responsible for removing the latest
   /// component from the stack on scope exit.
-  LLVM_NODISCARD PathComponentGuard makePathComponentGuard(StringRef Component);
+  [[nodiscard]] PathComponentGuard makePathComponentGuard(StringRef Component);
 
 public:
   SymbolGraphSerializer(const APISet &API, StringRef ProductName,

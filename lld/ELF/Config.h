@@ -11,6 +11,7 @@
 
 #include "lld/Common/ErrorHandler.h"
 #include "llvm/ADT/CachedHashString.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/StringRef.h"
@@ -18,6 +19,7 @@
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/Support/CachePruning.h"
 #include "llvm/Support/CodeGen.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/GlobPattern.h"
 #include "llvm/Support/PrettyStackTrace.h"
@@ -25,10 +27,13 @@
 #include <memory>
 #include <vector>
 
-namespace lld {
-namespace elf {
+namespace lld::elf {
 
 class InputFile;
+class BinaryFile;
+class BitcodeFile;
+class ELFFileBase;
+class SharedFile;
 class InputSectionBase;
 class Symbol;
 
@@ -137,16 +142,17 @@ struct Configuration {
   std::pair<llvm::StringRef, llvm::StringRef> thinLTOObjectSuffixReplace;
   std::pair<llvm::StringRef, llvm::StringRef> thinLTOPrefixReplace;
   std::string rpath;
-  std::vector<VersionDefinition> versionDefinitions;
-  std::vector<llvm::StringRef> auxiliaryList;
-  std::vector<llvm::StringRef> filterList;
-  std::vector<llvm::StringRef> passPlugins;
-  std::vector<llvm::StringRef> searchPaths;
-  std::vector<llvm::StringRef> symbolOrderingFile;
-  std::vector<llvm::StringRef> thinLTOModulesToCompile;
-  std::vector<llvm::StringRef> undefined;
-  std::vector<SymbolVersion> dynamicList;
-  std::vector<uint8_t> buildIdVector;
+  llvm::SmallVector<VersionDefinition, 0> versionDefinitions;
+  llvm::SmallVector<llvm::StringRef, 0> auxiliaryList;
+  llvm::SmallVector<llvm::StringRef, 0> filterList;
+  llvm::SmallVector<llvm::StringRef, 0> passPlugins;
+  llvm::SmallVector<llvm::StringRef, 0> searchPaths;
+  llvm::SmallVector<llvm::StringRef, 0> symbolOrderingFile;
+  llvm::SmallVector<llvm::StringRef, 0> thinLTOModulesToCompile;
+  llvm::SmallVector<llvm::StringRef, 0> undefined;
+  llvm::SmallVector<SymbolVersion, 0> dynamicList;
+  llvm::SmallVector<uint8_t, 0> buildIdVector;
+  llvm::SmallVector<llvm::StringRef, 0> mllvmOpts;
   llvm::MapVector<std::pair<const InputSectionBase *, const InputSectionBase *>,
                   uint64_t>
       callGraphProfile;
@@ -160,9 +166,10 @@ struct Configuration {
   bool callGraphProfileSort;
   bool checkSections;
   bool checkDynamicRelocs;
-  bool compressDebugSections;
+  llvm::DebugCompressionType compressDebugSections;
   bool cref;
-  std::vector<std::pair<llvm::GlobPattern, uint64_t>> deadRelocInNonAlloc;
+  llvm::SmallVector<std::pair<llvm::GlobPattern, uint64_t>, 0>
+      deadRelocInNonAlloc;
   bool demangle = true;
   bool dependentLibraries;
   bool disableVerify;
@@ -198,6 +205,7 @@ struct Configuration {
   bool nostdlib;
   bool oFormatBinary;
   bool omagic;
+  bool opaquePointers;
   bool optEB = false;
   bool optEL = false;
   bool optimizeBBJumps;
@@ -210,8 +218,8 @@ struct Configuration {
   bool relocatable;
   bool relrGlibc = false;
   bool relrPackDynRelocs = false;
-  bool saveTemps;
-  std::vector<std::pair<llvm::GlobPattern, uint32_t>> shuffleSections;
+  llvm::DenseSet<llvm::StringRef> saveTempsArgs;
+  llvm::SmallVector<std::pair<llvm::GlobPattern, uint32_t>, 0> shuffleSections;
   bool singleRoRx;
   bool shared;
   bool symbolic;
@@ -220,6 +228,7 @@ struct Configuration {
   bool target1Rel;
   bool trace;
   bool thinLTOEmitImportsFiles;
+  bool thinLTOEmitIndexFiles;
   bool thinLTOIndexOnly;
   bool timeTraceEnabled;
   bool tocOptimize;
@@ -228,7 +237,7 @@ struct Configuration {
   bool unique;
   bool useAndroidRelrTags = false;
   bool warnBackrefs;
-  std::vector<llvm::GlobPattern> warnBackrefsExclude;
+  llvm::SmallVector<llvm::GlobPattern, 0> warnBackrefsExclude;
   bool warnCommon;
   bool warnMissingEntry;
   bool warnSymbolOrdering;
@@ -283,6 +292,7 @@ struct Configuration {
   StringRef thinLTOJobs;
   unsigned timeTraceGranularity;
   int32_t splitStackAdjustSize;
+  StringRef packageMetadata;
 
   // The following config options do not directly correspond to any
   // particular command line options.
@@ -313,9 +323,6 @@ struct Configuration {
   // little-endian written in the little-endian order, but I don't know
   // if that's true.)
   bool isMips64EL;
-
-  // True if we need to reserve two .got entries for local-dynamic TLS model.
-  bool needsTlsLd = false;
 
   // True if we need to set the DF_STATIC_TLS flag to an output file, which
   // works as a hint to the dynamic loader that the shared object contains code
@@ -358,6 +365,8 @@ struct Configuration {
   // this means to map the primary and thread stacks as PROT_MTE. Note: This is
   // not supported on Android 11 & 12.
   bool androidMemtagStack;
+
+  unsigned threadCount;
 };
 
 // The only instance of Configuration struct.
@@ -371,6 +380,12 @@ struct DuplicateSymbol {
 };
 
 struct Ctx {
+  SmallVector<std::unique_ptr<MemoryBuffer>> memoryBuffers;
+  SmallVector<ELFFileBase *, 0> objectFiles;
+  SmallVector<SharedFile *, 0> sharedFiles;
+  SmallVector<BinaryFile *, 0> binaryFiles;
+  SmallVector<BitcodeFile *, 0> bitcodeFiles;
+  SmallVector<BitcodeFile *, 0> lazyBitcodeFiles;
   // Duplicate symbol candidates.
   SmallVector<DuplicateSymbol, 0> duplicates;
   // Symbols in a non-prevailing COMDAT group which should be changed to an
@@ -378,6 +393,16 @@ struct Ctx {
   SmallVector<std::pair<Symbol *, unsigned>, 0> nonPrevailingSyms;
   // True if SHT_LLVM_SYMPART is used.
   std::atomic<bool> hasSympart{false};
+  // True if we need to reserve two .got entries for local-dynamic TLS model.
+  std::atomic<bool> needsTlsLd{false};
+  // A tuple of (reference, extractedFile, sym). Used by --why-extract=.
+  SmallVector<std::tuple<std::string, const InputFile *, const Symbol &>, 0>
+      whyExtractRecords;
+  // A mapping from a symbol to an InputFile referencing it backward. Used by
+  // --warn-backrefs.
+  llvm::DenseMap<const Symbol *,
+                 std::pair<const InputFile *, const InputFile *>>
+      backwardReferences;
 };
 
 // The only instance of Ctx struct.
@@ -396,7 +421,6 @@ static inline void internalLinkerError(StringRef loc, const Twine &msg) {
               llvm::getBugReportMsg());
 }
 
-} // namespace elf
-} // namespace lld
+} // namespace lld::elf
 
 #endif

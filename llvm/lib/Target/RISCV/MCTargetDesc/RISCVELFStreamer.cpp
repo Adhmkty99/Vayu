@@ -73,12 +73,12 @@ void RISCVTargetELFStreamer::finishAttributeSection() {
     return;
 
   if (AttributeSection) {
-    Streamer.SwitchSection(AttributeSection);
+    Streamer.switchSection(AttributeSection);
   } else {
     MCAssembler &MCA = getStreamer().getAssembler();
     AttributeSection = MCA.getContext().getELFSection(
         ".riscv.attributes", ELF::SHT_RISCV_ATTRIBUTES, 0);
-    Streamer.SwitchSection(AttributeSection);
+    Streamer.switchSection(AttributeSection);
 
     Streamer.emitInt8(ELFAttrs::Format_Version);
   }
@@ -157,6 +157,8 @@ void RISCVTargetELFStreamer::finish() {
 
   if (Features[RISCV::FeatureStdExtC])
     EFlags |= ELF::EF_RISCV_RVC;
+  if (Features[RISCV::FeatureStdExtZtso])
+    EFlags |= ELF::EF_RISCV_TSO;
 
   switch (ABI) {
   case RISCVABI::ABI_ILP32:
@@ -178,6 +180,11 @@ void RISCVTargetELFStreamer::finish() {
   }
 
   MCA.setELFHeaderEFlags(EFlags);
+}
+
+void RISCVTargetELFStreamer::reset() {
+  AttributeSection = nullptr;
+  Contents.clear();
 }
 
 namespace {
@@ -202,6 +209,14 @@ class RISCVELFStreamer : public MCELFStreamer {
 
   static bool requiresFixups(MCContext &C, const MCExpr *Value,
                              const MCExpr *&LHS, const MCExpr *&RHS) {
+    auto IsMetadataOrEHFrameSection = [](const MCSection &S) -> bool {
+      // Additionally check .apple_names/.apple_types. They are fixed-size and
+      // do not need fixups. llvm-dwarfdump --apple-names does not process
+      // R_RISCV_{ADD,SUB}32 in them.
+      return S.getKind().isMetadata() || S.getName() == ".eh_frame" ||
+             S.getName() == ".apple_names" || S.getName() == ".apple_types";
+    };
+
     const auto *MBE = dyn_cast<MCBinaryExpr>(Value);
     if (MBE == nullptr)
       return false;
@@ -220,10 +235,20 @@ class RISCVELFStreamer : public MCELFStreamer {
                              MCConstantExpr::create(E.getConstant(), C), C);
     RHS = E.getSymB();
 
-    return (A.isInSection() ? A.getSection().hasInstructions()
-                            : !A.getName().empty()) ||
-           (B.isInSection() ? B.getSection().hasInstructions()
-                            : !B.getName().empty());
+    // TODO: when available, R_RISCV_n_PCREL should be preferred.
+
+    // Avoid pairwise relocations for symbolic difference in debug and .eh_frame
+    if (A.isInSection())
+      return !IsMetadataOrEHFrameSection(A.getSection());
+    if (B.isInSection())
+      return !IsMetadataOrEHFrameSection(B.getSection());
+    // as well as for absolute symbols.
+    return !A.getName().empty() || !B.getName().empty();
+  }
+
+  void reset() override {
+    static_cast<RISCVTargetStreamer *>(getTargetStreamer())->reset();
+    MCELFStreamer::reset();
   }
 
 public:

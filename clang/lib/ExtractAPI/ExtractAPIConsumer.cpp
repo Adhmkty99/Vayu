@@ -38,7 +38,10 @@
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Path.h"
+#include "llvm/Support/Regex.h"
 #include "llvm/Support/raw_ostream.h"
 #include <memory>
 #include <utility>
@@ -55,10 +58,125 @@ StringRef getTypedefName(const TagDecl *Decl) {
   return {};
 }
 
+Optional<std::string> getRelativeIncludeName(const CompilerInstance &CI,
+                                             StringRef File,
+                                             bool *IsQuoted = nullptr) {
+  assert(CI.hasFileManager() &&
+         "CompilerInstance does not have a FileNamager!");
+
+  using namespace llvm::sys;
+  // Matches framework include patterns
+  const llvm::Regex Rule("/(.+)\\.framework/(.+)?Headers/(.+)");
+
+  const auto &FS = CI.getVirtualFileSystem();
+
+  SmallString<128> FilePath(File.begin(), File.end());
+  FS.makeAbsolute(FilePath);
+  path::remove_dots(FilePath, true);
+  FilePath = path::convert_to_slash(FilePath);
+  File = FilePath;
+
+  // Checks whether `Dir` is a strict path prefix of `File`. If so returns
+  // the prefix length. Otherwise return 0.
+  auto CheckDir = [&](llvm::StringRef Dir) -> unsigned {
+    llvm::SmallString<32> DirPath(Dir.begin(), Dir.end());
+    FS.makeAbsolute(DirPath);
+    path::remove_dots(DirPath, true);
+    Dir = DirPath;
+    for (auto NI = path::begin(File), NE = path::end(File),
+              DI = path::begin(Dir), DE = path::end(Dir);
+         /*termination condition in loop*/; ++NI, ++DI) {
+      // '.' components in File are ignored.
+      while (NI != NE && *NI == ".")
+        ++NI;
+      if (NI == NE)
+        break;
+
+      // '.' components in Dir are ignored.
+      while (DI != DE && *DI == ".")
+        ++DI;
+
+      // Dir is a prefix of File, up to '.' components and choice of path
+      // separators.
+      if (DI == DE)
+        return NI - path::begin(File);
+
+      // Consider all path separators equal.
+      if (NI->size() == 1 && DI->size() == 1 &&
+          path::is_separator(NI->front()) && path::is_separator(DI->front()))
+        continue;
+
+      // Special case Apple .sdk folders since the search path is typically a
+      // symlink like `iPhoneSimulator14.5.sdk` while the file is instead
+      // located in `iPhoneSimulator.sdk` (the real folder).
+      if (NI->endswith(".sdk") && DI->endswith(".sdk")) {
+        StringRef NBasename = path::stem(*NI);
+        StringRef DBasename = path::stem(*DI);
+        if (DBasename.startswith(NBasename))
+          continue;
+      }
+
+      if (*NI != *DI)
+        break;
+    }
+    return 0;
+  };
+
+  unsigned PrefixLength = 0;
+
+  // Go through the search paths and find the first one that is a prefix of
+  // the header.
+  for (const auto &Entry : CI.getHeaderSearchOpts().UserEntries) {
+    // Note whether the match is found in a quoted entry.
+    if (IsQuoted)
+      *IsQuoted = Entry.Group == frontend::Quoted;
+
+    if (auto EntryFile = CI.getFileManager().getOptionalFileRef(Entry.Path)) {
+      if (auto HMap = HeaderMap::Create(*EntryFile, CI.getFileManager())) {
+        // If this is a headermap entry, try to reverse lookup the full path
+        // for a spelled name before mapping.
+        StringRef SpelledFilename = HMap->reverseLookupFilename(File);
+        if (!SpelledFilename.empty())
+          return SpelledFilename.str();
+
+        // No matching mapping in this headermap, try next search entry.
+        continue;
+      }
+    }
+
+    // Entry is a directory search entry, try to check if it's a prefix of File.
+    PrefixLength = CheckDir(Entry.Path);
+    if (PrefixLength > 0) {
+      // The header is found in a framework path, construct the framework-style
+      // include name `<Framework/Header.h>`
+      if (Entry.IsFramework) {
+        SmallVector<StringRef, 4> Matches;
+        Rule.match(File, &Matches);
+        // Returned matches are always in stable order.
+        if (Matches.size() != 4)
+          return None;
+
+        return path::convert_to_slash(
+            (Matches[1].drop_front(Matches[1].rfind('/') + 1) + "/" +
+             Matches[3])
+                .str());
+      }
+
+      // The header is found in a normal search path, strip the search path
+      // prefix to get an include name.
+      return path::convert_to_slash(File.drop_front(PrefixLength));
+    }
+  }
+
+  // Couldn't determine a include name, use full path instead.
+  return None;
+}
+
 struct LocationFileChecker {
   bool isLocationInKnownFile(SourceLocation Loc) {
     // If the loc refers to a macro expansion we need to first get the file
     // location of the expansion.
+    auto &SM = CI.getSourceManager();
     auto FileLoc = SM.getFileLoc(Loc);
     FileID FID = SM.getFileID(FileLoc);
     if (FID.isInvalid())
@@ -71,20 +189,44 @@ struct LocationFileChecker {
     if (KnownFileEntries.count(File))
       return true;
 
+    if (ExternalFileEntries.count(File))
+      return false;
+
+    StringRef FileName = File->tryGetRealPathName().empty()
+                             ? File->getName()
+                             : File->tryGetRealPathName();
+
+    // Try to reduce the include name the same way we tried to include it.
+    bool IsQuoted = false;
+    if (auto IncludeName = getRelativeIncludeName(CI, FileName, &IsQuoted))
+      if (llvm::any_of(KnownFiles,
+                       [&IsQuoted, &IncludeName](const auto &KnownFile) {
+                         return KnownFile.first.equals(*IncludeName) &&
+                                KnownFile.second == IsQuoted;
+                       })) {
+        KnownFileEntries.insert(File);
+        return true;
+      }
+
+    // Record that the file was not found to avoid future reverse lookup for
+    // the same file.
+    ExternalFileEntries.insert(File);
     return false;
   }
 
-  LocationFileChecker(const SourceManager &SM,
-                      const std::vector<std::string> &KnownFiles)
-      : SM(SM) {
-    for (const auto &KnownFilePath : KnownFiles)
-      if (auto FileEntry = SM.getFileManager().getFile(KnownFilePath))
+  LocationFileChecker(const CompilerInstance &CI,
+                      SmallVector<std::pair<SmallString<32>, bool>> &KnownFiles)
+      : CI(CI), KnownFiles(KnownFiles), ExternalFileEntries() {
+    for (const auto &KnownFile : KnownFiles)
+      if (auto FileEntry = CI.getFileManager().getFile(KnownFile.first))
         KnownFileEntries.insert(*FileEntry);
   }
 
 private:
-  const SourceManager &SM;
+  const CompilerInstance &CI;
+  SmallVector<std::pair<SmallString<32>, bool>> &KnownFiles;
   llvm::DenseSet<const FileEntry *> KnownFileEntries;
+  llvm::DenseSet<const FileEntry *> ExternalFileEntries;
 };
 
 /// The RecursiveASTVisitor to traverse symbol declarations and collect API
@@ -122,7 +264,6 @@ public:
     StringRef USR = API.recordUSR(Decl);
     PresumedLoc Loc =
         Context.getSourceManager().getPresumedLoc(Decl->getLocation());
-    AvailabilityInfo Availability = getAvailability(Decl);
     LinkageInfo Linkage = Decl->getLinkageAndVisibility();
     DocComment Comment;
     if (auto *RawComment = Context.getRawCommentForDeclNoCache(Decl))
@@ -136,7 +277,7 @@ public:
         DeclarationFragmentsBuilder::getSubHeading(Decl);
 
     // Add the global variable record to the API set.
-    API.addGlobalVar(Name, USR, Loc, Availability, Linkage, Comment,
+    API.addGlobalVar(Name, USR, Loc, AvailabilitySet(Decl), Linkage, Comment,
                      Declaration, SubHeading);
     return true;
   }
@@ -161,6 +302,7 @@ public:
     // Skip templated functions.
     switch (Decl->getTemplatedKind()) {
     case FunctionDecl::TK_NonTemplate:
+    case FunctionDecl::TK_DependentNonTemplate:
       break;
     case FunctionDecl::TK_MemberSpecialization:
     case FunctionDecl::TK_FunctionTemplateSpecialization:
@@ -182,7 +324,6 @@ public:
     StringRef USR = API.recordUSR(Decl);
     PresumedLoc Loc =
         Context.getSourceManager().getPresumedLoc(Decl->getLocation());
-    AvailabilityInfo Availability = getAvailability(Decl);
     LinkageInfo Linkage = Decl->getLinkageAndVisibility();
     DocComment Comment;
     if (auto *RawComment = Context.getRawCommentForDeclNoCache(Decl))
@@ -198,8 +339,8 @@ public:
         DeclarationFragmentsBuilder::getFunctionSignature(Decl);
 
     // Add the function record to the API set.
-    API.addFunction(Name, USR, Loc, Availability, Linkage, Comment, Declaration,
-                    SubHeading, Signature);
+    API.addGlobalFunction(Name, USR, Loc, AvailabilitySet(Decl), Linkage,
+                          Comment, Declaration, SubHeading, Signature);
     return true;
   }
 
@@ -215,13 +356,14 @@ public:
       return true;
 
     // Collect symbol information.
-    StringRef Name = Decl->getName();
+    std::string NameString = Decl->getQualifiedNameAsString();
+    StringRef Name(NameString);
     if (Name.empty())
       Name = getTypedefName(Decl);
+
     StringRef USR = API.recordUSR(Decl);
     PresumedLoc Loc =
         Context.getSourceManager().getPresumedLoc(Decl->getLocation());
-    AvailabilityInfo Availability = getAvailability(Decl);
     DocComment Comment;
     if (auto *RawComment = Context.getRawCommentForDeclNoCache(Decl))
       Comment = RawComment->getFormattedLines(Context.getSourceManager(),
@@ -233,8 +375,9 @@ public:
     DeclarationFragments SubHeading =
         DeclarationFragmentsBuilder::getSubHeading(Decl);
 
-    EnumRecord *EnumRecord = API.addEnum(Name, USR, Loc, Availability, Comment,
-                                         Declaration, SubHeading);
+    EnumRecord *EnumRecord =
+        API.addEnum(API.copyString(Name), USR, Loc, AvailabilitySet(Decl),
+                    Comment, Declaration, SubHeading);
 
     // Now collect information about the enumerators in this enum.
     recordEnumConstants(EnumRecord, Decl->enumerators());
@@ -261,7 +404,6 @@ public:
     StringRef USR = API.recordUSR(Decl);
     PresumedLoc Loc =
         Context.getSourceManager().getPresumedLoc(Decl->getLocation());
-    AvailabilityInfo Availability = getAvailability(Decl);
     DocComment Comment;
     if (auto *RawComment = Context.getRawCommentForDeclNoCache(Decl))
       Comment = RawComment->getFormattedLines(Context.getSourceManager(),
@@ -273,8 +415,9 @@ public:
     DeclarationFragments SubHeading =
         DeclarationFragmentsBuilder::getSubHeading(Decl);
 
-    StructRecord *StructRecord = API.addStruct(
-        Name, USR, Loc, Availability, Comment, Declaration, SubHeading);
+    StructRecord *StructRecord =
+        API.addStruct(Name, USR, Loc, AvailabilitySet(Decl), Comment,
+                      Declaration, SubHeading);
 
     // Now collect information about the fields in this struct.
     recordStructFields(StructRecord, Decl->fields());
@@ -295,7 +438,6 @@ public:
     StringRef USR = API.recordUSR(Decl);
     PresumedLoc Loc =
         Context.getSourceManager().getPresumedLoc(Decl->getLocation());
-    AvailabilityInfo Availability = getAvailability(Decl);
     LinkageInfo Linkage = Decl->getLinkageAndVisibility();
     DocComment Comment;
     if (auto *RawComment = Context.getRawCommentForDeclNoCache(Decl))
@@ -316,8 +458,8 @@ public:
     }
 
     ObjCInterfaceRecord *ObjCInterfaceRecord =
-        API.addObjCInterface(Name, USR, Loc, Availability, Linkage, Comment,
-                             Declaration, SubHeading, SuperClass);
+        API.addObjCInterface(Name, USR, Loc, AvailabilitySet(Decl), Linkage,
+                             Comment, Declaration, SubHeading, SuperClass);
 
     // Record all methods (selectors). This doesn't include automatically
     // synthesized property methods.
@@ -342,7 +484,6 @@ public:
     StringRef USR = API.recordUSR(Decl);
     PresumedLoc Loc =
         Context.getSourceManager().getPresumedLoc(Decl->getLocation());
-    AvailabilityInfo Availability = getAvailability(Decl);
     DocComment Comment;
     if (auto *RawComment = Context.getRawCommentForDeclNoCache(Decl))
       Comment = RawComment->getFormattedLines(Context.getSourceManager(),
@@ -354,8 +495,9 @@ public:
     DeclarationFragments SubHeading =
         DeclarationFragmentsBuilder::getSubHeading(Decl);
 
-    ObjCProtocolRecord *ObjCProtocolRecord = API.addObjCProtocol(
-        Name, USR, Loc, Availability, Comment, Declaration, SubHeading);
+    ObjCProtocolRecord *ObjCProtocolRecord =
+        API.addObjCProtocol(Name, USR, Loc, AvailabilitySet(Decl), Comment,
+                            Declaration, SubHeading);
 
     recordObjCMethods(ObjCProtocolRecord, Decl->methods());
     recordObjCProperties(ObjCProtocolRecord, Decl->properties());
@@ -378,7 +520,6 @@ public:
     PresumedLoc Loc =
         Context.getSourceManager().getPresumedLoc(Decl->getLocation());
     StringRef Name = Decl->getName();
-    AvailabilityInfo Availability = getAvailability(Decl);
     StringRef USR = API.recordUSR(Decl);
     DocComment Comment;
     if (auto *RawComment = Context.getRawCommentForDeclNoCache(Decl))
@@ -390,7 +531,7 @@ public:
         TypedefUnderlyingTypeResolver(Context).getSymbolReferenceForType(Type,
                                                                          API);
 
-    API.addTypedef(Name, USR, Loc, Availability, Comment,
+    API.addTypedef(Name, USR, Loc, AvailabilitySet(Decl), Comment,
                    DeclarationFragmentsBuilder::getFragmentsForTypedef(Decl),
                    DeclarationFragmentsBuilder::getSubHeading(Decl), SymRef);
 
@@ -403,7 +544,6 @@ public:
     StringRef USR = API.recordUSR(Decl);
     PresumedLoc Loc =
         Context.getSourceManager().getPresumedLoc(Decl->getLocation());
-    AvailabilityInfo Availability = getAvailability(Decl);
     DocComment Comment;
     if (auto *RawComment = Context.getRawCommentForDeclNoCache(Decl))
       Comment = RawComment->getFormattedLines(Context.getSourceManager(),
@@ -419,8 +559,8 @@ public:
                               API.recordUSR(InterfaceDecl));
 
     ObjCCategoryRecord *ObjCCategoryRecord =
-        API.addObjCCategory(Name, USR, Loc, Availability, Comment, Declaration,
-                            SubHeading, Interface);
+        API.addObjCCategory(Name, USR, Loc, AvailabilitySet(Decl), Comment,
+                            Declaration, SubHeading, Interface);
 
     recordObjCMethods(ObjCCategoryRecord, Decl->methods());
     recordObjCProperties(ObjCCategoryRecord, Decl->properties());
@@ -431,37 +571,6 @@ public:
   }
 
 private:
-  /// Get availability information of the declaration \p D.
-  AvailabilityInfo getAvailability(const Decl *D) const {
-    StringRef PlatformName = Context.getTargetInfo().getPlatformName();
-
-    AvailabilityInfo Availability;
-    // Collect availability attributes from all redeclarations.
-    for (const auto *RD : D->redecls()) {
-      for (const auto *A : RD->specific_attrs<AvailabilityAttr>()) {
-        if (A->getPlatform()->getName() != PlatformName)
-          continue;
-        Availability = AvailabilityInfo(A->getIntroduced(), A->getDeprecated(),
-                                        A->getObsoleted(), A->getUnavailable(),
-                                        /* UnconditionallyDeprecated */ false,
-                                        /* UnconditionallyUnavailable */ false);
-        break;
-      }
-
-      if (const auto *A = RD->getAttr<UnavailableAttr>())
-        if (!A->isImplicit()) {
-          Availability.Unavailable = true;
-          Availability.UnconditionallyUnavailable = true;
-        }
-
-      if (const auto *A = RD->getAttr<DeprecatedAttr>())
-        if (!A->isImplicit())
-          Availability.UnconditionallyDeprecated = true;
-    }
-
-    return Availability;
-  }
-
   /// Collect API information for the enum constants and associate with the
   /// parent enum.
   void recordEnumConstants(EnumRecord *EnumRecord,
@@ -472,7 +581,6 @@ private:
       StringRef USR = API.recordUSR(Constant);
       PresumedLoc Loc =
           Context.getSourceManager().getPresumedLoc(Constant->getLocation());
-      AvailabilityInfo Availability = getAvailability(Constant);
       DocComment Comment;
       if (auto *RawComment = Context.getRawCommentForDeclNoCache(Constant))
         Comment = RawComment->getFormattedLines(Context.getSourceManager(),
@@ -484,8 +592,8 @@ private:
       DeclarationFragments SubHeading =
           DeclarationFragmentsBuilder::getSubHeading(Constant);
 
-      API.addEnumConstant(EnumRecord, Name, USR, Loc, Availability, Comment,
-                          Declaration, SubHeading);
+      API.addEnumConstant(EnumRecord, Name, USR, Loc, AvailabilitySet(Constant),
+                          Comment, Declaration, SubHeading);
     }
   }
 
@@ -499,7 +607,6 @@ private:
       StringRef USR = API.recordUSR(Field);
       PresumedLoc Loc =
           Context.getSourceManager().getPresumedLoc(Field->getLocation());
-      AvailabilityInfo Availability = getAvailability(Field);
       DocComment Comment;
       if (auto *RawComment = Context.getRawCommentForDeclNoCache(Field))
         Comment = RawComment->getFormattedLines(Context.getSourceManager(),
@@ -511,8 +618,8 @@ private:
       DeclarationFragments SubHeading =
           DeclarationFragmentsBuilder::getSubHeading(Field);
 
-      API.addStructField(StructRecord, Name, USR, Loc, Availability, Comment,
-                         Declaration, SubHeading);
+      API.addStructField(StructRecord, Name, USR, Loc, AvailabilitySet(Field),
+                         Comment, Declaration, SubHeading);
     }
   }
 
@@ -529,7 +636,6 @@ private:
       StringRef USR = API.recordUSR(Method);
       PresumedLoc Loc =
           Context.getSourceManager().getPresumedLoc(Method->getLocation());
-      AvailabilityInfo Availability = getAvailability(Method);
       DocComment Comment;
       if (auto *RawComment = Context.getRawCommentForDeclNoCache(Method))
         Comment = RawComment->getFormattedLines(Context.getSourceManager(),
@@ -543,8 +649,8 @@ private:
       FunctionSignature Signature =
           DeclarationFragmentsBuilder::getFunctionSignature(Method);
 
-      API.addObjCMethod(Container, Name, USR, Loc, Availability, Comment,
-                        Declaration, SubHeading, Signature,
+      API.addObjCMethod(Container, Name, USR, Loc, AvailabilitySet(Method),
+                        Comment, Declaration, SubHeading, Signature,
                         Method->isInstanceMethod());
     }
   }
@@ -556,7 +662,6 @@ private:
       StringRef USR = API.recordUSR(Property);
       PresumedLoc Loc =
           Context.getSourceManager().getPresumedLoc(Property->getLocation());
-      AvailabilityInfo Availability = getAvailability(Property);
       DocComment Comment;
       if (auto *RawComment = Context.getRawCommentForDeclNoCache(Property))
         Comment = RawComment->getFormattedLines(Context.getSourceManager(),
@@ -582,8 +687,8 @@ private:
         Attributes |= ObjCPropertyRecord::Class;
 
       API.addObjCProperty(
-          Container, Name, USR, Loc, Availability, Comment, Declaration,
-          SubHeading,
+          Container, Name, USR, Loc, AvailabilitySet(Property), Comment,
+          Declaration, SubHeading,
           static_cast<ObjCPropertyRecord::AttributeKind>(Attributes),
           GetterName, SetterName, Property->isOptional());
     }
@@ -599,7 +704,6 @@ private:
       StringRef USR = API.recordUSR(Ivar);
       PresumedLoc Loc =
           Context.getSourceManager().getPresumedLoc(Ivar->getLocation());
-      AvailabilityInfo Availability = getAvailability(Ivar);
       DocComment Comment;
       if (auto *RawComment = Context.getRawCommentForDeclNoCache(Ivar))
         Comment = RawComment->getFormattedLines(Context.getSourceManager(),
@@ -614,8 +718,9 @@ private:
       ObjCInstanceVariableRecord::AccessControl Access =
           Ivar->getCanonicalAccessControl();
 
-      API.addObjCInstanceVariable(Container, Name, USR, Loc, Availability,
-                                  Comment, Declaration, SubHeading, Access);
+      API.addObjCInstanceVariable(Container, Name, USR, Loc,
+                                  AvailabilitySet(Ivar), Comment, Declaration,
+                                  SubHeading, Access);
     }
   }
 
@@ -740,8 +845,7 @@ ExtractAPIAction::CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
       CI.getTarget().getTriple(),
       CI.getFrontendOpts().Inputs.back().getKind().getLanguage());
 
-  auto LCF = std::make_unique<LocationFileChecker>(CI.getSourceManager(),
-                                                   KnownInputFiles);
+  auto LCF = std::make_unique<LocationFileChecker>(CI, KnownInputFiles);
 
   CI.getPreprocessor().addPPCallbacks(std::make_unique<MacroCallback>(
       CI.getSourceManager(), *LCF, *API, CI.getPreprocessor()));
@@ -755,21 +859,47 @@ bool ExtractAPIAction::PrepareToExecuteAction(CompilerInstance &CI) {
   if (Inputs.empty())
     return true;
 
+  if (!CI.hasFileManager())
+    if (!CI.createFileManager())
+      return false;
+
   auto Kind = Inputs[0].getKind();
 
   // Convert the header file inputs into a single input buffer.
   SmallString<256> HeaderContents;
+  bool IsQuoted = false;
   for (const FrontendInputFile &FIF : Inputs) {
     if (Kind.isObjectiveC())
       HeaderContents += "#import";
     else
       HeaderContents += "#include";
-    HeaderContents += " \"";
-    HeaderContents += FIF.getFile();
-    HeaderContents += "\"\n";
 
-    KnownInputFiles.emplace_back(FIF.getFile());
+    StringRef FilePath = FIF.getFile();
+    if (auto RelativeName = getRelativeIncludeName(CI, FilePath, &IsQuoted)) {
+      if (IsQuoted)
+        HeaderContents += " \"";
+      else
+        HeaderContents += " <";
+
+      HeaderContents += *RelativeName;
+
+      if (IsQuoted)
+        HeaderContents += "\"\n";
+      else
+        HeaderContents += ">\n";
+      KnownInputFiles.emplace_back(static_cast<SmallString<32>>(*RelativeName),
+                                   IsQuoted);
+    } else {
+      HeaderContents += " \"";
+      HeaderContents += FilePath;
+      HeaderContents += "\"\n";
+      KnownInputFiles.emplace_back(FilePath, true);
+    }
   }
+
+  if (CI.getHeaderSearchOpts().Verbose)
+    CI.getVerboseOutputStream() << getInputBufferName() << ":\n"
+                                << HeaderContents << "\n";
 
   Buffer = llvm::MemoryBuffer::getMemBufferCopy(HeaderContents,
                                                 getInputBufferName());
@@ -790,7 +920,7 @@ void ExtractAPIAction::EndSourceFileAction() {
   // FIXME: Make the kind of APISerializer configurable.
   SymbolGraphSerializer SGSerializer(*API, ProductName);
   SGSerializer.serialize(*OS);
-  OS->flush();
+  OS.reset();
 }
 
 std::unique_ptr<raw_pwrite_stream>

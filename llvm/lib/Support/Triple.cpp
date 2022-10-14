@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ADT/Triple.h"
-#include "llvm/ADT/STLArrayExtras.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringSwitch.h"
@@ -170,7 +169,7 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
 
   case loongarch32:
   case loongarch64: return "loongarch";
-  
+
   case dxil:        return "dx";
   }
 }
@@ -458,6 +457,7 @@ static Triple::ArchType parseArch(StringRef ArchName) {
     .Case("arm64", Triple::aarch64)
     .Case("arm64_32", Triple::aarch64_32)
     .Case("arm64e", Triple::aarch64)
+    .Case("arm64ec", Triple::aarch64)
     .Case("arm", Triple::arm)
     .Case("armeb", Triple::armeb)
     .Case("thumb", Triple::thumb)
@@ -495,8 +495,10 @@ static Triple::ArchType parseArch(StringRef ArchName) {
     .Case("hsail64", Triple::hsail64)
     .Case("spir", Triple::spir)
     .Case("spir64", Triple::spir64)
-    .Case("spirv32", Triple::spirv32)
-    .Case("spirv64", Triple::spirv64)
+    .Cases("spirv32", "spirv32v1.0", "spirv32v1.1", "spirv32v1.2",
+           "spirv32v1.3", "spirv32v1.4", "spirv32v1.5", Triple::spirv32)
+    .Cases("spirv64", "spirv64v1.0", "spirv64v1.1", "spirv64v1.2",
+           "spirv64v1.3", "spirv64v1.4", "spirv64v1.5", Triple::spirv64)
     .StartsWith("kalimba", Triple::kalimba)
     .Case("lanai", Triple::lanai)
     .Case("renderscript32", Triple::renderscript32)
@@ -631,15 +633,16 @@ static Triple::EnvironmentType parseEnvironment(StringRef EnvironmentName) {
 
 static Triple::ObjectFormatType parseFormat(StringRef EnvironmentName) {
   return StringSwitch<Triple::ObjectFormatType>(EnvironmentName)
-    // "xcoff" must come before "coff" because of the order-dependendent
-    // pattern matching.
-    .EndsWith("xcoff", Triple::XCOFF)
-    .EndsWith("coff", Triple::COFF)
-    .EndsWith("elf", Triple::ELF)
-    .EndsWith("goff", Triple::GOFF)
-    .EndsWith("macho", Triple::MachO)
-    .EndsWith("wasm", Triple::Wasm)
-    .Default(Triple::UnknownObjectFormat);
+      // "xcoff" must come before "coff" because of the order-dependendent
+      // pattern matching.
+      .EndsWith("xcoff", Triple::XCOFF)
+      .EndsWith("coff", Triple::COFF)
+      .EndsWith("elf", Triple::ELF)
+      .EndsWith("goff", Triple::GOFF)
+      .EndsWith("macho", Triple::MachO)
+      .EndsWith("wasm", Triple::Wasm)
+      .EndsWith("spirv", Triple::SPIRV)
+      .Default(Triple::UnknownObjectFormat);
 }
 
 static Triple::SubArchType parseSubArch(StringRef SubArchName) {
@@ -652,6 +655,19 @@ static Triple::SubArchType parseSubArch(StringRef SubArchName) {
 
   if (SubArchName == "arm64e")
     return Triple::AArch64SubArch_arm64e;
+
+  if (SubArchName == "arm64ec")
+    return Triple::AArch64SubArch_arm64ec;
+
+  if (SubArchName.startswith("spirv"))
+    return StringSwitch<Triple::SubArchType>(SubArchName)
+        .EndsWith("v1.0", Triple::SPIRVSubArch_v10)
+        .EndsWith("v1.1", Triple::SPIRVSubArch_v11)
+        .EndsWith("v1.2", Triple::SPIRVSubArch_v12)
+        .EndsWith("v1.3", Triple::SPIRVSubArch_v13)
+        .EndsWith("v1.4", Triple::SPIRVSubArch_v14)
+        .EndsWith("v1.5", Triple::SPIRVSubArch_v15)
+        .Default(Triple::NoSubArch);
 
   StringRef ARMSubArch = ARM::getCanonicalArchName(SubArchName);
 
@@ -740,14 +756,24 @@ static Triple::SubArchType parseSubArch(StringRef SubArchName) {
 
 static StringRef getObjectFormatTypeName(Triple::ObjectFormatType Kind) {
   switch (Kind) {
-  case Triple::UnknownObjectFormat: return "";
-  case Triple::COFF:  return "coff";
-  case Triple::ELF:   return "elf";
-  case Triple::GOFF:  return "goff";
-  case Triple::MachO: return "macho";
-  case Triple::Wasm:  return "wasm";
-  case Triple::XCOFF: return "xcoff";
-  case Triple::DXContainer:  return "dxcontainer";
+  case Triple::UnknownObjectFormat:
+    return "";
+  case Triple::COFF:
+    return "coff";
+  case Triple::ELF:
+    return "elf";
+  case Triple::GOFF:
+    return "goff";
+  case Triple::MachO:
+    return "macho";
+  case Triple::Wasm:
+    return "wasm";
+  case Triple::XCOFF:
+    return "xcoff";
+  case Triple::DXContainer:
+    return "dxcontainer";
+  case Triple::SPIRV:
+    return "spirv";
   }
   llvm_unreachable("unknown object format type");
 }
@@ -831,8 +857,7 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
 
   case Triple::spirv32:
   case Triple::spirv64:
-    // TODO: In future this will be Triple::SPIRV.
-    return Triple::UnknownObjectFormat;
+    return Triple::SPIRV;
 
   case Triple::dxil:
     return Triple::DXContainer;
@@ -956,13 +981,13 @@ std::string Triple::normalize(StringRef Str) {
   // If they are not there already, permute the components into their canonical
   // positions by seeing if they parse as a valid architecture, and if so moving
   // the component to the architecture position etc.
-  for (unsigned Pos = 0; Pos != array_lengthof(Found); ++Pos) {
+  for (unsigned Pos = 0; Pos != std::size(Found); ++Pos) {
     if (Found[Pos])
       continue; // Already in the canonical position.
 
     for (unsigned Idx = 0; Idx != Components.size(); ++Idx) {
       // Do not reparse any components that already matched.
-      if (Idx < array_lengthof(Found) && Found[Idx])
+      if (Idx < std::size(Found) && Found[Idx])
         continue;
 
       // Does this component parse as valid for the target position?
@@ -1010,7 +1035,7 @@ std::string Triple::normalize(StringRef Str) {
         // components to the right.
         for (unsigned i = Pos; !CurrentComponent.empty(); ++i) {
           // Skip over any fixed components.
-          while (i < array_lengthof(Found) && Found[i])
+          while (i < std::size(Found) && Found[i])
             ++i;
           // Place the component at the new position, getting the component
           // that was at this position - it will be moved right.
@@ -1031,7 +1056,7 @@ std::string Triple::normalize(StringRef Str) {
             if (CurrentComponent.empty())
               break;
             // Advance to the next component, skipping any fixed components.
-            while (++i < array_lengthof(Found) && Found[i])
+            while (++i < std::size(Found) && Found[i])
               ;
           }
           // The last component was pushed off the end - append it.
@@ -1039,7 +1064,7 @@ std::string Triple::normalize(StringRef Str) {
             Components.push_back(CurrentComponent);
 
           // Advance Idx to the component's new position.
-          while (++Idx < array_lengthof(Found) && Found[Idx])
+          while (++Idx < std::size(Found) && Found[Idx])
             ;
         } while (Idx < Pos); // Add more until the final position is reached.
       }
@@ -1123,6 +1148,10 @@ StringRef Triple::getArchName(ArchType Kind, SubArchType SubArch) const {
   case Triple::mips64el:
     if (SubArch == MipsSubArch_r6)
       return "mipsisa64r6el";
+    break;
+  case Triple::aarch64:
+    if (SubArch == AArch64SubArch_arm64ec)
+      return "arm64ec";
     break;
   default:
     break;
@@ -1501,7 +1530,9 @@ Triple Triple::get32BitArchVariant() const {
   case Triple::riscv64:        T.setArch(Triple::riscv32); break;
   case Triple::sparcv9:        T.setArch(Triple::sparc);   break;
   case Triple::spir64:         T.setArch(Triple::spir);    break;
-  case Triple::spirv64:        T.setArch(Triple::spirv32); break;
+  case Triple::spirv64:
+    T.setArch(Triple::spirv32, getSubArch());
+    break;
   case Triple::wasm64:         T.setArch(Triple::wasm32);  break;
   case Triple::x86_64:         T.setArch(Triple::x86);     break;
   }
@@ -1576,7 +1607,9 @@ Triple Triple::get64BitArchVariant() const {
   case Triple::riscv32:         T.setArch(Triple::riscv64);    break;
   case Triple::sparc:           T.setArch(Triple::sparcv9);    break;
   case Triple::spir:            T.setArch(Triple::spir64);     break;
-  case Triple::spirv32:         T.setArch(Triple::spirv64);    break;
+  case Triple::spirv32:
+    T.setArch(Triple::spirv64, getSubArch());
+    break;
   case Triple::thumb:           T.setArch(Triple::aarch64);    break;
   case Triple::thumbeb:         T.setArch(Triple::aarch64_be); break;
   case Triple::wasm32:          T.setArch(Triple::wasm64);     break;
@@ -1900,7 +1933,7 @@ VersionTuple Triple::getCanonicalVersionForOS(OSType OSKind,
     // macOS 10.16 is canonicalized to macOS 11.
     if (Version == VersionTuple(10, 16))
       return VersionTuple(11, 0);
-    LLVM_FALLTHROUGH;
+    [[fallthrough]];
   default:
     return Version;
   }

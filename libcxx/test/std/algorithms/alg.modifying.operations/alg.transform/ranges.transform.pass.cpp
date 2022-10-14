@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 // UNSUPPORTED: c++03, c++11, c++14, c++17
-// UNSUPPORTED: libcpp-has-no-incomplete-ranges
 
 // <algorithm>
 
@@ -40,6 +39,7 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <functional>
 #include <ranges>
 
 #include "test_iterators.h"

@@ -24,6 +24,7 @@
 #include "Targets/Hexagon.h"
 #include "Targets/Lanai.h"
 #include "Targets/Le64.h"
+#include "Targets/LoongArch.h"
 #include "Targets/M68k.h"
 #include "Targets/MSP430.h"
 #include "Targets/Mips.h"
@@ -592,6 +593,8 @@ TargetInfo *AllocateTarget(const llvm::Triple &Triple,
       return new NaClTargetInfo<X86_64TargetInfo>(Triple, Opts);
     case llvm::Triple::PS4:
       return new PS4OSTargetInfo<X86_64TargetInfo>(Triple, Opts);
+    case llvm::Triple::PS5:
+      return new PS5OSTargetInfo<X86_64TargetInfo>(Triple, Opts);
     default:
       return new X86_64TargetInfo(Triple, Opts);
     }
@@ -667,6 +670,20 @@ TargetInfo *AllocateTarget(const llvm::Triple &Triple,
       return new LinuxTargetInfo<CSKYTargetInfo>(Triple, Opts);
     default:
       return new CSKYTargetInfo(Triple, Opts);
+    }
+  case llvm::Triple::loongarch32:
+    switch (os) {
+    case llvm::Triple::Linux:
+      return new LinuxTargetInfo<LoongArch32TargetInfo>(Triple, Opts);
+    default:
+      return new LoongArch32TargetInfo(Triple, Opts);
+    }
+  case llvm::Triple::loongarch64:
+    switch (os) {
+    case llvm::Triple::Linux:
+      return new LinuxTargetInfo<LoongArch64TargetInfo>(Triple, Opts);
+    default:
+      return new LoongArch64TargetInfo(Triple, Opts);
     }
   }
 }
