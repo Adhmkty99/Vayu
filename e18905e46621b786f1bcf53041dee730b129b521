@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6407d070_d941c6de",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2022-10-17T19:56:37Z",
+      "side": 1,
+      "message": "I had aosp/2258412 to fix this but if this CL and parent passes presubmit, we should take this instead.",
+      "revId": "e18905e46621b786f1bcf53041dee730b129b521",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
