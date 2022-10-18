@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "514f0ed9_e0cf0a12",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2022-10-18T16:49:10Z",
+      "side": 1,
+      "message": "From the build error:\n\n```\n..ign-mismatch -Wno-error\u003dunused-but-set-variable -Wno-error\u003dunused-but-set-parameter -Wno-error\u003dunqualified-std-cast-call -Wno-error\u003darray-parameter -Wno-error\u003ddeprecated-builtins -Wno-error\u003ddeprecated\nerror: unknown argument: \u0027-fallow-half-arguments-and-returns\u0027 [clang-diagnostic-error]\n```\n\nThis is due to b/242570798.  I\u0027m working on resolving that.  We should merge aosp/2259162 followed by aosp/2258561.",
+      "revId": "e1a2893d16330144736de1f4f0d06a844a03b9b0",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
