@@ -20,7 +20,7 @@ template <class T>
 void
 randu()
 {
-    typedef std::linear_congruential_engine<T, 65539, 0, 2147483648u> E;
+    typedef std::linear_congruential_engine<T, 65539, 0, > E;
     E e(1);
     assert(e() == 65539);
     assert(e() == 393225);
@@ -40,7 +40,7 @@ template <class T>
 void
 minstd()
 {
-    typedef std::linear_congruential_engine<T, 16807, 0, 2147483647> E;
+    typedef std::linear_congruential_engine<T, 16807, 0, 214> E;
     E e(1);
     assert(e() == 16807);
     assert(e() == 282475249);
