@@ -140,7 +140,7 @@ public:
 private:
   llvm::IntrusiveRefCntPtr<llvm::vfs::FileSystem> viewImpl() const override {
     auto OFS = llvm::makeIntrusiveRefCnt<llvm::vfs::OverlayFileSystem>(
-        Base.view(llvm::None));
+        Base.view(std::nullopt));
     OFS->pushOverlay(DirtyFiles.asVFS());
     return OFS;
   }
@@ -191,7 +191,7 @@ ClangdServer::ClangdServer(const GlobalCompilationDatabase &CDB,
   WorkScheduler.emplace(CDB, TUScheduler::Options(Opts),
                         std::make_unique<UpdateIndexCallbacks>(
                             DynamicIdx.get(), Callbacks, TFS,
-                            IndexTasks ? IndexTasks.getPointer() : nullptr));
+                            IndexTasks ? &*IndexTasks : nullptr));
   // Adds an index to the stack, at higher priority than existing indexes.
   auto AddIndex = [&](SymbolIndex *Idx) {
     if (this->Index != nullptr) {
@@ -408,15 +408,14 @@ void ClangdServer::codeComplete(PathRef File, Position Pos,
     // both the old and the new version in case only one of them matches.
     CodeCompleteResult Result = clangd::codeComplete(
         File, Pos, IP->Preamble, ParseInput, CodeCompleteOpts,
-        SpecFuzzyFind ? SpecFuzzyFind.getPointer() : nullptr);
+        SpecFuzzyFind ? &*SpecFuzzyFind : nullptr);
     {
       clang::clangd::trace::Span Tracer("Completion results callback");
       CB(std::move(Result));
     }
     if (SpecFuzzyFind && SpecFuzzyFind->NewReq) {
       std::lock_guard<std::mutex> Lock(CachedCompletionFuzzyFindRequestMutex);
-      CachedCompletionFuzzyFindRequestByFile[File] =
-          SpecFuzzyFind->NewReq.value();
+      CachedCompletionFuzzyFindRequestByFile[File] = *SpecFuzzyFind->NewReq;
     }
     // SpecFuzzyFind is only destroyed after speculative fuzzy find finishes.
     // We don't want `codeComplete` to wait for the async call if it doesn't use
@@ -515,7 +514,7 @@ void ClangdServer::formatOnType(PathRef File, Position Pos,
                  CB = std::move(CB), this]() mutable {
     auto Style = format::getStyle(format::DefaultFormatStyle, File,
                                   format::DefaultFallbackStyle, Code,
-                                  TFS.view(/*CWD=*/llvm::None).get());
+                                  TFS.view(/*CWD=*/std::nullopt).get());
     if (!Style)
       return CB(Style.takeError());
 
@@ -566,7 +565,7 @@ void ClangdServer::rename(PathRef File, Position Pos, llvm::StringRef NewName,
     if (!InpAST)
       return CB(InpAST.takeError());
     auto R = clangd::rename({Pos, NewName, InpAST->AST, File,
-                             DirtyFS->view(llvm::None), Index, Opts});
+                             DirtyFS->view(std::nullopt), Index, Opts});
     if (!R)
       return CB(R.takeError());
 
@@ -659,7 +658,7 @@ void ClangdServer::applyTweak(PathRef File, Range Sel, StringRef TweakID,
                  this](Expected<InputsAndAST> InpAST) mutable {
     if (!InpAST)
       return CB(InpAST.takeError());
-    auto FS = DirtyFS->view(llvm::None);
+    auto FS = DirtyFS->view(std::nullopt);
     auto Selections = tweakSelection(Sel, *InpAST, FS.get());
     if (!Selections)
       return CB(Selections.takeError());
@@ -713,7 +712,7 @@ void ClangdServer::switchSourceHeader(
   //  2) if 1) fails, we use the AST&Index approach, it is slower but supports
   //     different code layout.
   if (auto CorrespondingFile =
-          getCorrespondingHeaderOrSource(Path, TFS.view(llvm::None)))
+          getCorrespondingHeaderOrSource(Path, TFS.view(std::nullopt)))
     return CB(std::move(CorrespondingFile));
   auto Action = [Path = Path.str(), CB = std::move(CB),
                  this](llvm::Expected<InputsAndAST> InpAST) mutable {
@@ -737,7 +736,7 @@ void ClangdServer::findDocumentHighlights(
 }
 
 void ClangdServer::findHover(PathRef File, Position Pos,
-                             Callback<llvm::Optional<HoverInfo>> CB) {
+                             Callback<std::optional<HoverInfo>> CB) {
   auto Action = [File = File.str(), Pos, CB = std::move(CB),
                  this](llvm::Expected<InputsAndAST> InpAST) mutable {
     if (!InpAST)
@@ -766,7 +765,7 @@ void ClangdServer::typeHierarchy(PathRef File, Position Pos, int Resolve,
 
 void ClangdServer::superTypes(
     const TypeHierarchyItem &Item,
-    Callback<llvm::Optional<std::vector<TypeHierarchyItem>>> CB) {
+    Callback<std::optional<std::vector<TypeHierarchyItem>>> CB) {
   WorkScheduler->run("typeHierarchy/superTypes", /*Path=*/"",
                      [=, CB = std::move(CB)]() mutable {
                        CB(clangd::superTypes(Item, Index));
@@ -782,7 +781,7 @@ void ClangdServer::subTypes(const TypeHierarchyItem &Item,
 
 void ClangdServer::resolveTypeHierarchy(
     TypeHierarchyItem Item, int Resolve, TypeHierarchyDirection Direction,
-    Callback<llvm::Optional<TypeHierarchyItem>> CB) {
+    Callback<std::optional<TypeHierarchyItem>> CB) {
   WorkScheduler->run(
       "Resolve Type Hierarchy", "", [=, CB = std::move(CB)]() mutable {
         clangd::resolveTypeHierarchy(Item, Resolve, Direction, Index);
@@ -810,7 +809,7 @@ void ClangdServer::incomingCalls(
                      });
 }
 
-void ClangdServer::inlayHints(PathRef File, llvm::Optional<Range> RestrictRange,
+void ClangdServer::inlayHints(PathRef File, std::optional<Range> RestrictRange,
                               Callback<std::vector<InlayHint>> CB) {
   auto Action = [RestrictRange(std::move(RestrictRange)),
                  CB = std::move(CB)](Expected<InputsAndAST> InpAST) mutable {
@@ -955,8 +954,8 @@ void ClangdServer::semanticHighlights(
                             Transient);
 }
 
-void ClangdServer::getAST(PathRef File, llvm::Optional<Range> R,
-                          Callback<llvm::Optional<ASTNode>> CB) {
+void ClangdServer::getAST(PathRef File, std::optional<Range> R,
+                          Callback<std::optional<ASTNode>> CB) {
   auto Action =
       [R, CB(std::move(CB))](llvm::Expected<InputsAndAST> Inputs) mutable {
         if (!Inputs)
@@ -989,7 +988,7 @@ void ClangdServer::getAST(PathRef File, llvm::Optional<Range> R,
               return false;
             });
         if (!Success)
-          CB(llvm::None);
+          CB(std::nullopt);
       };
   WorkScheduler->runWithAST("GetAST", File, std::move(Action));
 }

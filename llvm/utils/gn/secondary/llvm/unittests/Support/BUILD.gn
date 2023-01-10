@@ -1,4 +1,4 @@
-import("//llvm/utils/unittest/unittest.gni")
+import("//third-party/unittest/unittest.gni")
 
 unittest("SupportTests") {
   deps = [
@@ -94,6 +94,7 @@ unittest("SupportTests") {
     "TrailingObjectsTest.cpp",
     "TrigramIndexTest.cpp",
     "TypeNameTest.cpp",
+    "TypeSizeTest.cpp",
     "TypeTraitsTest.cpp",
     "UnicodeTest.cpp",
     "VersionTupleTest.cpp",

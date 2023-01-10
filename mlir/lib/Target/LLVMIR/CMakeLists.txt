@@ -4,7 +4,9 @@ set(LLVM_OPTIONAL_SOURCES
   ConvertFromLLVMIR.cpp
   ConvertToLLVMIR.cpp
   DebugTranslation.cpp
+  DebugImporter.cpp
   ModuleTranslation.cpp
+  ModuleImport.cpp
   TypeToLLVM.cpp
   TypeFromLLVM.cpp
   )
@@ -50,6 +52,8 @@ add_mlir_translation_library(MLIRToLLVMIRTranslationRegistration
 
 add_mlir_translation_library(MLIRTargetLLVMIRImport
   ConvertFromLLVMIR.cpp
+  DebugImporter.cpp
+  ModuleImport.cpp
   TypeFromLLVM.cpp
 
   ADDITIONAL_HEADER_DIRS

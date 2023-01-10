@@ -457,7 +457,10 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST)
       })
       .alwaysLegal();
 
-  getActionDefinitionsBuilder(G_SEXT_INREG).legalFor({s32, s64}).lower();
+  getActionDefinitionsBuilder(G_SEXT_INREG)
+      .legalFor({s32, s64})
+      .legalFor(PackedVectorAllTypeList)
+      .lower();
 
   // FP conversions
   getActionDefinitionsBuilder(G_FPTRUNC)
@@ -683,6 +686,13 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST)
       .lowerIf([=](const LegalityQuery &Query) {
         return !Query.Types[1].isVector();
       })
+      .moreElementsIf(
+          [](const LegalityQuery &Query) {
+            return Query.Types[0].isVector() && Query.Types[1].isVector() &&
+                   Query.Types[0].getNumElements() >
+                       Query.Types[1].getNumElements();
+          },
+          changeTo(1, 0))
       .moreElementsToNextPow2(0)
       .clampNumElements(0, v4s32, v4s32)
       .clampNumElements(0, v2s64, v2s64);
@@ -803,10 +813,16 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST)
       .libcallFor({s128})
       .minScalar(0, MinFPScalar);
 
-  // TODO: Vector types.
   getActionDefinitionsBuilder({G_FMAXIMUM, G_FMINIMUM})
-      .legalFor({MinFPScalar, s32, s64})
-      .minScalar(0, MinFPScalar);
+      .legalFor({MinFPScalar, s32, s64, v2s32, v4s32, v2s64})
+      .legalIf([=](const LegalityQuery &Query) {
+        const auto &Ty = Query.Types[0];
+        return (Ty == v8s16 || Ty == v4s16) && HasFP16;
+      })
+      .minScalar(0, MinFPScalar)
+      .clampNumElements(0, v4s16, v8s16)
+      .clampNumElements(0, v2s32, v4s32)
+      .clampNumElements(0, v2s64, v2s64);
 
   // TODO: Libcall support for s128.
   // TODO: s16 should be legal with full FP16 support.
@@ -817,6 +833,8 @@ AArch64LegalizerInfo::AArch64LegalizerInfo(const AArch64Subtarget &ST)
   // TODO: Custom legalization for mismatched types.
   // TODO: s16 support.
   getActionDefinitionsBuilder(G_FCOPYSIGN).customFor({{s32, s32}, {s64, s64}});
+
+  getActionDefinitionsBuilder(G_FMAD).lower();
 
   getLegacyLegalizerInfo().computeTables();
   verify(*ST.getInstrInfo());
@@ -1047,6 +1065,24 @@ bool AArch64LegalizerInfo::legalizeIntrinsic(LegalizerHelper &Helper,
 
     unsigned PrfOp =
         (IsWrite << 4) | (!IsData << 3) | (Locality << 1) | IsStream;
+
+    MIB.buildInstr(AArch64::G_PREFETCH).addImm(PrfOp).add(AddrVal);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Intrinsic::aarch64_prefetch: {
+    MachineIRBuilder MIB(MI);
+    auto &AddrVal = MI.getOperand(1);
+
+    int64_t IsWrite = MI.getOperand(2).getImm();
+    int64_t Target = MI.getOperand(3).getImm();
+    int64_t IsStream = MI.getOperand(4).getImm();
+    int64_t IsData = MI.getOperand(5).getImm();
+
+    unsigned PrfOp = (IsWrite << 4) |    // Load/Store bit
+                     (!IsData << 3) |    // IsDataCache bit
+                     (Target << 1) |     // Cache level bits
+                     (unsigned)IsStream; // Stream bit
 
     MIB.buildInstr(AArch64::G_PREFETCH).addImm(PrfOp).add(AddrVal);
     MI.eraseFromParent();
