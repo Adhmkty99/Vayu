@@ -96,7 +96,7 @@ bool DwarfStreamer::init(Triple TheTriple,
 
   // Finally create the AsmPrinter we'll use to emit the DIEs.
   TM.reset(TheTarget->createTargetMachine(TripleName, "", "", TargetOptions(),
-                                          None));
+                                          std::nullopt));
   if (!TM)
     return error("no target machine for target " + TripleName, Context), false;
 
@@ -321,7 +321,7 @@ void DwarfStreamer::emitSwiftReflectionSection(
 /// sized addresses describing the ranges.
 void DwarfStreamer::emitRangesEntries(
     int64_t UnitPcOffset, uint64_t OrigLowPc,
-    Optional<std::pair<AddressRange, int64_t>> FuncRange,
+    std::optional<std::pair<AddressRange, int64_t>> FuncRange,
     const std::vector<DWARFDebugRangeList::RangeListEntry> &Entries,
     unsigned AddressSize) {
   MS->switchSection(MC->getObjectFileInfo()->getDwarfRangesSection());
@@ -796,7 +796,7 @@ void DwarfStreamer::emitCIE(StringRef CIEBytes) {
 /// contains the FDE data without the length, CIE offset and address
 /// which will be replaced with the parameter values.
 void DwarfStreamer::emitFDE(uint32_t CIEOffset, uint32_t AddrSize,
-                            uint32_t Address, StringRef FDEBytes) {
+                            uint64_t Address, StringRef FDEBytes) {
   MS->switchSection(MC->getObjectFileInfo()->getDwarfFrameSection());
 
   MS->emitIntValue(FDEBytes.size() + 4 + AddrSize, 4);

@@ -203,10 +203,12 @@ constexpr FeatureBitset FeaturesTigerlake =
     FeatureCLWB | FeatureMOVDIRI | FeatureSHSTK | FeatureKL | FeatureWIDEKL;
 constexpr FeatureBitset FeaturesSapphireRapids =
     FeaturesICLServer | FeatureAMX_BF16 | FeatureAMX_INT8 | FeatureAMX_TILE |
-    FeatureAVX512BF16 | FeatureAVX512FP16 | FeatureAVX512VP2INTERSECT |
-    FeatureAVXVNNI | FeatureCLDEMOTE | FeatureENQCMD | FeatureMOVDIR64B |
-    FeatureMOVDIRI | FeaturePTWRITE | FeatureSERIALIZE | FeatureSHSTK |
-    FeatureTSXLDTRK | FeatureUINTR | FeatureWAITPKG;
+    FeatureAVX512BF16 | FeatureAVX512FP16 | FeatureAVXVNNI | FeatureCLDEMOTE |
+    FeatureENQCMD | FeatureMOVDIR64B | FeatureMOVDIRI | FeaturePTWRITE |
+    FeatureSERIALIZE | FeatureSHSTK | FeatureTSXLDTRK | FeatureUINTR |
+    FeatureWAITPKG;
+constexpr FeatureBitset FeaturesGraniteRapids =
+    FeaturesSapphireRapids | FeatureAMX_FP16 | FeaturePREFETCHI;
 
 // Intel Atom processors.
 // Bonnell has feature parity with Core2 and adds MOVBE.
@@ -228,6 +230,11 @@ constexpr FeatureBitset FeaturesAlderlake =
     FeatureSERIALIZE | FeatureSHSTK | FeatureVAES | FeatureVPCLMULQDQ |
     FeatureCLDEMOTE | FeatureMOVDIR64B | FeatureMOVDIRI | FeatureWAITPKG |
     FeatureAVXVNNI | FeatureHRESET | FeatureWIDEKL;
+constexpr FeatureBitset FeaturesSierraforest =
+    FeaturesAlderlake | FeatureCMPCCXADD | FeatureAVXIFMA |
+    FeatureAVXNECONVERT | FeatureAVXVNNIINT8;
+constexpr FeatureBitset FeaturesGrandridge =
+    FeaturesSierraforest | FeatureRAOINT;
 
 // Geode Processor.
 constexpr FeatureBitset FeaturesGeode =
@@ -291,6 +298,12 @@ constexpr FeatureBitset FeaturesZNVER2 = FeaturesZNVER1 | FeatureCLWB |
 static constexpr FeatureBitset FeaturesZNVER3 = FeaturesZNVER2 |
                                                 FeatureINVPCID | FeaturePKU |
                                                 FeatureVAES | FeatureVPCLMULQDQ;
+static constexpr FeatureBitset FeaturesZNVER4 =
+    FeaturesZNVER3 | FeatureAVX512F | FeatureAVX512CD | FeatureAVX512DQ |
+    FeatureAVX512BW | FeatureAVX512VL | FeatureAVX512IFMA | FeatureAVX512VBMI |
+    FeatureAVX512VBMI2 | FeatureAVX512VNNI | FeatureAVX512BITALG |
+    FeatureAVX512VPOPCNTDQ | FeatureAVX512BF16 | FeatureGFNI |
+    FeatureSHSTK;
 
 constexpr ProcInfo Processors[] = {
   // Empty processor. Include X87 and CMPXCHG8 for backwards compatibility.
@@ -367,9 +380,19 @@ constexpr ProcInfo Processors[] = {
   // Tigerlake microarchitecture based processors.
   { {"tigerlake"}, CK_Tigerlake, FEATURE_AVX512VP2INTERSECT, FeaturesTigerlake },
   // Sapphire Rapids microarchitecture based processors.
-  { {"sapphirerapids"}, CK_SapphireRapids, FEATURE_AVX512VP2INTERSECT, FeaturesSapphireRapids },
+  { {"sapphirerapids"}, CK_SapphireRapids, FEATURE_AVX512BF16, FeaturesSapphireRapids },
   // Alderlake microarchitecture based processors.
   { {"alderlake"}, CK_Alderlake, FEATURE_AVX2, FeaturesAlderlake },
+  // Raptorlake microarchitecture based processors.
+  { {"raptorlake"}, CK_Raptorlake, FEATURE_AVX2, FeaturesAlderlake },
+  // Meteorlake microarchitecture based processors.
+  { {"meteorlake"}, CK_Meteorlake, FEATURE_AVX2, FeaturesAlderlake },
+  // Sierraforest microarchitecture based processors.
+  { {"sierraforest"}, CK_Sierraforest, FEATURE_AVX2, FeaturesSierraforest },
+  // Grandridge microarchitecture based processors.
+  { {"grandridge"}, CK_Grandridge, FEATURE_AVX2, FeaturesGrandridge },
+  // Graniterapids microarchitecture based processors.
+  { {"graniterapids"}, CK_Graniterapids, FEATURE_AVX512BF16, FeaturesGraniteRapids },
   // Knights Landing processor.
   { {"knl"}, CK_KNL, FEATURE_AVX512F, FeaturesKNL },
   // Knights Mill processor.
@@ -408,6 +431,7 @@ constexpr ProcInfo Processors[] = {
   { {"znver1"}, CK_ZNVER1, FEATURE_AVX2, FeaturesZNVER1 },
   { {"znver2"}, CK_ZNVER2, FEATURE_AVX2, FeaturesZNVER2 },
   { {"znver3"}, CK_ZNVER3, FEATURE_AVX2, FeaturesZNVER3 },
+  { {"znver4"}, CK_ZNVER4, FEATURE_AVX512VBMI2, FeaturesZNVER4 },
   // Generic 64-bit processor.
   { {"x86-64"}, CK_x86_64, ~0U, FeaturesX86_64 },
   { {"x86-64-v2"}, CK_x86_64_v2, ~0U, FeaturesX86_64_V2 },
@@ -578,10 +602,17 @@ constexpr FeatureBitset ImpliedFeaturesXOP = FeatureFMA4;
 // AMX Features
 constexpr FeatureBitset ImpliedFeaturesAMX_TILE = {};
 constexpr FeatureBitset ImpliedFeaturesAMX_BF16 = FeatureAMX_TILE;
+constexpr FeatureBitset ImpliedFeaturesAMX_FP16 = FeatureAMX_TILE;
 constexpr FeatureBitset ImpliedFeaturesAMX_INT8 = FeatureAMX_TILE;
 constexpr FeatureBitset ImpliedFeaturesHRESET = {};
 
-static constexpr FeatureBitset ImpliedFeaturesAVX512FP16 =
+constexpr FeatureBitset ImpliedFeaturesPREFETCHI = {};
+constexpr FeatureBitset ImpliedFeaturesCMPCCXADD = {};
+constexpr FeatureBitset ImpliedFeaturesRAOINT = {};
+constexpr FeatureBitset ImpliedFeaturesAVXVNNIINT8 = FeatureAVX2;
+constexpr FeatureBitset ImpliedFeaturesAVXIFMA = FeatureAVX2;
+constexpr FeatureBitset ImpliedFeaturesAVXNECONVERT = FeatureAVX2;
+constexpr FeatureBitset ImpliedFeaturesAVX512FP16 =
     FeatureAVX512BW | FeatureAVX512DQ | FeatureAVX512VL;
 // Key Locker Features
 constexpr FeatureBitset ImpliedFeaturesKL = FeatureSSE2;

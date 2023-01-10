@@ -122,12 +122,12 @@ define float @mubuf_vgpr(<4 x i32> %i, i32 %c) #0 {
 ; W32-DAG: global_store_{{dword|b32}} v{{\[[0-9]+:[0-9]+\]}}, [[RES0]], off
 ; W32-DAG: global_store_{{dword|b32}} v{{\[[0-9]+:[0-9]+\]}}, [[RES1]], off
 
-define void @mubuf_vgpr_adjacent_in_block(<4 x i32> %i, <4 x i32> %j, i32 %c, float addrspace(1)* %out0, float addrspace(1)* %out1) #0 {
+define void @mubuf_vgpr_adjacent_in_block(<4 x i32> %i, <4 x i32> %j, i32 %c, ptr addrspace(1) %out0, ptr addrspace(1) %out1) #0 {
 entry:
   %val0 = call float @llvm.amdgcn.struct.buffer.load.format.f32(<4 x i32> %i, i32 %c, i32 0, i32 0, i32 0) #1
   %val1 = call float @llvm.amdgcn.struct.buffer.load.format.f32(<4 x i32> %j, i32 %c, i32 0, i32 0, i32 0) #1
-  store volatile float %val0, float addrspace(1)* %out0
-  store volatile float %val1, float addrspace(1)* %out1
+  store volatile float %val0, ptr addrspace(1) %out0
+  store volatile float %val1, ptr addrspace(1) %out1
   ret void
 }
 
@@ -264,10 +264,12 @@ entry:
 ; W64-O0: s_cbranch_execz [[TERMBB:.LBB[0-9]+_[0-9]+]]
 
 ; W64-O0: ; %bb.{{[0-9]+}}: ; %bb1
-; W64-O0-DAG: buffer_store_dword {{v[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s32 offset:[[IDX_OFF:[0-9]+]] ; 4-byte Folded Spill
+; W64-O0: buffer_load_dword
+; W64-O0: buffer_store_dword {{v[0-9]+}}, off, s{{\[[0-9]+:[0-9]+\]}}, s32 offset:[[IDX_OFF:[0-9]+]] ; 4-byte Folded Spill
 ; W64-O0-DAG: s_mov_b64 s[[[SAVEEXEC0:[0-9]+]]:[[SAVEEXEC1:[0-9]+]]], exec
 ; W64-O0: v_writelane_b32 [[VSAVEEXEC:v[0-9]+]], s[[SAVEEXEC0]], [[SAVEEXEC_IDX0:[0-9]+]]
 ; W64-O0: v_writelane_b32 [[VSAVEEXEC]], s[[SAVEEXEC1]], [[SAVEEXEC_IDX1:[0-9]+]]
+; W64-O0: buffer_store_dword [[VSAVEEXEC]], off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} ; 4-byte Folded Spill
 
 ; W64-O0: [[LOOPBB1:.LBB[0-9]+_[0-9]+]]: ; =>This Inner Loop Header: Depth=1
 ; W64-O0: buffer_load_dword v[[VRSRC0:[0-9]+]], off, s[0:3], s32 offset:8 ; 4-byte Folded Reload
@@ -290,7 +292,9 @@ entry:
 ; W64-O0-DAG: s_mov_b32 s[[S2:[0-9]+]], s[[SRSRCTMP2]]
 ; W64-O0-DAG: s_mov_b32 s[[S3:[0-9]+]], s[[SRSRCTMP3]]
 ; W64-O0: s_and_saveexec_b64 [[SAVE:s\[[0-9]+:[0-9]+\]]], [[AND]]
+; W64-O0: buffer_store_dword
 ; W64-O0: buffer_load_dword [[IDX:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, s32  offset:[[IDX_OFF]] ; 4-byte Folded Reload
+; W64-O0: buffer_load_dword
 ; W64-O0: buffer_load_format_x [[RES:v[0-9]+]], [[IDX]], s[[[S0]]:[[S3]]], {{.*}} idxen
 ; W64-O0: s_waitcnt vmcnt(0)
 ; W64-O0: buffer_store_dword [[RES]], off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:[[RES_OFF_TMP:[0-9]+]] ; 4-byte Folded Spill
@@ -298,8 +302,9 @@ entry:
 ; W64-O0-NEXT: s_cbranch_execnz [[LOOPBB1]]
 
 ; W64-O0: buffer_load_dword [[RES:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:[[RES_OFF_TMP]] ; 4-byte Folded Reload
-; W64-O0: v_readlane_b32 s[[SAVEEXEC0:[0-9]+]], [[VSAVEEXEC]], [[SAVEEXEC_IDX0]]
-; W64-O0: v_readlane_b32 s[[SAVEEXEC1:[0-9]+]], [[VSAVEEXEC]], [[SAVEEXEC_IDX1]]
+; W64-O0: buffer_load_dword [[VSAVEEXEC1:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} ; 4-byte Folded Reload
+; W64-O0: v_readlane_b32 s[[SAVEEXEC0:[0-9]+]], [[VSAVEEXEC1]], [[SAVEEXEC_IDX0]]
+; W64-O0: v_readlane_b32 s[[SAVEEXEC1:[0-9]+]], [[VSAVEEXEC1]], [[SAVEEXEC_IDX1]]
 ; W64-O0: s_mov_b64 exec, s[[[SAVEEXEC0]]:[[SAVEEXEC1]]]
 ; W64-O0: buffer_store_dword [[RES]], off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:[[RES_OFF]] ; 4-byte Folded Spill
 
@@ -307,7 +312,7 @@ entry:
 ; W64-O0: buffer_load_dword [[RES:v[0-9]+]], off, s{{\[[0-9]+:[0-9]+\]}}, s{{[0-9]+}} offset:[[RES_OFF]] ; 4-byte Folded Reload
 ; W64-O0: global_store_dword v[{{[0-9]+:[0-9]+}}], [[RES]], off
 
-define void @mubuf_vgpr_outside_entry(<4 x i32> %i, <4 x i32> %j, i32 %c, float addrspace(1)* %in, float addrspace(1)* %out) #0 {
+define void @mubuf_vgpr_outside_entry(<4 x i32> %i, <4 x i32> %j, i32 %c, ptr addrspace(1) %in, ptr addrspace(1) %out) #0 {
 entry:
   %live.out.reg = call i32 asm sideeffect "s_mov_b32 $0, 17", "={s4}" ()
   %val0 = call float @llvm.amdgcn.struct.buffer.load.format.f32(<4 x i32> %i, i32 %live.out.reg, i32 0, i32 0, i32 0) #1
@@ -321,7 +326,7 @@ bb1:
 
 bb2:
   %val = phi float [ %val0, %entry ], [ %val1, %bb1 ]
-  store volatile float %val, float addrspace(1)* %out
+  store volatile float %val, ptr addrspace(1) %out
   ret void
 }
 
