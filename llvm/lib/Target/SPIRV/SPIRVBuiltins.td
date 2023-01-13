@@ -493,10 +493,11 @@ defm : DemangledNativeBuiltin<"all", OpenCL_std, Relational, 1, 1, OpAll>;
 defm : DemangledNativeBuiltin<"__spirv_All", OpenCL_std, Relational, 1, 1, OpAll>;
 
 // Atomic builtin records:
+defm : DemangledNativeBuiltin<"atomic_init", OpenCL_std, Atomic, 2, 2, OpStore>;
 defm : DemangledNativeBuiltin<"atomic_load", OpenCL_std, Atomic, 1, 1, OpAtomicLoad>;
 defm : DemangledNativeBuiltin<"atomic_load_explicit", OpenCL_std, Atomic, 2, 3, OpAtomicLoad>;
 defm : DemangledNativeBuiltin<"atomic_store", OpenCL_std, Atomic, 2, 2, OpAtomicStore>;
-defm : DemangledNativeBuiltin<"atomic_store_explicit", OpenCL_std, Atomic, 2, 2, OpAtomicStore>;
+defm : DemangledNativeBuiltin<"atomic_store_explicit", OpenCL_std, Atomic, 2, 4, OpAtomicStore>;
 defm : DemangledNativeBuiltin<"atomic_compare_exchange_strong", OpenCL_std, Atomic, 3, 6, OpAtomicCompareExchange>;
 defm : DemangledNativeBuiltin<"atomic_compare_exchange_strong_explicit", OpenCL_std, Atomic, 5, 6, OpAtomicCompareExchange>;
 defm : DemangledNativeBuiltin<"atomic_compare_exchange_weak", OpenCL_std, Atomic, 3, 6, OpAtomicCompareExchangeWeak>;
@@ -526,12 +527,20 @@ defm : DemangledNativeBuiltin<"atomic_fetch_sub_explicit", OpenCL_std, Atomic, 4
 defm : DemangledNativeBuiltin<"atomic_fetch_or_explicit", OpenCL_std, Atomic, 4, 6, OpAtomicOr>;
 defm : DemangledNativeBuiltin<"atomic_fetch_xor_explicit", OpenCL_std, Atomic, 4, 6, OpAtomicXor>;
 defm : DemangledNativeBuiltin<"atomic_fetch_and_explicit", OpenCL_std, Atomic, 4, 6, OpAtomicAnd>;
+defm : DemangledNativeBuiltin<"atomic_flag_test_and_set", OpenCL_std, Atomic, 1, 1, OpAtomicFlagTestAndSet>;
+defm : DemangledNativeBuiltin<"atomic_flag_test_and_set_explicit", OpenCL_std, Atomic, 2, 3, OpAtomicFlagTestAndSet>;
+defm : DemangledNativeBuiltin<"atomic_flag_clear", OpenCL_std, Atomic, 1, 1, OpAtomicFlagClear>;
+defm : DemangledNativeBuiltin<"atomic_flag_clear_explicit", OpenCL_std, Atomic, 2, 3, OpAtomicFlagClear>;
 
 // Barrier builtin records:
 defm : DemangledNativeBuiltin<"barrier", OpenCL_std, Barrier, 1, 3, OpControlBarrier>;
 defm : DemangledNativeBuiltin<"work_group_barrier", OpenCL_std, Barrier, 1, 3, OpControlBarrier>;
 
 // Kernel enqueue builtin records:
+defm : DemangledNativeBuiltin<"__enqueue_kernel_basic", OpenCL_std, Enqueue, 5, 5, OpEnqueueKernel>;
+defm : DemangledNativeBuiltin<"__enqueue_kernel_basic_events", OpenCL_std, Enqueue, 8, 8, OpEnqueueKernel>;
+defm : DemangledNativeBuiltin<"__enqueue_kernel_varargs", OpenCL_std, Enqueue, 7, 7, OpEnqueueKernel>;
+defm : DemangledNativeBuiltin<"__enqueue_kernel_events_varargs", OpenCL_std, Enqueue, 10, 10, OpEnqueueKernel>;
 defm : DemangledNativeBuiltin<"retain_event", OpenCL_std, Enqueue, 1, 1, OpRetainEvent>;
 defm : DemangledNativeBuiltin<"release_event", OpenCL_std, Enqueue, 1, 1, OpReleaseEvent>;
 defm : DemangledNativeBuiltin<"create_user_event", OpenCL_std, Enqueue, 0, 0, OpCreateUserEvent>;
@@ -953,6 +962,7 @@ defm : DemangledImageQueryBuiltin<"get_image_dim", OpenCL_std, 0>;
 defm : DemangledImageQueryBuiltin<"get_image_array_size", OpenCL_std, 3>;
 
 defm : DemangledNativeBuiltin<"get_image_num_samples", OpenCL_std, ImageMiscQuery, 1, 1, OpImageQuerySamples>;
+defm : DemangledNativeBuiltin<"get_image_num_mip_levels", OpenCL_std, ImageMiscQuery, 1, 1, OpImageQueryLevels>;
 
 //===----------------------------------------------------------------------===//
 // Class defining a "convert_destType<_sat><_roundingMode>" call record for
