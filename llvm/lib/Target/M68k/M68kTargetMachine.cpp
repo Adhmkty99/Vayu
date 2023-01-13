@@ -27,6 +27,7 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/PassRegistry.h"
 #include <memory>
+#include <optional>
 
 using namespace llvm;
 
@@ -36,6 +37,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeM68kTarget() {
   RegisterTargetMachine<M68kTargetMachine> X(getTheM68kTarget());
   auto *PR = PassRegistry::getPassRegistry();
   initializeGlobalISel(*PR);
+  initializeM68kDAGToDAGISelPass(*PR);
 }
 
 namespace {
@@ -70,7 +72,7 @@ std::string computeDataLayout(const Triple &TT, StringRef CPU,
 }
 
 Reloc::Model getEffectiveRelocModel(const Triple &TT,
-                                    Optional<Reloc::Model> RM) {
+                                    std::optional<Reloc::Model> RM) {
   // If not defined we default to static
   if (!RM.has_value())
     return Reloc::Static;
@@ -78,7 +80,7 @@ Reloc::Model getEffectiveRelocModel(const Triple &TT,
   return *RM;
 }
 
-CodeModel::Model getEffectiveCodeModel(Optional<CodeModel::Model> CM,
+CodeModel::Model getEffectiveCodeModel(std::optional<CodeModel::Model> CM,
                                        bool JIT) {
   if (!CM) {
     return CodeModel::Small;
@@ -94,8 +96,8 @@ CodeModel::Model getEffectiveCodeModel(Optional<CodeModel::Model> CM,
 M68kTargetMachine::M68kTargetMachine(const Target &T, const Triple &TT,
                                      StringRef CPU, StringRef FS,
                                      const TargetOptions &Options,
-                                     Optional<Reloc::Model> RM,
-                                     Optional<CodeModel::Model> CM,
+                                     std::optional<Reloc::Model> RM,
+                                     std::optional<CodeModel::Model> CM,
                                      CodeGenOpt::Level OL, bool JIT)
     : LLVMTargetMachine(T, computeDataLayout(TT, CPU, Options), TT, CPU, FS,
                         Options, getEffectiveRelocModel(TT, RM),
@@ -143,6 +145,7 @@ public:
   const M68kSubtarget &getM68kSubtarget() const {
     return *getM68kTargetMachine().getSubtargetImpl();
   }
+  void addIRPasses() override;
   bool addIRTranslator() override;
   bool addLegalizeMachineIR() override;
   bool addRegBankSelect() override;
@@ -155,6 +158,11 @@ public:
 
 TargetPassConfig *M68kTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new M68kPassConfig(*this, PM);
+}
+
+void M68kPassConfig::addIRPasses() {
+  addPass(createAtomicExpandPass());
+  TargetPassConfig::addIRPasses();
 }
 
 bool M68kPassConfig::addInstSelector() {
