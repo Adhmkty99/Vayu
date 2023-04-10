@@ -49,6 +49,10 @@ ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
     libcxxabi_cppflags += -mbranch-protection=standard
 endif
 
+ifeq ($(TARGET_ARCH_ABI),riscv64)
+	libcxxabi_cppflags += -fno-emulated-tls
+endif
+
 ifneq ($(LIBCXX_FORCE_REBUILD),true) # Using prebuilt
 
 include $(CLEAR_VARS)
