@@ -115,6 +115,9 @@ unsigned getTLSSize();
 bool getEmulatedTLS();
 std::optional<bool> getExplicitEmulatedTLS();
 
+bool getEnableTLSDESC();
+std::optional<bool> getExplicitEnableTLSDESC();
+
 bool getUniqueSectionNames();
 
 bool getUniqueBasicBlockSectionNames();
