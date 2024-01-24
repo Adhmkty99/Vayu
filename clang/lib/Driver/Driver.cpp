@@ -577,7 +577,7 @@ static llvm::Triple computeTargetTriple(const Driver &D,
   // The `-maix[32|64]` flags are only valid for AIX targets.
   if (Arg *A = Args.getLastArgNoClaim(options::OPT_maix32, options::OPT_maix64);
       A && !Target.isOSAIX())
-    D.Diag(diag::err_drv_unsupported_opt_for_target)
+    D.Diag(err_drv_unsupported_opt_for_target)
         << A->getAsString(Args) << Target.str();
 
   // Handle pseudo-target flags '-m64', '-mx32', '-m32' and '-m16'.
