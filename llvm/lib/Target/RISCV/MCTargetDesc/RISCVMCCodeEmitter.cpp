@@ -171,7 +171,7 @@ void RISCVMCCodeEmitter::expandTLSDESCCall(const MCInst &MI,
       MCInstBuilder(RISCV::JALR).addReg(Link).addReg(Dest).addImm(Imm);
 
   uint32_t Binary = getBinaryCodeForInstr(Call, Fixups, STI);
-  support::endian::write(CB, Binary, llvm::endianness::little);
+  support::endian::write(CB, Binary, llvm::support::endianness::little);
 }
 
 // Expand PseudoAddTPRel to a simple ADD with the correct relocation.
