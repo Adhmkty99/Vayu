@@ -4435,6 +4435,10 @@ llvm::Constant *CodeGenModule::GetOrCreateLLVMFunction(
           }
         }
       }
+    } else if (isa_and_nonnull<FunctionDecl>(D)) {
+      const auto *FD = cast<FunctionDecl>(D);
+      if (FD->hasAttr<CallsiteWrapperAttr>())
+        addDeferredDeclToEmit(GD);
     }
   }
 

@@ -4222,3 +4222,10 @@ def AvailableOnlyInDefaultEvalMethod : InheritableAttr {
   let Subjects = SubjectList<[TypedefName], ErrorDiag>;
   let Documentation = [Undocumented];
 }
+
+def CallsiteWrapper : InheritableAttr {
+  let Spellings = [GNU<"callsite_wrapper">];
+  let Subjects = SubjectList<[Function]>;
+  // FIXME: add documentation
+  let Documentation = [Undocumented];
+}
