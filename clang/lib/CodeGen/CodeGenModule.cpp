@@ -4435,6 +4435,9 @@ llvm::Constant *CodeGenModule::GetOrCreateLLVMFunction(
           }
         }
       }
+    } else if (const auto *FD = dyn_cast<FunctionDecl>(D)) {
+      if (FD->hasAttr<CallsiteWrapperAttr>())
+        addDeferredDeclToEmit(GD);
     }
   }
 
