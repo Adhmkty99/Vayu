@@ -16,6 +16,23 @@
       "message": "The original change didn\u0027t cherry-pick on gerrit or on local tree but this merge recreated by running merge-from-upstreams.py.",
       "revId": "d8003a456d14a3deb8054cdaa529ffbf02d9b262",
       "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1444d099_89f767eb",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2024-02-22T23:18:07Z",
+      "side": 1,
+      "message": "For the record, bug number b/2974215 is missing from the commit message.",
+      "revId": "d8003a456d14a3deb8054cdaa529ffbf02d9b262",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
     }
   ],
   "submitRequirementResults": [
