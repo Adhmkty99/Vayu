@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "1f1f6d11_c279f362",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1058860
+      },
+      "writtenOn": "2024-02-22T19:47:41Z",
+      "side": 1,
+      "message": "The original change didn\u0027t cherry-pick on gerrit or on local tree but this merge recreated by running merge-from-upstreams.py.",
+      "revId": "d8003a456d14a3deb8054cdaa529ffbf02d9b262",
+      "serverId": "85c56323-6fa9-3386-8a01-6480fb634889"
+    }
+  ]
+}
