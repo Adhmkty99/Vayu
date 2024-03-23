@@ -21,13 +21,13 @@ BOOL b;
 
 int main(void) {
   p("%d", b);
-  p("%hd", b);
+  p("%hd", b); // expected-warning {{format specifies type 'short' but the argument has type '_Bool' . The size of '_Bool' is 8 bit(s).}}
 #ifdef TYPE_CONF
   // expected-warning@-2 {{format specifies type 'short' but the argument has type}}
 #endif
   p("%hhd", b);
   p("%u", b);
-  p("%hu", b);
+  p("%hu", b); // expected-warning {{format specifies type 'unsigned short' but the argument has type '_Bool' . The size of '_Bool' is 8 bit(s).}}
 #ifdef TYPE_CONF
   // expected-warning@-2 {{format specifies type 'unsigned short' but the argument has type}}
 #endif

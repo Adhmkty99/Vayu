@@ -83,7 +83,7 @@ void do_format() {
   format("%f %f %f\n", (__fp16)123.f, 123.f, 123.);
   format("%Lf", (__fp16)123.f); // expected-warning{{format specifies type 'long double' but the argument has type '__fp16'}}
   format("%Lf", 123.f); // expected-warning{{format specifies type 'long double' but the argument has type 'float'}}
-  format("%hhi %hhu %hi %hu %i %u", b, b, b, b, b, b);
+  format("%hhi %hhu %hi %hu %i %u", b, b, b, b, b, b); // expected-warning{{format specifies type 'short' but the argument has type 'bool' . The size of 'bool' is 8 bit(s). format specifies type 'unsigned short' but the argument has type 'bool' . The size of 'bool' is 8 bit(s).}}
   format("%li", b); // expected-warning{{format specifies type 'long' but the argument has type 'bool'}}
 
   struct foo f;

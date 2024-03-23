@@ -9721,21 +9721,21 @@ def warn_scanf_nonzero_width : Warning<
   InGroup<Format>;
 def warn_format_conversion_argument_type_mismatch : Warning<
   "format specifies type %0 but the argument has "
-  "%select{type|underlying type}2 %1">,
+  "%select{type|underlying type}2 %1 . The size of %1 is %3 bit(s).">,
   InGroup<Format>;
 def warn_format_conversion_argument_type_mismatch_pedantic : Extension<
   warn_format_conversion_argument_type_mismatch.Summary>,
   InGroup<FormatPedantic>;
 def warn_format_conversion_argument_type_mismatch_confusion : Warning<
   warn_format_conversion_argument_type_mismatch.Summary>,
-  InGroup<FormatTypeConfusion>, DefaultIgnore;
+  InGroup<FormatTypeConfusion>;
 def warn_format_argument_needs_cast : Warning<
   "%select{values of type|enum values with underlying type}2 '%0' should not "
   "be used as format arguments; add an explicit cast to %1 instead">,
   InGroup<Format>;
 def warn_format_argument_needs_cast_pedantic : Warning<
   warn_format_argument_needs_cast.Summary>,
-  InGroup<FormatPedantic>, DefaultIgnore;
+  InGroup<FormatPedantic>;
 def warn_printf_positional_arg_exceeds_data_args : Warning <
   "data argument position '%0' exceeds the number of data arguments (%1)">,
   InGroup<Format>;

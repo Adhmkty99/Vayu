@@ -211,7 +211,7 @@ void test_percent_C(void) {
   // CHECK: fix-it:"{{.*}}":{[[@LINE-1]]:11-[[@LINE-1]]:13}:"%f"
   // CHECK-NOT: fix-it:"{{.*}}":{[[@LINE-2]]:16-[[@LINE-2]]:16}:"(unichar)"
 
-  NSLog(@"%C", (char)0x260300);
+  NSLog(@"%C", (char)0x260300); // expected-warning{{format specifies type 'unichar' (aka 'unsigned short') but the argument has type 'char' . The size of 'char' is 8 bit(s).}}
 
   NSLog(@"%C", 'a'); // expected-warning{{format specifies type 'unichar' (aka 'unsigned short') but the argument has type 'char'}}
   // CHECK: fix-it:"{{.*}}":{[[@LINE-1]]:11-[[@LINE-1]]:13}:"%c"

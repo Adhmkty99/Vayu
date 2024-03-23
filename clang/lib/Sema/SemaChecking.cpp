@@ -11677,7 +11677,8 @@ bool CheckPrintfHandler::HandlePrintfSpecifier(
       EmitFormatDiagnostic(
           S.PDiag(diag::warn_format_conversion_argument_type_mismatch)
               << AT.getRepresentativeTypeName(S.Context) << Ex->getType()
-              << false << Ex->getSourceRange(),
+              << false << Ex->getSourceRange()
+              << S.Context.getTypeSize(Ex->getType()),
           Ex->getBeginLoc(), /*IsStringLocation*/ false,
           getSpecifierRange(startSpecifier, specifierLen));
 
@@ -11688,7 +11689,8 @@ bool CheckPrintfHandler::HandlePrintfSpecifier(
       EmitFormatDiagnostic(
           S.PDiag(diag::warn_format_conversion_argument_type_mismatch)
               << AT2.getRepresentativeTypeName(S.Context) << Ex->getType()
-              << false << Ex->getSourceRange(),
+              << false << Ex->getSourceRange()
+              << S.Context.getTypeSize(Ex->getType()),
           Ex->getBeginLoc(), /*IsStringLocation*/ false,
           getSpecifierRange(startSpecifier, specifierLen));
 
@@ -12144,7 +12146,8 @@ CheckPrintfHandler::checkFormatExpr(const analyze_printf::PrintfSpecifier &FS,
       // the argument.
       EmitFormatDiagnostic(S.PDiag(Diag)
                                << AT.getRepresentativeTypeName(S.Context)
-                               << IntendedTy << IsEnum << E->getSourceRange(),
+                               << IntendedTy << IsEnum << E->getSourceRange()
+                               << S.Context.getTypeSize(IntendedTy),
                            E->getBeginLoc(),
                            /*IsStringLocation*/ false, SpecRange,
                            FixItHint::CreateReplacement(SpecRange, os.str()));
@@ -12213,8 +12216,10 @@ CheckPrintfHandler::checkFormatExpr(const analyze_printf::PrintfSpecifier &FS,
         // and we should cast instead. Just use the normal warning message.
         EmitFormatDiagnostic(
             S.PDiag(diag::warn_format_conversion_argument_type_mismatch)
-                << AT.getRepresentativeTypeName(S.Context) << ExprTy << IsEnum
-                << E->getSourceRange(),
+                << AT.getRepresentativeTypeName(S.Context) << ExprTy
+                << IsEnum
+                << E->getSourceRange()
+                << S.Context.getTypeSize(ExprTy),
             E->getBeginLoc(), /*IsStringLocation*/ false, SpecRange, Hints);
       }
     }
@@ -12247,7 +12252,8 @@ CheckPrintfHandler::checkFormatExpr(const analyze_printf::PrintfSpecifier &FS,
 
       EmitFormatDiagnostic(
           S.PDiag(Diag) << AT.getRepresentativeTypeName(S.Context) << ExprTy
-                        << IsEnum << CSR << E->getSourceRange(),
+                        << IsEnum << CSR << E->getSourceRange()
+                        << S.Context.getTypeSize(ExprTy),
           E->getBeginLoc(), /*IsStringLocation*/ false, CSR);
       break;
     }
@@ -12294,7 +12300,7 @@ CheckPrintfHandler::checkFormatExpr(const analyze_printf::PrintfSpecifier &FS,
       EmitFormatDiagnostic(
           S.PDiag(diag::warn_format_conversion_argument_type_mismatch)
               << AT.getRepresentativeTypeName(S.Context) << ExprTy << false
-              << E->getSourceRange(),
+              << E->getSourceRange() << S.Context.getTypeSize(ExprTy),
           E->getBeginLoc(), false, CSR);
     }
 
@@ -12464,7 +12470,8 @@ bool CheckScanfHandler::HandleScanfSpecifier(
 
     EmitFormatDiagnostic(
         S.PDiag(Diag) << AT.getRepresentativeTypeName(S.Context)
-                      << Ex->getType() << false << Ex->getSourceRange(),
+                      << Ex->getType() << false << Ex->getSourceRange()
+                      << S.Context.getTypeSize(Ex->getType()),
         Ex->getBeginLoc(),
         /*IsStringLocation*/ false,
         getSpecifierRange(startSpecifier, specifierLen),

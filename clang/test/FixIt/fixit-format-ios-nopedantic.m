@@ -7,6 +7,9 @@ typedef int NSInteger;
 NSUInteger getNSUInteger(void);
 NSInteger getNSInteger(void);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-pedantic"
+
 void test(void) {
   // For thumbv7-apple-ios8.0.0 the underlying type of ssize_t is long
   // and the underlying type of size_t is unsigned long.
@@ -19,3 +22,5 @@ void test(void) {
 
   printf("test 4: %zd %zd", getNSInteger(), getNSInteger());
 }
+
+#pragma clang diagnostic pop
